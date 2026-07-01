@@ -343,17 +343,20 @@ export function ConsultasView() {
 
       <EvaluacionDetalleModal
         data={viewRow ? rowToReporteData(viewRow) : null}
-        onClose={() => setViewRow(null)}
+        onClose={() => {
+          setViewRow(null);
+          setPrintRow(null);
+        }}
         onPrint={handlePrint}
       />
 
       <ConfirmDialog
         busy={deleting}
-        message={`Se eliminara la evaluacion de ${deleteTarget?.docente_nombre ?? ""} (${deleteTarget?.curso_nombre ?? ""}, ${deleteTarget ? `T${deleteTarget.trimestre} ${deleteTarget.anio}` : ""}). Esta accion no se puede deshacer.`}
+        message={`Se eliminará la evaluación de ${deleteTarget?.docente_nombre ?? ""} (${deleteTarget?.curso_nombre ?? ""}, ${deleteTarget ? `T${deleteTarget.trimestre} ${deleteTarget.anio}` : ""}). Esta acción no se puede deshacer.`}
         onCancel={() => setDeleteTarget(null)}
         onConfirm={handleDelete}
         open={Boolean(deleteTarget)}
-        title="Borrar evaluacion"
+        title="Borrar evaluación"
       />
     </div>
   );

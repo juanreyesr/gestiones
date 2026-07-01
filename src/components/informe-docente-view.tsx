@@ -99,9 +99,7 @@ export function InformeDocenteView({ docentes }: { docentes: DocenteRow[] }) {
   };
 
   const handlePrintFila = () => {
-    if (!viewRow) return;
     setPrintingResumen(false);
-    setPrintRow(viewRow);
     requestAnimationFrame(() => window.print());
   };
 
@@ -214,7 +212,10 @@ export function InformeDocenteView({ docentes }: { docentes: DocenteRow[] }) {
                           <div className="flex gap-2">
                             <button
                               className="border border-white/10 bg-white/8 px-2 py-1 text-xs font-semibold text-slate-100 transition hover:border-white/30"
-                              onClick={() => setViewRow(row)}
+                              onClick={() => {
+                                setViewRow(row);
+                                setPrintRow(row);
+                              }}
                               type="button"
                             >
                               Ver
@@ -313,17 +314,20 @@ export function InformeDocenteView({ docentes }: { docentes: DocenteRow[] }) {
 
       <EvaluacionDetalleModal
         data={viewRow ? rowToReporteData(viewRow) : null}
-        onClose={() => setViewRow(null)}
+        onClose={() => {
+          setViewRow(null);
+          setPrintRow(null);
+        }}
         onPrint={handlePrintFila}
       />
 
       <ConfirmDialog
         busy={deleting}
-        message={`Se eliminara la evaluacion de ${deleteTarget?.docente_nombre ?? ""} (${deleteTarget?.curso_nombre ?? ""}, ${deleteTarget ? `T${deleteTarget.trimestre} ${deleteTarget.anio}` : ""}). Esta accion no se puede deshacer.`}
+        message={`Se eliminará la evaluación de ${deleteTarget?.docente_nombre ?? ""} (${deleteTarget?.curso_nombre ?? ""}, ${deleteTarget ? `T${deleteTarget.trimestre} ${deleteTarget.anio}` : ""}). Esta acción no se puede deshacer.`}
         onCancel={() => setDeleteTarget(null)}
         onConfirm={handleDelete}
         open={Boolean(deleteTarget)}
-        title="Borrar evaluacion"
+        title="Borrar evaluación"
       />
     </div>
   );
