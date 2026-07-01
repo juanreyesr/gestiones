@@ -1475,7 +1475,9 @@ function ReportePrintable(props: {
         </>
       ) : null}
 
-      <p className="mt-10 text-xs text-slate-500">Generado el {new Date().toLocaleDateString("es-GT")}</p>
+      <p className="mt-10 text-xs text-slate-500" suppressHydrationWarning>
+        Generado el {new Date().toLocaleDateString("es-GT")}
+      </p>
     </div>
   );
 }
@@ -1502,6 +1504,7 @@ function EmailDraftModal(props: {
   const mailtoHref = props.correo
     ? `mailto:${encodeURIComponent(props.correo)}?subject=${encodeURIComponent(props.subject)}&body=${encodeURIComponent(props.body)}`
     : undefined;
+  const mailtoTooLong = Boolean(mailtoHref && mailtoHref.length > 2000);
 
   return (
     <div className="print-hidden fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
@@ -1538,12 +1541,22 @@ function EmailDraftModal(props: {
             {copied ? "Copiado!" : "Copiar texto"}
           </button>
           {mailtoHref ? (
-            <a
-              className="inline-flex items-center gap-2 border border-white/10 bg-white/8 px-4 py-2 text-sm font-bold text-slate-100 transition hover:border-white/30"
-              href={mailtoHref}
-            >
-              Abrir en tu correo
-            </a>
+            <div className="flex flex-col gap-1">
+              <a
+                className={`inline-flex items-center gap-2 border border-white/10 bg-white/8 px-4 py-2 text-sm font-bold text-slate-100 transition hover:border-white/30 ${
+                  mailtoTooLong ? "pointer-events-none opacity-40" : ""
+                }`}
+                href={mailtoTooLong ? undefined : mailtoHref}
+                title={mailtoTooLong ? "El correo es muy largo para abrirlo directamente. Usa \"Copiar texto\" en su lugar." : undefined}
+              >
+                Abrir en tu correo
+              </a>
+              {mailtoTooLong ? (
+                <span className="text-xs text-amber-300">
+                  El correo es muy largo para abrirlo directamente en tu cliente de correo. Copia el texto y pegalo manualmente.
+                </span>
+              ) : null}
+            </div>
           ) : (
             <span className="text-xs text-slate-400">Agrega el correo del docente para habilitar &quot;Abrir en tu correo&quot;.</span>
           )}
