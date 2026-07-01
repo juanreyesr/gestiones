@@ -1,17 +1,21 @@
-export type Curso = {
+export type Trimestre = 1 | 2 | 3;
+
+export type CursoRow = {
+  id: string;
   nombre: string;
-  horario: string;
-  grupo: string;
-  edificio: string;
+  horario: string | null;
+  grupo: string | null;
+  edificio: string | null;
   anio: number;
-  trimestre: 1 | 2 | 3 | 4;
+  trimestre: Trimestre;
 };
 
-export type Docente = {
+export type DocenteRow = {
+  id: string;
   nombre: string;
+  correo: string | null;
   femenino: boolean;
-  correo: string;
-  cursos: Curso[];
+  cursos: CursoRow[];
 };
 
 export type Criterio = {
@@ -25,6 +29,11 @@ export type CategoriaCriterio = {
   items: Criterio[];
 };
 
+export type EntrevistaPregunta = {
+  id: number;
+  texto: string;
+};
+
 export const AREAS = [
   { id: "iglesia", nombre: "Iglesia", descripcion: "Agenda, acompanamiento, actividades y responsabilidades ministeriales." },
   { id: "clinica", nombre: "Clinica", descripcion: "Pacientes, sesiones, seguimientos, ingresos y organizacion operativa." },
@@ -33,43 +42,7 @@ export const AREAS = [
   { id: "caeduc", nombre: "CAEDUC", descripcion: "Procesos, reportes, acompanamiento y acciones institucionales." },
 ] as const;
 
-export const DOCENTES_DATA: Docente[] = [
-  { nombre: "Sara Castellanos", femenino: true, correo: "", cursos: [
-    { nombre: "Inteligencia Emocional", horario: "Sabado 07:00 a 09:00 horas", grupo: "Primer Ano - Lic. en Psicologia Clinica y Consejeria Social", edificio: "302", anio: 2026, trimestre: 1 },
-    { nombre: "Psicologia de la Personalidad", horario: "Sabado 09:30 a 11:30 horas", grupo: "Segundo Ano - Lic. en Psicologia Clinica y Consejeria Social", edificio: "303", anio: 2026, trimestre: 1 },
-    { nombre: "Practica en Medicion Psicologica", horario: "Sabado 11:45 a 13:45 horas", grupo: "Tercer Ano - Lic. en Psicologia Clinica y Consejeria Social", edificio: "304", anio: 2026, trimestre: 1 },
-  ]},
-  { nombre: "Elly Giron de Leon", femenino: true, correo: "", cursos: [
-    { nombre: "Psicologia General", horario: "Sabado 09:30 a 11:30 horas", grupo: "Primer Ano - Lic. en Psicologia Clinica y Consejeria Social", edificio: "302", anio: 2026, trimestre: 1 },
-    { nombre: "Consejeria Familiar y de Pareja", horario: "Sabado 07:00 a 09:00 horas", grupo: "Cuarto Ano - Lic. en Psicologia Clinica y Consejeria Social", edificio: "305", anio: 2026, trimestre: 1 },
-  ]},
-  { nombre: "Consuelo Alejandra Garcia", femenino: true, correo: "", cursos: [
-    { nombre: "Sociologia General", horario: "Sabado 11:45 a 13:45 horas", grupo: "Primer Ano - Lic. en Psicologia Clinica y Consejeria Social", edificio: "302", anio: 2026, trimestre: 1 },
-  ]},
-  { nombre: "Cristina Ventura Aneliess Garcia", femenino: true, correo: "", cursos: [
-    { nombre: "Estadistica Basica", horario: "Sabado 07:00 a 09:00 horas", grupo: "Segundo Ano - Lic. en Psicologia Clinica y Consejeria Social", edificio: "303", anio: 2026, trimestre: 1 },
-    { nombre: "Estadistica Basica", horario: "Martes 18:00 a 20:00 horas", grupo: "Primer Ano - LICP", edificio: "203", anio: 2026, trimestre: 1 },
-  ]},
-  { nombre: "Glenda Cecilia Corado Franco", femenino: true, correo: "", cursos: [
-    { nombre: "Psicologia del Aprendizaje", horario: "Sabado 11:45 a 13:45 horas", grupo: "Segundo Ano - Lic. en Psicologia Clinica y Consejeria Social", edificio: "303", anio: 2026, trimestre: 1 },
-  ]},
-  { nombre: "Brigette Marroquin Castillo", femenino: true, correo: "", cursos: [
-    { nombre: "Practica Intervencion Psicologica Preventiva", horario: "Sabado 14:00 a 16:00 horas", grupo: "Segundo Ano - Lic. en Psicologia Clinica y Consejeria Social", edificio: "303", anio: 2026, trimestre: 1 },
-    { nombre: "Psicopatologia II", horario: "Sabado 07:00 a 09:00 horas", grupo: "Tercer Ano - Lic. en Psicologia Clinica y Consejeria Social", edificio: "304", anio: 2026, trimestre: 1 },
-    { nombre: "Psicoterapia del Adulto", horario: "Sabado 09:30 a 11:30 horas", grupo: "Quinto Ano - Lic. en Psicologia Clinica y Consejeria Social", edificio: "306", anio: 2026, trimestre: 1 },
-    { nombre: "Psicologia General", horario: "Lunes 18:00 a 20:00 horas", grupo: "Primer Ano - LICP", edificio: "203", anio: 2026, trimestre: 1 },
-  ]},
-  { nombre: "Shara Barrios", femenino: true, correo: "", cursos: [
-    { nombre: "Psicometria: Pruebas Proyectivas", horario: "Sabado 09:30 a 11:30 horas", grupo: "Tercer Ano - Lic. en Psicologia Clinica y Consejeria Social", edificio: "304", anio: 2026, trimestre: 1 },
-    { nombre: "Metodos de Diagnostico", horario: "Sabado 11:45 a 13:45 horas", grupo: "Cuarto Ano - Lic. en Psicologia Clinica y Consejeria Social", edificio: "305", anio: 2026, trimestre: 1 },
-  ]},
-  { nombre: "Shirley Rosicela Rosales Ramos", femenino: true, correo: "", cursos: [
-    { nombre: "Fundamentos de Psicoterapia", horario: "Sabado 09:30 a 11:30 horas", grupo: "Cuarto Ano - Lic. en Psicologia Clinica y Consejeria Social", edificio: "305", anio: 2026, trimestre: 1 },
-  ]},
-  { nombre: "Juan Jose Reyes Rodriguez", femenino: false, correo: "", cursos: [
-    { nombre: "Psicopatologia Social", horario: "Sabado 07:00 a 09:00 horas", grupo: "Quinto Ano - Lic. en Psicologia Clinica y Consejeria Social", edificio: "306", anio: 2026, trimestre: 1 },
-  ]},
-];
+export const TRIMESTRES: Trimestre[] = [1, 2, 3];
 
 export const CRITERIOS: CategoriaCriterio[] = [
   { id: "planeacion", categoria: "Planeacion", items: [
@@ -108,3 +81,41 @@ export const CRITERIOS: CategoriaCriterio[] = [
 ];
 
 export const SCORE_LABELS = ["", "Insuficiente", "Regular", "Aceptable", "Bueno", "Excelente"];
+
+export const ENTREVISTA_ESCALA = [
+  { value: 4, label: "Siempre" },
+  { value: 3, label: "Casi siempre" },
+  { value: 2, label: "A veces" },
+  { value: 1, label: "Rara vez" },
+  { value: 0, label: "Nunca" },
+] as const;
+
+export const ENTREVISTA_PREGUNTAS: EntrevistaPregunta[] = [
+  { id: 1, texto: "Explica los temas con claridad y de forma comprensible" },
+  { id: 2, texto: "Domina los contenidos de la materia" },
+  { id: 3, texto: "Responde con seguridad a las preguntas de los estudiantes" },
+  { id: 4, texto: "Es puntual y aprovecha bien el tiempo de clase" },
+  { id: 5, texto: "Trata a los estudiantes con respeto y equidad" },
+  { id: 6, texto: "Motiva la participacion activa en clase" },
+  { id: 7, texto: "Utiliza ejemplos practicos o casos reales" },
+  { id: 8, texto: "Es justo/a al calificar y evaluar" },
+  { id: 9, texto: "Esta disponible para consultas fuera de clase" },
+  { id: 10, texto: "Brinda retroalimentacion util sobre tareas y examenes" },
+];
+
+export const FORTALEZAS_OPCIONES: string[] = [
+  "Dominio del contenido",
+  "Claridad al explicar",
+  "Puntualidad y manejo del tiempo",
+  "Trato respetuoso con los estudiantes",
+  "Metodologia innovadora",
+  "Retroalimentacion oportuna",
+  "Manejo de grupo y disciplina",
+  "Motivacion y entusiasmo",
+  "Evaluacion justa y objetiva",
+  "Disponibilidad para consultas",
+  "Uso de tecnologia educativa",
+  "Fomento del pensamiento critico",
+  "Actualizacion profesional",
+  "Vinculacion teoria-practica",
+];
