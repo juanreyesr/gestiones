@@ -1083,7 +1083,7 @@ function StepDatosGenerales(props: Parameters<typeof CoordinacionPanel>[0]) {
             </button>
           </div>
         </Field>
-        <Field label="Ano">
+        <Field label="Año">
           <input className="field" min={2024} type="number" value={anio} onChange={(event) => setAnio(Number(event.target.value))} />
         </Field>
         <Field label="Trimestre">

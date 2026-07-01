@@ -1,10 +1,22 @@
 "use client";
 
-import { GraduationCap, Printer } from "lucide-react";
+import { GraduationCap, Printer, Trash2 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { DocenteRow } from "@/data/evaluacion";
-import { type EvaluacionRow, fetchEvaluacionesPorDocente, promedioEntrevistas, promedioGeneral } from "@/lib/evaluacion-helpers";
+import {
+  deleteEvaluacion,
+  type EvaluacionRow,
+  fetchEvaluacionesPorDocente,
+  promedioEntrevistas,
+  promedioGeneral,
+  summarizeEntrevistas,
+  summarizeImprovementAreas,
+  summarizeScores,
+} from "@/lib/evaluacion-helpers";
+import { ConfirmDialog } from "./confirm-dialog";
+import { EvaluacionDetalleModal } from "./evaluacion-detalle-modal";
 import { PrintPortal } from "./print-portal";
+import { ReportePrintable, type ReporteData } from "./reporte-printable";
 
 function agruparPorAnio(rows: EvaluacionRow[]) {
   const map = new Map<number, EvaluacionRow[]>();
@@ -18,12 +30,34 @@ function agruparPorAnio(rows: EvaluacionRow[]) {
     .sort((a, b) => b.anio - a.anio);
 }
 
+function rowToReporteData(row: EvaluacionRow): ReporteData {
+  return {
+    docenteNombre: row.docente_nombre,
+    cursoNombre: row.curso_nombre,
+    anio: row.anio,
+    trimestre: row.trimestre,
+    fecha: row.fecha_observacion,
+    pct: row.porcentaje,
+    total: row.puntaje_total,
+    max: row.puntaje_maximo,
+    categoryAnalytics: summarizeScores(row.scores),
+    entrevistaStats: summarizeEntrevistas(row.entrevistas),
+    fortalezas: row.fortalezas ?? [],
+    improvementAreas: summarizeImprovementAreas(row.scores),
+    observaciones: row.observaciones ?? "",
+  };
+}
+
 export function InformeDocenteView({ docentes }: { docentes: DocenteRow[] }) {
   const [docenteId, setDocenteId] = useState<string>("");
   const [rows, setRows] = useState<EvaluacionRow[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [printing, setPrinting] = useState(false);
+  const [printingResumen, setPrintingResumen] = useState(false);
+  const [viewRow, setViewRow] = useState<EvaluacionRow | null>(null);
+  const [printRow, setPrintRow] = useState<EvaluacionRow | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<EvaluacionRow | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   const docente = docentes.find((item) => item.id === docenteId);
 
@@ -58,9 +92,31 @@ export function InformeDocenteView({ docentes }: { docentes: DocenteRow[] }) {
 
   const porAnio = useMemo(() => agruparPorAnio(rows), [rows]);
 
-  const handlePrint = () => {
-    setPrinting(true);
+  const handlePrintResumen = () => {
+    setPrintRow(null);
+    setPrintingResumen(true);
     requestAnimationFrame(() => window.print());
+  };
+
+  const handlePrintFila = () => {
+    if (!viewRow) return;
+    setPrintingResumen(false);
+    setPrintRow(viewRow);
+    requestAnimationFrame(() => window.print());
+  };
+
+  const handleDelete = async () => {
+    if (!deleteTarget) return;
+    setDeleting(true);
+    const { error: deleteError } = await deleteEvaluacion(deleteTarget.id);
+    setDeleting(false);
+    if (deleteError) {
+      setError(deleteError);
+      setDeleteTarget(null);
+      return;
+    }
+    setRows((current) => current.filter((item) => item.id !== deleteTarget.id));
+    setDeleteTarget(null);
   };
 
   return (
@@ -79,7 +135,7 @@ export function InformeDocenteView({ docentes }: { docentes: DocenteRow[] }) {
         <button
           className="inline-flex h-11 w-fit items-center justify-center gap-2 border border-white/10 bg-white/8 px-6 text-sm font-bold text-slate-100 transition hover:border-white/30 disabled:opacity-40"
           disabled={!rows.length}
-          onClick={handlePrint}
+          onClick={handlePrintResumen}
           type="button"
         >
           <Printer className="h-4 w-4" />
@@ -109,7 +165,7 @@ export function InformeDocenteView({ docentes }: { docentes: DocenteRow[] }) {
           </div>
 
           <div className="border border-white/10 bg-white/6 p-4">
-            <div className="mb-3 text-sm font-semibold">Rendimiento por ano</div>
+            <div className="mb-3 text-sm font-semibold">Rendimiento por año</div>
             {porAnio.length ? (
               <div className="grid gap-3">
                 {porAnio.map((item) => (
@@ -142,6 +198,7 @@ export function InformeDocenteView({ docentes }: { docentes: DocenteRow[] }) {
                       <th className="pb-2 pr-3">Periodo</th>
                       <th className="pb-2 pr-3">Fecha</th>
                       <th className="pb-2 pr-3">%</th>
+                      <th className="pb-2" />
                     </tr>
                   </thead>
                   <tbody>
@@ -153,6 +210,25 @@ export function InformeDocenteView({ docentes }: { docentes: DocenteRow[] }) {
                         </td>
                         <td className="py-2 pr-3">{row.fecha_observacion}</td>
                         <td className="py-2 pr-3">{row.porcentaje}%</td>
+                        <td className="py-2">
+                          <div className="flex gap-2">
+                            <button
+                              className="border border-white/10 bg-white/8 px-2 py-1 text-xs font-semibold text-slate-100 transition hover:border-white/30"
+                              onClick={() => setViewRow(row)}
+                              type="button"
+                            >
+                              Ver
+                            </button>
+                            <button
+                              className="flex items-center justify-center border border-red-400/30 bg-red-400/10 px-2 py-1 text-xs font-semibold text-red-200 transition hover:border-red-400/60"
+                              onClick={() => setDeleteTarget(row)}
+                              title="Borrar registro"
+                              type="button"
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </button>
+                          </div>
+                        </td>
                       </tr>
                     ))}
                   </tbody>
@@ -164,7 +240,9 @@ export function InformeDocenteView({ docentes }: { docentes: DocenteRow[] }) {
       ) : null}
 
       <PrintPortal>
-        {printing && docente ? (
+        {printRow ? (
+          <ReportePrintable data={rowToReporteData(printRow)} />
+        ) : printingResumen && docente ? (
           <div className="mx-auto max-w-3xl p-8 text-slate-900">
             <h1 className="text-2xl font-bold">Informe de docente</h1>
             <p className="mt-1 text-sm text-slate-600">M. A. Juan J. Reyes - Coordinacion academica</p>
@@ -189,7 +267,7 @@ export function InformeDocenteView({ docentes }: { docentes: DocenteRow[] }) {
               </div>
             </dl>
 
-            <h2 className="mt-8 text-lg font-bold">Rendimiento por ano</h2>
+            <h2 className="mt-8 text-lg font-bold">Rendimiento por año</h2>
             <div className="mt-3 grid gap-3">
               {porAnio.map((item) => (
                 <div key={item.anio}>
@@ -232,6 +310,21 @@ export function InformeDocenteView({ docentes }: { docentes: DocenteRow[] }) {
           </div>
         ) : null}
       </PrintPortal>
+
+      <EvaluacionDetalleModal
+        data={viewRow ? rowToReporteData(viewRow) : null}
+        onClose={() => setViewRow(null)}
+        onPrint={handlePrintFila}
+      />
+
+      <ConfirmDialog
+        busy={deleting}
+        message={`Se eliminara la evaluacion de ${deleteTarget?.docente_nombre ?? ""} (${deleteTarget?.curso_nombre ?? ""}, ${deleteTarget ? `T${deleteTarget.trimestre} ${deleteTarget.anio}` : ""}). Esta accion no se puede deshacer.`}
+        onCancel={() => setDeleteTarget(null)}
+        onConfirm={handleDelete}
+        open={Boolean(deleteTarget)}
+        title="Borrar evaluacion"
+      />
     </div>
   );
 }
