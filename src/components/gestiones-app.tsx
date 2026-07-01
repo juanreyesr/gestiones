@@ -383,6 +383,20 @@ export function GestionesApp() {
     setSaving(false);
   };
 
+  if (!session) {
+    return (
+      <LoginGate
+        authLoading={authLoading}
+        authMessage={authMessage}
+        email={email}
+        onLogin={handleLogin}
+        password={password}
+        setEmail={setEmail}
+        setPassword={setPassword}
+      />
+    );
+  }
+
   return (
     <main className="min-h-screen overflow-hidden bg-[#08111f] text-slate-50">
       <section className="relative min-h-screen">
@@ -407,51 +421,17 @@ export function GestionesApp() {
                   <LockKeyhole className="h-4 w-4 text-amber-200" />
                   Acceso privado
                 </span>
-                {session ? (
-                  <button
-                    className="inline-flex items-center gap-1 text-xs font-semibold text-slate-300 hover:text-white"
-                    onClick={handleLogout}
-                    type="button"
-                  >
-                    <LogOut className="h-3.5 w-3.5" />
-                    Salir
-                  </button>
-                ) : null}
+                <button
+                  className="inline-flex items-center gap-1 text-xs font-semibold text-slate-300 hover:text-white"
+                  onClick={handleLogout}
+                  type="button"
+                >
+                  <LogOut className="h-3.5 w-3.5" />
+                  Salir
+                </button>
               </div>
 
-              {session ? (
-                <p className="text-sm text-emerald-200">Sesion activa: {session.user.email}</p>
-              ) : (
-                <>
-                  <div className="grid gap-2 sm:grid-cols-[1fr_0.8fr_auto]">
-                    <input
-                      aria-label="Correo electronico"
-                      className="min-w-0 border border-white/10 bg-slate-950/70 px-3 py-2 text-sm text-white outline-none ring-emerald-300/50 transition focus:ring-2"
-                      value={email}
-                      onChange={(event) => setEmail(event.target.value)}
-                    />
-                    <input
-                      aria-label="Contrasena"
-                      className="min-w-0 border border-white/10 bg-slate-950/70 px-3 py-2 text-sm text-white outline-none ring-emerald-300/50 transition focus:ring-2"
-                      type="password"
-                      value={password}
-                      onChange={(event) => setPassword(event.target.value)}
-                      placeholder="Contrasena"
-                    />
-                    <button
-                      className="inline-flex items-center justify-center gap-2 bg-emerald-300 px-4 py-2 text-sm font-bold text-slate-950 transition hover:bg-emerald-200 disabled:opacity-60"
-                      disabled={authLoading}
-                      onClick={handleLogin}
-                      type="button"
-                    >
-                      Entrar
-                    </button>
-                  </div>
-                  <p className="mt-2 text-xs text-slate-300">
-                    {isSupabaseConfigured ? authMessage || "Supabase listo para autenticar." : "Pendiente: variables de Supabase."}
-                  </p>
-                </>
-              )}
+              <p className="text-sm text-emerald-200">Sesion activa: {session.user.email}</p>
             </div>
           </header>
 
@@ -490,8 +470,6 @@ export function GestionesApp() {
               <div className="border border-white/10 bg-slate-950/58 p-4 backdrop-blur-xl sm:p-5">
                 {activeArea !== "coordinacion" ? (
                   <AreaPlaceholder areaId={activeArea} />
-                ) : !session ? (
-                  <LoginRequired />
                 ) : (
                   <CoordinacionPanel
                     addCursoOpen={addCursoOpen}
@@ -585,17 +563,70 @@ export function GestionesApp() {
   );
 }
 
-function LoginRequired() {
+function LoginGate(props: {
+  authLoading: boolean;
+  authMessage: string;
+  email: string;
+  onLogin: () => void;
+  password: string;
+  setEmail: (value: string) => void;
+  setPassword: (value: string) => void;
+}) {
   return (
-    <div className="flex min-h-[500px] flex-col items-center justify-center gap-4 text-center">
-      <div className="flex h-14 w-14 items-center justify-center bg-white/10">
-        <LockKeyhole className="h-7 w-7 text-amber-200" />
-      </div>
-      <h2 className="text-2xl font-semibold text-white">Inicia sesion para continuar</h2>
-      <p className="max-w-md text-sm leading-6 text-slate-300">
-        La gestion de evaluacion docente es privada. Ingresa con tu correo y contrasena autorizados en el panel superior.
-      </p>
-    </div>
+    <main className="min-h-screen overflow-hidden bg-[#08111f] text-slate-50">
+      <section className="relative flex min-h-screen items-center justify-center">
+        <OrbitScene />
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_25%_15%,rgba(74,222,128,0.24),transparent_28%),linear-gradient(135deg,rgba(8,17,31,0.78),rgba(8,17,31,0.96)_58%,rgba(15,23,42,0.9))]" />
+
+        <div className="relative z-10 w-full max-w-md border border-white/12 bg-white/8 p-6 shadow-2xl shadow-black/20 backdrop-blur-xl sm:p-8">
+          <div className="mb-2 inline-flex items-center gap-2 rounded-full border border-emerald-300/30 bg-emerald-300/10 px-3 py-1 text-xs font-semibold text-emerald-100">
+            <Sparkles className="h-3.5 w-3.5" />
+            GestionesJJ
+          </div>
+          <h1 className="mt-3 text-2xl font-semibold text-white">Acceso privado</h1>
+          <p className="mt-2 text-sm leading-6 text-slate-300">
+            Centro personal de gestion. Ingresa con tu correo y contrasena autorizados para continuar.
+          </p>
+
+          <div className="mt-6 grid gap-3">
+            <Field label="Correo electronico">
+              <input
+                aria-label="Correo electronico"
+                className="field"
+                value={props.email}
+                onChange={(event) => props.setEmail(event.target.value)}
+              />
+            </Field>
+            <Field label="Contrasena">
+              <input
+                aria-label="Contrasena"
+                className="field"
+                type="password"
+                value={props.password}
+                onChange={(event) => props.setPassword(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter") props.onLogin();
+                }}
+                placeholder="Contrasena"
+              />
+            </Field>
+            <button
+              className="inline-flex h-11 items-center justify-center gap-2 bg-emerald-300 text-sm font-bold text-slate-950 transition hover:bg-emerald-200 disabled:opacity-60"
+              disabled={props.authLoading}
+              onClick={props.onLogin}
+              type="button"
+            >
+              <LockKeyhole className="h-4 w-4" />
+              {props.authLoading ? "Ingresando..." : "Entrar"}
+            </button>
+          </div>
+
+          <p className="mt-3 text-xs text-slate-400">
+            {isSupabaseConfigured ? props.authMessage || "Supabase listo para autenticar." : "Pendiente: variables de Supabase."}
+          </p>
+        </div>
+      </section>
+    </main>
   );
 }
 
