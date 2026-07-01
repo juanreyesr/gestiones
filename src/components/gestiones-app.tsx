@@ -16,7 +16,9 @@ import {
   ListChecks,
   LockKeyhole,
   LogOut,
+  Mail,
   Plus,
+  Printer,
   Save,
   Sparkles,
   Star,
@@ -335,6 +337,90 @@ export function GestionesApp() {
     return { porEstudiante, general };
   }, [entrevistas]);
 
+  const entrevistaPreguntas = useMemo(
+    () =>
+      ENTREVISTA_PREGUNTAS.map((pregunta) => {
+        const valores = ([1, 2] as const)
+          .map((n) => entrevistas[n][pregunta.id])
+          .filter((valor): valor is number => valor !== undefined);
+        const promedio = valores.length ? Math.round((valores.reduce((a, b) => a + b, 0) / valores.length / 4) * 100) : null;
+        return { ...pregunta, promedio, respondidas: valores.length };
+      }).filter((item) => item.respondidas > 0),
+    [entrevistas],
+  );
+
+  const entrevistaDestacadas = useMemo(
+    () =>
+      entrevistaPreguntas
+        .filter((item) => (item.promedio ?? 0) >= 75)
+        .sort((a, b) => (b.promedio ?? 0) - (a.promedio ?? 0))
+        .slice(0, 2),
+    [entrevistaPreguntas],
+  );
+
+  const entrevistaMejorar = useMemo(
+    () =>
+      entrevistaPreguntas
+        .filter((item) => (item.promedio ?? 0) < 75)
+        .sort((a, b) => (a.promedio ?? 0) - (b.promedio ?? 0))
+        .slice(0, 2),
+    [entrevistaPreguntas],
+  );
+
+  const [emailModalOpen, setEmailModalOpen] = useState(false);
+  const [emailSubject, setEmailSubject] = useState("");
+  const [emailBody, setEmailBody] = useState("");
+
+  const handleOpenEmailDraft = () => {
+    if (!docente || !curso) return;
+
+    const subject = `Resultados de tu evaluacion docente - ${curso.nombre} (Trimestre ${trimestre}, ${anio})`;
+    const lines: string[] = [
+      `Estimado/a ${docente.nombre},`,
+      "",
+      `Quiero agradecerte sinceramente por tu esfuerzo, dedicacion y compromiso en el desarrollo del curso "${curso.nombre}" durante este trimestre. Tu trabajo constante en el aula es muy valioso para la formacion de nuestros estudiantes.`,
+      "",
+      "A continuacion comparto un resumen de tu evaluacion docente:",
+      "",
+      `Resultado general de la observacion de clase: ${pct}% (${total}/${max} puntos).`,
+    ];
+
+    const fortalezasFinal = fortalezaOtro.trim() ? [...fortalezas, fortalezaOtro.trim()] : fortalezas;
+    if (fortalezasFinal.length) {
+      lines.push("", `Entre los aspectos en los que mas sobresaliste se destacan: ${fortalezasFinal.join(", ")}. Felicidades por estos logros.`);
+    }
+
+    if (improvementAreas.length) {
+      lines.push("", "Tambien identificamos algunas areas en las que podrias seguir fortaleciendo tu labor docente:");
+      improvementAreas.forEach((item) => lines.push(`- ${item.texto}`));
+    } else {
+      lines.push("", "No se identificaron areas criticas de mejora en esta observacion. Sigue asi.");
+    }
+
+    if (entrevistaPreguntas.length) {
+      lines.push(
+        "",
+        `En las entrevistas realizadas a estudiantes del curso se obtuvo una valoracion favorable promedio de ${entrevistaStats.general}%.`,
+      );
+      if (entrevistaDestacadas.length) {
+        lines.push(`Los estudiantes destacaron especialmente que: ${entrevistaDestacadas.map((item) => item.texto.toLowerCase()).join("; ")}.`);
+      }
+      if (entrevistaMejorar.length) {
+        lines.push(`Tambien mencionaron que podrias reforzar: ${entrevistaMejorar.map((item) => item.texto.toLowerCase()).join("; ")}.`);
+      }
+    }
+
+    if (observaciones.trim()) {
+      lines.push("", `Observaciones adicionales de la clase: ${observaciones.trim()}`);
+    }
+
+    lines.push("", "Gracias nuevamente por tu compromiso con la excelencia academica.", "", "Saludos cordiales,", "Coordinacion Academica");
+
+    setEmailSubject(subject);
+    setEmailBody(lines.join("\n"));
+    setEmailModalOpen(true);
+  };
+
   const handleSave = async () => {
     setSaveMessage("");
 
@@ -398,7 +484,8 @@ export function GestionesApp() {
   }
 
   return (
-    <main className="min-h-screen overflow-hidden bg-[#08111f] text-slate-50">
+    <>
+    <main className="min-h-screen overflow-hidden bg-[#08111f] text-slate-50 print-hidden">
       <section className="relative min-h-screen">
         <OrbitScene />
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_25%_15%,rgba(74,222,128,0.24),transparent_28%),linear-gradient(135deg,rgba(8,17,31,0.78),rgba(8,17,31,0.96)_58%,rgba(15,23,42,0.9))]" />
@@ -500,6 +587,8 @@ export function GestionesApp() {
                     observaciones={observaciones}
                     onAddCurso={handleCreateCurso}
                     onAddDocente={handleCreateDocente}
+                    onGenerateEmail={handleOpenEmailDraft}
+                    onPrint={() => window.print()}
                     onSave={handleSave}
                     pct={pct}
                     saveMessage={saveMessage}
@@ -560,6 +649,34 @@ export function GestionesApp() {
         </div>
       </section>
     </main>
+
+    <ReportePrintable
+      anio={anio}
+      categoryAnalytics={categoryAnalytics}
+      curso={curso}
+      docente={docente}
+      entrevistaStats={entrevistaStats}
+      fecha={fecha}
+      fortalezaOtro={fortalezaOtro}
+      fortalezas={fortalezas}
+      improvementAreas={improvementAreas}
+      max={max}
+      observaciones={observaciones}
+      pct={pct}
+      total={total}
+      trimestre={trimestre}
+    />
+
+    <EmailDraftModal
+      body={emailBody}
+      correo={docente?.correo}
+      onClose={() => setEmailModalOpen(false)}
+      open={emailModalOpen}
+      setBody={setEmailBody}
+      setSubject={setEmailSubject}
+      subject={emailSubject}
+    />
+    </>
   );
 }
 
@@ -659,6 +776,8 @@ function CoordinacionPanel(props: {
   observaciones: string;
   onAddCurso: () => void;
   onAddDocente: () => void;
+  onGenerateEmail: () => void;
+  onPrint: () => void;
   onSave: () => void;
   pct: number;
   saveMessage: string;
@@ -1121,11 +1240,15 @@ function StepResumen(props: Parameters<typeof CoordinacionPanel>[0]) {
     fortalezaOtro,
     saveMessage,
     onSave,
+    onPrint,
+    onGenerateEmail,
     saving,
     categoryAnalytics,
     improvementAreas,
     entrevistaStats,
   } = props;
+
+  const puedeGenerarCorreo = Boolean(docente && curso);
 
   return (
     <div className="grid gap-4">
@@ -1201,15 +1324,35 @@ function StepResumen(props: Parameters<typeof CoordinacionPanel>[0]) {
         )}
       </div>
 
-      <button
-        className="inline-flex h-11 w-fit items-center justify-center gap-2 bg-amber-300 px-6 text-sm font-bold text-slate-950 transition hover:bg-amber-200 disabled:opacity-60"
-        disabled={saving}
-        onClick={onSave}
-        type="button"
-      >
-        <Save className="h-4 w-4" />
-        {saving ? "Guardando..." : "Guardar evaluacion"}
-      </button>
+      <div className="flex flex-wrap gap-3">
+        <button
+          className="inline-flex h-11 w-fit items-center justify-center gap-2 bg-amber-300 px-6 text-sm font-bold text-slate-950 transition hover:bg-amber-200 disabled:opacity-60"
+          disabled={saving}
+          onClick={onSave}
+          type="button"
+        >
+          <Save className="h-4 w-4" />
+          {saving ? "Guardando..." : "Guardar evaluacion"}
+        </button>
+        <button
+          className="inline-flex h-11 w-fit items-center justify-center gap-2 border border-white/10 bg-white/8 px-6 text-sm font-bold text-slate-100 transition hover:border-white/30"
+          onClick={onPrint}
+          type="button"
+        >
+          <Printer className="h-4 w-4" />
+          Imprimir reporte
+        </button>
+        <button
+          className="inline-flex h-11 w-fit items-center justify-center gap-2 border border-sky-300/40 bg-sky-300/10 px-6 text-sm font-bold text-sky-100 transition hover:border-sky-300/70 disabled:opacity-40"
+          disabled={!puedeGenerarCorreo}
+          onClick={onGenerateEmail}
+          title={puedeGenerarCorreo ? undefined : "Selecciona un docente y un curso primero"}
+          type="button"
+        >
+          <Mail className="h-4 w-4" />
+          Generar correo para el docente
+        </button>
+      </div>
       {saveMessage ? <p className="border border-white/10 bg-white/8 p-3 text-sm text-slate-200">{saveMessage}</p> : null}
     </div>
   );
@@ -1220,6 +1363,192 @@ function Resumen({ label, value }: { label: string; value: string }) {
     <div>
       <dt className="text-xs uppercase text-slate-400">{label}</dt>
       <dd className="font-semibold text-white">{value}</dd>
+    </div>
+  );
+}
+
+function ReportePrintable(props: {
+  anio: number;
+  categoryAnalytics: Array<{ categoria: string; percent: number }>;
+  curso: CursoRow | undefined;
+  docente: DocenteRow | undefined;
+  entrevistaStats: { porEstudiante: Array<{ estudiante: 1 | 2; promedio: number; respondidas: number }>; general: number };
+  fecha: string;
+  fortalezaOtro: string;
+  fortalezas: string[];
+  improvementAreas: Array<{ categoria: string; texto: string; valor: number }>;
+  max: number;
+  observaciones: string;
+  pct: number;
+  total: number;
+  trimestre: Trimestre;
+}) {
+  const fortalezasFinal = props.fortalezaOtro.trim() ? [...props.fortalezas, props.fortalezaOtro.trim()] : props.fortalezas;
+
+  return (
+    <div className="print-only mx-auto max-w-3xl p-8 text-slate-900">
+      <h1 className="text-2xl font-bold">Reporte de evaluacion docente</h1>
+      <p className="mt-1 text-sm text-slate-600">GestionesJJ - Coordinacion academica</p>
+
+      <div className="mt-6 grid grid-cols-2 gap-x-8 gap-y-2 text-sm">
+        <div>
+          <strong>Docente:</strong> {props.docente?.nombre ?? "-"}
+        </div>
+        <div>
+          <strong>Curso:</strong> {props.curso?.nombre ?? "-"}
+        </div>
+        <div>
+          <strong>Periodo:</strong> Trimestre {props.trimestre}, {props.anio}
+        </div>
+        <div>
+          <strong>Fecha de observacion:</strong> {props.fecha}
+        </div>
+      </div>
+
+      <h2 className="mt-8 text-lg font-bold">Resultado general</h2>
+      <div className="mt-1 text-4xl font-bold">{props.pct}%</div>
+      <div className="mt-1 text-sm text-slate-600">
+        {props.total}/{props.max} puntos
+      </div>
+      <div className="mt-2 h-3 w-full max-w-md bg-slate-200">
+        <div className="h-full bg-slate-800" style={{ width: `${props.pct}%` }} />
+      </div>
+
+      <h2 className="mt-8 text-lg font-bold">Analisis por categoria</h2>
+      <div className="mt-3 grid gap-3">
+        {props.categoryAnalytics.map((item) => (
+          <div key={item.categoria}>
+            <div className="flex justify-between text-sm">
+              <span>{item.categoria}</span>
+              <span>{item.percent}%</span>
+            </div>
+            <div className="mt-1 h-2.5 w-full max-w-md bg-slate-200">
+              <div className="h-full bg-slate-700" style={{ width: `${item.percent}%` }} />
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <h2 className="mt-8 text-lg font-bold">Entrevistas estudiantiles</h2>
+      <div className="mt-3 grid gap-3">
+        {props.entrevistaStats.porEstudiante.map((item) => (
+          <div key={item.estudiante}>
+            <div className="flex justify-between text-sm">
+              <span>Estudiante {item.estudiante}</span>
+              <span>{item.promedio}%</span>
+            </div>
+            <div className="mt-1 h-2.5 w-full max-w-md bg-slate-200">
+              <div className="h-full bg-slate-700" style={{ width: `${item.promedio}%` }} />
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {fortalezasFinal.length ? (
+        <>
+          <h2 className="mt-8 text-lg font-bold">Fortalezas destacadas</h2>
+          <ul className="mt-2 list-disc pl-5 text-sm">
+            {fortalezasFinal.map((item) => (
+              <li key={item}>{item}</li>
+            ))}
+          </ul>
+        </>
+      ) : null}
+
+      <h2 className="mt-8 text-lg font-bold">Areas de mejora</h2>
+      {props.improvementAreas.length ? (
+        <ul className="mt-2 list-disc pl-5 text-sm">
+          {props.improvementAreas.map((item) => (
+            <li key={`${item.categoria}-${item.texto}`}>
+              <strong>{item.categoria}:</strong> {item.texto}
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p className="mt-2 text-sm">No se identificaron areas criticas de mejora.</p>
+      )}
+
+      {props.observaciones.trim() ? (
+        <>
+          <h2 className="mt-8 text-lg font-bold">Observaciones de clase</h2>
+          <p className="mt-2 whitespace-pre-wrap text-sm">{props.observaciones}</p>
+        </>
+      ) : null}
+
+      <p className="mt-10 text-xs text-slate-500">Generado el {new Date().toLocaleDateString("es-GT")}</p>
+    </div>
+  );
+}
+
+function EmailDraftModal(props: {
+  body: string;
+  correo: string | null | undefined;
+  onClose: () => void;
+  open: boolean;
+  setBody: (value: string) => void;
+  setSubject: (value: string) => void;
+  subject: string;
+}) {
+  const [copied, setCopied] = useState(false);
+
+  if (!props.open) return null;
+
+  const handleCopy = async () => {
+    await navigator.clipboard.writeText(`Asunto: ${props.subject}\n\n${props.body}`);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  const mailtoHref = props.correo
+    ? `mailto:${encodeURIComponent(props.correo)}?subject=${encodeURIComponent(props.subject)}&body=${encodeURIComponent(props.body)}`
+    : undefined;
+
+  return (
+    <div className="print-hidden fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
+      <div className="max-h-[85vh] w-full max-w-2xl overflow-y-auto border border-white/10 bg-slate-950 p-5">
+        <div className="mb-4 flex items-center justify-between">
+          <h3 className="flex items-center gap-2 text-lg font-semibold text-white">
+            <Mail className="h-5 w-5 text-sky-300" />
+            Correo para el docente
+          </h3>
+          <button onClick={props.onClose} type="button">
+            <X className="h-5 w-5 text-slate-400 hover:text-white" />
+          </button>
+        </div>
+
+        <div className="grid gap-3">
+          <Field label="Asunto">
+            <input className="field" onChange={(event) => props.setSubject(event.target.value)} value={props.subject} />
+          </Field>
+          <Field label="Cuerpo del correo">
+            <textarea
+              className="field min-h-72 resize-y"
+              onChange={(event) => props.setBody(event.target.value)}
+              value={props.body}
+            />
+          </Field>
+        </div>
+
+        <div className="mt-4 flex flex-wrap items-center gap-3">
+          <button
+            className="inline-flex items-center gap-2 bg-emerald-300 px-4 py-2 text-sm font-bold text-slate-950 transition hover:bg-emerald-200"
+            onClick={handleCopy}
+            type="button"
+          >
+            {copied ? "Copiado!" : "Copiar texto"}
+          </button>
+          {mailtoHref ? (
+            <a
+              className="inline-flex items-center gap-2 border border-white/10 bg-white/8 px-4 py-2 text-sm font-bold text-slate-100 transition hover:border-white/30"
+              href={mailtoHref}
+            >
+              Abrir en tu correo
+            </a>
+          ) : (
+            <span className="text-xs text-slate-400">Agrega el correo del docente para habilitar &quot;Abrir en tu correo&quot;.</span>
+          )}
+        </div>
+      </div>
     </div>
   );
 }

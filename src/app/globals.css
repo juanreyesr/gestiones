@@ -56,3 +56,22 @@ button {
 .field option {
   color: #0f172a;
 }
+
+.print-only {
+  display: none;
+}
+
+@media print {
+  .print-hidden {
+    display: none !important;
+  }
+
+  .print-only {
+    display: block !important;
+  }
+
+  body {
+    background: white !important;
+    color: black !important;
+  }
+}
