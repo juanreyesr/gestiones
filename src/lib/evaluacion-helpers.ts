@@ -1,3 +1,4 @@
+import type { ReporteData } from "@/components/reporte-printable";
 import { CRITERIOS, ENTREVISTA_PREGUNTAS, type Trimestre } from "@/data/evaluacion";
 import { getSupabaseClient } from "@/lib/supabase";
 
@@ -165,4 +166,22 @@ export function agruparPorDocente(rows: EvaluacionRow[]) {
   return Array.from(map.values())
     .map((entry) => ({ ...entry, promedio: Math.round(entry.sumaPct / entry.count) }))
     .sort((a, b) => b.promedio - a.promedio);
+}
+
+export function rowToReporteData(row: EvaluacionRow): ReporteData {
+  return {
+    docenteNombre: row.docente_nombre,
+    cursoNombre: row.curso_nombre,
+    anio: row.anio,
+    trimestre: row.trimestre,
+    fecha: row.fecha_observacion,
+    pct: row.porcentaje,
+    total: row.puntaje_total,
+    max: row.puntaje_maximo,
+    categoryAnalytics: summarizeScores(row.scores),
+    entrevistaStats: summarizeEntrevistas(row.entrevistas),
+    fortalezas: row.fortalezas ?? [],
+    improvementAreas: summarizeImprovementAreas(row.scores),
+    observaciones: row.observaciones ?? "",
+  };
 }

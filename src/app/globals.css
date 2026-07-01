@@ -57,30 +57,8 @@ button {
   color: #0f172a;
 }
 
-.print-only {
-  display: none;
-}
-
 @media print {
   .print-hidden {
     display: none !important;
-  }
-
-  .print-only {
-    display: block !important;
-  }
-
-  body {
-    background: white !important;
-    color: black !important;
-    -webkit-print-color-adjust: exact !important;
-    print-color-adjust: exact !important;
-  }
-
-  /* Removing the page margin hides Chromium's own header/footer (url, date, title, page
-     number); this is best-effort and browser-dependent. As a fallback the user can uncheck
-     "Headers and footers" in the print dialog. */
-  @page {
-    margin: 0;
   }
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { Printer, X } from "lucide-react";
+import { Download, Printer, X } from "lucide-react";
 import { ModalPortal } from "./modal-portal";
 import { ReportePrintable, type ReporteData } from "./reporte-printable";
 
@@ -8,10 +8,12 @@ export function EvaluacionDetalleModal({
   data,
   onClose,
   onPrint,
+  printing,
 }: {
   data: ReporteData | null;
   onClose: () => void;
   onPrint: () => void;
+  printing?: boolean;
 }) {
   if (!data) return null;
 
@@ -24,12 +26,13 @@ export function EvaluacionDetalleModal({
         >
           <div className="sticky top-0 flex items-center justify-between border-b border-slate-300 bg-slate-100 p-3">
             <button
-              className="inline-flex items-center gap-2 border border-slate-400 bg-white px-3 py-1.5 text-sm font-semibold text-slate-800 transition hover:border-slate-600"
+              className="inline-flex items-center gap-2 border border-slate-400 bg-white px-3 py-1.5 text-sm font-semibold text-slate-800 transition hover:border-slate-600 disabled:opacity-60"
+              disabled={printing}
               onClick={onPrint}
               type="button"
             >
-              <Printer className="h-4 w-4" />
-              Imprimir
+              {printing ? <Printer className="h-4 w-4 animate-pulse" /> : <Download className="h-4 w-4" />}
+              {printing ? "Generando PDF..." : "Descargar PDF"}
             </button>
             <button
               className="flex h-8 w-8 items-center justify-center text-slate-600 hover:text-slate-950"

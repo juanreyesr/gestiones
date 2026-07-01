@@ -13,14 +13,11 @@ import {
   fetchEvaluacionesPorPeriodo,
   promedioEntrevistas,
   promedioGeneral,
-  summarizeEntrevistas,
-  summarizeImprovementAreas,
-  summarizeScores,
+  rowToReporteData,
 } from "@/lib/evaluacion-helpers";
+import { exportReporteToPdf } from "@/lib/pdf";
 import { ConfirmDialog } from "./confirm-dialog";
 import { EvaluacionDetalleModal } from "./evaluacion-detalle-modal";
-import { PrintPortal } from "./print-portal";
-import { ReportePrintable, type ReporteData } from "./reporte-printable";
 
 type PeriodoValor = Trimestre | "todos" | "historico";
 
@@ -32,24 +29,6 @@ const PERIODOS: Array<{ label: string; value: PeriodoValor }> = [
   { label: "Todo el historial", value: "historico" },
 ];
 
-function rowToReporteData(row: EvaluacionRow): ReporteData {
-  return {
-    docenteNombre: row.docente_nombre,
-    cursoNombre: row.curso_nombre,
-    anio: row.anio,
-    trimestre: row.trimestre,
-    fecha: row.fecha_observacion,
-    pct: row.porcentaje,
-    total: row.puntaje_total,
-    max: row.puntaje_maximo,
-    categoryAnalytics: summarizeScores(row.scores),
-    entrevistaStats: summarizeEntrevistas(row.entrevistas),
-    fortalezas: row.fortalezas ?? [],
-    improvementAreas: summarizeImprovementAreas(row.scores),
-    observaciones: row.observaciones ?? "",
-  };
-}
-
 export function ConsultasView() {
   const [anio, setAnio] = useState(new Date().getFullYear());
   const [periodo, setPeriodo] = useState<PeriodoValor>(currentTrimestre());
@@ -57,9 +36,9 @@ export function ConsultasView() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [viewRow, setViewRow] = useState<EvaluacionRow | null>(null);
-  const [printRow, setPrintRow] = useState<EvaluacionRow | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<EvaluacionRow | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [exportingPdf, setExportingPdf] = useState(false);
 
   const esHistorico = periodo === "historico";
 
@@ -107,13 +86,12 @@ export function ConsultasView() {
     [preguntasAgg],
   );
 
-  const handleView = (row: EvaluacionRow) => {
-    setViewRow(row);
-    setPrintRow(row);
-  };
-
-  const handlePrint = () => {
-    requestAnimationFrame(() => window.print());
+  const handlePrint = async () => {
+    if (!viewRow || exportingPdf) return;
+    setExportingPdf(true);
+    const filename = `reporte-${viewRow.docente_nombre}-T${viewRow.trimestre}-${viewRow.anio}.pdf`;
+    await exportReporteToPdf(rowToReporteData(viewRow), filename);
+    setExportingPdf(false);
   };
 
   const handleDelete = async () => {
@@ -310,7 +288,7 @@ export function ConsultasView() {
                           <div className="flex gap-2">
                             <button
                               className="border border-white/10 bg-white/8 px-2 py-1 text-xs font-semibold text-slate-100 transition hover:border-white/30"
-                              onClick={() => handleView(row)}
+                              onClick={() => setViewRow(row)}
                               type="button"
                             >
                               Ver
@@ -337,17 +315,11 @@ export function ConsultasView() {
         </>
       ) : null}
 
-      <PrintPortal>
-        <ReportePrintable data={printRow ? rowToReporteData(printRow) : null} />
-      </PrintPortal>
-
       <EvaluacionDetalleModal
         data={viewRow ? rowToReporteData(viewRow) : null}
-        onClose={() => {
-          setViewRow(null);
-          setPrintRow(null);
-        }}
+        onClose={() => setViewRow(null)}
         onPrint={handlePrint}
+        printing={exportingPdf}
       />
 
       <ConfirmDialog
