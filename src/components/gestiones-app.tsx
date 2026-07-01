@@ -2,7 +2,6 @@
 
 import type { Session } from "@supabase/supabase-js";
 import {
-  Activity,
   BarChart3,
   BookOpenCheck,
   Building2,
@@ -41,14 +40,20 @@ import {
   type DocenteRow,
   type Trimestre,
 } from "@/data/evaluacion";
+import { currentTrimestre } from "@/lib/evaluacion-helpers";
 import { getSupabaseClient, isSupabaseConfigured } from "@/lib/supabase";
+import { ConsultasView } from "./consultas-view";
+import { InformeDocenteView } from "./informe-docente-view";
 import { OrbitScene } from "./orbit-scene";
+import { PrintPortal } from "./print-portal";
+import { ReportePrintable, type ReporteData } from "./reporte-printable";
 
 const ALLOWED_EMAIL = "lic.juanreyesr@gmail.com";
 
 type Scores = Record<number, number>;
 type AreaId = (typeof AREAS)[number]["id"];
 type Entrevistas = Record<1 | 2, Record<number, number>>;
+type CoordinacionView = "resumen" | "nueva" | "informe";
 
 const areaIcons: Record<AreaId, React.ComponentType<{ className?: string }>> = {
   iglesia: Church,
@@ -100,7 +105,8 @@ type RawDocente = {
 };
 
 export function GestionesApp() {
-  const [activeArea, setActiveArea] = useState<AreaId>("coordinacion");
+  const [activeArea, setActiveArea] = useState<AreaId | null>(null);
+  const [coordinacionView, setCoordinacionView] = useState<CoordinacionView>("resumen");
   const [session, setSession] = useState<Session | null>(null);
   const [email, setEmail] = useState(ALLOWED_EMAIL);
   const [password, setPassword] = useState("");
@@ -126,8 +132,8 @@ export function GestionesApp() {
   const [newCursoTrimestre, setNewCursoTrimestre] = useState<Trimestre>(1);
 
   const [step, setStep] = useState(0);
-  const [anio, setAnio] = useState(2026);
-  const [trimestre, setTrimestre] = useState<Trimestre>(1);
+  const [anio, setAnio] = useState(() => new Date().getFullYear());
+  const [trimestre, setTrimestre] = useState<Trimestre>(() => currentTrimestre());
   const [fecha, setFecha] = useState(localDateValue);
   const [scores, setScores] = useState<Scores>(() => initialScores());
   const [observaciones, setObservaciones] = useState("");
@@ -367,6 +373,30 @@ export function GestionesApp() {
     [entrevistaPreguntas],
   );
 
+  const fortalezasFinal = useMemo(
+    () => (fortalezaOtro.trim() ? [...fortalezas, fortalezaOtro.trim()] : fortalezas),
+    [fortalezas, fortalezaOtro],
+  );
+
+  const reportData: ReporteData | null = useMemo(() => {
+    if (!docente || !curso) return null;
+    return {
+      docenteNombre: docente.nombre,
+      cursoNombre: curso.nombre,
+      anio,
+      trimestre,
+      fecha,
+      pct,
+      total,
+      max,
+      categoryAnalytics,
+      entrevistaStats,
+      fortalezas: fortalezasFinal,
+      improvementAreas,
+      observaciones,
+    };
+  }, [docente, curso, anio, trimestre, fecha, pct, total, max, categoryAnalytics, entrevistaStats, fortalezasFinal, improvementAreas, observaciones]);
+
   const [emailModalOpen, setEmailModalOpen] = useState(false);
   const [emailSubject, setEmailSubject] = useState("");
   const [emailBody, setEmailBody] = useState("");
@@ -385,7 +415,6 @@ export function GestionesApp() {
       `Resultado general de la observacion de clase: ${pct}% (${total}/${max} puntos).`,
     ];
 
-    const fortalezasFinal = fortalezaOtro.trim() ? [...fortalezas, fortalezaOtro.trim()] : fortalezas;
     if (fortalezasFinal.length) {
       lines.push("", `Entre los aspectos en los que mas sobresaliste se destacan: ${fortalezasFinal.join(", ")}. Felicidades por estos logros.`);
     }
@@ -429,7 +458,6 @@ export function GestionesApp() {
       return;
     }
 
-    const fortalezasFinal = fortalezaOtro.trim() ? [...fortalezas, fortalezaOtro.trim()] : fortalezas;
     const entrevistasPayload = ([1, 2] as const).map((n) => {
       const respuestas = entrevistas[n];
       const valores = Object.values(respuestas);
@@ -469,6 +497,27 @@ export function GestionesApp() {
     setSaving(false);
   };
 
+  const resetWizard = () => {
+    setScores(initialScores());
+    setEntrevistas({ 1: {}, 2: {} });
+    setFortalezas([]);
+    setFortalezaOtro("");
+    setObservaciones("");
+    setSaveMessage("");
+    setStep(0);
+    setFecha(localDateValue());
+  };
+
+  const handleNuevaEvaluacion = () => {
+    resetWizard();
+  };
+
+  const handleVolverMenu = () => {
+    resetWizard();
+    setCoordinacionView("resumen");
+    setActiveArea(null);
+  };
+
   if (!session) {
     return (
       <LoginGate
@@ -485,197 +534,177 @@ export function GestionesApp() {
 
   return (
     <>
-    <main className="min-h-screen overflow-hidden bg-[#08111f] text-slate-50 print-hidden">
-      <section className="relative min-h-screen">
-        <OrbitScene />
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_25%_15%,rgba(74,222,128,0.24),transparent_28%),linear-gradient(135deg,rgba(8,17,31,0.78),rgba(8,17,31,0.96)_58%,rgba(15,23,42,0.9))]" />
+      <main className="min-h-screen overflow-hidden bg-[#08111f] text-slate-50 print-hidden">
+        <section className="relative min-h-screen">
+          <OrbitScene />
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_25%_15%,rgba(74,222,128,0.24),transparent_28%),linear-gradient(135deg,rgba(8,17,31,0.78),rgba(8,17,31,0.96)_58%,rgba(15,23,42,0.9))]" />
 
-        <div className="relative z-10 mx-auto flex min-h-screen w-full max-w-7xl flex-col gap-6 px-4 py-5 sm:px-6 lg:px-8">
-          <header className="flex flex-col gap-4 border-b border-white/10 pb-5 lg:flex-row lg:items-center lg:justify-between">
-            <div>
-              <div className="mb-2 inline-flex items-center gap-2 rounded-full border border-emerald-300/30 bg-emerald-300/10 px-3 py-1 text-xs font-semibold text-emerald-100">
-                <Sparkles className="h-3.5 w-3.5" />
-                GestionesJJ
-              </div>
-              <h1 className="max-w-3xl text-3xl font-semibold tracking-normal text-white sm:text-5xl">
-                Centro personal de gestion y mejora continua
-              </h1>
-            </div>
-
-            <div className="w-full max-w-md border border-white/12 bg-white/8 p-4 shadow-2xl shadow-black/20 backdrop-blur-xl">
-              <div className="mb-3 flex items-center justify-between gap-2 text-sm font-semibold text-slate-100">
-                <span className="flex items-center gap-2">
-                  <LockKeyhole className="h-4 w-4 text-amber-200" />
-                  Acceso privado
-                </span>
-                <button
-                  className="inline-flex items-center gap-1 text-xs font-semibold text-slate-300 hover:text-white"
-                  onClick={handleLogout}
-                  type="button"
-                >
-                  <LogOut className="h-3.5 w-3.5" />
-                  Salir
-                </button>
-              </div>
-
-              <p className="text-sm text-emerald-200">Sesion activa: {session.user.email}</p>
-            </div>
-          </header>
-
-          <div className="grid flex-1 gap-5 lg:grid-cols-[260px_1fr]">
-            <nav className="border border-white/10 bg-white/8 p-3 backdrop-blur-xl">
-              <div className="mb-3 px-2 text-xs font-semibold uppercase text-slate-400">Areas iniciales</div>
-              <div className="grid gap-2">
-                {AREAS.map((area) => {
-                  const Icon = areaIcons[area.id];
-                  const selected = activeArea === area.id;
-                  return (
-                    <button
-                      key={area.id}
-                      className={`grid grid-cols-[34px_1fr] gap-3 border p-3 text-left transition ${
-                        selected
-                          ? "border-emerald-300/70 bg-emerald-300/14 text-white"
-                          : "border-white/8 bg-slate-950/32 text-slate-300 hover:border-white/20 hover:bg-white/10"
-                      }`}
-                      onClick={() => setActiveArea(area.id)}
-                      type="button"
-                    >
-                      <span className="flex h-8 w-8 items-center justify-center bg-white/10">
-                        <Icon className="h-4 w-4" />
-                      </span>
-                      <span>
-                        <span className="block text-sm font-semibold">{area.nombre}</span>
-                        <span className="mt-1 block text-xs leading-5 text-slate-400">{area.descripcion}</span>
-                      </span>
-                    </button>
-                  );
-                })}
-              </div>
-            </nav>
-
-            <section className="grid gap-5 xl:grid-cols-[1fr_360px]">
-              <div className="border border-white/10 bg-slate-950/58 p-4 backdrop-blur-xl sm:p-5">
-                {activeArea !== "coordinacion" ? (
-                  <AreaPlaceholder areaId={activeArea} />
-                ) : (
-                  <CoordinacionPanel
-                    addCursoOpen={addCursoOpen}
-                    addDocenteOpen={addDocenteOpen}
-                    anio={anio}
-                    categoryAnalytics={categoryAnalytics}
-                    completed={completed}
-                    curso={curso}
-                    docente={docente}
-                    docentes={docentes}
-                    docentesError={docentesError}
-                    docentesLoading={docentesLoading}
-                    entrevistas={entrevistas}
-                    entrevistaStats={entrevistaStats}
-                    fecha={fecha}
-                    fortalezaOtro={fortalezaOtro}
-                    fortalezas={fortalezas}
-                    improvementAreas={improvementAreas}
-                    max={max}
-                    newCursoEdificio={newCursoEdificio}
-                    newCursoGrupo={newCursoGrupo}
-                    newCursoHorario={newCursoHorario}
-                    newCursoNombre={newCursoNombre}
-                    newCursoTrimestre={newCursoTrimestre}
-                    newDocenteCorreo={newDocenteCorreo}
-                    newDocenteFemenino={newDocenteFemenino}
-                    newDocenteNombre={newDocenteNombre}
-                    observaciones={observaciones}
-                    onAddCurso={handleCreateCurso}
-                    onAddDocente={handleCreateDocente}
-                    onGenerateEmail={handleOpenEmailDraft}
-                    onPrint={() => window.print()}
-                    onSave={handleSave}
-                    pct={pct}
-                    saveMessage={saveMessage}
-                    saving={saving}
-                    scores={scores}
-                    setAddCursoOpen={setAddCursoOpen}
-                    setAddDocenteOpen={setAddDocenteOpen}
-                    setAnio={setAnio}
-                    setSelectedCursoId={setSelectedCursoId}
-                    setSelectedDocenteId={setSelectedDocenteId}
-                    setEntrevistas={setEntrevistas}
-                    setFecha={setFecha}
-                    setFortalezaOtro={setFortalezaOtro}
-                    setFortalezas={setFortalezas}
-                    setNewCursoEdificio={setNewCursoEdificio}
-                    setNewCursoGrupo={setNewCursoGrupo}
-                    setNewCursoHorario={setNewCursoHorario}
-                    setNewCursoNombre={setNewCursoNombre}
-                    setNewCursoTrimestre={setNewCursoTrimestre}
-                    setNewDocenteCorreo={setNewDocenteCorreo}
-                    setNewDocenteFemenino={setNewDocenteFemenino}
-                    setNewDocenteNombre={setNewDocenteNombre}
-                    setObservaciones={setObservaciones}
-                    setScores={setScores}
-                    setStep={setStep}
-                    setTrimestre={setTrimestre}
-                    step={step}
-                    total={total}
-                    totalItems={totalItems}
-                    trimestre={trimestre}
-                  />
-                )}
-              </div>
-
-              <aside className="grid content-start gap-4">
-                <Metric title="Rendimiento actual" value={`${pct}%`} icon={TrendingUp} detail={scoreTone(pct)} />
-                <Metric title="Criterios completados" value={`${completed}/${totalItems}`} icon={CheckCircle2} detail="Evaluacion docente" />
-                <Metric title="Periodo activo" value={`T${trimestre} ${anio}`} icon={CalendarDays} detail="Filtro de analisis" />
-                <Metric title="Entrevistas" value={`${entrevistaStats.general}%`} icon={Users} detail="Promedio estudiantil" />
-
-                <div className="border border-white/10 bg-white/8 p-4 backdrop-blur-xl">
-                  <div className="mb-3 flex items-center gap-2 text-sm font-semibold">
-                    <BarChart3 className="h-4 w-4 text-sky-300" />
-                    Dashboard esperado
-                  </div>
-                  <div className="space-y-3">
-                    {["Individual por docente", "Comparativo por trimestre", "Evolucion anual", "Global historico"].map((item) => (
-                      <div key={item} className="flex items-center justify-between border border-white/8 bg-slate-950/35 px-3 py-2 text-sm">
-                        <span>{item}</span>
-                        <Activity className="h-4 w-4 text-emerald-300" />
-                      </div>
-                    ))}
-                  </div>
+          <div className="relative z-10 mx-auto flex min-h-screen w-full max-w-7xl flex-col gap-6 px-4 py-5 sm:px-6 lg:px-8">
+            <header className="flex flex-col gap-4 border-b border-white/10 pb-5 lg:flex-row lg:items-center lg:justify-between">
+              <div>
+                <div className="mb-2 inline-flex items-center gap-2 rounded-full border border-emerald-300/30 bg-emerald-300/10 px-3 py-1 text-xs font-semibold text-emerald-100">
+                  <Sparkles className="h-3.5 w-3.5" />
+                  GestionesJJ
                 </div>
-              </aside>
-            </section>
+                <h1 className="max-w-3xl text-3xl font-semibold tracking-normal text-white sm:text-5xl">
+                  Centro personal de gestion y mejora continua
+                </h1>
+              </div>
+
+              <div className="w-full max-w-md border border-white/12 bg-white/8 p-4 shadow-2xl shadow-black/20 backdrop-blur-xl">
+                <div className="mb-3 flex items-center justify-between gap-2 text-sm font-semibold text-slate-100">
+                  <span className="flex items-center gap-2">
+                    <LockKeyhole className="h-4 w-4 text-amber-200" />
+                    Acceso privado
+                  </span>
+                  <button
+                    className="inline-flex items-center gap-1 text-xs font-semibold text-slate-300 hover:text-white"
+                    onClick={handleLogout}
+                    type="button"
+                  >
+                    <LogOut className="h-3.5 w-3.5" />
+                    Salir
+                  </button>
+                </div>
+
+                <p className="text-sm text-emerald-200">Sesion activa: {session.user.email}</p>
+              </div>
+            </header>
+
+            <div className="flex-1">
+              {activeArea === null ? (
+                <AreaMenu onSelect={setActiveArea} />
+              ) : (
+                <div className="grid gap-5">
+                  <button
+                    className="inline-flex w-fit items-center gap-2 border border-white/10 bg-white/8 px-4 py-2 text-sm font-semibold text-slate-200 transition hover:border-white/30"
+                    onClick={() => setActiveArea(null)}
+                    type="button"
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                    Volver al menu principal
+                  </button>
+
+                  {activeArea !== "coordinacion" ? (
+                    <div className="border border-white/10 bg-slate-950/58 p-4 backdrop-blur-xl sm:p-5">
+                      <AreaPlaceholder areaId={activeArea} />
+                    </div>
+                  ) : (
+                    <div className="grid gap-5">
+                      <CoordinacionTabs onChange={setCoordinacionView} value={coordinacionView} />
+
+                      {coordinacionView === "resumen" ? (
+                        <div className="border border-white/10 bg-slate-950/58 p-4 backdrop-blur-xl sm:p-5">
+                          <ConsultasView />
+                        </div>
+                      ) : null}
+
+                      {coordinacionView === "informe" ? (
+                        <div className="border border-white/10 bg-slate-950/58 p-4 backdrop-blur-xl sm:p-5">
+                          <InformeDocenteView docentes={docentes} />
+                        </div>
+                      ) : null}
+
+                      {coordinacionView === "nueva" ? (
+                        <div className="grid gap-5 xl:grid-cols-[1fr_360px]">
+                          <div className="border border-white/10 bg-slate-950/58 p-4 backdrop-blur-xl sm:p-5">
+                            <CoordinacionPanel
+                              addCursoOpen={addCursoOpen}
+                              addDocenteOpen={addDocenteOpen}
+                              anio={anio}
+                              categoryAnalytics={categoryAnalytics}
+                              completed={completed}
+                              curso={curso}
+                              docente={docente}
+                              docentes={docentes}
+                              docentesError={docentesError}
+                              docentesLoading={docentesLoading}
+                              entrevistas={entrevistas}
+                              entrevistaStats={entrevistaStats}
+                              fecha={fecha}
+                              fortalezaOtro={fortalezaOtro}
+                              fortalezas={fortalezas}
+                              improvementAreas={improvementAreas}
+                              max={max}
+                              newCursoEdificio={newCursoEdificio}
+                              newCursoGrupo={newCursoGrupo}
+                              newCursoHorario={newCursoHorario}
+                              newCursoNombre={newCursoNombre}
+                              newCursoTrimestre={newCursoTrimestre}
+                              newDocenteCorreo={newDocenteCorreo}
+                              newDocenteFemenino={newDocenteFemenino}
+                              newDocenteNombre={newDocenteNombre}
+                              observaciones={observaciones}
+                              onAddCurso={handleCreateCurso}
+                              onAddDocente={handleCreateDocente}
+                              onGenerateEmail={handleOpenEmailDraft}
+                              onNuevaEvaluacion={handleNuevaEvaluacion}
+                              onPrint={() => window.print()}
+                              onSave={handleSave}
+                              onVolverMenu={handleVolverMenu}
+                              pct={pct}
+                              saveMessage={saveMessage}
+                              saving={saving}
+                              scores={scores}
+                              setAddCursoOpen={setAddCursoOpen}
+                              setAddDocenteOpen={setAddDocenteOpen}
+                              setAnio={setAnio}
+                              setEntrevistas={setEntrevistas}
+                              setFecha={setFecha}
+                              setFortalezaOtro={setFortalezaOtro}
+                              setFortalezas={setFortalezas}
+                              setNewCursoEdificio={setNewCursoEdificio}
+                              setNewCursoGrupo={setNewCursoGrupo}
+                              setNewCursoHorario={setNewCursoHorario}
+                              setNewCursoNombre={setNewCursoNombre}
+                              setNewCursoTrimestre={setNewCursoTrimestre}
+                              setNewDocenteCorreo={setNewDocenteCorreo}
+                              setNewDocenteFemenino={setNewDocenteFemenino}
+                              setNewDocenteNombre={setNewDocenteNombre}
+                              setObservaciones={setObservaciones}
+                              setScores={setScores}
+                              setSelectedCursoId={setSelectedCursoId}
+                              setSelectedDocenteId={setSelectedDocenteId}
+                              setStep={setStep}
+                              setTrimestre={setTrimestre}
+                              step={step}
+                              total={total}
+                              totalItems={totalItems}
+                              trimestre={trimestre}
+                            />
+                          </div>
+
+                          <aside className="grid content-start gap-4">
+                            <div className="px-1 text-xs font-semibold uppercase text-slate-400">Evaluacion en curso</div>
+                            <Metric title="Rendimiento actual" value={`${pct}%`} icon={TrendingUp} detail={scoreTone(pct)} />
+                            <Metric title="Criterios completados" value={`${completed}/${totalItems}`} icon={CheckCircle2} detail="Evaluacion docente" />
+                            <Metric title="Periodo activo" value={`T${trimestre} ${anio}`} icon={CalendarDays} detail="Filtro de analisis" />
+                            <Metric title="Entrevistas" value={`${entrevistaStats.general}%`} icon={Users} detail="Promedio estudiantil" />
+                          </aside>
+                        </div>
+                      ) : null}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
           </div>
-        </div>
-      </section>
-    </main>
+        </section>
+      </main>
 
-    <ReportePrintable
-      anio={anio}
-      categoryAnalytics={categoryAnalytics}
-      curso={curso}
-      docente={docente}
-      entrevistaStats={entrevistaStats}
-      fecha={fecha}
-      fortalezaOtro={fortalezaOtro}
-      fortalezas={fortalezas}
-      improvementAreas={improvementAreas}
-      max={max}
-      observaciones={observaciones}
-      pct={pct}
-      total={total}
-      trimestre={trimestre}
-    />
+      <PrintPortal>
+        <ReportePrintable data={coordinacionView === "nueva" ? reportData : null} />
+      </PrintPortal>
 
-    <EmailDraftModal
-      body={emailBody}
-      correo={docente?.correo}
-      onClose={() => setEmailModalOpen(false)}
-      open={emailModalOpen}
-      setBody={setEmailBody}
-      setSubject={setEmailSubject}
-      subject={emailSubject}
-    />
+      <EmailDraftModal
+        body={emailBody}
+        correo={docente?.correo}
+        onClose={() => setEmailModalOpen(false)}
+        open={emailModalOpen}
+        setBody={setEmailBody}
+        setSubject={setEmailSubject}
+        subject={emailSubject}
+      />
     </>
   );
 }
@@ -747,6 +776,64 @@ function LoginGate(props: {
   );
 }
 
+function AreaMenu({ onSelect }: { onSelect: (area: AreaId) => void }) {
+  return (
+    <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+      {AREAS.map((area) => {
+        const Icon = areaIcons[area.id];
+        return (
+          <button
+            key={area.id}
+            className="group flex flex-col items-start gap-4 border border-white/10 bg-white/8 p-6 text-left backdrop-blur-xl transition hover:border-emerald-300/50 hover:bg-white/12"
+            onClick={() => onSelect(area.id)}
+            type="button"
+          >
+            <span className="flex h-12 w-12 items-center justify-center bg-white/10 transition group-hover:bg-emerald-300/20">
+              <Icon className="h-6 w-6 text-emerald-200" />
+            </span>
+            <span>
+              <span className="block text-lg font-semibold text-white">{area.nombre}</span>
+              <span className="mt-1 block text-sm leading-6 text-slate-400">{area.descripcion}</span>
+            </span>
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+function CoordinacionTabs({ onChange, value }: { onChange: (value: CoordinacionView) => void; value: CoordinacionView }) {
+  const tabs: Array<{ value: CoordinacionView; label: string; icon: React.ComponentType<{ className?: string }> }> = [
+    { value: "resumen", label: "Resumen general", icon: BarChart3 },
+    { value: "nueva", label: "Nueva evaluacion", icon: Plus },
+    { value: "informe", label: "Informe por docente", icon: GraduationCap },
+  ];
+
+  return (
+    <div className="flex flex-wrap gap-2">
+      {tabs.map((tab) => {
+        const Icon = tab.icon;
+        const active = value === tab.value;
+        return (
+          <button
+            key={tab.value}
+            className={`inline-flex items-center gap-2 border px-4 py-2 text-sm font-semibold transition ${
+              active
+                ? "border-emerald-300/70 bg-emerald-300/14 text-white"
+                : "border-white/10 bg-white/8 text-slate-300 hover:border-white/30"
+            }`}
+            onClick={() => onChange(tab.value)}
+            type="button"
+          >
+            <Icon className="h-4 w-4" />
+            {tab.label}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
 function CoordinacionPanel(props: {
   addCursoOpen: boolean;
   addDocenteOpen: boolean;
@@ -777,8 +864,10 @@ function CoordinacionPanel(props: {
   onAddCurso: () => void;
   onAddDocente: () => void;
   onGenerateEmail: () => void;
+  onNuevaEvaluacion: () => void;
   onPrint: () => void;
   onSave: () => void;
+  onVolverMenu: () => void;
   pct: number;
   saveMessage: string;
   saving: boolean;
@@ -1242,6 +1331,8 @@ function StepResumen(props: Parameters<typeof CoordinacionPanel>[0]) {
     onSave,
     onPrint,
     onGenerateEmail,
+    onNuevaEvaluacion,
+    onVolverMenu,
     saving,
     categoryAnalytics,
     improvementAreas,
@@ -1249,6 +1340,7 @@ function StepResumen(props: Parameters<typeof CoordinacionPanel>[0]) {
   } = props;
 
   const puedeGenerarCorreo = Boolean(docente && curso);
+  const guardadoOk = saveMessage === "Evaluacion guardada en Supabase.";
 
   return (
     <div className="grid gap-4">
@@ -1353,7 +1445,29 @@ function StepResumen(props: Parameters<typeof CoordinacionPanel>[0]) {
           Generar correo para el docente
         </button>
       </div>
+
       {saveMessage ? <p className="border border-white/10 bg-white/8 p-3 text-sm text-slate-200">{saveMessage}</p> : null}
+
+      {guardadoOk ? (
+        <div className="flex flex-wrap gap-3 border-t border-white/10 pt-4">
+          <button
+            className="inline-flex h-11 w-fit items-center justify-center gap-2 border border-emerald-300/50 bg-emerald-300/10 px-6 text-sm font-bold text-emerald-100 transition hover:border-emerald-300"
+            onClick={onNuevaEvaluacion}
+            type="button"
+          >
+            <Plus className="h-4 w-4" />
+            Nueva evaluacion (mismo docente y curso)
+          </button>
+          <button
+            className="inline-flex h-11 w-fit items-center justify-center gap-2 border border-white/10 bg-white/8 px-6 text-sm font-bold text-slate-100 transition hover:border-white/30"
+            onClick={onVolverMenu}
+            type="button"
+          >
+            <ChevronLeft className="h-4 w-4" />
+            Volver al menu principal
+          </button>
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -1363,121 +1477,6 @@ function Resumen({ label, value }: { label: string; value: string }) {
     <div>
       <dt className="text-xs uppercase text-slate-400">{label}</dt>
       <dd className="font-semibold text-white">{value}</dd>
-    </div>
-  );
-}
-
-function ReportePrintable(props: {
-  anio: number;
-  categoryAnalytics: Array<{ categoria: string; percent: number }>;
-  curso: CursoRow | undefined;
-  docente: DocenteRow | undefined;
-  entrevistaStats: { porEstudiante: Array<{ estudiante: 1 | 2; promedio: number; respondidas: number }>; general: number };
-  fecha: string;
-  fortalezaOtro: string;
-  fortalezas: string[];
-  improvementAreas: Array<{ categoria: string; texto: string; valor: number }>;
-  max: number;
-  observaciones: string;
-  pct: number;
-  total: number;
-  trimestre: Trimestre;
-}) {
-  const fortalezasFinal = props.fortalezaOtro.trim() ? [...props.fortalezas, props.fortalezaOtro.trim()] : props.fortalezas;
-
-  return (
-    <div className="print-only mx-auto max-w-3xl p-8 text-slate-900">
-      <h1 className="text-2xl font-bold">Reporte de evaluacion docente</h1>
-      <p className="mt-1 text-sm text-slate-600">GestionesJJ - Coordinacion academica</p>
-
-      <div className="mt-6 grid grid-cols-2 gap-x-8 gap-y-2 text-sm">
-        <div>
-          <strong>Docente:</strong> {props.docente?.nombre ?? "-"}
-        </div>
-        <div>
-          <strong>Curso:</strong> {props.curso?.nombre ?? "-"}
-        </div>
-        <div>
-          <strong>Periodo:</strong> Trimestre {props.trimestre}, {props.anio}
-        </div>
-        <div>
-          <strong>Fecha de observacion:</strong> {props.fecha}
-        </div>
-      </div>
-
-      <h2 className="mt-8 text-lg font-bold">Resultado general</h2>
-      <div className="mt-1 text-4xl font-bold">{props.pct}%</div>
-      <div className="mt-1 text-sm text-slate-600">
-        {props.total}/{props.max} puntos
-      </div>
-      <div className="mt-2 h-3 w-full max-w-md bg-slate-200">
-        <div className="h-full bg-slate-800" style={{ width: `${props.pct}%` }} />
-      </div>
-
-      <h2 className="mt-8 text-lg font-bold">Analisis por categoria</h2>
-      <div className="mt-3 grid gap-3">
-        {props.categoryAnalytics.map((item) => (
-          <div key={item.categoria}>
-            <div className="flex justify-between text-sm">
-              <span>{item.categoria}</span>
-              <span>{item.percent}%</span>
-            </div>
-            <div className="mt-1 h-2.5 w-full max-w-md bg-slate-200">
-              <div className="h-full bg-slate-700" style={{ width: `${item.percent}%` }} />
-            </div>
-          </div>
-        ))}
-      </div>
-
-      <h2 className="mt-8 text-lg font-bold">Entrevistas estudiantiles</h2>
-      <div className="mt-3 grid gap-3">
-        {props.entrevistaStats.porEstudiante.map((item) => (
-          <div key={item.estudiante}>
-            <div className="flex justify-between text-sm">
-              <span>Estudiante {item.estudiante}</span>
-              <span>{item.promedio}%</span>
-            </div>
-            <div className="mt-1 h-2.5 w-full max-w-md bg-slate-200">
-              <div className="h-full bg-slate-700" style={{ width: `${item.promedio}%` }} />
-            </div>
-          </div>
-        ))}
-      </div>
-
-      {fortalezasFinal.length ? (
-        <>
-          <h2 className="mt-8 text-lg font-bold">Fortalezas destacadas</h2>
-          <ul className="mt-2 list-disc pl-5 text-sm">
-            {fortalezasFinal.map((item) => (
-              <li key={item}>{item}</li>
-            ))}
-          </ul>
-        </>
-      ) : null}
-
-      <h2 className="mt-8 text-lg font-bold">Areas de mejora</h2>
-      {props.improvementAreas.length ? (
-        <ul className="mt-2 list-disc pl-5 text-sm">
-          {props.improvementAreas.map((item) => (
-            <li key={`${item.categoria}-${item.texto}`}>
-              <strong>{item.categoria}:</strong> {item.texto}
-            </li>
-          ))}
-        </ul>
-      ) : (
-        <p className="mt-2 text-sm">No se identificaron areas criticas de mejora.</p>
-      )}
-
-      {props.observaciones.trim() ? (
-        <>
-          <h2 className="mt-8 text-lg font-bold">Observaciones de clase</h2>
-          <p className="mt-2 whitespace-pre-wrap text-sm">{props.observaciones}</p>
-        </>
-      ) : null}
-
-      <p className="mt-10 text-xs text-slate-500" suppressHydrationWarning>
-        Generado el {new Date().toLocaleDateString("es-GT")}
-      </p>
     </div>
   );
 }
