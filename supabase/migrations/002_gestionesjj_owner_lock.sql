@@ -6,7 +6,7 @@ language sql
 stable
 set search_path = ''
 as $$
-  select auth.uid() = '9cd61706-a682-4a3f-a063-24022e666436'::uuid;
+  select auth.jwt() ->> 'email' = 'lic.juanreyesr@gmail.com';
 $$;
 
 grant execute on function public.gestionesjj_is_owner() to authenticated;

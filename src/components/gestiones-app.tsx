@@ -108,8 +108,8 @@ export function GestionesApp() {
   const [docentes, setDocentes] = useState<DocenteRow[]>([]);
   const [docentesLoading, setDocentesLoading] = useState(false);
   const [docentesError, setDocentesError] = useState("");
-  const [docenteIdx, setDocenteIdx] = useState(0);
-  const [cursoIdx, setCursoIdx] = useState(0);
+  const [selectedDocenteId, setSelectedDocenteId] = useState<string | null>(null);
+  const [selectedCursoId, setSelectedCursoId] = useState<string | null>(null);
 
   const [addDocenteOpen, setAddDocenteOpen] = useState(false);
   const [newDocenteNombre, setNewDocenteNombre] = useState("");
@@ -135,8 +135,8 @@ export function GestionesApp() {
   const [saveMessage, setSaveMessage] = useState("");
   const [saving, setSaving] = useState(false);
 
-  const docente = docentes[docenteIdx];
-  const curso = docente?.cursos[cursoIdx];
+  const docente = docentes.find((item) => item.id === selectedDocenteId) ?? docentes[0];
+  const curso = docente?.cursos.find((item) => item.id === selectedCursoId) ?? docente?.cursos[0];
   const totalItems = Object.values(scores).length;
   const completed = Object.values(scores).filter(Boolean).length;
   const total = Object.values(scores).reduce((sum, value) => sum + value, 0);
@@ -170,8 +170,6 @@ export function GestionesApp() {
 
     setDocentes(rows);
     setDocentesLoading(false);
-    setDocenteIdx(0);
-    setCursoIdx(0);
   }, []);
 
   useEffect(() => {
@@ -246,11 +244,15 @@ export function GestionesApp() {
     const supabase = getSupabaseClient();
     if (!supabase || !newDocenteNombre.trim()) return;
 
-    const { error } = await supabase.from("gestionesjj_docentes").insert({
-      nombre: newDocenteNombre.trim(),
-      correo: newDocenteCorreo.trim() || null,
-      femenino: newDocenteFemenino,
-    });
+    const { data, error } = await supabase
+      .from("gestionesjj_docentes")
+      .insert({
+        nombre: newDocenteNombre.trim(),
+        correo: newDocenteCorreo.trim() || null,
+        femenino: newDocenteFemenino,
+      })
+      .select("id")
+      .single();
 
     if (error) {
       setDocentesError(error.message);
@@ -261,6 +263,8 @@ export function GestionesApp() {
     setNewDocenteCorreo("");
     setNewDocenteFemenino(false);
     setAddDocenteOpen(false);
+    setSelectedDocenteId(data.id);
+    setSelectedCursoId(null);
     await fetchDocentes();
   };
 
@@ -268,15 +272,19 @@ export function GestionesApp() {
     const supabase = getSupabaseClient();
     if (!supabase || !docente || !newCursoNombre.trim()) return;
 
-    const { error } = await supabase.from("gestionesjj_cursos").insert({
-      docente_id: docente.id,
-      nombre: newCursoNombre.trim(),
-      horario: newCursoHorario.trim() || null,
-      grupo: newCursoGrupo.trim() || null,
-      edificio: newCursoEdificio.trim() || null,
-      anio,
-      trimestre: newCursoTrimestre,
-    });
+    const { data, error } = await supabase
+      .from("gestionesjj_cursos")
+      .insert({
+        docente_id: docente.id,
+        nombre: newCursoNombre.trim(),
+        horario: newCursoHorario.trim() || null,
+        grupo: newCursoGrupo.trim() || null,
+        edificio: newCursoEdificio.trim() || null,
+        anio,
+        trimestre: newCursoTrimestre,
+      })
+      .select("id")
+      .single();
 
     if (error) {
       setDocentesError(error.message);
@@ -289,6 +297,7 @@ export function GestionesApp() {
     setNewCursoEdificio("");
     setNewCursoTrimestre(1);
     setAddCursoOpen(false);
+    setSelectedCursoId(data.id);
     await fetchDocentes();
   };
 
@@ -491,9 +500,7 @@ export function GestionesApp() {
                     categoryAnalytics={categoryAnalytics}
                     completed={completed}
                     curso={curso}
-                    cursoIdx={cursoIdx}
                     docente={docente}
-                    docenteIdx={docenteIdx}
                     docentes={docentes}
                     docentesError={docentesError}
                     docentesLoading={docentesLoading}
@@ -523,8 +530,8 @@ export function GestionesApp() {
                     setAddCursoOpen={setAddCursoOpen}
                     setAddDocenteOpen={setAddDocenteOpen}
                     setAnio={setAnio}
-                    setCursoIdx={setCursoIdx}
-                    setDocenteIdx={setDocenteIdx}
+                    setSelectedCursoId={setSelectedCursoId}
+                    setSelectedDocenteId={setSelectedDocenteId}
                     setEntrevistas={setEntrevistas}
                     setFecha={setFecha}
                     setFortalezaOtro={setFortalezaOtro}
@@ -599,9 +606,7 @@ function CoordinacionPanel(props: {
   categoryAnalytics: Array<{ categoria: string; percent: number }>;
   completed: number;
   curso: CursoRow | undefined;
-  cursoIdx: number;
   docente: DocenteRow | undefined;
-  docenteIdx: number;
   docentes: DocenteRow[];
   docentesError: string;
   docentesLoading: boolean;
@@ -631,8 +636,8 @@ function CoordinacionPanel(props: {
   setAddCursoOpen: (value: boolean) => void;
   setAddDocenteOpen: (value: boolean) => void;
   setAnio: (value: number) => void;
-  setCursoIdx: (value: number) => void;
-  setDocenteIdx: (value: number) => void;
+  setSelectedCursoId: (value: string | null) => void;
+  setSelectedDocenteId: (value: string | null) => void;
   setEntrevistas: React.Dispatch<React.SetStateAction<Entrevistas>>;
   setFecha: (value: string) => void;
   setFortalezaOtro: (value: string) => void;
@@ -751,11 +756,10 @@ function CoordinacionPanel(props: {
 function StepDatosGenerales(props: Parameters<typeof CoordinacionPanel>[0]) {
   const {
     docentes,
-    docenteIdx,
     docente,
-    cursoIdx,
-    setDocenteIdx,
-    setCursoIdx,
+    curso,
+    setSelectedDocenteId,
+    setSelectedCursoId,
     anio,
     setAnio,
     trimestre,
@@ -793,14 +797,14 @@ function StepDatosGenerales(props: Parameters<typeof CoordinacionPanel>[0]) {
           <div className="flex gap-2">
             <select
               className="field"
-              value={docenteIdx}
+              value={docente?.id ?? ""}
               onChange={(event) => {
-                setDocenteIdx(Number(event.target.value));
-                setCursoIdx(0);
+                setSelectedDocenteId(event.target.value);
+                setSelectedCursoId(null);
               }}
             >
-              {docentes.map((item, index) => (
-                <option key={item.id} value={index}>
+              {docentes.map((item) => (
+                <option key={item.id} value={item.id}>
                   {item.nombre}
                 </option>
               ))}
@@ -820,11 +824,11 @@ function StepDatosGenerales(props: Parameters<typeof CoordinacionPanel>[0]) {
             <select
               className="field"
               disabled={!docente}
-              value={cursoIdx}
-              onChange={(event) => setCursoIdx(Number(event.target.value))}
+              value={curso?.id ?? ""}
+              onChange={(event) => setSelectedCursoId(event.target.value)}
             >
-              {(docente?.cursos ?? []).map((item, index) => (
-                <option key={item.id} value={index}>
+              {(docente?.cursos ?? []).map((item) => (
+                <option key={item.id} value={item.id}>
                   {item.nombre}
                 </option>
               ))}

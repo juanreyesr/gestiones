@@ -1,9 +1,15 @@
 -- One-time seed migrating the previously hardcoded docentes/cursos into the database.
 do $$
 declare
-  owner uuid := '9cd61706-a682-4a3f-a063-24022e666436'::uuid;
+  owner uuid;
   d_id uuid;
 begin
+  select id into owner from auth.users where email = 'lic.juanreyesr@gmail.com' limit 1;
+  if owner is null then
+    raise notice 'User lic.juanreyesr@gmail.com not found. Skipping seed.';
+    return;
+  end if;
+
   if exists (select 1 from public.gestionesjj_docentes limit 1) then
     return;
   end if;

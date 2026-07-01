@@ -3,13 +3,18 @@ do $$
 declare
   cname text;
 begin
-  select conname into cname
-  from pg_constraint
-  where conrelid = 'public.evaluaciones_docentes'::regclass
-    and contype = 'c'
-    and pg_get_constraintdef(oid) ilike '%trimestre%';
-  if cname is not null then
-    execute format('alter table public.evaluaciones_docentes drop constraint %I', cname);
+  if exists (
+    select 1 from information_schema.tables
+    where table_schema = 'public' and table_name = 'evaluaciones_docentes'
+  ) then
+    select conname into cname
+    from pg_constraint
+    where conrelid = 'public.evaluaciones_docentes'::regclass
+      and contype = 'c'
+      and pg_get_constraintdef(oid) ilike '%trimestre%';
+    if cname is not null then
+      execute format('alter table public.evaluaciones_docentes drop constraint %I', cname);
+    end if;
   end if;
 end $$;
 
@@ -27,3 +32,6 @@ alter table public.evaluaciones_docentes
   drop column if exists entrevista_estudiante_2,
   drop column if exists fortaleza_1,
   drop column if exists fortaleza_2;
+
+create index if not exists evaluaciones_docentes_docente_id_idx on public.evaluaciones_docentes (docente_id);
+create index if not exists evaluaciones_docentes_curso_id_idx on public.evaluaciones_docentes (curso_id);
