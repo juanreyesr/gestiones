@@ -41,12 +41,12 @@ import {
   type Trimestre,
 } from "@/data/evaluacion";
 import { currentTrimestre } from "@/lib/evaluacion-helpers";
+import { exportReporteToPdf } from "@/lib/pdf";
 import { getSupabaseClient, isSupabaseConfigured } from "@/lib/supabase";
 import { ConsultasView } from "./consultas-view";
 import { InformeDocenteView } from "./informe-docente-view";
 import { OrbitScene } from "./orbit-scene";
-import { PrintPortal } from "./print-portal";
-import { ReportePrintable, type ReporteData } from "./reporte-printable";
+import type { ReporteData } from "./reporte-printable";
 
 const ALLOWED_EMAIL = "lic.juanreyesr@gmail.com";
 
@@ -400,6 +400,14 @@ export function GestionesApp() {
   const [emailModalOpen, setEmailModalOpen] = useState(false);
   const [emailSubject, setEmailSubject] = useState("");
   const [emailBody, setEmailBody] = useState("");
+  const [exportingReporte, setExportingReporte] = useState(false);
+
+  const handlePrintReporte = async () => {
+    if (!reportData || exportingReporte) return;
+    setExportingReporte(true);
+    await exportReporteToPdf(reportData, `reporte-${reportData.docenteNombre}-T${reportData.trimestre}-${reportData.anio}.pdf`);
+    setExportingReporte(false);
+  };
 
   const handleOpenEmailDraft = () => {
     if (!docente || !curso) return;
@@ -639,7 +647,8 @@ export function GestionesApp() {
                               onAddDocente={handleCreateDocente}
                               onGenerateEmail={handleOpenEmailDraft}
                               onNuevaEvaluacion={handleNuevaEvaluacion}
-                              onPrint={() => window.print()}
+                              onPrint={handlePrintReporte}
+                              printing={exportingReporte}
                               onSave={handleSave}
                               onVolverMenu={handleVolverMenu}
                               pct={pct}
@@ -691,10 +700,6 @@ export function GestionesApp() {
           </div>
         </section>
       </main>
-
-      <PrintPortal>
-        <ReportePrintable data={coordinacionView === "nueva" ? reportData : null} />
-      </PrintPortal>
 
       <EmailDraftModal
         body={emailBody}
@@ -869,6 +874,7 @@ function CoordinacionPanel(props: {
   onSave: () => void;
   onVolverMenu: () => void;
   pct: number;
+  printing?: boolean;
   saveMessage: string;
   saving: boolean;
   scores: Scores;
@@ -1083,7 +1089,7 @@ function StepDatosGenerales(props: Parameters<typeof CoordinacionPanel>[0]) {
             </button>
           </div>
         </Field>
-        <Field label="Ano">
+        <Field label="Año">
           <input className="field" min={2024} type="number" value={anio} onChange={(event) => setAnio(Number(event.target.value))} />
         </Field>
         <Field label="Trimestre">
@@ -1333,6 +1339,7 @@ function StepResumen(props: Parameters<typeof CoordinacionPanel>[0]) {
     onGenerateEmail,
     onNuevaEvaluacion,
     onVolverMenu,
+    printing,
     saving,
     categoryAnalytics,
     improvementAreas,
@@ -1427,12 +1434,13 @@ function StepResumen(props: Parameters<typeof CoordinacionPanel>[0]) {
           {saving ? "Guardando..." : "Guardar evaluacion"}
         </button>
         <button
-          className="inline-flex h-11 w-fit items-center justify-center gap-2 border border-white/10 bg-white/8 px-6 text-sm font-bold text-slate-100 transition hover:border-white/30"
+          className="inline-flex h-11 w-fit items-center justify-center gap-2 border border-white/10 bg-white/8 px-6 text-sm font-bold text-slate-100 transition hover:border-white/30 disabled:opacity-60"
+          disabled={printing}
           onClick={onPrint}
           type="button"
         >
           <Printer className="h-4 w-4" />
-          Imprimir reporte
+          {printing ? "Generando PDF..." : "Descargar reporte en PDF"}
         </button>
         <button
           className="inline-flex h-11 w-fit items-center justify-center gap-2 border border-sky-300/40 bg-sky-300/10 px-6 text-sm font-bold text-sky-100 transition hover:border-sky-300/70 disabled:opacity-40"

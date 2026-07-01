@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 
-export function PrintPortal({ children }: { children: React.ReactNode }) {
+export function ModalPortal({ children }: { children: React.ReactNode }) {
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
@@ -13,5 +13,5 @@ export function PrintPortal({ children }: { children: React.ReactNode }) {
 
   if (!mounted) return null;
 
-  return createPortal(<div className="print-only">{children}</div>, document.body);
+  return createPortal(children, document.body);
 }

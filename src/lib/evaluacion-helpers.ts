@@ -1,4 +1,5 @@
-import { CRITERIOS, type Trimestre } from "@/data/evaluacion";
+import type { ReporteData } from "@/components/reporte-printable";
+import { CRITERIOS, ENTREVISTA_PREGUNTAS, type Trimestre } from "@/data/evaluacion";
 import { getSupabaseClient } from "@/lib/supabase";
 
 export type EntrevistaRecord = {
@@ -65,11 +66,14 @@ export function summarizeEntrevistas(entrevistas: EntrevistaRecord[] | null | un
   return { porEstudiante, general };
 }
 
-export async function fetchEvaluacionesPorPeriodo(anio: number, trimestre: Trimestre | "todos") {
+export async function fetchEvaluacionesPorPeriodo(anio: number | null, trimestre: Trimestre | "todos") {
   const supabase = getSupabaseClient();
   if (!supabase) return { data: [] as EvaluacionRow[], error: "Faltan las variables de Supabase." };
 
-  let query = supabase.from("evaluaciones_docentes").select("*").eq("anio", anio).order("fecha_observacion", { ascending: false });
+  let query = supabase.from("evaluaciones_docentes").select("*").order("fecha_observacion", { ascending: false });
+  if (anio !== null) {
+    query = query.eq("anio", anio);
+  }
   if (trimestre !== "todos") {
     query = query.eq("trimestre", trimestre);
   }
@@ -77,6 +81,13 @@ export async function fetchEvaluacionesPorPeriodo(anio: number, trimestre: Trime
   const { data, error } = await query;
   if (error) return { data: [] as EvaluacionRow[], error: error.message };
   return { data: (data ?? []) as EvaluacionRow[], error: null };
+}
+
+export async function deleteEvaluacion(id: string) {
+  const supabase = getSupabaseClient();
+  if (!supabase) return { error: "Faltan las variables de Supabase." };
+  const { error } = await supabase.from("evaluaciones_docentes").delete().eq("id", id);
+  return { error: error?.message ?? null };
 }
 
 export async function fetchEvaluacionesPorDocente(docenteId: string) {
@@ -106,6 +117,43 @@ export function promedioEntrevistas(rows: EvaluacionRow[]) {
   return Math.round(generales.reduce((sum, value) => sum + value, 0) / generales.length);
 }
 
+export function aggregateCategoryAnalytics(rows: EvaluacionRow[]) {
+  const sums = new Map<string, { total: number; count: number }>();
+  for (const row of rows) {
+    for (const item of summarizeScores(row.scores)) {
+      const entry = sums.get(item.categoria) ?? { total: 0, count: 0 };
+      entry.total += item.percent;
+      entry.count += 1;
+      sums.set(item.categoria, entry);
+    }
+  }
+  return CRITERIOS.map((categoria) => {
+    const entry = sums.get(categoria.categoria);
+    const percent = entry && entry.count ? Math.round(entry.total / entry.count) : 0;
+    return { categoria: categoria.categoria, percent };
+  });
+}
+
+export function aggregateEntrevistaPreguntas(rows: EvaluacionRow[]) {
+  const sums = new Map<number, { total: number; count: number }>();
+  for (const row of rows) {
+    for (const entrevista of row.entrevistas ?? []) {
+      for (const [key, value] of Object.entries(entrevista.respuestas ?? {})) {
+        const id = Number(key);
+        const entry = sums.get(id) ?? { total: 0, count: 0 };
+        entry.total += value;
+        entry.count += 1;
+        sums.set(id, entry);
+      }
+    }
+  }
+  return ENTREVISTA_PREGUNTAS.map((pregunta) => {
+    const entry = sums.get(pregunta.id);
+    const promedio = entry && entry.count ? Math.round((entry.total / entry.count / 4) * 100) : null;
+    return { ...pregunta, promedio, respondidas: entry?.count ?? 0 };
+  }).filter((item) => item.respondidas > 0);
+}
+
 export function agruparPorDocente(rows: EvaluacionRow[]) {
   const map = new Map<string, { docenteId: string | null; nombre: string; count: number; sumaPct: number }>();
   for (const row of rows) {
@@ -118,4 +166,22 @@ export function agruparPorDocente(rows: EvaluacionRow[]) {
   return Array.from(map.values())
     .map((entry) => ({ ...entry, promedio: Math.round(entry.sumaPct / entry.count) }))
     .sort((a, b) => b.promedio - a.promedio);
+}
+
+export function rowToReporteData(row: EvaluacionRow): ReporteData {
+  return {
+    docenteNombre: row.docente_nombre,
+    cursoNombre: row.curso_nombre,
+    anio: row.anio,
+    trimestre: row.trimestre,
+    fecha: row.fecha_observacion,
+    pct: row.porcentaje,
+    total: row.puntaje_total,
+    max: row.puntaje_maximo,
+    categoryAnalytics: summarizeScores(row.scores),
+    entrevistaStats: summarizeEntrevistas(row.entrevistas),
+    fortalezas: row.fortalezas ?? [],
+    improvementAreas: summarizeImprovementAreas(row.scores),
+    observaciones: row.observaciones ?? "",
+  };
 }

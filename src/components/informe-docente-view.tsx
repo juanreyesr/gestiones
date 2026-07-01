@@ -1,10 +1,19 @@
 "use client";
 
-import { GraduationCap, Printer } from "lucide-react";
+import { GraduationCap, Printer, Trash2 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { DocenteRow } from "@/data/evaluacion";
-import { type EvaluacionRow, fetchEvaluacionesPorDocente, promedioEntrevistas, promedioGeneral } from "@/lib/evaluacion-helpers";
-import { PrintPortal } from "./print-portal";
+import {
+  deleteEvaluacion,
+  type EvaluacionRow,
+  fetchEvaluacionesPorDocente,
+  promedioEntrevistas,
+  promedioGeneral,
+  rowToReporteData,
+} from "@/lib/evaluacion-helpers";
+import { exportInformeDocenteToPdf, exportReporteToPdf } from "@/lib/pdf";
+import { ConfirmDialog } from "./confirm-dialog";
+import { EvaluacionDetalleModal } from "./evaluacion-detalle-modal";
 
 function agruparPorAnio(rows: EvaluacionRow[]) {
   const map = new Map<number, EvaluacionRow[]>();
@@ -23,7 +32,11 @@ export function InformeDocenteView({ docentes }: { docentes: DocenteRow[] }) {
   const [rows, setRows] = useState<EvaluacionRow[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [printing, setPrinting] = useState(false);
+  const [viewRow, setViewRow] = useState<EvaluacionRow | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<EvaluacionRow | null>(null);
+  const [deleting, setDeleting] = useState(false);
+  const [exportingResumen, setExportingResumen] = useState(false);
+  const [exportingFila, setExportingFila] = useState(false);
 
   const docente = docentes.find((item) => item.id === docenteId);
 
@@ -58,9 +71,42 @@ export function InformeDocenteView({ docentes }: { docentes: DocenteRow[] }) {
 
   const porAnio = useMemo(() => agruparPorAnio(rows), [rows]);
 
-  const handlePrint = () => {
-    setPrinting(true);
-    requestAnimationFrame(() => window.print());
+  const handlePrintResumen = async () => {
+    if (!docente || !rows.length || exportingResumen) return;
+    setExportingResumen(true);
+    await exportInformeDocenteToPdf(
+      {
+        docenteNombre: docente.nombre,
+        rows,
+        porAnio,
+        promedioHistorico: promedioGeneral(rows),
+        promedioEntrevistas: promedioEntrevistas(rows),
+      },
+      `informe-${docente.nombre}.pdf`,
+    );
+    setExportingResumen(false);
+  };
+
+  const handlePrintFila = async () => {
+    if (!viewRow || exportingFila) return;
+    setExportingFila(true);
+    const filename = `reporte-${viewRow.docente_nombre}-T${viewRow.trimestre}-${viewRow.anio}.pdf`;
+    await exportReporteToPdf(rowToReporteData(viewRow), filename);
+    setExportingFila(false);
+  };
+
+  const handleDelete = async () => {
+    if (!deleteTarget) return;
+    setDeleting(true);
+    const { error: deleteError } = await deleteEvaluacion(deleteTarget.id);
+    setDeleting(false);
+    if (deleteError) {
+      setError(deleteError);
+      setDeleteTarget(null);
+      return;
+    }
+    setRows((current) => current.filter((item) => item.id !== deleteTarget.id));
+    setDeleteTarget(null);
   };
 
   return (
@@ -78,12 +124,12 @@ export function InformeDocenteView({ docentes }: { docentes: DocenteRow[] }) {
         </div>
         <button
           className="inline-flex h-11 w-fit items-center justify-center gap-2 border border-white/10 bg-white/8 px-6 text-sm font-bold text-slate-100 transition hover:border-white/30 disabled:opacity-40"
-          disabled={!rows.length}
-          onClick={handlePrint}
+          disabled={!rows.length || exportingResumen}
+          onClick={handlePrintResumen}
           type="button"
         >
           <Printer className="h-4 w-4" />
-          Imprimir informe
+          {exportingResumen ? "Generando PDF..." : "Descargar informe en PDF"}
         </button>
       </div>
 
@@ -109,7 +155,7 @@ export function InformeDocenteView({ docentes }: { docentes: DocenteRow[] }) {
           </div>
 
           <div className="border border-white/10 bg-white/6 p-4">
-            <div className="mb-3 text-sm font-semibold">Rendimiento por ano</div>
+            <div className="mb-3 text-sm font-semibold">Rendimiento por año</div>
             {porAnio.length ? (
               <div className="grid gap-3">
                 {porAnio.map((item) => (
@@ -142,6 +188,7 @@ export function InformeDocenteView({ docentes }: { docentes: DocenteRow[] }) {
                       <th className="pb-2 pr-3">Periodo</th>
                       <th className="pb-2 pr-3">Fecha</th>
                       <th className="pb-2 pr-3">%</th>
+                      <th className="pb-2" />
                     </tr>
                   </thead>
                   <tbody>
@@ -153,6 +200,25 @@ export function InformeDocenteView({ docentes }: { docentes: DocenteRow[] }) {
                         </td>
                         <td className="py-2 pr-3">{row.fecha_observacion}</td>
                         <td className="py-2 pr-3">{row.porcentaje}%</td>
+                        <td className="py-2">
+                          <div className="flex gap-2">
+                            <button
+                              className="border border-white/10 bg-white/8 px-2 py-1 text-xs font-semibold text-slate-100 transition hover:border-white/30"
+                              onClick={() => setViewRow(row)}
+                              type="button"
+                            >
+                              Ver
+                            </button>
+                            <button
+                              className="flex items-center justify-center border border-red-400/30 bg-red-400/10 px-2 py-1 text-xs font-semibold text-red-200 transition hover:border-red-400/60"
+                              onClick={() => setDeleteTarget(row)}
+                              title="Borrar registro"
+                              type="button"
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </button>
+                          </div>
+                        </td>
                       </tr>
                     ))}
                   </tbody>
@@ -163,75 +229,21 @@ export function InformeDocenteView({ docentes }: { docentes: DocenteRow[] }) {
         </>
       ) : null}
 
-      <PrintPortal>
-        {printing && docente ? (
-          <div className="mx-auto max-w-3xl p-8 text-slate-900">
-            <h1 className="text-2xl font-bold">Informe de docente</h1>
-            <p className="mt-1 text-sm text-slate-600">M. A. Juan J. Reyes - Coordinacion academica</p>
+      <EvaluacionDetalleModal
+        data={viewRow ? rowToReporteData(viewRow) : null}
+        onClose={() => setViewRow(null)}
+        onPrint={handlePrintFila}
+        printing={exportingFila}
+      />
 
-            <div className="mt-6 text-sm">
-              <strong>Docente:</strong> {docente.nombre}
-            </div>
-
-            <h2 className="mt-8 text-lg font-bold">Resumen historico</h2>
-            <dl className="mt-2 grid grid-cols-3 gap-4 text-sm">
-              <div>
-                <dt className="text-slate-600">Evaluaciones</dt>
-                <dd className="text-xl font-semibold">{rows.length}</dd>
-              </div>
-              <div>
-                <dt className="text-slate-600">Promedio historico</dt>
-                <dd className="text-xl font-semibold">{promedioGeneral(rows)}%</dd>
-              </div>
-              <div>
-                <dt className="text-slate-600">Entrevistas promedio</dt>
-                <dd className="text-xl font-semibold">{promedioEntrevistas(rows)}%</dd>
-              </div>
-            </dl>
-
-            <h2 className="mt-8 text-lg font-bold">Rendimiento por ano</h2>
-            <div className="mt-3 grid gap-3">
-              {porAnio.map((item) => (
-                <div key={item.anio}>
-                  <div className="flex justify-between text-sm">
-                    <span>
-                      {item.anio} ({item.count} evaluaciones)
-                    </span>
-                    <span>{item.promedio}%</span>
-                  </div>
-                  <div className="mt-1 h-2.5 w-full max-w-md bg-slate-200">
-                    <div className="h-full bg-slate-700" style={{ width: `${item.promedio}%` }} />
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            <h2 className="mt-8 text-lg font-bold">Detalle de evaluaciones</h2>
-            <table className="mt-3 w-full text-left text-sm">
-              <thead>
-                <tr className="border-b border-slate-300">
-                  <th className="py-1 pr-3">Curso</th>
-                  <th className="py-1 pr-3">Periodo</th>
-                  <th className="py-1 pr-3">Fecha</th>
-                  <th className="py-1 pr-3">%</th>
-                </tr>
-              </thead>
-              <tbody>
-                {rows.map((row) => (
-                  <tr key={row.id} className="border-b border-slate-100">
-                    <td className="py-1 pr-3">{row.curso_nombre}</td>
-                    <td className="py-1 pr-3">
-                      T{row.trimestre} {row.anio}
-                    </td>
-                    <td className="py-1 pr-3">{row.fecha_observacion}</td>
-                    <td className="py-1 pr-3">{row.porcentaje}%</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        ) : null}
-      </PrintPortal>
+      <ConfirmDialog
+        busy={deleting}
+        message={`Se eliminará la evaluación de ${deleteTarget?.docente_nombre ?? ""} (${deleteTarget?.curso_nombre ?? ""}, ${deleteTarget ? `T${deleteTarget.trimestre} ${deleteTarget.anio}` : ""}). Esta acción no se puede deshacer.`}
+        onCancel={() => setDeleteTarget(null)}
+        onConfirm={handleDelete}
+        open={Boolean(deleteTarget)}
+        title="Borrar evaluación"
+      />
     </div>
   );
 }
