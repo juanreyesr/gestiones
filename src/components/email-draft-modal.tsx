@@ -18,9 +18,17 @@ export function EmailDraftModal(props: {
   if (!props.open) return null;
 
   const handleCopy = async () => {
-    await navigator.clipboard.writeText(`Asunto: ${props.subject}\n\n${props.body}`);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+    try {
+      if (typeof navigator === "undefined" || !navigator.clipboard) {
+        console.warn("Clipboard API not available");
+        return;
+      }
+      await navigator.clipboard.writeText(`Asunto: ${props.subject}\n\n${props.body}`);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch (error) {
+      console.error("Failed to copy text:", error);
+    }
   };
 
   const mailtoHref = props.correo

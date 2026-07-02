@@ -27,7 +27,7 @@ import {
   X,
 } from "lucide-react";
 import type React from "react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   AREAS,
   CRITERIOS,
@@ -153,8 +153,9 @@ export function GestionesApp() {
   const [fortalezaOtro, setFortalezaOtro] = useState("");
   const [saveMessage, setSaveMessage] = useState("");
   const [saving, setSaving] = useState(false);
-  const [evaluacionId, setEvaluacionId] = useState<string | null>(null);
   const [entrevistaKiosco, setEntrevistaKiosco] = useState<1 | 2 | null>(null);
+  const evaluacionIdRef = useRef<string | null>(null);
+  const pendingSaveRef = useRef<Promise<{ error: string | null }> | null>(null);
 
   const docente = docentes.find((item) => item.id === selectedDocenteId) ?? docentes[0];
   const curso = docente?.cursos.find((item) => item.id === selectedCursoId) ?? docente?.cursos[0];
@@ -487,11 +488,26 @@ export function GestionesApp() {
       const payload = buildPayload(entrevistasState);
       if (!payload) return { error: "Selecciona un docente y un curso antes de guardar." };
 
-      const { id, error } = await upsertEvaluacion(evaluacionId, payload);
-      if (id) setEvaluacionId(id);
-      return { error };
+      if (pendingSaveRef.current) {
+        await pendingSaveRef.current;
+      }
+
+      const savePromise = (async () => {
+        const { id, error } = await upsertEvaluacion(evaluacionIdRef.current, payload);
+        if (id) {
+          evaluacionIdRef.current = id;
+        }
+        return { error };
+      })();
+
+      pendingSaveRef.current = savePromise;
+      const result = await savePromise;
+      if (pendingSaveRef.current === savePromise) {
+        pendingSaveRef.current = null;
+      }
+      return result;
     },
-    [buildPayload, evaluacionId],
+    [buildPayload],
   );
 
   const handleSave = async () => {
@@ -521,7 +537,8 @@ export function GestionesApp() {
   const handleAvanzar = async (nextStep: number) => {
     setStep(nextStep);
     if (docente && curso && isSupabaseConfigured) {
-      await persistEvaluacion(entrevistas);
+      const { error } = await persistEvaluacion(entrevistas);
+      if (error) setSaveMessage(`Error al auto-guardar: ${error}`);
     }
   };
 
@@ -529,7 +546,8 @@ export function GestionesApp() {
     const nextEntrevistas: Entrevistas = { ...entrevistas, [numero]: respuestas };
     setEntrevistas(nextEntrevistas);
     if (docente && curso && isSupabaseConfigured) {
-      await persistEvaluacion(nextEntrevistas);
+      const { error } = await persistEvaluacion(nextEntrevistas);
+      if (error) setSaveMessage(`Error al auto-guardar: ${error}`);
     }
   };
 
@@ -542,7 +560,7 @@ export function GestionesApp() {
     setSaveMessage("");
     setStep(0);
     setFecha(localDateValue());
-    setEvaluacionId(null);
+    evaluacionIdRef.current = null;
   };
 
   const handleNuevaEvaluacion = () => {
@@ -566,6 +584,7 @@ export function GestionesApp() {
 
     const nextEntrevistas: Entrevistas = { 1: {}, 2: {} };
     for (const entrevista of row.entrevistas ?? []) {
+      if (entrevista.estudiante !== 1 && entrevista.estudiante !== 2) continue;
       const respuestas: Record<number, number> = {};
       for (const [key, value] of Object.entries(entrevista.respuestas ?? {})) {
         respuestas[Number(key)] = value;
@@ -576,7 +595,7 @@ export function GestionesApp() {
 
     setFortalezas(row.fortalezas ?? []);
     setFortalezaOtro("");
-    setEvaluacionId(row.id);
+    evaluacionIdRef.current = row.id;
     setSaveMessage("");
     setStep(0);
     setCoordinacionView("nueva");

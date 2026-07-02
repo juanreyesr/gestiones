@@ -19,7 +19,9 @@ export function EntrevistaKiosk({
   const [respuestas, setRespuestas] = useState<Record<number, number>>(respuestasIniciales);
   const [finalizado, setFinalizado] = useState(false);
 
-  const respondidas = Object.keys(respuestas).length;
+  const respondidas = ENTREVISTA_PREGUNTAS.filter(
+    (pregunta) => respuestas[pregunta.id] !== undefined && respuestas[pregunta.id] !== null,
+  ).length;
   const completo = respondidas === ENTREVISTA_PREGUNTAS.length;
 
   const handleGuardar = () => {
