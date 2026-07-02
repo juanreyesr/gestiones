@@ -158,7 +158,7 @@ export function GestionesApp() {
   const pendingSaveRef = useRef<Promise<{ error: string | null }> | null>(null);
 
   const docente = docentes.find((item) => item.id === selectedDocenteId);
-  const curso = docente?.cursos.find((item) => item.id === selectedCursoId) ?? docente?.cursos[0];
+  const curso = docente?.cursos.find((item) => item.id === selectedCursoId);
   const totalItems = Object.values(scores).length;
   const completed = Object.values(scores).filter(Boolean).length;
   const observacionCompleta = totalItems > 0 && completed === totalItems;
@@ -720,7 +720,9 @@ export function GestionesApp() {
                       <CoordinacionTabs
                         onChange={(value) => {
                           if (value === "nueva") {
-                            handleNuevaEvaluacionTab();
+                            if (coordinacionView !== "nueva" || evaluacionIdRef.current !== null) {
+                              handleNuevaEvaluacionTab();
+                            }
                             return;
                           }
                           setCoordinacionView(value);
@@ -1218,8 +1220,9 @@ function StepDatosGenerales(props: Parameters<typeof CoordinacionPanel>[0]) {
               className="field"
               disabled={!docente}
               value={curso?.id ?? ""}
-              onChange={(event) => setSelectedCursoId(event.target.value)}
+              onChange={(event) => setSelectedCursoId(event.target.value || null)}
             >
+              <option value="">Selecciona un curso</option>
               {(docente?.cursos ?? []).map((item) => (
                 <option key={item.id} value={item.id}>
                   {item.nombre}
