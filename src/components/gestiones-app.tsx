@@ -157,7 +157,7 @@ export function GestionesApp() {
   const evaluacionIdRef = useRef<string | null>(null);
   const pendingSaveRef = useRef<Promise<{ error: string | null }> | null>(null);
 
-  const docente = docentes.find((item) => item.id === selectedDocenteId) ?? docentes[0];
+  const docente = docentes.find((item) => item.id === selectedDocenteId);
   const curso = docente?.cursos.find((item) => item.id === selectedCursoId) ?? docente?.cursos[0];
   const totalItems = Object.values(scores).length;
   const completed = Object.values(scores).filter(Boolean).length;
@@ -551,7 +551,11 @@ export function GestionesApp() {
     }
   };
 
-  const resetWizard = () => {
+  const resetWizard = (options: { keepDocenteCurso?: boolean } = {}) => {
+    if (!options.keepDocenteCurso) {
+      setSelectedDocenteId(null);
+      setSelectedCursoId(null);
+    }
     setScores(initialScores());
     setEntrevistas({ 1: {}, 2: {} });
     setFortalezas([]);
@@ -564,7 +568,12 @@ export function GestionesApp() {
   };
 
   const handleNuevaEvaluacion = () => {
+    resetWizard({ keepDocenteCurso: true });
+  };
+
+  const handleNuevaEvaluacionTab = () => {
     resetWizard();
+    setCoordinacionView("nueva");
   };
 
   const handleEditarEvaluacion = (row: EvaluacionRow) => {
@@ -652,7 +661,7 @@ export function GestionesApp() {
   return (
     <>
       <main className="min-h-screen bg-[#08111f] text-slate-50 print-hidden">
-        <section className="relative min-h-screen overflow-x-hidden">
+        <section className="relative min-h-screen overflow-x-clip">
           <OrbitScene />
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_25%_15%,rgba(74,222,128,0.24),transparent_28%),linear-gradient(135deg,rgba(8,17,31,0.78),rgba(8,17,31,0.96)_58%,rgba(15,23,42,0.9))]" />
 
@@ -708,7 +717,16 @@ export function GestionesApp() {
                     </div>
                   ) : (
                     <div className="grid gap-5">
-                      <CoordinacionTabs onChange={setCoordinacionView} value={coordinacionView} />
+                      <CoordinacionTabs
+                        onChange={(value) => {
+                          if (value === "nueva") {
+                            handleNuevaEvaluacionTab();
+                            return;
+                          }
+                          setCoordinacionView(value);
+                        }}
+                        value={coordinacionView}
+                      />
 
                       {coordinacionView === "resumen" ? (
                         <div className="border border-white/10 bg-slate-950/58 p-4 backdrop-blur-xl sm:p-5">
@@ -1173,10 +1191,11 @@ function StepDatosGenerales(props: Parameters<typeof CoordinacionPanel>[0]) {
               className="field"
               value={docente?.id ?? ""}
               onChange={(event) => {
-                setSelectedDocenteId(event.target.value);
+                setSelectedDocenteId(event.target.value || null);
                 setSelectedCursoId(null);
               }}
             >
+              <option value="">Selecciona un docente</option>
               {docentes.map((item) => (
                 <option key={item.id} value={item.id}>
                   {item.nombre}
