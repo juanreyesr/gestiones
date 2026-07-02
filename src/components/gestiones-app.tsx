@@ -542,8 +542,8 @@ export function GestionesApp() {
 
   return (
     <>
-      <main className="min-h-screen overflow-hidden bg-[#08111f] text-slate-50 print-hidden">
-        <section className="relative min-h-screen">
+      <main className="min-h-screen bg-[#08111f] text-slate-50 print-hidden">
+        <section className="relative min-h-screen overflow-x-hidden">
           <OrbitScene />
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_25%_15%,rgba(74,222,128,0.24),transparent_28%),linear-gradient(135deg,rgba(8,17,31,0.78),rgba(8,17,31,0.96)_58%,rgba(15,23,42,0.9))]" />
 
@@ -683,7 +683,7 @@ export function GestionesApp() {
                             />
                           </div>
 
-                          <aside className="grid content-start gap-4">
+                          <aside className="grid content-start gap-4 xl:sticky xl:top-6 xl:self-start">
                             <div className="px-1 text-xs font-semibold uppercase text-slate-400">Evaluacion en curso</div>
                             <Metric title="Rendimiento actual" value={`${pct}%`} icon={TrendingUp} detail={scoreTone(pct)} />
                             <Metric title="Criterios completados" value={`${completed}/${totalItems}`} icon={CheckCircle2} detail="Evaluacion docente" />
@@ -724,8 +724,8 @@ function LoginGate(props: {
   setPassword: (value: string) => void;
 }) {
   return (
-    <main className="min-h-screen overflow-hidden bg-[#08111f] text-slate-50">
-      <section className="relative flex min-h-screen items-center justify-center">
+    <main className="min-h-screen bg-[#08111f] text-slate-50">
+      <section className="relative flex min-h-screen items-center justify-center overflow-x-hidden">
         <OrbitScene />
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_25%_15%,rgba(74,222,128,0.24),transparent_28%),linear-gradient(135deg,rgba(8,17,31,0.78),rgba(8,17,31,0.96)_58%,rgba(15,23,42,0.9))]" />
 
@@ -1372,9 +1372,9 @@ function StepResumen(props: Parameters<typeof CoordinacionPanel>[0]) {
           <div className="grid gap-3">
             {categoryAnalytics.map((item) => (
               <div key={item.categoria}>
-                <div className="mb-1 flex justify-between text-xs text-slate-300">
-                  <span>{item.categoria}</span>
-                  <span>{item.percent}%</span>
+                <div className="mb-1 flex justify-between gap-3 text-xs text-slate-300">
+                  <span className="min-w-0">{item.categoria}</span>
+                  <span className="shrink-0">{item.percent}%</span>
                 </div>
                 <div className="h-2 bg-slate-800">
                   <div className="h-full bg-sky-300" style={{ width: `${item.percent}%` }} />
@@ -1392,9 +1392,9 @@ function StepResumen(props: Parameters<typeof CoordinacionPanel>[0]) {
           <div className="grid gap-3">
             {entrevistaStats.porEstudiante.map((item) => (
               <div key={item.estudiante}>
-                <div className="mb-1 flex justify-between text-xs text-slate-300">
-                  <span>Estudiante {item.estudiante}</span>
-                  <span>{item.promedio}%</span>
+                <div className="mb-1 flex justify-between gap-3 text-xs text-slate-300">
+                  <span className="min-w-0">Estudiante {item.estudiante}</span>
+                  <span className="shrink-0">{item.promedio}%</span>
                 </div>
                 <div className="h-2 bg-slate-800">
                   <div className="h-full bg-emerald-300" style={{ width: `${item.promedio}%` }} />
