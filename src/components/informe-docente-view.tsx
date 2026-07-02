@@ -1,6 +1,6 @@
 "use client";
 
-import { GraduationCap, Printer, Star, Trash2, Users } from "lucide-react";
+import { GraduationCap, Mail, Pencil, Printer, Star, Trash2, Users } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { DocenteRow, Trimestre } from "@/data/evaluacion";
 import {
@@ -42,7 +42,15 @@ function agruparPorAnio(rows: EvaluacionRow[]) {
     .sort((a, b) => b.anio - a.anio);
 }
 
-export function InformeDocenteView({ docentes }: { docentes: DocenteRow[] }) {
+export function InformeDocenteView({
+  docentes,
+  onEditar,
+  onGenerarCorreo,
+}: {
+  docentes: DocenteRow[];
+  onEditar: (row: EvaluacionRow) => void;
+  onGenerarCorreo: (row: EvaluacionRow) => void;
+}) {
   const [docenteId, setDocenteId] = useState<string>("");
   const [allRows, setAllRows] = useState<EvaluacionRow[]>([]);
   const [loading, setLoading] = useState(false);
@@ -361,6 +369,24 @@ export function InformeDocenteView({ docentes }: { docentes: DocenteRow[] }) {
                               type="button"
                             >
                               Ver
+                            </button>
+                            <button
+                              className="flex items-center gap-1 border border-sky-400/30 bg-sky-400/10 px-2 py-1 text-xs font-semibold text-sky-200 transition hover:border-sky-400/60"
+                              onClick={() => onEditar(row)}
+                              title="Editar evaluacion"
+                              type="button"
+                            >
+                              <Pencil className="h-3.5 w-3.5" />
+                              Editar
+                            </button>
+                            <button
+                              className="flex items-center gap-1 border border-emerald-400/30 bg-emerald-400/10 px-2 py-1 text-xs font-semibold text-emerald-200 transition hover:border-emerald-400/60"
+                              onClick={() => onGenerarCorreo(row)}
+                              title="Generar correo para el docente"
+                              type="button"
+                            >
+                              <Mail className="h-3.5 w-3.5" />
+                              Correo
                             </button>
                             <button
                               className="flex items-center justify-center border border-red-400/30 bg-red-400/10 px-2 py-1 text-xs font-semibold text-red-200 transition hover:border-red-400/60"

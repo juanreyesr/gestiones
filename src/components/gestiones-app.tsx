@@ -31,7 +31,6 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   AREAS,
   CRITERIOS,
-  ENTREVISTA_ESCALA,
   ENTREVISTA_PREGUNTAS,
   FORTALEZAS_OPCIONES,
   SCORE_LABELS,
@@ -40,10 +39,22 @@ import {
   type DocenteRow,
   type Trimestre,
 } from "@/data/evaluacion";
-import { currentTrimestre } from "@/lib/evaluacion-helpers";
+import {
+  aggregateEntrevistaPreguntas,
+  currentTrimestre,
+  entrevistaDestacadas as pickEntrevistaDestacadas,
+  entrevistaMejorar as pickEntrevistaMejorar,
+  type EvaluacionRow,
+  summarizeEntrevistas,
+  summarizeImprovementAreas,
+  upsertEvaluacion,
+} from "@/lib/evaluacion-helpers";
+import { buildCorreoDocente } from "@/lib/email-draft";
 import { exportReporteToPdf } from "@/lib/pdf";
 import { getSupabaseClient, isSupabaseConfigured } from "@/lib/supabase";
 import { ConsultasView } from "./consultas-view";
+import { EmailDraftModal } from "./email-draft-modal";
+import { EntrevistaKiosk } from "./entrevista-kiosk";
 import { InformeDocenteView } from "./informe-docente-view";
 import { OrbitScene } from "./orbit-scene";
 import type { ReporteData } from "./reporte-printable";
@@ -142,11 +153,14 @@ export function GestionesApp() {
   const [fortalezaOtro, setFortalezaOtro] = useState("");
   const [saveMessage, setSaveMessage] = useState("");
   const [saving, setSaving] = useState(false);
+  const [evaluacionId, setEvaluacionId] = useState<string | null>(null);
+  const [entrevistaKiosco, setEntrevistaKiosco] = useState<1 | 2 | null>(null);
 
   const docente = docentes.find((item) => item.id === selectedDocenteId) ?? docentes[0];
   const curso = docente?.cursos.find((item) => item.id === selectedCursoId) ?? docente?.cursos[0];
   const totalItems = Object.values(scores).length;
   const completed = Object.values(scores).filter(Boolean).length;
+  const observacionCompleta = totalItems > 0 && completed === totalItems;
   const total = Object.values(scores).reduce((sum, value) => sum + value, 0);
   const max = totalItems * 5;
   const pct = max ? Math.round((total / max) * 100) : 0;
@@ -400,6 +414,7 @@ export function GestionesApp() {
   const [emailModalOpen, setEmailModalOpen] = useState(false);
   const [emailSubject, setEmailSubject] = useState("");
   const [emailBody, setEmailBody] = useState("");
+  const [emailCorreo, setEmailCorreo] = useState<string | null>(null);
   const [exportingReporte, setExportingReporte] = useState(false);
 
   const handlePrintReporte = async () => {
@@ -412,51 +427,72 @@ export function GestionesApp() {
   const handleOpenEmailDraft = () => {
     if (!docente || !curso) return;
 
-    const subject = `Resultados de tu evaluacion docente - ${curso.nombre} (Trimestre ${trimestre}, ${anio})`;
-    const lines: string[] = [
-      `Estimado/a ${docente.nombre},`,
-      "",
-      `Quiero agradecerte sinceramente por tu esfuerzo, dedicacion y compromiso en el desarrollo del curso "${curso.nombre}" durante este trimestre. Tu trabajo constante en el aula es muy valioso para la formacion de nuestros estudiantes.`,
-      "",
-      "A continuacion comparto un resumen de tu evaluacion docente:",
-      "",
-      `Resultado general de la observacion de clase: ${pct}% (${total}/${max} puntos).`,
-    ];
-
-    if (fortalezasFinal.length) {
-      lines.push("", `Entre los aspectos en los que mas sobresaliste se destacan: ${fortalezasFinal.join(", ")}. Felicidades por estos logros.`);
-    }
-
-    if (improvementAreas.length) {
-      lines.push("", "Tambien identificamos algunas areas en las que podrias seguir fortaleciendo tu labor docente:");
-      improvementAreas.forEach((item) => lines.push(`- ${item.texto}`));
-    } else {
-      lines.push("", "No se identificaron areas criticas de mejora en esta observacion. Sigue asi.");
-    }
-
-    if (entrevistaPreguntas.length) {
-      lines.push(
-        "",
-        `En las entrevistas realizadas a estudiantes del curso se obtuvo una valoracion favorable promedio de ${entrevistaStats.general}%.`,
-      );
-      if (entrevistaDestacadas.length) {
-        lines.push(`Los estudiantes destacaron especialmente que: ${entrevistaDestacadas.map((item) => item.texto.toLowerCase()).join("; ")}.`);
-      }
-      if (entrevistaMejorar.length) {
-        lines.push(`Tambien mencionaron que podrias reforzar: ${entrevistaMejorar.map((item) => item.texto.toLowerCase()).join("; ")}.`);
-      }
-    }
-
-    if (observaciones.trim()) {
-      lines.push("", `Observaciones adicionales de la clase: ${observaciones.trim()}`);
-    }
-
-    lines.push("", "Gracias nuevamente por tu compromiso con la excelencia academica.", "", "Saludos cordiales,", "Coordinacion Academica");
+    const { subject, body } = buildCorreoDocente({
+      docenteNombre: docente.nombre,
+      cursoNombre: curso.nombre,
+      trimestre,
+      anio,
+      pct,
+      total,
+      max,
+      fortalezas: fortalezasFinal,
+      improvementAreas,
+      entrevistaGeneral: entrevistaStats.general,
+      entrevistaDestacadas,
+      entrevistaMejorar,
+      observaciones,
+    });
 
     setEmailSubject(subject);
-    setEmailBody(lines.join("\n"));
+    setEmailBody(body);
+    setEmailCorreo(docente.correo || null);
     setEmailModalOpen(true);
   };
+
+  const buildPayload = useCallback(
+    (entrevistasState: Entrevistas) => {
+      if (!docente || !curso) return null;
+
+      const entrevistasPayload = ([1, 2] as const).map((n) => {
+        const respuestas = entrevistasState[n];
+        const valores = Object.values(respuestas);
+        const promedio = valores.length ? Math.round((valores.reduce((a, b) => a + b, 0) / valores.length / 4) * 100) : 0;
+        return { estudiante: n, respuestas, promedio };
+      });
+
+      return {
+        docente_id: docente.id,
+        docente_nombre: docente.nombre,
+        docente_correo: docente.correo || null,
+        curso_id: curso.id,
+        curso_nombre: curso.nombre,
+        curso_grupo: curso.grupo,
+        anio,
+        trimestre,
+        fecha_observacion: fecha,
+        puntaje_total: total,
+        puntaje_maximo: max,
+        porcentaje: pct,
+        scores,
+        observaciones,
+        entrevistas: entrevistasPayload,
+        fortalezas: fortalezasFinal,
+      };
+    },
+    [docente, curso, anio, trimestre, fecha, total, max, pct, scores, observaciones, fortalezasFinal],
+  );
+
+  const persistEvaluacion = useCallback(
+    async (entrevistasState: Entrevistas) => {
+      const payload = buildPayload(entrevistasState);
+      if (!payload) return { error: "Selecciona un docente y un curso antes de guardar." };
+
+      const { id, error } = await upsertEvaluacion(evaluacionId, payload);
+      if (id) setEvaluacionId(id);
+      return { error };
+    },
+    [buildPayload, evaluacionId],
+  );
 
   const handleSave = async () => {
     setSaveMessage("");
@@ -466,43 +502,35 @@ export function GestionesApp() {
       return;
     }
 
-    const entrevistasPayload = ([1, 2] as const).map((n) => {
-      const respuestas = entrevistas[n];
-      const valores = Object.values(respuestas);
-      const promedio = valores.length ? Math.round((valores.reduce((a, b) => a + b, 0) / valores.length / 4) * 100) : 0;
-      return { estudiante: n, respuestas, promedio };
-    });
+    if (!observacionCompleta) {
+      setSaveMessage("Completa todos los criterios de observacion de clase antes de guardar.");
+      return;
+    }
 
-    const payload = {
-      docente_id: docente.id,
-      docente_nombre: docente.nombre,
-      docente_correo: docente.correo || null,
-      curso_id: curso.id,
-      curso_nombre: curso.nombre,
-      curso_grupo: curso.grupo,
-      anio,
-      trimestre,
-      fecha_observacion: fecha,
-      puntaje_total: total,
-      puntaje_maximo: max,
-      porcentaje: pct,
-      scores,
-      observaciones,
-      entrevistas: entrevistasPayload,
-      fortalezas: fortalezasFinal,
-    };
-
-    const supabase = getSupabaseClient();
-    if (!supabase) {
+    if (!isSupabaseConfigured) {
       setSaveMessage("Registro preparado localmente. Conecta Supabase para guardarlo en la nube.");
-      console.info("Evaluacion preparada", payload);
       return;
     }
 
     setSaving(true);
-    const { error } = await supabase.from("evaluaciones_docentes").insert(payload);
-    setSaveMessage(error ? error.message : "Evaluacion guardada en Supabase.");
+    const { error } = await persistEvaluacion(entrevistas);
+    setSaveMessage(error ?? "Evaluacion guardada en Supabase.");
     setSaving(false);
+  };
+
+  const handleAvanzar = async (nextStep: number) => {
+    setStep(nextStep);
+    if (docente && curso && isSupabaseConfigured) {
+      await persistEvaluacion(entrevistas);
+    }
+  };
+
+  const handleGuardarEntrevista = async (numero: 1 | 2, respuestas: Record<number, number>) => {
+    const nextEntrevistas: Entrevistas = { ...entrevistas, [numero]: respuestas };
+    setEntrevistas(nextEntrevistas);
+    if (docente && curso && isSupabaseConfigured) {
+      await persistEvaluacion(nextEntrevistas);
+    }
   };
 
   const resetWizard = () => {
@@ -514,10 +542,72 @@ export function GestionesApp() {
     setSaveMessage("");
     setStep(0);
     setFecha(localDateValue());
+    setEvaluacionId(null);
   };
 
   const handleNuevaEvaluacion = () => {
     resetWizard();
+  };
+
+  const handleEditarEvaluacion = (row: EvaluacionRow) => {
+    setSelectedDocenteId(row.docente_id);
+    setSelectedCursoId(row.curso_id);
+    setAnio(row.anio);
+    setTrimestre(row.trimestre);
+    setFecha(row.fecha_observacion);
+
+    const nextScores = initialScores();
+    for (const key of Object.keys(nextScores)) {
+      nextScores[Number(key)] = row.scores[key] ?? 0;
+    }
+    setScores(nextScores);
+
+    setObservaciones(row.observaciones ?? "");
+
+    const nextEntrevistas: Entrevistas = { 1: {}, 2: {} };
+    for (const entrevista of row.entrevistas ?? []) {
+      const respuestas: Record<number, number> = {};
+      for (const [key, value] of Object.entries(entrevista.respuestas ?? {})) {
+        respuestas[Number(key)] = value;
+      }
+      nextEntrevistas[entrevista.estudiante] = respuestas;
+    }
+    setEntrevistas(nextEntrevistas);
+
+    setFortalezas(row.fortalezas ?? []);
+    setFortalezaOtro("");
+    setEvaluacionId(row.id);
+    setSaveMessage("");
+    setStep(0);
+    setCoordinacionView("nueva");
+    setActiveArea("coordinacion");
+  };
+
+  const handleGenerarCorreoDesdeFila = (row: EvaluacionRow) => {
+    const rowImprovementAreas = summarizeImprovementAreas(row.scores);
+    const rowEntrevistaStats = summarizeEntrevistas(row.entrevistas);
+    const rowPreguntas = aggregateEntrevistaPreguntas([row]);
+
+    const { subject, body } = buildCorreoDocente({
+      docenteNombre: row.docente_nombre,
+      cursoNombre: row.curso_nombre,
+      trimestre: row.trimestre,
+      anio: row.anio,
+      pct: row.porcentaje,
+      total: row.puntaje_total,
+      max: row.puntaje_maximo,
+      fortalezas: row.fortalezas ?? [],
+      improvementAreas: rowImprovementAreas,
+      entrevistaGeneral: rowEntrevistaStats.general,
+      entrevistaDestacadas: pickEntrevistaDestacadas(rowPreguntas),
+      entrevistaMejorar: pickEntrevistaMejorar(rowPreguntas),
+      observaciones: row.observaciones ?? "",
+    });
+
+    setEmailSubject(subject);
+    setEmailBody(body);
+    setEmailCorreo(row.docente_correo);
+    setEmailModalOpen(true);
   };
 
   const handleVolverMenu = () => {
@@ -609,7 +699,11 @@ export function GestionesApp() {
 
                       {coordinacionView === "informe" ? (
                         <div className="border border-white/10 bg-slate-950/58 p-4 backdrop-blur-xl sm:p-5">
-                          <InformeDocenteView docentes={docentes} />
+                          <InformeDocenteView
+                            docentes={docentes}
+                            onEditar={handleEditarEvaluacion}
+                            onGenerarCorreo={handleGenerarCorreoDesdeFila}
+                          />
                         </div>
                       ) : null}
 
@@ -643,9 +737,12 @@ export function GestionesApp() {
                               newDocenteFemenino={newDocenteFemenino}
                               newDocenteNombre={newDocenteNombre}
                               observaciones={observaciones}
+                              observacionCompleta={observacionCompleta}
                               onAddCurso={handleCreateCurso}
                               onAddDocente={handleCreateDocente}
+                              onAvanzar={handleAvanzar}
                               onGenerateEmail={handleOpenEmailDraft}
+                              onIniciarEntrevista={setEntrevistaKiosco}
                               onNuevaEvaluacion={handleNuevaEvaluacion}
                               onPrint={handlePrintReporte}
                               printing={exportingReporte}
@@ -703,13 +800,22 @@ export function GestionesApp() {
 
       <EmailDraftModal
         body={emailBody}
-        correo={docente?.correo}
+        correo={emailCorreo}
         onClose={() => setEmailModalOpen(false)}
         open={emailModalOpen}
         setBody={setEmailBody}
         setSubject={setEmailSubject}
         subject={emailSubject}
       />
+
+      {entrevistaKiosco ? (
+        <EntrevistaKiosk
+          estudiante={entrevistaKiosco}
+          respuestasIniciales={entrevistas[entrevistaKiosco]}
+          onCerrar={() => setEntrevistaKiosco(null)}
+          onGuardar={(respuestas) => handleGuardarEntrevista(entrevistaKiosco, respuestas)}
+        />
+      ) : null}
     </>
   );
 }
@@ -866,9 +972,12 @@ function CoordinacionPanel(props: {
   newDocenteFemenino: boolean;
   newDocenteNombre: string;
   observaciones: string;
+  observacionCompleta: boolean;
   onAddCurso: () => void;
   onAddDocente: () => void;
+  onAvanzar: (nextStep: number) => void;
   onGenerateEmail: () => void;
+  onIniciarEntrevista: (numero: 1 | 2) => void;
   onNuevaEvaluacion: () => void;
   onPrint: () => void;
   onSave: () => void;
@@ -924,8 +1033,9 @@ function CoordinacionPanel(props: {
         </div>
         <button
           className="inline-flex h-11 items-center justify-center gap-2 bg-amber-300 px-4 text-sm font-bold text-slate-950 transition hover:bg-amber-200 disabled:opacity-60"
-          disabled={props.saving}
+          disabled={props.saving || !props.observacionCompleta}
           onClick={props.onSave}
+          title={props.observacionCompleta ? undefined : "Completa todos los criterios de observacion de clase para poder guardar"}
           type="button"
         >
           <Save className="h-4 w-4" />
@@ -987,7 +1097,7 @@ function CoordinacionPanel(props: {
         <button
           className="inline-flex items-center gap-2 border border-white/10 px-4 py-2 text-sm font-semibold text-slate-200 transition hover:border-white/30 disabled:opacity-40"
           disabled={!canGoNext}
-          onClick={() => setStep(Math.min(STEP_LABELS.length - 1, step + 1))}
+          onClick={() => props.onAvanzar(Math.min(STEP_LABELS.length - 1, step + 1))}
           type="button"
         >
           Siguiente
@@ -1228,56 +1338,53 @@ function StepObservacion(props: Parameters<typeof CoordinacionPanel>[0]) {
 }
 
 function StepEntrevistas(props: Parameters<typeof CoordinacionPanel>[0]) {
-  const { entrevistas, setEntrevistas, entrevistaStats } = props;
+  const { entrevistas, entrevistaStats, onIniciarEntrevista } = props;
 
   return (
     <div className="grid gap-4">
       <p className="text-sm leading-6 text-slate-300">
-        Entrevista a dos estudiantes del curso con las mismas preguntas de seleccion multiple. Las respuestas generan estadisticas automaticas.
+        Entrevista a dos estudiantes del curso, uno a la vez, con las mismas preguntas de seleccion multiple. Cada
+        entrevista se realiza en una pantalla privada: el estudiante no ve la evaluacion del docente ni las
+        respuestas del otro estudiante.
       </p>
 
-      {([1, 2] as const).map((numero) => {
-        const stat = entrevistaStats.porEstudiante.find((item) => item.estudiante === numero);
-        return (
-          <div key={numero} className="border border-white/10 bg-white/6 p-4">
-            <div className="mb-3 flex items-center justify-between gap-3">
-              <h3 className="flex items-center gap-2 text-base font-semibold text-white">
+      <div className="grid gap-4 sm:grid-cols-2">
+        {([1, 2] as const).map((numero) => {
+          const stat = entrevistaStats.porEstudiante.find((item) => item.estudiante === numero);
+          const respondidas = Object.keys(entrevistas[numero]).length;
+          const completa = respondidas === ENTREVISTA_PREGUNTAS.length;
+
+          return (
+            <div key={numero} className="border border-white/10 bg-white/6 p-4">
+              <div className="mb-3 flex items-center gap-2 text-base font-semibold text-white">
                 <Users className="h-4 w-4 text-sky-300" />
                 Estudiante {numero}
-              </h3>
-              <span className="text-xs font-semibold text-slate-400">{stat?.promedio ?? 0}% favorable</span>
+              </div>
+
+              {completa ? (
+                <p className="mb-3 inline-flex items-center gap-2 text-xs font-semibold text-emerald-200">
+                  <CheckCircle2 className="h-4 w-4" />
+                  Entrevista completada - {stat?.promedio ?? 0}% favorable
+                </p>
+              ) : respondidas > 0 ? (
+                <p className="mb-3 text-xs font-semibold text-amber-200">
+                  Entrevista incompleta ({respondidas}/{ENTREVISTA_PREGUNTAS.length})
+                </p>
+              ) : (
+                <p className="mb-3 text-xs text-slate-400">Aun no se ha realizado esta entrevista.</p>
+              )}
+
+              <button
+                className="inline-flex h-10 w-full items-center justify-center gap-2 border border-emerald-300/50 bg-emerald-300/10 px-4 text-sm font-bold text-emerald-100 transition hover:border-emerald-300"
+                onClick={() => onIniciarEntrevista(numero)}
+                type="button"
+              >
+                {completa ? "Repetir entrevista" : respondidas > 0 ? "Continuar entrevista" : "Iniciar entrevista"}
+              </button>
             </div>
-            <div className="grid gap-3">
-              {ENTREVISTA_PREGUNTAS.map((pregunta) => (
-                <div key={pregunta.id} className="border border-white/8 bg-slate-950/38 p-3">
-                  <p className="mb-2 text-sm leading-6 text-slate-200">{pregunta.texto}</p>
-                  <div className="flex flex-wrap gap-1.5">
-                    {ENTREVISTA_ESCALA.map((opcion) => (
-                      <button
-                        key={opcion.value}
-                        className={`border px-3 py-1.5 text-xs font-semibold transition ${
-                          entrevistas[numero][pregunta.id] === opcion.value
-                            ? "border-emerald-300 bg-emerald-300 text-slate-950"
-                            : "border-white/10 bg-white/8 text-slate-200 hover:border-emerald-300/50"
-                        }`}
-                        onClick={() =>
-                          setEntrevistas((current) => ({
-                            ...current,
-                            [numero]: { ...current[numero], [pregunta.id]: opcion.value },
-                          }))
-                        }
-                        type="button"
-                      >
-                        {opcion.label}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        );
-      })}
+          );
+        })}
+      </div>
     </div>
   );
 }
@@ -1344,6 +1451,7 @@ function StepResumen(props: Parameters<typeof CoordinacionPanel>[0]) {
     categoryAnalytics,
     improvementAreas,
     entrevistaStats,
+    observacionCompleta,
   } = props;
 
   const puedeGenerarCorreo = Boolean(docente && curso);
@@ -1426,8 +1534,9 @@ function StepResumen(props: Parameters<typeof CoordinacionPanel>[0]) {
       <div className="flex flex-wrap gap-3">
         <button
           className="inline-flex h-11 w-fit items-center justify-center gap-2 bg-amber-300 px-6 text-sm font-bold text-slate-950 transition hover:bg-amber-200 disabled:opacity-60"
-          disabled={saving}
+          disabled={saving || !observacionCompleta}
           onClick={onSave}
+          title={observacionCompleta ? undefined : "Completa todos los criterios de observacion de clase para poder guardar"}
           type="button"
         >
           <Save className="h-4 w-4" />
@@ -1453,6 +1562,12 @@ function StepResumen(props: Parameters<typeof CoordinacionPanel>[0]) {
           Generar correo para el docente
         </button>
       </div>
+
+      {!observacionCompleta ? (
+        <p className="border border-amber-300/30 bg-amber-300/10 p-3 text-sm text-amber-100">
+          Completa todos los criterios en &quot;Observacion de clase&quot; para poder guardar la evaluacion.
+        </p>
+      ) : null}
 
       {saveMessage ? <p className="border border-white/10 bg-white/8 p-3 text-sm text-slate-200">{saveMessage}</p> : null}
 
@@ -1485,90 +1600,6 @@ function Resumen({ label, value }: { label: string; value: string }) {
     <div>
       <dt className="text-xs uppercase text-slate-400">{label}</dt>
       <dd className="font-semibold text-white">{value}</dd>
-    </div>
-  );
-}
-
-function EmailDraftModal(props: {
-  body: string;
-  correo: string | null | undefined;
-  onClose: () => void;
-  open: boolean;
-  setBody: (value: string) => void;
-  setSubject: (value: string) => void;
-  subject: string;
-}) {
-  const [copied, setCopied] = useState(false);
-
-  if (!props.open) return null;
-
-  const handleCopy = async () => {
-    await navigator.clipboard.writeText(`Asunto: ${props.subject}\n\n${props.body}`);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
-
-  const mailtoHref = props.correo
-    ? `mailto:${encodeURIComponent(props.correo)}?subject=${encodeURIComponent(props.subject)}&body=${encodeURIComponent(props.body)}`
-    : undefined;
-  const mailtoTooLong = Boolean(mailtoHref && mailtoHref.length > 2000);
-
-  return (
-    <div className="print-hidden fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
-      <div className="max-h-[85vh] w-full max-w-2xl overflow-y-auto border border-white/10 bg-slate-950 p-5">
-        <div className="mb-4 flex items-center justify-between">
-          <h3 className="flex items-center gap-2 text-lg font-semibold text-white">
-            <Mail className="h-5 w-5 text-sky-300" />
-            Correo para el docente
-          </h3>
-          <button onClick={props.onClose} type="button">
-            <X className="h-5 w-5 text-slate-400 hover:text-white" />
-          </button>
-        </div>
-
-        <div className="grid gap-3">
-          <Field label="Asunto">
-            <input className="field" onChange={(event) => props.setSubject(event.target.value)} value={props.subject} />
-          </Field>
-          <Field label="Cuerpo del correo">
-            <textarea
-              className="field min-h-72 resize-y"
-              onChange={(event) => props.setBody(event.target.value)}
-              value={props.body}
-            />
-          </Field>
-        </div>
-
-        <div className="mt-4 flex flex-wrap items-center gap-3">
-          <button
-            className="inline-flex items-center gap-2 bg-emerald-300 px-4 py-2 text-sm font-bold text-slate-950 transition hover:bg-emerald-200"
-            onClick={handleCopy}
-            type="button"
-          >
-            {copied ? "Copiado!" : "Copiar texto"}
-          </button>
-          {mailtoHref ? (
-            <div className="flex flex-col gap-1">
-              <a
-                className={`inline-flex items-center gap-2 border border-white/10 bg-white/8 px-4 py-2 text-sm font-bold text-slate-100 transition hover:border-white/30 ${
-                  mailtoTooLong ? "pointer-events-none opacity-40" : ""
-                }`}
-                href={mailtoTooLong ? undefined : mailtoHref}
-                title={mailtoTooLong ? "El correo es muy largo para abrirlo directamente. Usa \"Copiar texto\" en su lugar." : undefined}
-              >
-                Abrir en tu correo
-              </a>
-              {mailtoTooLong ? (
-                <span className="text-xs text-amber-300">
-                  El correo es muy largo para abrirlo directamente en tu cliente de correo. Copia el texto y pegalo manualmente.
-                </span>
-              ) : null}
-            </div>
-          ) : (
-            <span className="text-xs text-slate-400">Agrega el correo del docente para habilitar &quot;Abrir en tu correo&quot;.</span>
-          )}
-        </div>
-      </div>
     </div>
   );
 }
