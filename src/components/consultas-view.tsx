@@ -6,7 +6,10 @@ import type { Trimestre } from "@/data/evaluacion";
 import {
   aggregateCategoryAnalytics,
   aggregateEntrevistaPreguntas,
+  aggregateFortalezas,
+  agruparPorCurso,
   agruparPorDocente,
+  combinarSobresalientes,
   currentTrimestre,
   deleteEvaluacion,
   type EvaluacionRow,
@@ -63,13 +66,14 @@ export function ConsultasView() {
     load();
   }, [load]);
 
-  const porDocente = useMemo(() => agruparPorDocente(rows), [rows]);
-  const docentesUnicos = porDocente.length;
+  const docentesUnicos = useMemo(() => agruparPorDocente(rows).length, [rows]);
+  const porCurso = useMemo(() => agruparPorCurso(rows), [rows]);
 
   const categoriaAgg = useMemo(() => aggregateCategoryAnalytics(rows), [rows]);
-  const categoriasDestacadas = useMemo(
-    () => [...categoriaAgg].sort((a, b) => b.percent - a.percent).slice(0, 3),
-    [categoriaAgg],
+  const fortalezaAgg = useMemo(() => aggregateFortalezas(rows), [rows]);
+  const sobresalientes = useMemo(
+    () => combinarSobresalientes(categoriaAgg, fortalezaAgg),
+    [categoriaAgg, fortalezaAgg],
   );
   const categoriasOportunidad = useMemo(
     () => [...categoriaAgg].sort((a, b) => a.percent - b.percent).slice(0, 3),
@@ -165,10 +169,10 @@ export function ConsultasView() {
               </div>
               {rows.length ? (
                 <div className="grid gap-2">
-                  {categoriasDestacadas.map((item) => (
-                    <div key={item.categoria} className="flex items-center justify-between text-sm text-slate-200">
-                      <span>{item.categoria}</span>
-                      <span className="font-semibold text-emerald-200">{item.percent}%</span>
+                  {sobresalientes.map((item) => (
+                    <div key={item.label} className="flex items-center justify-between gap-3 text-sm text-slate-200">
+                      <span className="min-w-0">{item.label}</span>
+                      <span className="shrink-0 font-semibold text-emerald-200">{item.percent}%</span>
                     </div>
                   ))}
                 </div>
@@ -185,9 +189,9 @@ export function ConsultasView() {
               {rows.length ? (
                 <div className="grid gap-2">
                   {categoriasOportunidad.map((item) => (
-                    <div key={item.categoria} className="flex items-center justify-between text-sm text-slate-200">
-                      <span>{item.categoria}</span>
-                      <span className="font-semibold text-amber-200">{item.percent}%</span>
+                    <div key={item.categoria} className="flex items-center justify-between gap-3 text-sm text-slate-200">
+                      <span className="min-w-0">{item.categoria}</span>
+                      <span className="shrink-0 font-semibold text-amber-200">{item.percent}%</span>
                     </div>
                   ))}
                 </div>
@@ -205,7 +209,7 @@ export function ConsultasView() {
                 <div className="grid gap-2">
                   {preguntasDestacadas.map((item) => (
                     <div key={item.id} className="flex items-center justify-between gap-3 text-sm text-slate-200">
-                      <span>{item.texto}</span>
+                      <span className="min-w-0">{item.texto}</span>
                       <span className="shrink-0 font-semibold text-emerald-200">{item.promedio}%</span>
                     </div>
                   ))}
@@ -224,7 +228,7 @@ export function ConsultasView() {
                 <div className="grid gap-2">
                   {preguntasOportunidad.map((item) => (
                     <div key={item.id} className="flex items-center justify-between gap-3 text-sm text-slate-200">
-                      <span>{item.texto}</span>
+                      <span className="min-w-0">{item.texto}</span>
                       <span className="shrink-0 font-semibold text-amber-200">{item.promedio}%</span>
                     </div>
                   ))}
@@ -238,17 +242,21 @@ export function ConsultasView() {
           <div className="border border-white/10 bg-white/6 p-4">
             <div className="mb-3 flex items-center gap-2 text-sm font-semibold">
               <Users className="h-4 w-4 text-sky-300" />
-              Comparativo por docente
+              Comparativo por curso
             </div>
-            {porDocente.length ? (
+            <p className="mb-3 text-xs text-slate-400">
+              Solo se muestra el curso y la nota, sin el nombre del docente, para poder compartir esta vista con el
+              equipo.
+            </p>
+            {porCurso.length ? (
               <div className="grid gap-3">
-                {porDocente.map((item) => (
-                  <div key={item.docenteId ?? item.nombre}>
-                    <div className="mb-1 flex justify-between text-xs text-slate-300">
-                      <span>
+                {porCurso.map((item) => (
+                  <div key={item.cursoId ?? item.nombre}>
+                    <div className="mb-1 flex justify-between gap-3 text-xs text-slate-300">
+                      <span className="min-w-0">
                         {item.nombre} <span className="text-slate-500">({item.count})</span>
                       </span>
-                      <span>{item.promedio}%</span>
+                      <span className="shrink-0">{item.promedio}%</span>
                     </div>
                     <div className="h-2 bg-slate-800">
                       <div className="h-full bg-sky-300" style={{ width: `${item.promedio}%` }} />
@@ -268,7 +276,6 @@ export function ConsultasView() {
                 <table className="w-full text-left text-sm">
                   <thead>
                     <tr className="text-xs uppercase text-slate-400">
-                      <th className="pb-2 pr-3">Docente</th>
                       <th className="pb-2 pr-3">Curso</th>
                       <th className="pb-2 pr-3">Trimestre</th>
                       <th className="pb-2 pr-3">Fecha</th>
@@ -279,7 +286,6 @@ export function ConsultasView() {
                   <tbody>
                     {rows.map((row) => (
                       <tr key={row.id} className="border-t border-white/8">
-                        <td className="py-2 pr-3">{row.docente_nombre}</td>
                         <td className="py-2 pr-3">{row.curso_nombre}</td>
                         <td className="py-2 pr-3">T{row.trimestre}</td>
                         <td className="py-2 pr-3">{row.fecha_observacion}</td>

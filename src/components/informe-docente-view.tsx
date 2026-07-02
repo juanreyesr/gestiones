@@ -1,9 +1,14 @@
 "use client";
 
-import { GraduationCap, Printer, Trash2 } from "lucide-react";
+import { GraduationCap, Printer, Star, Trash2, Users } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import type { DocenteRow } from "@/data/evaluacion";
+import type { DocenteRow, Trimestre } from "@/data/evaluacion";
 import {
+  aggregateCategoryAnalytics,
+  aggregateEntrevistaPreguntas,
+  aggregateFortalezas,
+  combinarSobresalientes,
+  currentTrimestre,
   deleteEvaluacion,
   type EvaluacionRow,
   fetchEvaluacionesPorDocente,
@@ -14,6 +19,16 @@ import {
 import { exportInformeDocenteToPdf, exportReporteToPdf } from "@/lib/pdf";
 import { ConfirmDialog } from "./confirm-dialog";
 import { EvaluacionDetalleModal } from "./evaluacion-detalle-modal";
+
+type PeriodoValor = Trimestre | "todos" | "historico";
+
+const PERIODOS: Array<{ label: string; value: PeriodoValor }> = [
+  { label: "Trimestre 1", value: 1 },
+  { label: "Trimestre 2", value: 2 },
+  { label: "Trimestre 3", value: 3 },
+  { label: "Todo el año", value: "todos" },
+  { label: "Todo el historial", value: "historico" },
+];
 
 function agruparPorAnio(rows: EvaluacionRow[]) {
   const map = new Map<number, EvaluacionRow[]>();
@@ -29,7 +44,7 @@ function agruparPorAnio(rows: EvaluacionRow[]) {
 
 export function InformeDocenteView({ docentes }: { docentes: DocenteRow[] }) {
   const [docenteId, setDocenteId] = useState<string>("");
-  const [rows, setRows] = useState<EvaluacionRow[]>([]);
+  const [allRows, setAllRows] = useState<EvaluacionRow[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [viewRow, setViewRow] = useState<EvaluacionRow | null>(null);
@@ -37,12 +52,15 @@ export function InformeDocenteView({ docentes }: { docentes: DocenteRow[] }) {
   const [deleting, setDeleting] = useState(false);
   const [exportingResumen, setExportingResumen] = useState(false);
   const [exportingFila, setExportingFila] = useState(false);
+  const [anio, setAnio] = useState(new Date().getFullYear());
+  const [periodo, setPeriodo] = useState<PeriodoValor>(currentTrimestre());
 
   const docente = docentes.find((item) => item.id === docenteId);
+  const esHistorico = periodo === "historico";
 
   const load = useCallback(async (id: string) => {
     if (!id) {
-      setRows([]);
+      setAllRows([]);
       return;
     }
     setLoading(true);
@@ -53,7 +71,7 @@ export function InformeDocenteView({ docentes }: { docentes: DocenteRow[] }) {
       setLoading(false);
       return;
     }
-    setRows(data);
+    setAllRows(data);
     setLoading(false);
   }, []);
 
@@ -69,7 +87,33 @@ export function InformeDocenteView({ docentes }: { docentes: DocenteRow[] }) {
     load(docenteId);
   }, [docenteId, load]);
 
+  const rows = useMemo(() => {
+    if (esHistorico) return allRows;
+    return allRows.filter((row) => row.anio === anio && (periodo === "todos" || row.trimestre === periodo));
+  }, [allRows, anio, periodo, esHistorico]);
+
   const porAnio = useMemo(() => agruparPorAnio(rows), [rows]);
+
+  const categoriaAgg = useMemo(() => aggregateCategoryAnalytics(rows), [rows]);
+  const fortalezaAgg = useMemo(() => aggregateFortalezas(rows), [rows]);
+  const sobresalientes = useMemo(
+    () => combinarSobresalientes(categoriaAgg, fortalezaAgg),
+    [categoriaAgg, fortalezaAgg],
+  );
+  const categoriasOportunidad = useMemo(
+    () => [...categoriaAgg].sort((a, b) => a.percent - b.percent).slice(0, 3),
+    [categoriaAgg],
+  );
+
+  const preguntasAgg = useMemo(() => aggregateEntrevistaPreguntas(rows), [rows]);
+  const preguntasDestacadas = useMemo(
+    () => [...preguntasAgg].sort((a, b) => (b.promedio ?? 0) - (a.promedio ?? 0)).slice(0, 2),
+    [preguntasAgg],
+  );
+  const preguntasOportunidad = useMemo(
+    () => [...preguntasAgg].sort((a, b) => (a.promedio ?? 0) - (b.promedio ?? 0)).slice(0, 2),
+    [preguntasAgg],
+  );
 
   const handlePrintResumen = async () => {
     if (!docente || !rows.length || exportingResumen) return;
@@ -81,6 +125,10 @@ export function InformeDocenteView({ docentes }: { docentes: DocenteRow[] }) {
         porAnio,
         promedioHistorico: promedioGeneral(rows),
         promedioEntrevistas: promedioEntrevistas(rows),
+        sobresalientes,
+        categoriasOportunidad,
+        preguntasDestacadas,
+        preguntasOportunidad,
       },
       `informe-${docente.nombre}.pdf`,
     );
@@ -105,7 +153,7 @@ export function InformeDocenteView({ docentes }: { docentes: DocenteRow[] }) {
       setDeleteTarget(null);
       return;
     }
-    setRows((current) => current.filter((item) => item.id !== deleteTarget.id));
+    setAllRows((current) => current.filter((item) => item.id !== deleteTarget.id));
     setDeleteTarget(null);
   };
 
@@ -143,6 +191,30 @@ export function InformeDocenteView({ docentes }: { docentes: DocenteRow[] }) {
         </select>
       </Field>
 
+      <div className="flex flex-wrap items-center gap-2">
+        {PERIODOS.map((item) => (
+          <button
+            key={item.label}
+            className={`border px-3 py-1.5 text-xs font-semibold transition ${
+              periodo === item.value
+                ? "border-emerald-300/70 bg-emerald-300/14 text-white"
+                : "border-white/10 bg-white/8 text-slate-300 hover:border-white/30"
+            }`}
+            onClick={() => setPeriodo(item.value)}
+            type="button"
+          >
+            {item.label}
+          </button>
+        ))}
+        <input
+          className="field w-28 disabled:opacity-40"
+          disabled={esHistorico}
+          onChange={(event) => setAnio(Number(event.target.value))}
+          type="number"
+          value={anio}
+        />
+      </div>
+
       {error ? <p className="border border-red-400/30 bg-red-400/10 p-3 text-sm text-red-200">{error}</p> : null}
       {loading ? <p className="text-sm text-slate-300">Cargando historial...</p> : null}
 
@@ -154,17 +226,95 @@ export function InformeDocenteView({ docentes }: { docentes: DocenteRow[] }) {
             <SummaryCard title="Entrevistas promedio" value={`${promedioEntrevistas(rows)}%`} />
           </div>
 
+          <div className="grid gap-4 md:grid-cols-2">
+            <div className="border border-white/10 bg-white/6 p-4">
+              <div className="mb-3 flex items-center gap-2 text-sm font-semibold">
+                <Star className="h-4 w-4 text-emerald-300" />
+                Areas mas sobresalientes
+              </div>
+              {rows.length ? (
+                <div className="grid gap-2">
+                  {sobresalientes.map((item) => (
+                    <div key={item.label} className="flex items-center justify-between gap-3 text-sm text-slate-200">
+                      <span className="min-w-0">{item.label}</span>
+                      <span className="shrink-0 font-semibold text-emerald-200">{item.percent}%</span>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-sm text-slate-400">Sin datos para este periodo.</p>
+              )}
+            </div>
+
+            <div className="border border-white/10 bg-white/6 p-4">
+              <div className="mb-3 flex items-center gap-2 text-sm font-semibold">
+                <Star className="h-4 w-4 text-amber-300" />
+                Areas de oportunidad
+              </div>
+              {rows.length ? (
+                <div className="grid gap-2">
+                  {categoriasOportunidad.map((item) => (
+                    <div key={item.categoria} className="flex items-center justify-between gap-3 text-sm text-slate-200">
+                      <span className="min-w-0">{item.categoria}</span>
+                      <span className="shrink-0 font-semibold text-amber-200">{item.percent}%</span>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-sm text-slate-400">Sin datos para este periodo.</p>
+              )}
+            </div>
+
+            <div className="border border-white/10 bg-white/6 p-4">
+              <div className="mb-3 flex items-center gap-2 text-sm font-semibold">
+                <Users className="h-4 w-4 text-emerald-300" />
+                Mas valorado segun estudiantes
+              </div>
+              {preguntasDestacadas.length ? (
+                <div className="grid gap-2">
+                  {preguntasDestacadas.map((item) => (
+                    <div key={item.id} className="flex items-center justify-between gap-3 text-sm text-slate-200">
+                      <span className="min-w-0">{item.texto}</span>
+                      <span className="shrink-0 font-semibold text-emerald-200">{item.promedio}%</span>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-sm text-slate-400">Sin entrevistas registradas en este periodo.</p>
+              )}
+            </div>
+
+            <div className="border border-white/10 bg-white/6 p-4">
+              <div className="mb-3 flex items-center gap-2 text-sm font-semibold">
+                <Users className="h-4 w-4 text-amber-300" />
+                A reforzar segun estudiantes
+              </div>
+              {preguntasOportunidad.length ? (
+                <div className="grid gap-2">
+                  {preguntasOportunidad.map((item) => (
+                    <div key={item.id} className="flex items-center justify-between gap-3 text-sm text-slate-200">
+                      <span className="min-w-0">{item.texto}</span>
+                      <span className="shrink-0 font-semibold text-amber-200">{item.promedio}%</span>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-sm text-slate-400">Sin entrevistas registradas en este periodo.</p>
+              )}
+            </div>
+          </div>
+
           <div className="border border-white/10 bg-white/6 p-4">
             <div className="mb-3 text-sm font-semibold">Rendimiento por año</div>
             {porAnio.length ? (
               <div className="grid gap-3">
                 {porAnio.map((item) => (
                   <div key={item.anio}>
-                    <div className="mb-1 flex justify-between text-xs text-slate-300">
-                      <span>
+                    <div className="mb-1 flex justify-between gap-3 text-xs text-slate-300">
+                      <span className="min-w-0">
                         {item.anio} <span className="text-slate-500">({item.count} evaluaciones)</span>
                       </span>
-                      <span>{item.promedio}%</span>
+                      <span className="shrink-0">{item.promedio}%</span>
                     </div>
                     <div className="h-2 bg-slate-800">
                       <div className="h-full bg-emerald-300" style={{ width: `${item.promedio}%` }} />

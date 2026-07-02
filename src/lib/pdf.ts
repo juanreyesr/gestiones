@@ -141,10 +141,24 @@ export function exportInformeDocenteToPdf(
     porAnio: Array<{ anio: number; count: number; promedio: number }>;
     promedioHistorico: number;
     promedioEntrevistas: number;
+    sobresalientes: Array<{ label: string; percent: number }>;
+    categoriasOportunidad: Array<{ categoria: string; percent: number }>;
+    preguntasDestacadas: Array<{ id: number; texto: string; promedio: number | null }>;
+    preguntasOportunidad: Array<{ id: number; texto: string; promedio: number | null }>;
   },
   filename: string,
 ) {
-  const { docenteNombre, rows, porAnio, promedioHistorico, promedioEntrevistas } = input;
+  const {
+    docenteNombre,
+    rows,
+    porAnio,
+    promedioHistorico,
+    promedioEntrevistas,
+    sobresalientes,
+    categoriasOportunidad,
+    preguntasDestacadas,
+    preguntasOportunidad,
+  } = input;
   const w = new PdfWriter();
 
   w.text("Informe de docente", { size: 20, bold: true });
@@ -158,6 +172,38 @@ export function exportInformeDocenteToPdf(
   w.text(`Promedio histórico: ${promedioHistorico}%`, { size: 10 });
   w.text(`Entrevistas promedio: ${promedioEntrevistas}%`, { size: 10 });
   w.spacer(6);
+
+  w.heading("Áreas más sobresalientes");
+  if (sobresalientes.length) {
+    for (const item of sobresalientes) w.text(`•  ${item.label}   ${item.percent}%`, { size: 10 });
+  } else {
+    w.text("Sin datos para este periodo.", { size: 10 });
+  }
+  w.spacer(4);
+
+  w.heading("Áreas de oportunidad");
+  if (categoriasOportunidad.length) {
+    for (const item of categoriasOportunidad) w.text(`•  ${item.categoria}   ${item.percent}%`, { size: 10 });
+  } else {
+    w.text("Sin datos para este periodo.", { size: 10 });
+  }
+  w.spacer(4);
+
+  w.heading("Más valorado según estudiantes");
+  if (preguntasDestacadas.length) {
+    for (const item of preguntasDestacadas) w.text(`•  ${item.texto}   ${item.promedio}%`, { size: 10 });
+  } else {
+    w.text("Sin entrevistas registradas en este periodo.", { size: 10 });
+  }
+  w.spacer(4);
+
+  w.heading("A reforzar según estudiantes");
+  if (preguntasOportunidad.length) {
+    for (const item of preguntasOportunidad) w.text(`•  ${item.texto}   ${item.promedio}%`, { size: 10 });
+  } else {
+    w.text("Sin entrevistas registradas en este periodo.", { size: 10 });
+  }
+  w.spacer(4);
 
   w.heading("Rendimiento por año");
   for (const item of porAnio) {

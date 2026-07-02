@@ -168,6 +168,46 @@ export function agruparPorDocente(rows: EvaluacionRow[]) {
     .sort((a, b) => b.promedio - a.promedio);
 }
 
+export function agruparPorCurso(rows: EvaluacionRow[]) {
+  const map = new Map<string, { cursoId: string | null; nombre: string; count: number; sumaPct: number }>();
+  for (const row of rows) {
+    const key = row.curso_id ?? row.curso_nombre;
+    const entry = map.get(key) ?? { cursoId: row.curso_id, nombre: row.curso_nombre, count: 0, sumaPct: 0 };
+    entry.count += 1;
+    entry.sumaPct += row.porcentaje;
+    map.set(key, entry);
+  }
+  return Array.from(map.values())
+    .map((entry) => ({ ...entry, promedio: Math.round(entry.sumaPct / entry.count) }))
+    .sort((a, b) => b.promedio - a.promedio);
+}
+
+export function aggregateFortalezas(rows: EvaluacionRow[]) {
+  const sums = new Map<string, number>();
+  for (const row of rows) {
+    for (const texto of row.fortalezas ?? []) {
+      sums.set(texto, (sums.get(texto) ?? 0) + 1);
+    }
+  }
+  if (!rows.length) return [];
+  return Array.from(sums.entries())
+    .map(([texto, count]) => ({ texto, percent: Math.round((count / rows.length) * 100) }))
+    .sort((a, b) => b.percent - a.percent);
+}
+
+export function combinarSobresalientes(
+  categorias: Array<{ categoria: string; percent: number }>,
+  fortalezas: Array<{ texto: string; percent: number }>,
+  limit = 3,
+) {
+  return [
+    ...categorias.map((item) => ({ label: item.categoria, percent: item.percent })),
+    ...fortalezas.map((item) => ({ label: item.texto, percent: item.percent })),
+  ]
+    .sort((a, b) => b.percent - a.percent)
+    .slice(0, limit);
+}
+
 export function rowToReporteData(row: EvaluacionRow): ReporteData {
   return {
     docenteNombre: row.docente_nombre,
