@@ -185,7 +185,8 @@ export function agruparPorCurso(rows: EvaluacionRow[]) {
 export function aggregateFortalezas(rows: EvaluacionRow[]) {
   const sums = new Map<string, number>();
   for (const row of rows) {
-    for (const texto of row.fortalezas ?? []) {
+    const uniqueFortalezas = new Set(row.fortalezas ?? []);
+    for (const texto of uniqueFortalezas) {
       sums.set(texto, (sums.get(texto) ?? 0) + 1);
     }
   }

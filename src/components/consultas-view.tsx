@@ -169,8 +169,11 @@ export function ConsultasView() {
               </div>
               {rows.length ? (
                 <div className="grid gap-2">
-                  {sobresalientes.map((item) => (
-                    <div key={item.label} className="flex items-center justify-between gap-3 text-sm text-slate-200">
+                  {sobresalientes.map((item, index) => (
+                    <div
+                      key={`${item.label}-${index}`}
+                      className="flex items-center justify-between gap-3 text-sm text-slate-200"
+                    >
                       <span className="min-w-0">{item.label}</span>
                       <span className="shrink-0 font-semibold text-emerald-200">{item.percent}%</span>
                     </div>

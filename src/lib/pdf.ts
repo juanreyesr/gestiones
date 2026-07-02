@@ -167,9 +167,9 @@ export function exportInformeDocenteToPdf(
   w.text(`Docente: ${docenteNombre}`, { size: 12, bold: true });
   w.spacer(6);
 
-  w.heading("Resumen histórico");
+  w.heading("Resumen del período");
   w.text(`Evaluaciones registradas: ${rows.length}`, { size: 10 });
-  w.text(`Promedio histórico: ${promedioHistorico}%`, { size: 10 });
+  w.text(`Promedio del período: ${promedioHistorico}%`, { size: 10 });
   w.text(`Entrevistas promedio: ${promedioEntrevistas}%`, { size: 10 });
   w.spacer(6);
 

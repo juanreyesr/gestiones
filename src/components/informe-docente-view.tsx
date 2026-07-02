@@ -222,7 +222,7 @@ export function InformeDocenteView({ docentes }: { docentes: DocenteRow[] }) {
         <>
           <div className="grid gap-4 sm:grid-cols-3">
             <SummaryCard title="Evaluaciones registradas" value={`${rows.length}`} />
-            <SummaryCard title="Promedio historico" value={`${promedioGeneral(rows)}%`} />
+            <SummaryCard title="Promedio del periodo" value={`${promedioGeneral(rows)}%`} />
             <SummaryCard title="Entrevistas promedio" value={`${promedioEntrevistas(rows)}%`} />
           </div>
 
@@ -234,8 +234,11 @@ export function InformeDocenteView({ docentes }: { docentes: DocenteRow[] }) {
               </div>
               {rows.length ? (
                 <div className="grid gap-2">
-                  {sobresalientes.map((item) => (
-                    <div key={item.label} className="flex items-center justify-between gap-3 text-sm text-slate-200">
+                  {sobresalientes.map((item, index) => (
+                    <div
+                      key={`${item.label}-${index}`}
+                      className="flex items-center justify-between gap-3 text-sm text-slate-200"
+                    >
                       <span className="min-w-0">{item.label}</span>
                       <span className="shrink-0 font-semibold text-emerald-200">{item.percent}%</span>
                     </div>
