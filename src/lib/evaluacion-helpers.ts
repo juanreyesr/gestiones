@@ -90,6 +90,38 @@ export async function deleteEvaluacion(id: string) {
   return { error: error?.message ?? null };
 }
 
+export type EvaluacionPayload = {
+  docente_id: string;
+  docente_nombre: string;
+  docente_correo: string | null;
+  curso_id: string;
+  curso_nombre: string;
+  curso_grupo: string | null;
+  anio: number;
+  trimestre: Trimestre;
+  fecha_observacion: string;
+  puntaje_total: number;
+  puntaje_maximo: number;
+  porcentaje: number;
+  scores: Record<string, number>;
+  observaciones: string;
+  entrevistas: EntrevistaRecord[];
+  fortalezas: string[];
+};
+
+export async function upsertEvaluacion(id: string | null, payload: EvaluacionPayload) {
+  const supabase = getSupabaseClient();
+  if (!supabase) return { id: null as string | null, error: "Faltan las variables de Supabase." };
+
+  if (id) {
+    const { error } = await supabase.from("evaluaciones_docentes").update(payload).eq("id", id);
+    return { id, error: error?.message ?? null };
+  }
+
+  const { data, error } = await supabase.from("evaluaciones_docentes").insert(payload).select("id").single();
+  return { id: (data?.id as string | undefined) ?? null, error: error?.message ?? null };
+}
+
 export async function fetchEvaluacionesPorDocente(docenteId: string) {
   const supabase = getSupabaseClient();
   if (!supabase) return { data: [] as EvaluacionRow[], error: "Faltan las variables de Supabase." };
@@ -152,6 +184,20 @@ export function aggregateEntrevistaPreguntas(rows: EvaluacionRow[]) {
     const promedio = entry && entry.count ? Math.round((entry.total / entry.count / 4) * 100) : null;
     return { ...pregunta, promedio, respondidas: entry?.count ?? 0 };
   }).filter((item) => item.respondidas > 0);
+}
+
+export function entrevistaDestacadas<T extends { promedio: number | null }>(preguntas: T[]): T[] {
+  return [...preguntas]
+    .filter((item) => (item.promedio ?? 0) >= 75)
+    .sort((a, b) => (b.promedio ?? 0) - (a.promedio ?? 0))
+    .slice(0, 2);
+}
+
+export function entrevistaMejorar<T extends { promedio: number | null }>(preguntas: T[]): T[] {
+  return [...preguntas]
+    .filter((item) => (item.promedio ?? 0) < 75)
+    .sort((a, b) => (a.promedio ?? 0) - (b.promedio ?? 0))
+    .slice(0, 2);
 }
 
 export function agruparPorDocente(rows: EvaluacionRow[]) {
