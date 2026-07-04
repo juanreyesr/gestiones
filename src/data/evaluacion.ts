@@ -1,4 +1,25 @@
 export type Trimestre = 1 | 2 | 3;
+export type AnioCarrera = 1 | 2 | 3 | 4 | 5;
+
+export type CarreraRow = {
+  id: string;
+  nombre: string;
+};
+
+export const ANIOS_CARRERA: Array<{ value: AnioCarrera; label: string }> = [
+  { value: 1, label: "Primer año" },
+  { value: 2, label: "Segundo año" },
+  { value: 3, label: "Tercer año" },
+  { value: 4, label: "Cuarto año" },
+  { value: 5, label: "Quinto año" },
+];
+
+export const HORARIOS_FIJOS: string[] = [
+  "Sábado 07:00 a 09:00 horas",
+  "Sábado 09:30 a 11:30 horas",
+  "Sábado 11:45 a 13:45 horas",
+  "Sábado 14:00 a 16:00 horas",
+];
 
 export type CursoRow = {
   id: string;
