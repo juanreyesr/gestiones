@@ -13,6 +13,7 @@ import {
   Church,
   GraduationCap,
   HeartPulse,
+  KeyRound,
   ListChecks,
   LockKeyhole,
   LogOut,
@@ -51,8 +52,10 @@ import {
   upsertEvaluacion,
 } from "@/lib/evaluacion-helpers";
 import { buildCorreoDocente } from "@/lib/email-draft";
+import { fetchKioscoCodigo, guardarKioscoCodigo } from "@/lib/kiosco-config";
 import { exportReporteToPdf } from "@/lib/pdf";
 import { getSupabaseClient, isSupabaseConfigured } from "@/lib/supabase";
+import { CodigoKioscoModal } from "./codigo-kiosco-modal";
 import { ConsultasView } from "./consultas-view";
 import { ControlCursosView } from "./control-cursos-view";
 import { EmailDraftModal } from "./email-draft-modal";
@@ -158,6 +161,11 @@ export function GestionesApp() {
   const [entrevistaKiosco, setEntrevistaKiosco] = useState<1 | 2 | null>(null);
   const evaluacionIdRef = useRef<string | null>(null);
   const pendingSaveRef = useRef<Promise<{ error: string | null }> | null>(null);
+  const kioscoCodigoIdRef = useRef<string | null>(null);
+  const [kioscoCodigo, setKioscoCodigo] = useState("1234");
+  const [cambiarCodigoOpen, setCambiarCodigoOpen] = useState(false);
+  const [savingCodigo, setSavingCodigo] = useState(false);
+  const [codigoError, setCodigoError] = useState("");
 
   const docente = docentes.find((item) => item.id === selectedDocenteId);
   const curso = docente?.cursos.find((item) => item.id === selectedCursoId);
@@ -219,12 +227,21 @@ export function GestionesApp() {
     return () => subscription.subscription.unsubscribe();
   }, []);
 
+  const loadKioscoCodigo = useCallback(async () => {
+    const { id, codigo, error } = await fetchKioscoCodigo();
+    if (!error) {
+      kioscoCodigoIdRef.current = id;
+      setKioscoCodigo(codigo);
+    }
+  }, []);
+
   useEffect(() => {
     if (session) {
       // eslint-disable-next-line react-hooks/set-state-in-effect -- syncs docentes with Supabase whenever the session changes
       fetchDocentes();
+      loadKioscoCodigo();
     }
-  }, [session, fetchDocentes]);
+  }, [session, fetchDocentes, loadKioscoCodigo]);
 
   const handleLogin = async () => {
     setAuthMessage("");
@@ -646,6 +663,20 @@ export function GestionesApp() {
     setActiveArea(null);
   };
 
+  const handleGuardarCodigo = async (nuevoCodigo: string) => {
+    setSavingCodigo(true);
+    setCodigoError("");
+    const { id, error } = await guardarKioscoCodigo(kioscoCodigoIdRef.current, nuevoCodigo);
+    setSavingCodigo(false);
+    if (error) {
+      setCodigoError(error);
+      return;
+    }
+    kioscoCodigoIdRef.current = id;
+    setKioscoCodigo(nuevoCodigo);
+    setCambiarCodigoOpen(false);
+  };
+
   if (!session) {
     return (
       <LoginGate
@@ -695,7 +726,15 @@ export function GestionesApp() {
                   </button>
                 </div>
 
-                <p className="text-sm text-emerald-200">Sesion activa: {session.user.email}</p>
+                <p className="text-sm text-emerald-200">M.A. Juan J. Reyes</p>
+                <button
+                  className="mt-2 inline-flex items-center gap-2 text-xs font-semibold text-slate-300 hover:text-white"
+                  onClick={() => setCambiarCodigoOpen(true)}
+                  type="button"
+                >
+                  <KeyRound className="h-3.5 w-3.5" />
+                  Cambiar codigo de modo kiosco
+                </button>
               </div>
             </header>
 
@@ -791,6 +830,7 @@ export function GestionesApp() {
                               onGenerateEmail={handleOpenEmailDraft}
                               onIniciarEntrevista={setEntrevistaKiosco}
                               onNuevaEvaluacion={handleNuevaEvaluacion}
+                              onNuevaEvaluacionCompleta={handleNuevaEvaluacionTab}
                               onPrint={handlePrintReporte}
                               printing={exportingReporte}
                               onSave={handleSave}
@@ -857,12 +897,24 @@ export function GestionesApp() {
 
       {entrevistaKiosco ? (
         <EntrevistaKiosk
+          codigoDesbloqueo={kioscoCodigo}
           estudiante={entrevistaKiosco}
           respuestasIniciales={entrevistas[entrevistaKiosco]}
           onCerrar={() => setEntrevistaKiosco(null)}
           onGuardar={(respuestas) => handleGuardarEntrevista(entrevistaKiosco, respuestas)}
         />
       ) : null}
+
+      <CodigoKioscoModal
+        error={codigoError}
+        onClose={() => {
+          setCambiarCodigoOpen(false);
+          setCodigoError("");
+        }}
+        onGuardar={handleGuardarCodigo}
+        open={cambiarCodigoOpen}
+        saving={savingCodigo}
+      />
     </>
   );
 }
@@ -1027,6 +1079,7 @@ function CoordinacionPanel(props: {
   onGenerateEmail: () => void;
   onIniciarEntrevista: (numero: 1 | 2) => void;
   onNuevaEvaluacion: () => void;
+  onNuevaEvaluacionCompleta: () => void;
   onPrint: () => void;
   onSave: () => void;
   onVolverMenu: () => void;
@@ -1495,6 +1548,7 @@ function StepResumen(props: Parameters<typeof CoordinacionPanel>[0]) {
     onPrint,
     onGenerateEmail,
     onNuevaEvaluacion,
+    onNuevaEvaluacionCompleta,
     onVolverMenu,
     printing,
     saving,
@@ -1630,6 +1684,14 @@ function StepResumen(props: Parameters<typeof CoordinacionPanel>[0]) {
           >
             <Plus className="h-4 w-4" />
             Nueva evaluacion (mismo docente y curso)
+          </button>
+          <button
+            className="inline-flex h-11 w-fit items-center justify-center gap-2 border border-emerald-300/50 bg-white/8 px-6 text-sm font-bold text-slate-100 transition hover:border-emerald-300/70"
+            onClick={onNuevaEvaluacionCompleta}
+            type="button"
+          >
+            <Plus className="h-4 w-4" />
+            Comenzar otra evaluacion (elegir docente)
           </button>
           <button
             className="inline-flex h-11 w-fit items-center justify-center gap-2 border border-white/10 bg-white/8 px-6 text-sm font-bold text-slate-100 transition hover:border-white/30"
