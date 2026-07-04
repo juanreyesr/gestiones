@@ -5,6 +5,7 @@ import {
   BarChart3,
   BookOpenCheck,
   Building2,
+  CalendarClock,
   CalendarDays,
   CheckCircle2,
   ChevronLeft,
@@ -12,6 +13,7 @@ import {
   Church,
   GraduationCap,
   HeartPulse,
+  KeyRound,
   ListChecks,
   LockKeyhole,
   LogOut,
@@ -50,9 +52,12 @@ import {
   upsertEvaluacion,
 } from "@/lib/evaluacion-helpers";
 import { buildCorreoDocente } from "@/lib/email-draft";
+import { fetchKioscoCodigo, guardarKioscoCodigo } from "@/lib/kiosco-config";
 import { exportReporteToPdf } from "@/lib/pdf";
 import { getSupabaseClient, isSupabaseConfigured } from "@/lib/supabase";
+import { CodigoKioscoModal } from "./codigo-kiosco-modal";
 import { ConsultasView } from "./consultas-view";
+import { ControlCursosView } from "./control-cursos-view";
 import { EmailDraftModal } from "./email-draft-modal";
 import { EntrevistaKiosk } from "./entrevista-kiosk";
 import { InformeDocenteView } from "./informe-docente-view";
@@ -64,7 +69,7 @@ const ALLOWED_EMAIL = "lic.juanreyesr@gmail.com";
 type Scores = Record<number, number>;
 type AreaId = (typeof AREAS)[number]["id"];
 type Entrevistas = Record<1 | 2, Record<number, number>>;
-type CoordinacionView = "resumen" | "nueva" | "informe";
+type CoordinacionView = "resumen" | "nueva" | "informe" | "control";
 
 const areaIcons: Record<AreaId, React.ComponentType<{ className?: string }>> = {
   iglesia: Church,
@@ -156,9 +161,14 @@ export function GestionesApp() {
   const [entrevistaKiosco, setEntrevistaKiosco] = useState<1 | 2 | null>(null);
   const evaluacionIdRef = useRef<string | null>(null);
   const pendingSaveRef = useRef<Promise<{ error: string | null }> | null>(null);
+  const kioscoCodigoIdRef = useRef<string | null>(null);
+  const [kioscoCodigo, setKioscoCodigo] = useState("1234");
+  const [cambiarCodigoOpen, setCambiarCodigoOpen] = useState(false);
+  const [savingCodigo, setSavingCodigo] = useState(false);
+  const [codigoError, setCodigoError] = useState("");
 
-  const docente = docentes.find((item) => item.id === selectedDocenteId) ?? docentes[0];
-  const curso = docente?.cursos.find((item) => item.id === selectedCursoId) ?? docente?.cursos[0];
+  const docente = docentes.find((item) => item.id === selectedDocenteId);
+  const curso = docente?.cursos.find((item) => item.id === selectedCursoId);
   const totalItems = Object.values(scores).length;
   const completed = Object.values(scores).filter(Boolean).length;
   const observacionCompleta = totalItems > 0 && completed === totalItems;
@@ -217,12 +227,21 @@ export function GestionesApp() {
     return () => subscription.subscription.unsubscribe();
   }, []);
 
+  const loadKioscoCodigo = useCallback(async () => {
+    const { id, codigo, error } = await fetchKioscoCodigo();
+    if (!error) {
+      kioscoCodigoIdRef.current = id;
+      setKioscoCodigo(codigo);
+    }
+  }, []);
+
   useEffect(() => {
     if (session) {
       // eslint-disable-next-line react-hooks/set-state-in-effect -- syncs docentes with Supabase whenever the session changes
       fetchDocentes();
+      loadKioscoCodigo();
     }
-  }, [session, fetchDocentes]);
+  }, [session, fetchDocentes, loadKioscoCodigo]);
 
   const handleLogin = async () => {
     setAuthMessage("");
@@ -551,7 +570,11 @@ export function GestionesApp() {
     }
   };
 
-  const resetWizard = () => {
+  const resetWizard = (options: { keepDocenteCurso?: boolean } = {}) => {
+    if (!options.keepDocenteCurso) {
+      setSelectedDocenteId(null);
+      setSelectedCursoId(null);
+    }
     setScores(initialScores());
     setEntrevistas({ 1: {}, 2: {} });
     setFortalezas([]);
@@ -564,7 +587,12 @@ export function GestionesApp() {
   };
 
   const handleNuevaEvaluacion = () => {
+    resetWizard({ keepDocenteCurso: true });
+  };
+
+  const handleNuevaEvaluacionTab = () => {
     resetWizard();
+    setCoordinacionView("nueva");
   };
 
   const handleEditarEvaluacion = (row: EvaluacionRow) => {
@@ -635,6 +663,20 @@ export function GestionesApp() {
     setActiveArea(null);
   };
 
+  const handleGuardarCodigo = async (nuevoCodigo: string) => {
+    setSavingCodigo(true);
+    setCodigoError("");
+    const { id, error } = await guardarKioscoCodigo(kioscoCodigoIdRef.current, nuevoCodigo);
+    setSavingCodigo(false);
+    if (error) {
+      setCodigoError(error);
+      return;
+    }
+    kioscoCodigoIdRef.current = id;
+    setKioscoCodigo(nuevoCodigo);
+    setCambiarCodigoOpen(false);
+  };
+
   if (!session) {
     return (
       <LoginGate
@@ -652,7 +694,7 @@ export function GestionesApp() {
   return (
     <>
       <main className="min-h-screen bg-[#08111f] text-slate-50 print-hidden">
-        <section className="relative min-h-screen overflow-x-hidden">
+        <section className="relative min-h-screen overflow-x-clip">
           <OrbitScene />
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_25%_15%,rgba(74,222,128,0.24),transparent_28%),linear-gradient(135deg,rgba(8,17,31,0.78),rgba(8,17,31,0.96)_58%,rgba(15,23,42,0.9))]" />
 
@@ -684,7 +726,15 @@ export function GestionesApp() {
                   </button>
                 </div>
 
-                <p className="text-sm text-emerald-200">Sesion activa: {session.user.email}</p>
+                <p className="text-sm text-emerald-200">M.A. Juan J. Reyes</p>
+                <button
+                  className="mt-2 inline-flex items-center gap-2 text-xs font-semibold text-slate-300 hover:text-white"
+                  onClick={() => setCambiarCodigoOpen(true)}
+                  type="button"
+                >
+                  <KeyRound className="h-3.5 w-3.5" />
+                  Cambiar codigo de modo kiosco
+                </button>
               </div>
             </header>
 
@@ -708,7 +758,18 @@ export function GestionesApp() {
                     </div>
                   ) : (
                     <div className="grid gap-5">
-                      <CoordinacionTabs onChange={setCoordinacionView} value={coordinacionView} />
+                      <CoordinacionTabs
+                        onChange={(value) => {
+                          if (value === "nueva") {
+                            if (coordinacionView !== "nueva" || evaluacionIdRef.current !== null) {
+                              handleNuevaEvaluacionTab();
+                            }
+                            return;
+                          }
+                          setCoordinacionView(value);
+                        }}
+                        value={coordinacionView}
+                      />
 
                       {coordinacionView === "resumen" ? (
                         <div className="border border-white/10 bg-slate-950/58 p-4 backdrop-blur-xl sm:p-5">
@@ -723,6 +784,12 @@ export function GestionesApp() {
                             onEditar={handleEditarEvaluacion}
                             onGenerarCorreo={handleGenerarCorreoDesdeFila}
                           />
+                        </div>
+                      ) : null}
+
+                      {coordinacionView === "control" ? (
+                        <div className="border border-white/10 bg-slate-950/58 p-4 backdrop-blur-xl sm:p-5">
+                          <ControlCursosView docentes={docentes} />
                         </div>
                       ) : null}
 
@@ -763,6 +830,7 @@ export function GestionesApp() {
                               onGenerateEmail={handleOpenEmailDraft}
                               onIniciarEntrevista={setEntrevistaKiosco}
                               onNuevaEvaluacion={handleNuevaEvaluacion}
+                              onNuevaEvaluacionCompleta={handleNuevaEvaluacionTab}
                               onPrint={handlePrintReporte}
                               printing={exportingReporte}
                               onSave={handleSave}
@@ -829,12 +897,24 @@ export function GestionesApp() {
 
       {entrevistaKiosco ? (
         <EntrevistaKiosk
+          codigoDesbloqueo={kioscoCodigo}
           estudiante={entrevistaKiosco}
           respuestasIniciales={entrevistas[entrevistaKiosco]}
           onCerrar={() => setEntrevistaKiosco(null)}
           onGuardar={(respuestas) => handleGuardarEntrevista(entrevistaKiosco, respuestas)}
         />
       ) : null}
+
+      <CodigoKioscoModal
+        error={codigoError}
+        onClose={() => {
+          setCambiarCodigoOpen(false);
+          setCodigoError("");
+        }}
+        onGuardar={handleGuardarCodigo}
+        open={cambiarCodigoOpen}
+        saving={savingCodigo}
+      />
     </>
   );
 }
@@ -937,6 +1017,7 @@ function CoordinacionTabs({ onChange, value }: { onChange: (value: CoordinacionV
     { value: "resumen", label: "Resumen general", icon: BarChart3 },
     { value: "nueva", label: "Nueva evaluacion", icon: Plus },
     { value: "informe", label: "Informe por docente", icon: GraduationCap },
+    { value: "control", label: "Control de cursos y docentes", icon: CalendarClock },
   ];
 
   return (
@@ -998,6 +1079,7 @@ function CoordinacionPanel(props: {
   onGenerateEmail: () => void;
   onIniciarEntrevista: (numero: 1 | 2) => void;
   onNuevaEvaluacion: () => void;
+  onNuevaEvaluacionCompleta: () => void;
   onPrint: () => void;
   onSave: () => void;
   onVolverMenu: () => void;
@@ -1173,10 +1255,11 @@ function StepDatosGenerales(props: Parameters<typeof CoordinacionPanel>[0]) {
               className="field"
               value={docente?.id ?? ""}
               onChange={(event) => {
-                setSelectedDocenteId(event.target.value);
+                setSelectedDocenteId(event.target.value || null);
                 setSelectedCursoId(null);
               }}
             >
+              <option value="">Selecciona un docente</option>
               {docentes.map((item) => (
                 <option key={item.id} value={item.id}>
                   {item.nombre}
@@ -1199,8 +1282,9 @@ function StepDatosGenerales(props: Parameters<typeof CoordinacionPanel>[0]) {
               className="field"
               disabled={!docente}
               value={curso?.id ?? ""}
-              onChange={(event) => setSelectedCursoId(event.target.value)}
+              onChange={(event) => setSelectedCursoId(event.target.value || null)}
             >
+              <option value="">Selecciona un curso</option>
               {(docente?.cursos ?? []).map((item) => (
                 <option key={item.id} value={item.id}>
                   {item.nombre}
@@ -1464,6 +1548,7 @@ function StepResumen(props: Parameters<typeof CoordinacionPanel>[0]) {
     onPrint,
     onGenerateEmail,
     onNuevaEvaluacion,
+    onNuevaEvaluacionCompleta,
     onVolverMenu,
     printing,
     saving,
@@ -1599,6 +1684,14 @@ function StepResumen(props: Parameters<typeof CoordinacionPanel>[0]) {
           >
             <Plus className="h-4 w-4" />
             Nueva evaluacion (mismo docente y curso)
+          </button>
+          <button
+            className="inline-flex h-11 w-fit items-center justify-center gap-2 border border-emerald-300/50 bg-white/8 px-6 text-sm font-bold text-slate-100 transition hover:border-emerald-300/70"
+            onClick={onNuevaEvaluacionCompleta}
+            type="button"
+          >
+            <Plus className="h-4 w-4" />
+            Comenzar otra evaluacion (elegir docente)
           </button>
           <button
             className="inline-flex h-11 w-fit items-center justify-center gap-2 border border-white/10 bg-white/8 px-6 text-sm font-bold text-slate-100 transition hover:border-white/30"
