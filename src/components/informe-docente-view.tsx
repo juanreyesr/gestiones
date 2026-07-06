@@ -1,17 +1,21 @@
 "use client";
 
-import { GraduationCap, Mail, Pencil, Printer, Star, Trash2, Users } from "lucide-react";
+import { GraduationCap, Mail, Pencil, Printer, Star, Trash2, TrendingUp, Users } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { DocenteRow, Trimestre } from "@/data/evaluacion";
 import {
   aggregateCategoryAnalytics,
   aggregateEntrevistaPreguntas,
   aggregateFortalezas,
+  aggregateItemAnalytics,
+  aggregateTendenciaCategorias,
+  categoriasConOportunidad,
   combinarSobresalientes,
   currentTrimestre,
   deleteEvaluacion,
   type EvaluacionRow,
   fetchEvaluacionesPorDocente,
+  preguntasConOportunidadReal,
   promedioEntrevistas,
   promedioGeneral,
   rowToReporteData,
@@ -19,6 +23,7 @@ import {
 import { exportInformeDocenteToPdf, exportReporteToPdf } from "@/lib/pdf";
 import { ConfirmDialog } from "./confirm-dialog";
 import { EvaluacionDetalleModal } from "./evaluacion-detalle-modal";
+import { TendenciaCategoriasChart } from "./tendencia-categorias-chart";
 
 type PeriodoValor = Trimestre | "todos" | "historico";
 
@@ -108,20 +113,17 @@ export function InformeDocenteView({
     () => combinarSobresalientes(categoriaAgg, fortalezaAgg),
     [categoriaAgg, fortalezaAgg],
   );
-  const categoriasOportunidad = useMemo(
-    () => [...categoriaAgg].sort((a, b) => a.percent - b.percent).slice(0, 3),
-    [categoriaAgg],
-  );
+  const categoriasOportunidad = useMemo(() => categoriasConOportunidad(categoriaAgg), [categoriaAgg]);
 
   const preguntasAgg = useMemo(() => aggregateEntrevistaPreguntas(rows), [rows]);
   const preguntasDestacadas = useMemo(
     () => [...preguntasAgg].sort((a, b) => (b.promedio ?? 0) - (a.promedio ?? 0)).slice(0, 2),
     [preguntasAgg],
   );
-  const preguntasOportunidad = useMemo(
-    () => [...preguntasAgg].sort((a, b) => (a.promedio ?? 0) - (b.promedio ?? 0)).slice(0, 2),
-    [preguntasAgg],
-  );
+  const preguntasOportunidad = useMemo(() => preguntasConOportunidadReal(preguntasAgg), [preguntasAgg]);
+
+  const tendenciaCategorias = useMemo(() => aggregateTendenciaCategorias(allRows), [allRows]);
+  const itemAnalytics = useMemo(() => aggregateItemAnalytics(rows), [rows]);
 
   const handlePrintResumen = async () => {
     if (!docente || !rows.length || exportingResumen) return;
@@ -137,6 +139,8 @@ export function InformeDocenteView({
         categoriasOportunidad,
         preguntasDestacadas,
         preguntasOportunidad,
+        itemAnalytics,
+        tendenciaCategorias,
       },
       `informe-${docente.nombre}.pdf`,
     );
@@ -262,15 +266,18 @@ export function InformeDocenteView({
                 <Star className="h-4 w-4 text-amber-300" />
                 Areas de oportunidad
               </div>
-              {rows.length ? (
+              <p className="mb-2 text-xs text-slate-400">Porcentaje que aun falta por mejorar en cada area.</p>
+              {categoriasOportunidad.length ? (
                 <div className="grid gap-2">
                   {categoriasOportunidad.map((item) => (
                     <div key={item.categoria} className="flex items-center justify-between gap-3 text-sm text-slate-200">
                       <span className="min-w-0">{item.categoria}</span>
-                      <span className="shrink-0 font-semibold text-amber-200">{item.percent}%</span>
+                      <span className="shrink-0 font-semibold text-amber-200">{100 - item.percent}%</span>
                     </div>
                   ))}
                 </div>
+              ) : rows.length ? (
+                <p className="text-sm text-emerald-200">Todas las areas evaluadas estan al 100% en este periodo.</p>
               ) : (
                 <p className="text-sm text-slate-400">Sin datos para este periodo.</p>
               )}
@@ -300,15 +307,18 @@ export function InformeDocenteView({
                 <Users className="h-4 w-4 text-amber-300" />
                 A reforzar segun estudiantes
               </div>
+              <p className="mb-2 text-xs text-slate-400">Porcentaje que aun falta por mejorar segun los estudiantes.</p>
               {preguntasOportunidad.length ? (
                 <div className="grid gap-2">
                   {preguntasOportunidad.map((item) => (
                     <div key={item.id} className="flex items-center justify-between gap-3 text-sm text-slate-200">
                       <span className="min-w-0">{item.texto}</span>
-                      <span className="shrink-0 font-semibold text-amber-200">{item.promedio}%</span>
+                      <span className="shrink-0 font-semibold text-amber-200">{100 - (item.promedio ?? 0)}%</span>
                     </div>
                   ))}
                 </div>
+              ) : preguntasAgg.length ? (
+                <p className="text-sm text-emerald-200">Los estudiantes calificaron todo con el maximo puntaje en este periodo.</p>
               ) : (
                 <p className="text-sm text-slate-400">Sin entrevistas registradas en este periodo.</p>
               )}
@@ -336,6 +346,17 @@ export function InformeDocenteView({
             ) : (
               <p className="text-sm text-slate-300">Este docente aun no tiene evaluaciones guardadas.</p>
             )}
+          </div>
+
+          <div className="border border-white/10 bg-white/6 p-4">
+            <div className="mb-3 flex items-center gap-2 text-sm font-semibold">
+              <TrendingUp className="h-4 w-4 text-sky-300" />
+              Tendencia por area (todo el historial de este docente)
+            </div>
+            <p className="mb-3 text-xs text-slate-400">
+              Avance de cada area evaluada a traves de los periodos, para ver si viene mejorando o empeorando.
+            </p>
+            <TendenciaCategoriasChart series={tendenciaCategorias} />
           </div>
 
           <div className="border border-white/10 bg-white/6 p-4">

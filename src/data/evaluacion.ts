@@ -103,6 +103,24 @@ export const CRITERIOS: CategoriaCriterio[] = [
 
 export const SCORE_LABELS = ["", "Insuficiente", "Regular", "Aceptable", "Bueno", "Excelente"];
 
+export const CATEGORIA_DESCRIPCIONES: Record<string, string> = {
+  Planeacion: "Que tanto cumple y adapta el programa del curso a las necesidades del grupo de estudiantes.",
+  Docente: "Dominio de contenidos, manejo tecnologico, didactica y comunicacion con sus estudiantes.",
+  Metodologia: "Diversidad y calidad de las estrategias y tecnicas utilizadas para lograr los aprendizajes.",
+  "Sesiones de Aprendizaje": "Planificacion y aprovechamiento del tiempo y la dinamica de cada sesion de clase.",
+  Evaluacion: "Como mide el docente el progreso de aprendizaje y la retroalimentacion que brinda.",
+  "Uso de Plataforma": "Organizacion y claridad de materiales, tareas y retroalimentacion en la plataforma del curso.",
+};
+
+export const CATEGORIA_COLORES: Record<string, string> = {
+  Planeacion: "#3987e5",
+  Docente: "#199e70",
+  Metodologia: "#c98500",
+  "Sesiones de Aprendizaje": "#008300",
+  Evaluacion: "#9085e9",
+  "Uso de Plataforma": "#e66767",
+};
+
 export const ENTREVISTA_ESCALA = [
   { value: 4, label: "Siempre" },
   { value: 3, label: "Casi siempre" },

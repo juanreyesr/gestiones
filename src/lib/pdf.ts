@@ -1,6 +1,7 @@
 import { jsPDF } from "jspdf";
 import type { ReporteData } from "@/components/reporte-printable";
-import type { EvaluacionRow } from "@/lib/evaluacion-helpers";
+import { CATEGORIA_DESCRIPCIONES } from "@/data/evaluacion";
+import type { EvaluacionRow, TendenciaCategoria } from "@/lib/evaluacion-helpers";
 
 const PAGE_HEIGHT = 841.89;
 const MARGIN = 48;
@@ -134,6 +135,23 @@ export function exportReporteToPdf(data: ReporteData, filename: string) {
   w.save(filename);
 }
 
+function writeTendenciaTabla(w: PdfWriter, tendencia: TendenciaCategoria[]) {
+  if (!tendencia.length) {
+    w.text("Aun no hay suficiente historial para mostrar una tendencia.", { size: 10 });
+    return;
+  }
+  const periodos = tendencia[0].puntos.map((punto) => punto.periodo);
+  w.paragraph(`Periodos: ${periodos.join("  →  ")}`, 9);
+  for (const serie of tendencia) {
+    const valores = serie.puntos.map((punto) => `${punto.percent}%`).join("  →  ");
+    const primero = serie.puntos[0].percent;
+    const ultimo = serie.puntos[serie.puntos.length - 1].percent;
+    const delta = ultimo - primero;
+    const tendenciaTexto = delta > 0 ? `mejorando +${delta}` : delta < 0 ? `empeorando ${delta}` : "sin cambio";
+    w.paragraph(`${serie.categoria}: ${valores}  (${tendenciaTexto})`, 9);
+  }
+}
+
 export function exportInformeDocenteToPdf(
   input: {
     docenteNombre: string;
@@ -145,6 +163,8 @@ export function exportInformeDocenteToPdf(
     categoriasOportunidad: Array<{ categoria: string; percent: number }>;
     preguntasDestacadas: Array<{ id: number; texto: string; promedio: number | null }>;
     preguntasOportunidad: Array<{ id: number; texto: string; promedio: number | null }>;
+    itemAnalytics: Array<{ categoria: string; texto: string; percent: number | null }>;
+    tendenciaCategorias: TendenciaCategoria[];
   },
   filename: string,
 ) {
@@ -158,6 +178,8 @@ export function exportInformeDocenteToPdf(
     categoriasOportunidad,
     preguntasDestacadas,
     preguntasOportunidad,
+    itemAnalytics,
+    tendenciaCategorias,
   } = input;
   const w = new PdfWriter();
 
@@ -166,11 +188,16 @@ export function exportInformeDocenteToPdf(
   w.spacer(12);
   w.text(`Docente: ${docenteNombre}`, { size: 12, bold: true });
   w.spacer(6);
+  w.paragraph(
+    "Este informe resume tu desempeño segun la observacion de clase realizada por la coordinacion y la percepcion de tus propios estudiantes. A continuacion se detalla que evalua cada area y en cuales existe mayor oportunidad de mejora.",
+    9,
+  );
+  w.spacer(6);
 
   w.heading("Resumen del período");
   w.text(`Evaluaciones registradas: ${rows.length}`, { size: 10 });
-  w.text(`Promedio del período: ${promedioHistorico}%`, { size: 10 });
-  w.text(`Entrevistas promedio: ${promedioEntrevistas}%`, { size: 10 });
+  w.text(`Promedio del período (observación de clase): ${promedioHistorico}%`, { size: 10 });
+  w.text(`Promedio de entrevistas (percepción estudiantil): ${promedioEntrevistas}%`, { size: 10 });
   w.spacer(6);
 
   w.heading("Áreas más sobresalientes");
@@ -182,10 +209,27 @@ export function exportInformeDocenteToPdf(
   w.spacer(4);
 
   w.heading("Áreas de oportunidad");
+  w.text("Porcentaje que aún falta por mejorar en cada área (100% ya no requiere mejora y no se incluye).", {
+    size: 9,
+    color: MUTED,
+  });
+  w.spacer(2);
   if (categoriasOportunidad.length) {
-    for (const item of categoriasOportunidad) w.text(`•  ${item.categoria}   ${item.percent}%`, { size: 10 });
+    for (const item of categoriasOportunidad) {
+      w.text(`•  ${item.categoria}  —  ${100 - item.percent}% por mejorar`, { size: 10, bold: true });
+      const descripcion = CATEGORIA_DESCRIPCIONES[item.categoria];
+      if (descripcion) w.paragraph(descripcion, 9);
+      const itemsBajos = itemAnalytics
+        .filter((detalle) => detalle.categoria === item.categoria && detalle.percent !== null && detalle.percent < 100)
+        .sort((a, b) => (a.percent ?? 0) - (b.percent ?? 0))
+        .slice(0, 2);
+      for (const detalle of itemsBajos) {
+        w.text(`   -  ${detalle.texto} (${detalle.percent}%)`, { size: 9, color: MUTED });
+      }
+      w.spacer(3);
+    }
   } else {
-    w.text("Sin datos para este periodo.", { size: 10 });
+    w.text("Todas las áreas evaluadas están al 100% en este periodo. ¡Felicidades!", { size: 10 });
   }
   w.spacer(4);
 
@@ -198,10 +242,12 @@ export function exportInformeDocenteToPdf(
   w.spacer(4);
 
   w.heading("A reforzar según estudiantes");
+  w.text("Porcentaje que aún falta por mejorar según la percepción de los estudiantes.", { size: 9, color: MUTED });
+  w.spacer(2);
   if (preguntasOportunidad.length) {
-    for (const item of preguntasOportunidad) w.text(`•  ${item.texto}   ${item.promedio}%`, { size: 10 });
+    for (const item of preguntasOportunidad) w.text(`•  ${item.texto}   ${100 - (item.promedio ?? 0)}% por mejorar`, { size: 10 });
   } else {
-    w.text("Sin entrevistas registradas en este periodo.", { size: 10 });
+    w.text("Los estudiantes calificaron todo con el máximo puntaje en este periodo.", { size: 10 });
   }
   w.spacer(4);
 
@@ -211,12 +257,110 @@ export function exportInformeDocenteToPdf(
     w.bar(item.promedio, 7);
   }
 
+  w.heading("Tendencia por área");
+  writeTendenciaTabla(w, tendenciaCategorias);
+
   w.heading("Detalle de evaluaciones");
   for (const row of rows) {
     w.text(`${row.curso_nombre}   T${row.trimestre} ${row.anio}   ${row.fecha_observacion}   ${row.porcentaje}%`, {
       size: 10,
     });
   }
+
+  w.save(filename);
+}
+
+export function exportResumenGeneralToPdf(
+  input: {
+    rows: EvaluacionRow[];
+    porCurso: Array<{ cursoId: string | null; nombre: string; count: number; promedio: number }>;
+    porDocente: Array<{ docenteId: string | null; nombre: string; count: number; promedio: number }>;
+    sobresalientes: Array<{ label: string; percent: number }>;
+    categoriasOportunidad: Array<{ categoria: string; percent: number }>;
+    preguntasDestacadas: Array<{ id: number; texto: string; promedio: number | null }>;
+    preguntasOportunidad: Array<{ id: number; texto: string; promedio: number | null }>;
+    tendenciaCategorias: TendenciaCategoria[];
+    promedioGeneralValor: number;
+    promedioEntrevistasValor: number;
+    docentesUnicos: number;
+  },
+  filename: string,
+) {
+  const {
+    rows,
+    porCurso,
+    porDocente,
+    sobresalientes,
+    categoriasOportunidad,
+    preguntasDestacadas,
+    preguntasOportunidad,
+    tendenciaCategorias,
+    promedioGeneralValor,
+    promedioEntrevistasValor,
+    docentesUnicos,
+  } = input;
+  const w = new PdfWriter();
+
+  w.text("Resumen general de evaluaciones docentes", { size: 20, bold: true });
+  w.text("M. A. Juan J. Reyes - Coordinación académica", { size: 11, color: MUTED });
+  w.text("Incluye todo el historial registrado, sin importar el periodo filtrado en pantalla.", { size: 9, color: MUTED });
+  w.spacer(12);
+
+  w.heading("Resumen histórico");
+  w.text(`Evaluaciones registradas: ${rows.length}`, { size: 10 });
+  w.text(`Docentes evaluados: ${docentesUnicos}`, { size: 10 });
+  w.text(`Promedio general (observación de clase): ${promedioGeneralValor}%`, { size: 10 });
+  w.text(`Promedio de entrevistas (percepción estudiantil): ${promedioEntrevistasValor}%`, { size: 10 });
+  w.spacer(6);
+
+  w.heading("Áreas más sobresalientes (general)");
+  if (sobresalientes.length) {
+    for (const item of sobresalientes) w.text(`•  ${item.label}   ${item.percent}%`, { size: 10 });
+  } else {
+    w.text("Sin datos.", { size: 10 });
+  }
+  w.spacer(4);
+
+  w.heading("Áreas de oportunidad (general)");
+  if (categoriasOportunidad.length) {
+    for (const item of categoriasOportunidad) w.text(`•  ${item.categoria}   ${100 - item.percent}% por mejorar`, { size: 10 });
+  } else {
+    w.text("Todas las áreas evaluadas están al 100%.", { size: 10 });
+  }
+  w.spacer(4);
+
+  w.heading("Más valorado según estudiantes");
+  if (preguntasDestacadas.length) {
+    for (const item of preguntasDestacadas) w.text(`•  ${item.texto}   ${item.promedio}%`, { size: 10 });
+  } else {
+    w.text("Sin entrevistas registradas.", { size: 10 });
+  }
+  w.spacer(4);
+
+  w.heading("A reforzar según estudiantes");
+  if (preguntasOportunidad.length) {
+    for (const item of preguntasOportunidad) w.text(`•  ${item.texto}   ${100 - (item.promedio ?? 0)}% por mejorar`, { size: 10 });
+  } else {
+    w.text("Los estudiantes calificaron todo con el máximo puntaje.", { size: 10 });
+  }
+  w.spacer(6);
+
+  w.heading("Comparativo por curso");
+  for (const item of porCurso) {
+    w.text(`${item.nombre}  (${item.count} evaluaciones)   ${item.promedio}%`, { size: 10 });
+    w.bar(item.promedio, 7);
+  }
+  w.spacer(4);
+
+  w.heading("Comparativo por docente");
+  for (const item of porDocente) {
+    w.text(`${item.nombre}  (${item.count} evaluaciones)   ${item.promedio}%`, { size: 10 });
+    w.bar(item.promedio, 7);
+  }
+  w.spacer(4);
+
+  w.heading("Tendencia por área");
+  writeTendenciaTabla(w, tendenciaCategorias);
 
   w.save(filename);
 }

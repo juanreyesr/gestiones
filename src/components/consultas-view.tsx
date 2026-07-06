@@ -1,26 +1,30 @@
 "use client";
 
-import { BarChart3, Star, Trash2, Users } from "lucide-react";
+import { BarChart3, Printer, Star, Trash2, TrendingUp, Users } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { Trimestre } from "@/data/evaluacion";
 import {
   aggregateCategoryAnalytics,
   aggregateEntrevistaPreguntas,
   aggregateFortalezas,
+  aggregateTendenciaCategorias,
   agruparPorCurso,
   agruparPorDocente,
+  categoriasConOportunidad,
   combinarSobresalientes,
   currentTrimestre,
   deleteEvaluacion,
   type EvaluacionRow,
   fetchEvaluacionesPorPeriodo,
+  preguntasConOportunidadReal,
   promedioEntrevistas,
   promedioGeneral,
   rowToReporteData,
 } from "@/lib/evaluacion-helpers";
-import { exportReporteToPdf } from "@/lib/pdf";
+import { exportReporteToPdf, exportResumenGeneralToPdf } from "@/lib/pdf";
 import { ConfirmDialog } from "./confirm-dialog";
 import { EvaluacionDetalleModal } from "./evaluacion-detalle-modal";
+import { TendenciaCategoriasChart } from "./tendencia-categorias-chart";
 
 type PeriodoValor = Trimestre | "todos" | "historico";
 
@@ -42,6 +46,8 @@ export function ConsultasView() {
   const [deleteTarget, setDeleteTarget] = useState<EvaluacionRow | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [exportingPdf, setExportingPdf] = useState(false);
+  const [historicoRows, setHistoricoRows] = useState<EvaluacionRow[]>([]);
+  const [exportingResumenCompleto, setExportingResumenCompleto] = useState(false);
 
   const esHistorico = periodo === "historico";
 
@@ -61,10 +67,20 @@ export function ConsultasView() {
     setLoading(false);
   }, [anio, periodo, esHistorico]);
 
+  const loadHistorico = useCallback(async () => {
+    const { data, error: fetchError } = await fetchEvaluacionesPorPeriodo(null, "todos");
+    if (!fetchError) setHistoricoRows(data);
+  }, []);
+
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- refetch whenever the period filter changes
     load();
   }, [load]);
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- loads the full historial once, independent of the period filter, for the trend chart and the full PDF report
+    loadHistorico();
+  }, [loadHistorico]);
 
   const docentesUnicos = useMemo(() => agruparPorDocente(rows).length, [rows]);
   const porCurso = useMemo(() => agruparPorCurso(rows), [rows]);
@@ -75,20 +91,41 @@ export function ConsultasView() {
     () => combinarSobresalientes(categoriaAgg, fortalezaAgg),
     [categoriaAgg, fortalezaAgg],
   );
-  const categoriasOportunidad = useMemo(
-    () => [...categoriaAgg].sort((a, b) => a.percent - b.percent).slice(0, 3),
-    [categoriaAgg],
-  );
+  const categoriasOportunidad = useMemo(() => categoriasConOportunidad(categoriaAgg), [categoriaAgg]);
 
   const preguntasAgg = useMemo(() => aggregateEntrevistaPreguntas(rows), [rows]);
   const preguntasDestacadas = useMemo(
     () => [...preguntasAgg].sort((a, b) => (b.promedio ?? 0) - (a.promedio ?? 0)).slice(0, 2),
     [preguntasAgg],
   );
-  const preguntasOportunidad = useMemo(
-    () => [...preguntasAgg].sort((a, b) => (a.promedio ?? 0) - (b.promedio ?? 0)).slice(0, 2),
-    [preguntasAgg],
-  );
+  const preguntasOportunidad = useMemo(() => preguntasConOportunidadReal(preguntasAgg), [preguntasAgg]);
+
+  const tendenciaCategorias = useMemo(() => aggregateTendenciaCategorias(historicoRows), [historicoRows]);
+
+  const handleImprimirResumenCompleto = async () => {
+    if (!historicoRows.length || exportingResumenCompleto) return;
+    setExportingResumenCompleto(true);
+    const categoriaAggCompleto = aggregateCategoryAnalytics(historicoRows);
+    const fortalezaAggCompleto = aggregateFortalezas(historicoRows);
+    const preguntasAggCompleto = aggregateEntrevistaPreguntas(historicoRows);
+    await exportResumenGeneralToPdf(
+      {
+        rows: historicoRows,
+        porCurso: agruparPorCurso(historicoRows),
+        porDocente: agruparPorDocente(historicoRows),
+        sobresalientes: combinarSobresalientes(categoriaAggCompleto, fortalezaAggCompleto),
+        categoriasOportunidad: categoriasConOportunidad(categoriaAggCompleto),
+        preguntasDestacadas: [...preguntasAggCompleto].sort((a, b) => (b.promedio ?? 0) - (a.promedio ?? 0)).slice(0, 2),
+        preguntasOportunidad: preguntasConOportunidadReal(preguntasAggCompleto),
+        tendenciaCategorias: aggregateTendenciaCategorias(historicoRows),
+        promedioGeneralValor: promedioGeneral(historicoRows),
+        promedioEntrevistasValor: promedioEntrevistas(historicoRows),
+        docentesUnicos: agruparPorDocente(historicoRows).length,
+      },
+      `resumen-general-historico.pdf`,
+    );
+    setExportingResumenCompleto(false);
+  };
 
   const handlePrint = async () => {
     if (!viewRow || exportingPdf) return;
@@ -109,20 +146,33 @@ export function ConsultasView() {
       return;
     }
     setRows((current) => current.filter((item) => item.id !== deleteTarget.id));
+    setHistoricoRows((current) => current.filter((item) => item.id !== deleteTarget.id));
     setDeleteTarget(null);
   };
 
   return (
     <div className="grid gap-5">
-      <div>
-        <div className="mb-2 inline-flex items-center gap-2 text-xs font-semibold uppercase text-emerald-200">
-          <BarChart3 className="h-4 w-4" />
-          Consultas
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+        <div>
+          <div className="mb-2 inline-flex items-center gap-2 text-xs font-semibold uppercase text-emerald-200">
+            <BarChart3 className="h-4 w-4" />
+            Consultas
+          </div>
+          <h2 className="text-2xl font-semibold text-white sm:text-3xl">Resumen general</h2>
+          <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-300">
+            Analisis de las evaluaciones ya guardadas. Filtra por trimestre, revisa el año completo o todo el historial.
+          </p>
         </div>
-        <h2 className="text-2xl font-semibold text-white sm:text-3xl">Resumen general</h2>
-        <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-300">
-          Analisis de las evaluaciones ya guardadas. Filtra por trimestre, revisa el año completo o todo el historial.
-        </p>
+        <button
+          className="inline-flex h-11 w-fit items-center justify-center gap-2 border border-white/10 bg-white/8 px-6 text-sm font-bold text-slate-100 transition hover:border-white/30 disabled:opacity-40"
+          disabled={!historicoRows.length || exportingResumenCompleto}
+          onClick={handleImprimirResumenCompleto}
+          title="Incluye todo el historial, sin importar el filtro de periodo seleccionado arriba"
+          type="button"
+        >
+          <Printer className="h-4 w-4" />
+          {exportingResumenCompleto ? "Generando PDF..." : "Descargar informe completo en PDF"}
+        </button>
       </div>
 
       <div className="flex flex-wrap items-center gap-2">
@@ -189,15 +239,18 @@ export function ConsultasView() {
                 <Star className="h-4 w-4 text-amber-300" />
                 Areas de oportunidad (general)
               </div>
-              {rows.length ? (
+              <p className="mb-2 text-xs text-slate-400">Porcentaje que aun falta por mejorar en cada area.</p>
+              {categoriasOportunidad.length ? (
                 <div className="grid gap-2">
                   {categoriasOportunidad.map((item) => (
                     <div key={item.categoria} className="flex items-center justify-between gap-3 text-sm text-slate-200">
                       <span className="min-w-0">{item.categoria}</span>
-                      <span className="shrink-0 font-semibold text-amber-200">{item.percent}%</span>
+                      <span className="shrink-0 font-semibold text-amber-200">{100 - item.percent}%</span>
                     </div>
                   ))}
                 </div>
+              ) : rows.length ? (
+                <p className="text-sm text-emerald-200">Todas las areas evaluadas estan al 100% en este periodo.</p>
               ) : (
                 <p className="text-sm text-slate-400">Sin datos para este periodo.</p>
               )}
@@ -227,15 +280,18 @@ export function ConsultasView() {
                 <Users className="h-4 w-4 text-amber-300" />
                 A reforzar segun estudiantes
               </div>
+              <p className="mb-2 text-xs text-slate-400">Porcentaje que aun falta por mejorar segun los estudiantes.</p>
               {preguntasOportunidad.length ? (
                 <div className="grid gap-2">
                   {preguntasOportunidad.map((item) => (
                     <div key={item.id} className="flex items-center justify-between gap-3 text-sm text-slate-200">
                       <span className="min-w-0">{item.texto}</span>
-                      <span className="shrink-0 font-semibold text-amber-200">{item.promedio}%</span>
+                      <span className="shrink-0 font-semibold text-amber-200">{100 - (item.promedio ?? 0)}%</span>
                     </div>
                   ))}
                 </div>
+              ) : preguntasAgg.length ? (
+                <p className="text-sm text-emerald-200">Los estudiantes calificaron todo con el maximo puntaje en este periodo.</p>
               ) : (
                 <p className="text-sm text-slate-400">Sin entrevistas registradas en este periodo.</p>
               )}
@@ -270,6 +326,17 @@ export function ConsultasView() {
             ) : (
               <p className="text-sm text-slate-300">No hay evaluaciones guardadas para este periodo.</p>
             )}
+          </div>
+
+          <div className="border border-white/10 bg-white/6 p-4">
+            <div className="mb-3 flex items-center gap-2 text-sm font-semibold">
+              <TrendingUp className="h-4 w-4 text-sky-300" />
+              Tendencia por area (todo el historial)
+            </div>
+            <p className="mb-3 text-xs text-slate-400">
+              Avance de cada area evaluada a traves de los periodos, para ver si viene mejorando o empeorando.
+            </p>
+            <TendenciaCategoriasChart series={tendenciaCategorias} />
           </div>
 
           <div className="border border-white/10 bg-white/6 p-4">
