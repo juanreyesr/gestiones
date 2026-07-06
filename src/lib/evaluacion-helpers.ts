@@ -288,6 +288,7 @@ export function aggregateTendenciaCategorias(rows: EvaluacionRow[]): TendenciaCa
 export function aggregateItemAnalytics(rows: EvaluacionRow[]) {
   const sums = new Map<number, { total: number; count: number }>();
   for (const row of rows) {
+    if (!row.scores) continue;
     for (const categoria of CRITERIOS) {
       for (const item of categoria.items) {
         const valor = row.scores[item.id];

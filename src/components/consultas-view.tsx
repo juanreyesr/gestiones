@@ -146,6 +146,7 @@ export function ConsultasView() {
       return;
     }
     setRows((current) => current.filter((item) => item.id !== deleteTarget.id));
+    setHistoricoRows((current) => current.filter((item) => item.id !== deleteTarget.id));
     setDeleteTarget(null);
   };
 

@@ -141,14 +141,14 @@ function writeTendenciaTabla(w: PdfWriter, tendencia: TendenciaCategoria[]) {
     return;
   }
   const periodos = tendencia[0].puntos.map((punto) => punto.periodo);
-  w.text(`Periodos: ${periodos.join("  →  ")}`, { size: 9, color: MUTED });
+  w.paragraph(`Periodos: ${periodos.join("  →  ")}`, 9);
   for (const serie of tendencia) {
     const valores = serie.puntos.map((punto) => `${punto.percent}%`).join("  →  ");
     const primero = serie.puntos[0].percent;
     const ultimo = serie.puntos[serie.puntos.length - 1].percent;
     const delta = ultimo - primero;
     const tendenciaTexto = delta > 0 ? `mejorando +${delta}` : delta < 0 ? `empeorando ${delta}` : "sin cambio";
-    w.text(`${serie.categoria}: ${valores}  (${tendenciaTexto})`, { size: 9 });
+    w.paragraph(`${serie.categoria}: ${valores}  (${tendenciaTexto})`, 9);
   }
 }
 

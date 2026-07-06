@@ -123,7 +123,7 @@ export function InformeDocenteView({
   const preguntasOportunidad = useMemo(() => preguntasConOportunidadReal(preguntasAgg), [preguntasAgg]);
 
   const tendenciaCategorias = useMemo(() => aggregateTendenciaCategorias(allRows), [allRows]);
-  const itemAnalyticsHistorico = useMemo(() => aggregateItemAnalytics(allRows), [allRows]);
+  const itemAnalytics = useMemo(() => aggregateItemAnalytics(rows), [rows]);
 
   const handlePrintResumen = async () => {
     if (!docente || !rows.length || exportingResumen) return;
@@ -139,7 +139,7 @@ export function InformeDocenteView({
         categoriasOportunidad,
         preguntasDestacadas,
         preguntasOportunidad,
-        itemAnalytics: itemAnalyticsHistorico,
+        itemAnalytics,
         tendenciaCategorias,
       },
       `informe-${docente.nombre}.pdf`,
