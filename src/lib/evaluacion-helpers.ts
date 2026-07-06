@@ -200,6 +200,24 @@ export function entrevistaMejorar<T extends { promedio: number | null }>(pregunt
     .slice(0, 2);
 }
 
+/**
+ * Areas de oportunidad reales: excluye las que ya tienen el punteo completo
+ * (no representan mejora posible) en vez de rellenar el listado con ellas.
+ */
+export function categoriasConOportunidad(categorias: Array<{ categoria: string; percent: number }>, limit = 3) {
+  return [...categorias]
+    .filter((item) => item.percent < 100)
+    .sort((a, b) => a.percent - b.percent)
+    .slice(0, limit);
+}
+
+export function preguntasConOportunidadReal<T extends { promedio: number | null }>(preguntas: T[], limit = 2): T[] {
+  return [...preguntas]
+    .filter((item) => (item.promedio ?? 0) < 100)
+    .sort((a, b) => (a.promedio ?? 0) - (b.promedio ?? 0))
+    .slice(0, limit);
+}
+
 export function agruparPorDocente(rows: EvaluacionRow[]) {
   const map = new Map<string, { docenteId: string | null; nombre: string; count: number; sumaPct: number }>();
   for (const row of rows) {
@@ -226,6 +244,68 @@ export function agruparPorCurso(rows: EvaluacionRow[]) {
   return Array.from(map.values())
     .map((entry) => ({ ...entry, promedio: Math.round(entry.sumaPct / entry.count) }))
     .sort((a, b) => b.promedio - a.promedio);
+}
+
+export type TendenciaPunto = { periodo: string; anio: number; trimestre: Trimestre; percent: number };
+export type TendenciaCategoria = { categoria: string; puntos: TendenciaPunto[] };
+
+/**
+ * Serie de tiempo por categoria (una por cada trimestre/anio presente en las
+ * filas), para ver si cada area viene mejorando o empeorando. Solo incluye
+ * categorias que tengan al menos un dato real en el historial.
+ */
+export function aggregateTendenciaCategorias(rows: EvaluacionRow[]): TendenciaCategoria[] {
+  const porPeriodo = new Map<string, EvaluacionRow[]>();
+  for (const row of rows) {
+    const key = `${row.anio}-${row.trimestre}`;
+    const list = porPeriodo.get(key) ?? [];
+    list.push(row);
+    porPeriodo.set(key, list);
+  }
+
+  const periodos = Array.from(porPeriodo.values())
+    .map((periodRows) => ({
+      anio: periodRows[0].anio,
+      trimestre: periodRows[0].trimestre,
+      rows: periodRows,
+    }))
+    .sort((a, b) => a.anio - b.anio || a.trimestre - b.trimestre);
+
+  return CRITERIOS.map((categoria) => {
+    const puntos = periodos.map(({ anio, trimestre, rows: periodRows }) => {
+      const agg = aggregateCategoryAnalytics(periodRows).find((item) => item.categoria === categoria.categoria);
+      return { periodo: `T${trimestre} ${anio}`, anio, trimestre, percent: agg?.percent ?? 0 };
+    });
+    return { categoria: categoria.categoria, puntos };
+  }).filter((serie) => serie.puntos.some((punto) => punto.percent > 0));
+}
+
+/**
+ * Promedio por item (criterio individual) a traves de varias evaluaciones,
+ * para poder detallar en el PDF por docente exactamente que se evaluo mal,
+ * no solo el porcentaje de la categoria.
+ */
+export function aggregateItemAnalytics(rows: EvaluacionRow[]) {
+  const sums = new Map<number, { total: number; count: number }>();
+  for (const row of rows) {
+    for (const categoria of CRITERIOS) {
+      for (const item of categoria.items) {
+        const valor = row.scores[item.id];
+        if (!valor) continue;
+        const entry = sums.get(item.id) ?? { total: 0, count: 0 };
+        entry.total += valor;
+        entry.count += 1;
+        sums.set(item.id, entry);
+      }
+    }
+  }
+  return CRITERIOS.flatMap((categoria) =>
+    categoria.items.map((item) => {
+      const entry = sums.get(item.id);
+      const percent = entry && entry.count ? Math.round((entry.total / entry.count / 5) * 100) : null;
+      return { categoria: categoria.categoria, texto: item.texto, percent };
+    }),
+  );
 }
 
 export function aggregateFortalezas(rows: EvaluacionRow[]) {
