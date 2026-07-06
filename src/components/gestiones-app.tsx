@@ -81,6 +81,12 @@ const areaIcons: Record<AreaId, React.ComponentType<{ className?: string }>> = {
 
 const STEP_LABELS = ["Datos generales", "Observacion de clase", "Entrevistas", "Fortalezas", "Resumen"];
 
+const TRIMESTRE_LABELS: Record<Trimestre, string> = {
+  1: "Primer trimestre",
+  2: "Segundo trimestre",
+  3: "Tercer trimestre",
+};
+
 const initialScores = () =>
   CRITERIOS.reduce<Scores>((acc, categoria) => {
     categoria.items.forEach((item) => {
@@ -1282,14 +1288,27 @@ function StepDatosGenerales(props: Parameters<typeof CoordinacionPanel>[0]) {
               className="field"
               disabled={!docente}
               value={curso?.id ?? ""}
-              onChange={(event) => setSelectedCursoId(event.target.value || null)}
+              onChange={(event) => {
+                const cursoId = event.target.value || null;
+                setSelectedCursoId(cursoId);
+                const seleccionado = docente?.cursos.find((item) => item.id === cursoId);
+                if (seleccionado) setTrimestre(seleccionado.trimestre);
+              }}
             >
               <option value="">Selecciona un curso</option>
-              {(docente?.cursos ?? []).map((item) => (
-                <option key={item.id} value={item.id}>
-                  {item.nombre}
-                </option>
-              ))}
+              {TRIMESTRES.map((valorTrimestre) => {
+                const cursosDelTrimestre = (docente?.cursos ?? []).filter((item) => item.trimestre === valorTrimestre);
+                if (!cursosDelTrimestre.length) return null;
+                return (
+                  <optgroup key={valorTrimestre} label={TRIMESTRE_LABELS[valorTrimestre]}>
+                    {cursosDelTrimestre.map((item) => (
+                      <option key={item.id} value={item.id}>
+                        {item.nombre}
+                      </option>
+                    ))}
+                  </optgroup>
+                );
+              })}
             </select>
             <button
               className="flex h-10 w-10 shrink-0 items-center justify-center border border-white/10 bg-white/8 text-slate-200 transition hover:border-emerald-300/50 disabled:opacity-40"
