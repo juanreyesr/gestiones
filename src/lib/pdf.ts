@@ -1,6 +1,6 @@
 import { jsPDF } from "jspdf";
 import type { ReporteData } from "@/components/reporte-printable";
-import { CATEGORIA_DESCRIPCIONES } from "@/data/evaluacion";
+import { CATEGORIA_COLORES, CATEGORIA_DESCRIPCIONES } from "@/data/evaluacion";
 import type { EvaluacionRow, TendenciaCategoria } from "@/lib/evaluacion-helpers";
 
 const PAGE_HEIGHT = 841.89;
@@ -10,6 +10,15 @@ const INK: [number, number, number] = [15, 23, 42];
 const MUTED: [number, number, number] = [71, 85, 105];
 const TRACK: [number, number, number] = [226, 232, 240];
 const FILL: [number, number, number] = [51, 65, 85];
+const GRID: [number, number, number] = [226, 232, 240];
+const GOOD: [number, number, number] = [12, 163, 12];
+const CRITICAL: [number, number, number] = [208, 59, 59];
+
+function hexToRgb(hex: string): [number, number, number] {
+  const clean = hex.replace("#", "");
+  const value = parseInt(clean, 16);
+  return [(value >> 16) & 255, (value >> 8) & 255, value & 255];
+}
 
 class PdfWriter {
   doc: jsPDF;
@@ -77,6 +86,74 @@ class PdfWriter {
     this.y += amount;
   }
 
+  lineChart(series: TendenciaCategoria[], chartHeight = 150) {
+    if (!series.length) {
+      this.text("Aun no hay suficiente historial para mostrar una tendencia.", { size: 10 });
+      return;
+    }
+
+    const axisLabelWidth = 24;
+    const legendHeight = series.length * 14 + 6;
+    this.ensureSpace(chartHeight + 24 + legendHeight);
+
+    const periodos = series[0].puntos.map((punto) => punto.periodo);
+    const chartX = MARGIN + axisLabelWidth;
+    const chartWidth = this.contentWidth - axisLabelWidth;
+    const chartTop = this.y;
+    const chartBottom = chartTop + chartHeight;
+    const xFor = (index: number) =>
+      periodos.length > 1 ? chartX + (index / (periodos.length - 1)) * chartWidth : chartX + chartWidth / 2;
+    const yFor = (percent: number) => chartBottom - (Math.max(0, Math.min(100, percent)) / 100) * chartHeight;
+
+    this.doc.setFont("helvetica", "normal");
+    this.doc.setFontSize(7);
+    this.doc.setTextColor(...MUTED);
+    for (const tick of [0, 25, 50, 75, 100]) {
+      const y = yFor(tick);
+      this.doc.setDrawColor(...GRID);
+      this.doc.setLineWidth(0.5);
+      this.doc.line(chartX, y, chartX + chartWidth, y);
+      this.doc.text(`${tick}`, chartX - 4, y + 2, { align: "right" });
+    }
+    for (const [index, periodo] of periodos.entries()) {
+      this.doc.text(periodo, xFor(index), chartBottom + 10, { align: "center" });
+    }
+
+    for (const serie of series) {
+      const color = hexToRgb(CATEGORIA_COLORES[serie.categoria] ?? "#94a3b8");
+      this.doc.setDrawColor(...color);
+      this.doc.setFillColor(...color);
+      this.doc.setLineWidth(1.4);
+      for (let i = 0; i < serie.puntos.length - 1; i++) {
+        this.doc.line(xFor(i), yFor(serie.puntos[i].percent), xFor(i + 1), yFor(serie.puntos[i + 1].percent));
+      }
+      for (const [index, punto] of serie.puntos.entries()) {
+        this.doc.circle(xFor(index), yFor(punto.percent), 1.6, "F");
+      }
+    }
+
+    this.y = chartBottom + 22;
+
+    this.doc.setFontSize(9);
+    for (const serie of series) {
+      this.ensureSpace(13);
+      const color = hexToRgb(CATEGORIA_COLORES[serie.categoria] ?? "#94a3b8");
+      this.doc.setFillColor(...color);
+      this.doc.circle(MARGIN + 3, this.y - 3, 3, "F");
+      const primero = serie.puntos[0].percent;
+      const ultimo = serie.puntos[serie.puntos.length - 1].percent;
+      const delta = ultimo - primero;
+      this.doc.setFont("helvetica", "normal");
+      this.doc.setTextColor(...INK);
+      this.doc.text(`${serie.categoria}: ${ultimo}%`, MARGIN + 10, this.y);
+      const deltaLabel = delta > 0 ? `+${delta} mejorando` : delta < 0 ? `${delta} empeorando` : "sin cambio";
+      const deltaColor = delta > 0 ? GOOD : delta < 0 ? CRITICAL : MUTED;
+      this.doc.setTextColor(...deltaColor);
+      this.doc.text(deltaLabel, MARGIN + 220, this.y);
+      this.y += 13;
+    }
+  }
+
   save(filename: string) {
     this.doc.save(filename);
   }
@@ -133,23 +210,6 @@ export function exportReporteToPdf(data: ReporteData, filename: string) {
   w.spacer(12);
   writeReporte(w, data);
   w.save(filename);
-}
-
-function writeTendenciaTabla(w: PdfWriter, tendencia: TendenciaCategoria[]) {
-  if (!tendencia.length) {
-    w.text("Aun no hay suficiente historial para mostrar una tendencia.", { size: 10 });
-    return;
-  }
-  const periodos = tendencia[0].puntos.map((punto) => punto.periodo);
-  w.paragraph(`Periodos: ${periodos.join("  →  ")}`, 9);
-  for (const serie of tendencia) {
-    const valores = serie.puntos.map((punto) => `${punto.percent}%`).join("  →  ");
-    const primero = serie.puntos[0].percent;
-    const ultimo = serie.puntos[serie.puntos.length - 1].percent;
-    const delta = ultimo - primero;
-    const tendenciaTexto = delta > 0 ? `mejorando +${delta}` : delta < 0 ? `empeorando ${delta}` : "sin cambio";
-    w.paragraph(`${serie.categoria}: ${valores}  (${tendenciaTexto})`, 9);
-  }
 }
 
 export function exportInformeDocenteToPdf(
@@ -258,7 +318,7 @@ export function exportInformeDocenteToPdf(
   }
 
   w.heading("Tendencia por área");
-  writeTendenciaTabla(w, tendenciaCategorias);
+  w.lineChart(tendenciaCategorias);
 
   w.heading("Detalle de evaluaciones");
   for (const row of rows) {
@@ -360,7 +420,7 @@ export function exportResumenGeneralToPdf(
   w.spacer(4);
 
   w.heading("Tendencia por área");
-  writeTendenciaTabla(w, tendenciaCategorias);
+  w.lineChart(tendenciaCategorias);
 
   w.save(filename);
 }
