@@ -55,6 +55,7 @@ import { buildCorreoDocente } from "@/lib/email-draft";
 import { fetchKioscoCodigo, guardarKioscoCodigo } from "@/lib/kiosco-config";
 import { exportReporteToPdf } from "@/lib/pdf";
 import { getSupabaseClient, isSupabaseConfigured } from "@/lib/supabase";
+import { ClinicaView } from "./clinica/clinica-view";
 import { CodigoKioscoModal } from "./codigo-kiosco-modal";
 import { ConsultasView } from "./consultas-view";
 import { ControlCursosView } from "./control-cursos-view";
@@ -758,7 +759,11 @@ export function GestionesApp() {
                     Volver al menu principal
                   </button>
 
-                  {activeArea !== "coordinacion" ? (
+                  {activeArea === "clinica" ? (
+                    <div className="border border-white/10 bg-slate-950/58 p-4 backdrop-blur-xl sm:p-5">
+                      <ClinicaView />
+                    </div>
+                  ) : activeArea !== "coordinacion" ? (
                     <div className="border border-white/10 bg-slate-950/58 p-4 backdrop-blur-xl sm:p-5">
                       <AreaPlaceholder areaId={activeArea} />
                     </div>

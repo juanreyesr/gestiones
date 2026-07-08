@@ -57,7 +57,7 @@ export type EntrevistaPregunta = {
 
 export const AREAS = [
   { id: "iglesia", nombre: "Iglesia", descripcion: "Agenda, acompanamiento, actividades y responsabilidades ministeriales." },
-  { id: "clinica", nombre: "Clinica", descripcion: "Pacientes, sesiones, seguimientos, ingresos y organizacion operativa." },
+  { id: "clinica", nombre: "Clínica", descripcion: "Pacientes, historias clínicas, sesiones, agenda y citas en línea." },
   { id: "coordinacion", nombre: "Coordinacion", descripcion: "Evaluacion docente, rendimiento academico y mejora continua." },
   { id: "cursos", nombre: "Cursos", descripcion: "Planificacion, materiales, avances, tareas y desempeno por curso." },
   { id: "caeduc", nombre: "CAEDUC", descripcion: "Procesos, reportes, acompanamiento y acciones institucionales." },
