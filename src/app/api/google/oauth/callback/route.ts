@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { NextResponse, type NextRequest } from "next/server";
 import { getGoogleRedirectUri, isGoogleConfigured, saveTokens } from "@/lib/server/google-calendar";
 
 export const runtime = "nodejs";
@@ -21,7 +21,7 @@ function decodeIdTokenEmail(idToken: string | undefined): string | null {
   }
 }
 
-export async function GET(request: Request) {
+export async function GET(request: NextRequest) {
   if (!isGoogleConfigured()) {
     return redirectHome(request, "error");
   }
@@ -29,8 +29,7 @@ export async function GET(request: Request) {
   const url = new URL(request.url);
   const code = url.searchParams.get("code");
   const state = url.searchParams.get("state");
-  const cookieHeader = request.headers.get("cookie") ?? "";
-  const stateCookie = /(?:^|;\s*)gestiones_google_state=([^;]+)/.exec(cookieHeader)?.[1];
+  const stateCookie = request.cookies.get("gestiones_google_state")?.value;
 
   if (!code || !state || !stateCookie || state !== stateCookie) {
     return redirectHome(request, "error");

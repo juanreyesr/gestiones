@@ -28,8 +28,17 @@ function AprobarModal({
 
   const sugeridos = useMemo(() => {
     const term = busqueda.trim().toLowerCase();
-    return pacientes.filter((paciente) => !term || paciente.nombre.toLowerCase().includes(term)).slice(0, 6);
-  }, [busqueda, pacientes]);
+    const filtrados = pacientes
+      .filter((paciente) => !term || paciente.nombre.toLowerCase().includes(term))
+      .slice(0, 6);
+    // El paciente ya seleccionado siempre debe seguir visible en el select,
+    // aunque la busqueda actual lo filtre.
+    if (pacienteId && !filtrados.some((paciente) => paciente.id === pacienteId)) {
+      const seleccionado = pacientes.find((paciente) => paciente.id === pacienteId);
+      if (seleccionado) filtrados.unshift(seleccionado);
+    }
+    return filtrados;
+  }, [busqueda, pacientes, pacienteId]);
 
   const handleAprobar = async () => {
     if (saving) return;

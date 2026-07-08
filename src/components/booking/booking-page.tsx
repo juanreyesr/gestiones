@@ -2,7 +2,7 @@
 
 import { CalendarCheck2, CalendarDays, ChevronLeft, Clock, HeartPulse, Send } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { agruparSlotsPorDia, formatoFechaLarga, formatoHora, type SlotPublico } from "@/lib/clinica/slots";
+import { agruparSlotsPorDia, claveDiaLocal, formatoFechaLarga, formatoHora, type SlotPublico } from "@/lib/clinica/slots";
 
 type Paso = "cargando" | "inactivo" | "dia" | "hora" | "datos" | "enviado";
 
@@ -36,7 +36,7 @@ export function BookingPage() {
       const hasta = new Date();
       hasta.setDate(hasta.getDate() + 45);
       const slotsRes = await fetch(
-        `/api/booking/slots?desde=${desde.toISOString().slice(0, 10)}&hasta=${hasta.toISOString().slice(0, 10)}`
+        `/api/booking/slots?desde=${claveDiaLocal(desde)}&hasta=${claveDiaLocal(hasta)}`
       );
       if (!slotsRes.ok) {
         setPaso("inactivo");

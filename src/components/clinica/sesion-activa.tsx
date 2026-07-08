@@ -55,15 +55,21 @@ export function SesionActiva({
     setGuardadoNotas("pendiente");
     if (debounceRef.current) clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(() => {
+      debounceRef.current = null;
       void guardarNotas();
     }, 1500);
   };
 
   useEffect(() => {
     return () => {
-      if (debounceRef.current) clearTimeout(debounceRef.current);
+      // Flush: si quedaban notas sin guardar al desmontar, guardarlas de inmediato.
+      if (debounceRef.current) {
+        clearTimeout(debounceRef.current);
+        debounceRef.current = null;
+        void guardarNotas();
+      }
     };
-  }, []);
+  }, [guardarNotas]);
 
   const handleElegirModalidad = async (elegida: SesionModalidad) => {
     const temaFinal = elegida === "tema_nuevo" ? temaDraft.trim() : null;

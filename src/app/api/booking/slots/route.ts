@@ -39,10 +39,14 @@ export async function GET(request: Request) {
   }));
 
   // Si Google Calendar esta conectado, resta tambien sus eventos ocupados.
+  // La ventana de freebusy se calcula desde los propios slots (ya vienen en UTC),
+  // asi cubre correctamente cualquier zona horaria del consultorio.
   if (isGoogleConfigured() && slots.length > 0) {
+    const inicios = slots.map((slot) => new Date(slot.inicio).getTime());
+    const fines = slots.map((slot) => new Date(slot.fin).getTime());
     const { busy } = await queryFreeBusy(
-      new Date(`${desde}T00:00:00Z`).toISOString(),
-      new Date(`${hasta}T23:59:59Z`).toISOString()
+      new Date(Math.min(...inicios)).toISOString(),
+      new Date(Math.max(...fines)).toISOString()
     );
     if (busy.length > 0) {
       slots = slots.filter(
