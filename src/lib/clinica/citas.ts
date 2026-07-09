@@ -14,13 +14,14 @@ type RawCita = {
   modalidad: CitaModalidad | null;
   motivo: string | null;
   notas: string | null;
+  motivo_estado: string | null;
   gcal_event_id: string | null;
   gcal_sync_status: GcalSyncStatus | null;
   gestionesjj_pacientes?: { nombre: string } | null;
 };
 
 const CITA_COLUMNS =
-  "id,paciente_id,contacto_nombre,contacto_telefono,contacto_email,inicio,fin,estado,origen,modalidad,motivo,notas,gcal_event_id,gcal_sync_status,gestionesjj_pacientes(nombre)";
+  "id,paciente_id,contacto_nombre,contacto_telefono,contacto_email,inicio,fin,estado,origen,modalidad,motivo,notas,motivo_estado,gcal_event_id,gcal_sync_status,gestionesjj_pacientes(nombre)";
 
 function mapCita(row: RawCita): CitaRow {
   return {
@@ -37,6 +38,7 @@ function mapCita(row: RawCita): CitaRow {
     modalidad: row.modalidad,
     motivo: row.motivo,
     notas: row.notas,
+    motivoEstado: row.motivo_estado,
     gcalEventId: row.gcal_event_id,
     gcalSyncStatus: row.gcal_sync_status,
   };
@@ -111,11 +113,16 @@ export async function actualizarCita(id: string, payload: Partial<CitaPayload>) 
   return { error: error ? formatCitaError(error) : null };
 }
 
-export async function cambiarEstadoCita(id: string, estado: CitaEstado) {
+export async function cambiarEstadoCita(id: string, estado: CitaEstado, motivoEstado?: string | null) {
   const supabase = getSupabaseClient();
   if (!supabase) return { error: "Faltan las variables de Supabase." };
 
-  const { error } = await supabase.from("gestionesjj_citas").update({ estado }).eq("id", id);
+  const payload: { estado: CitaEstado; motivo_estado?: string | null } = { estado };
+  if (estado === "cancelada" || estado === "no_asistio") {
+    payload.motivo_estado = motivoEstado?.trim() || null;
+  }
+
+  const { error } = await supabase.from("gestionesjj_citas").update(payload).eq("id", id);
   return { error: error ? formatCitaError(error) : null };
 }
 

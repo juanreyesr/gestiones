@@ -231,6 +231,19 @@ export function DisponibilidadConfigView() {
                 ))}
               </select>
             </Field>
+
+            <Field label="Texto del consentimiento informado">
+              <textarea
+                className="field resize-y leading-6"
+                onChange={(event) => set("consentimientoTexto", event.target.value)}
+                rows={7}
+                value={config.consentimientoTexto}
+              />
+            </Field>
+            <p className="text-xs leading-5 text-slate-500">
+              El paciente debe aceptar este texto para poder solicitar una cita. Revísalo según tu criterio profesional y
+              la ley de tu país; se guarda una copia de lo aceptado en el expediente de cada paciente.
+            </p>
           </div>
         </SectionCard>
 

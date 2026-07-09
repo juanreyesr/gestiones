@@ -20,7 +20,7 @@ function AprobarModal({
   pacientes: PacienteRow[];
   solicitud: SolicitudRow;
 }) {
-  const [modo, setModo] = useState<"nuevo" | "existente">("nuevo");
+  const [modo, setModo] = useState<"nuevo" | "existente">(solicitud.yaEsPaciente ? "existente" : "nuevo");
   const [pacienteId, setPacienteId] = useState("");
   const [busqueda, setBusqueda] = useState("");
   const [saving, setSaving] = useState(false);
@@ -66,6 +66,25 @@ function AprobarModal({
           <p className="mt-1 text-sm text-slate-300">
             {solicitud.nombre} · {formatoFechaHora(solicitud.inicio)} – {formatoHora(solicitud.fin)}
           </p>
+          {solicitud.yaEsPaciente || solicitud.primeraSesion || solicitud.darSeguimiento ? (
+            <div className="mt-2 flex flex-wrap gap-1.5">
+              {solicitud.yaEsPaciente ? (
+                <span className="border border-sky-300/40 bg-sky-300/10 px-2 py-0.5 text-[11px] font-semibold text-sky-200">
+                  Dice: ya soy paciente
+                </span>
+              ) : null}
+              {solicitud.primeraSesion ? (
+                <span className="border border-emerald-300/40 bg-emerald-300/10 px-2 py-0.5 text-[11px] font-semibold text-emerald-200">
+                  Dice: primera sesión
+                </span>
+              ) : null}
+              {solicitud.darSeguimiento ? (
+                <span className="border border-amber-300/40 bg-amber-300/10 px-2 py-0.5 text-[11px] font-semibold text-amber-200">
+                  Quiere seguimiento
+                </span>
+              ) : null}
+            </div>
+          ) : null}
 
           <div className="mt-4 grid gap-2">
             <label className="flex cursor-pointer items-start gap-2.5 border border-white/10 bg-white/4 p-3 transition hover:border-emerald-300/40">
@@ -218,6 +237,25 @@ export function SolicitudesView({
                     <div className="text-xs text-slate-400">hasta {formatoHora(solicitud.fin)}</div>
                   </div>
                 </div>
+                {solicitud.yaEsPaciente || solicitud.primeraSesion || solicitud.darSeguimiento ? (
+                  <div className="flex flex-wrap gap-1.5">
+                    {solicitud.yaEsPaciente ? (
+                      <span className="border border-sky-300/40 bg-sky-300/10 px-2 py-0.5 text-[11px] font-semibold text-sky-200">
+                        Ya soy paciente
+                      </span>
+                    ) : null}
+                    {solicitud.primeraSesion ? (
+                      <span className="border border-emerald-300/40 bg-emerald-300/10 px-2 py-0.5 text-[11px] font-semibold text-emerald-200">
+                        Primera sesión
+                      </span>
+                    ) : null}
+                    {solicitud.darSeguimiento ? (
+                      <span className="border border-amber-300/40 bg-amber-300/10 px-2 py-0.5 text-[11px] font-semibold text-amber-200">
+                        Quiere seguimiento
+                      </span>
+                    ) : null}
+                  </div>
+                ) : null}
                 {solicitud.motivo ? <p className="text-sm leading-6 text-slate-300">“{solicitud.motivo}”</p> : null}
                 <div className="flex flex-wrap justify-end gap-2">
                   <button

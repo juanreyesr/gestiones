@@ -10,7 +10,11 @@ type RawDisponibilidad = {
   antelacion_max_dias: number;
   agendamiento_publico: boolean;
   horario_semanal: HorarioSemanal;
+  consentimiento_texto: string | null;
 };
+
+const CONSENT_DEFAULT =
+  "Al solicitar una cita acepto lo siguiente: (1) La información que comparto será tratada de forma confidencial y utilizada únicamente para mi atención psicológica. (2) La confidencialidad tiene límites cuando exista riesgo para mi vida o la de otras personas, o cuando la ley lo requiera. (3) Autorizo que se me contacte por teléfono o correo electrónico para confirmar, recordar o reprogramar mi cita. (4) Entiendo que si no puedo asistir debo avisar con anticipación. (5) La atención psicológica no sustituye una valoración médica o psiquiátrica cuando esta sea necesaria. Confirmo que la información que proporciono es verdadera y que participo de forma voluntaria.";
 
 const DEFAULT_CONFIG: DisponibilidadConfig = {
   id: null,
@@ -21,6 +25,7 @@ const DEFAULT_CONFIG: DisponibilidadConfig = {
   antelacionMaxDias: 30,
   agendamientoPublico: false,
   horarioSemanal: {},
+  consentimientoTexto: CONSENT_DEFAULT,
 };
 
 function mapConfig(row: RawDisponibilidad): DisponibilidadConfig {
@@ -33,6 +38,7 @@ function mapConfig(row: RawDisponibilidad): DisponibilidadConfig {
     antelacionMaxDias: row.antelacion_max_dias,
     agendamientoPublico: row.agendamiento_publico,
     horarioSemanal: row.horario_semanal ?? {},
+    consentimientoTexto: row.consentimiento_texto ?? CONSENT_DEFAULT,
   };
 }
 
@@ -42,7 +48,7 @@ export async function fetchDisponibilidad() {
 
   const { data, error } = await supabase
     .from("gestionesjj_disponibilidad")
-    .select("id,zona_horaria,duracion_min,buffer_min,antelacion_min_horas,antelacion_max_dias,agendamiento_publico,horario_semanal")
+    .select("id,zona_horaria,duracion_min,buffer_min,antelacion_min_horas,antelacion_max_dias,agendamiento_publico,horario_semanal,consentimiento_texto")
     .limit(1)
     .maybeSingle();
 
@@ -63,6 +69,7 @@ export async function guardarDisponibilidad(config: DisponibilidadConfig) {
     antelacion_max_dias: config.antelacionMaxDias,
     agendamiento_publico: config.agendamientoPublico,
     horario_semanal: config.horarioSemanal,
+    consentimiento_texto: config.consentimientoTexto,
   };
 
   if (config.id) {

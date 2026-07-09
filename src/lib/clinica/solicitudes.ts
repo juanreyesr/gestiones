@@ -13,9 +13,13 @@ type RawSolicitud = {
   paciente_id: string | null;
   cita_id: string | null;
   created_at: string;
+  ya_es_paciente: boolean;
+  primera_sesion: boolean;
+  dar_seguimiento: boolean;
 };
 
-const SOLICITUD_COLUMNS = "id,nombre,telefono,email,motivo,inicio,fin,estado,paciente_id,cita_id,created_at";
+const SOLICITUD_COLUMNS =
+  "id,nombre,telefono,email,motivo,inicio,fin,estado,paciente_id,cita_id,created_at,ya_es_paciente,primera_sesion,dar_seguimiento";
 
 function mapSolicitud(row: RawSolicitud): SolicitudRow {
   return {
@@ -30,6 +34,9 @@ function mapSolicitud(row: RawSolicitud): SolicitudRow {
     pacienteId: row.paciente_id,
     citaId: row.cita_id,
     createdAt: row.created_at,
+    yaEsPaciente: row.ya_es_paciente,
+    primeraSesion: row.primera_sesion,
+    darSeguimiento: row.dar_seguimiento,
   };
 }
 
