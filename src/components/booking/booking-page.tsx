@@ -6,7 +6,7 @@ import { agruparSlotsPorDia, claveDiaLocal, formatoFechaLarga, formatoHora, type
 
 type Paso = "cargando" | "inactivo" | "dia" | "hora" | "datos" | "enviado";
 
-type BookingInfo = { activo: boolean; duracionMin: number; zonaHoraria: string };
+type BookingInfo = { activo: boolean; duracionMin: number; zonaHoraria: string; consentimientoTexto?: string | null };
 
 export function BookingPage() {
   const [paso, setPaso] = useState<Paso>("cargando");
@@ -19,6 +19,9 @@ export function BookingPage() {
   const [email, setEmail] = useState("");
   const [motivo, setMotivo] = useState("");
   const [empresa, setEmpresa] = useState(""); // honeypot
+  const [tipoPaciente, setTipoPaciente] = useState<"nuevo" | "existente" | null>(null);
+  const [darSeguimiento, setDarSeguimiento] = useState(false);
+  const [consentimiento, setConsentimiento] = useState(false);
   const [enviando, setEnviando] = useState(false);
   const [error, setError] = useState("");
 
@@ -58,10 +61,13 @@ export function BookingPage() {
   const porDia = useMemo(() => agruparSlotsPorDia(slots), [slots]);
   const dias = useMemo(() => Array.from(porDia.keys()).sort(), [porDia]);
 
+  const datosCompletos =
+    Boolean(slotElegido) && nombre.trim().length > 0 && telefono.trim().length > 0 && tipoPaciente !== null && consentimiento;
+
   const handleEnviar = async () => {
     if (enviando) return;
-    if (!slotElegido || nombre.trim().length === 0 || telefono.trim().length === 0) {
-      setError("El nombre y el teléfono son obligatorios.");
+    if (!datosCompletos || !slotElegido) {
+      setError("Completa los campos obligatorios y acepta el consentimiento.");
       return;
     }
     setEnviando(true);
@@ -76,6 +82,10 @@ export function BookingPage() {
           email: email.trim() || null,
           motivo: motivo.trim() || null,
           inicio: slotElegido.inicio,
+          consentimiento,
+          yaEsPaciente: tipoPaciente === "existente",
+          primeraSesion: tipoPaciente === "nuevo",
+          darSeguimiento: tipoPaciente === "existente" ? darSeguimiento : false,
           empresa,
         }),
       });
@@ -219,6 +229,26 @@ export function BookingPage() {
                 <span className="capitalize">{formatoFechaLarga(slotElegido.inicio)}</span> · {formatoHora(slotElegido.inicio)}
               </div>
 
+              <div className="grid gap-1.5">
+                <span className="text-xs font-semibold uppercase text-slate-400">¿Es tu primera vez? *</span>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    className={`border px-3 py-2.5 text-sm font-semibold transition ${tipoPaciente === "nuevo" ? "border-emerald-300/70 bg-emerald-300/15 text-white" : "border-white/10 bg-white/4 text-slate-300 hover:border-white/30"}`}
+                    onClick={() => setTipoPaciente("nuevo")}
+                    type="button"
+                  >
+                    Es mi primera sesión
+                  </button>
+                  <button
+                    className={`border px-3 py-2.5 text-sm font-semibold transition ${tipoPaciente === "existente" ? "border-emerald-300/70 bg-emerald-300/15 text-white" : "border-white/10 bg-white/4 text-slate-300 hover:border-white/30"}`}
+                    onClick={() => setTipoPaciente("existente")}
+                    type="button"
+                  >
+                    Ya soy paciente
+                  </button>
+                </div>
+              </div>
+
               <label className="grid gap-1.5">
                 <span className="text-xs font-semibold uppercase text-slate-400">Nombre completo *</span>
                 <input className="field" onChange={(event) => setNombre(event.target.value)} value={nombre} />
@@ -231,16 +261,45 @@ export function BookingPage() {
                 <span className="text-xs font-semibold uppercase text-slate-400">Correo electrónico</span>
                 <input className="field" onChange={(event) => setEmail(event.target.value)} type="email" value={email} />
               </label>
-              <label className="grid gap-1.5">
-                <span className="text-xs font-semibold uppercase text-slate-400">¿Qué te gustaría abordar? (opcional)</span>
+
+              <div className="grid gap-1.5">
+                <span className="text-xs font-semibold uppercase text-slate-400">¿Qué te gustaría abordar?</span>
+                {tipoPaciente === "existente" ? (
+                  <label className="flex cursor-pointer items-center gap-2.5 border border-white/10 bg-white/4 p-2.5 text-sm text-slate-200">
+                    <input
+                      checked={darSeguimiento}
+                      className="h-4 w-4 accent-emerald-300"
+                      onChange={(event) => setDarSeguimiento(event.target.checked)}
+                      type="checkbox"
+                    />
+                    Dar seguimiento a la sesión anterior
+                  </label>
+                ) : null}
                 <textarea
                   className="field resize-y"
                   maxLength={500}
                   onChange={(event) => setMotivo(event.target.value)}
+                  placeholder={darSeguimiento ? "Opcional: algo puntual que quieras agregar" : "Cuéntame brevemente el tema (opcional)"}
                   rows={3}
                   value={motivo}
                 />
-              </label>
+              </div>
+
+              {info?.consentimientoTexto ? (
+                <label className="grid cursor-pointer gap-2 border border-white/10 bg-white/4 p-3">
+                  <div className="flex items-start gap-2.5">
+                    <input
+                      checked={consentimiento}
+                      className="mt-0.5 h-4 w-4 shrink-0 accent-emerald-300"
+                      onChange={(event) => setConsentimiento(event.target.checked)}
+                      type="checkbox"
+                    />
+                    <span className="text-sm font-semibold text-white">He leído y acepto el consentimiento informado *</span>
+                  </div>
+                  <p className="max-h-32 overflow-y-auto text-xs leading-5 text-slate-400">{info.consentimientoTexto}</p>
+                </label>
+              ) : null}
+
               {/* Honeypot anti-bots: invisible para personas */}
               <input
                 aria-hidden
@@ -256,13 +315,18 @@ export function BookingPage() {
 
               <button
                 className="inline-flex items-center justify-center gap-2 bg-emerald-300 px-4 py-3 text-sm font-bold text-slate-950 transition hover:bg-emerald-200 disabled:opacity-60"
-                disabled={enviando || nombre.trim().length === 0 || telefono.trim().length === 0}
+                disabled={enviando || !datosCompletos}
                 onClick={handleEnviar}
                 type="button"
               >
                 <Send className="h-4 w-4" />
                 {enviando ? "Enviando solicitud..." : "Solicitar cita"}
               </button>
+              {!datosCompletos ? (
+                <p className="text-center text-xs text-slate-500">
+                  Completa nombre, teléfono, si es tu primera vez y acepta el consentimiento para habilitar el botón.
+                </p>
+              ) : null}
             </div>
           ) : null}
 

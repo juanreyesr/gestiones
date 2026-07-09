@@ -8,18 +8,63 @@ import {
   ChevronRight,
   ExternalLink,
   ListTodo,
+  Mail,
   Pencil,
+  Send,
   Trash2,
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { cambiarEstadoCita, eliminarCita, fetchCitas } from "@/lib/clinica/citas";
 import { buildGoogleTemplateLink, fetchGoogleBusy, syncCitaConGoogle, type BusyBlock } from "@/lib/clinica/google-client";
+import { buildRecordatorio } from "@/lib/clinica/recordatorio";
 import { agregarDias, claveDiaLocal, formatoFechaHora, formatoHora, inicioDeSemana } from "@/lib/clinica/slots";
 import type { CitaEstado, CitaRow, PacienteRow } from "@/lib/clinica/types";
 import { ConfirmDialog } from "../confirm-dialog";
 import { ModalPortal } from "../modal-portal";
 import { CitaForm } from "./cita-form";
-import { BTN_GHOST, BTN_PRIMARY, CITA_BADGES, CitaBadge, EmptyState } from "./ui";
+import { BTN_GHOST, BTN_PRIMARY, CITA_BADGES, CitaBadge, EmptyState, Field } from "./ui";
+
+function MotivoEstadoModal({
+  estado,
+  onCancelar,
+  onConfirmar,
+}: {
+  estado: "cancelada" | "no_asistio";
+  onCancelar: () => void;
+  onConfirmar: (motivo: string) => void;
+}) {
+  const [motivo, setMotivo] = useState("");
+  return (
+    <ModalPortal>
+      <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/70 p-4" onClick={onCancelar}>
+        <div className="w-full max-w-sm border border-white/10 bg-slate-950 p-5" onClick={(e) => e.stopPropagation()}>
+          <h3 className="text-lg font-semibold text-white">
+            {estado === "cancelada" ? "Marcar como cancelada" : "Marcar como no asistió"}
+          </h3>
+          <div className="mt-3">
+            <Field label="Motivo (opcional)">
+              <textarea
+                className="field resize-y"
+                onChange={(e) => setMotivo(e.target.value)}
+                placeholder="Ej. avisó por WhatsApp, no contestó..."
+                rows={3}
+                value={motivo}
+              />
+            </Field>
+          </div>
+          <div className="mt-4 flex justify-end gap-3">
+            <button className={BTN_GHOST} onClick={onCancelar} type="button">
+              Volver
+            </button>
+            <button className={BTN_PRIMARY} onClick={() => onConfirmar(motivo)} type="button">
+              Confirmar
+            </button>
+          </div>
+        </div>
+      </div>
+    </ModalPortal>
+  );
+}
 
 const HORA_INICIO = 7;
 const HORA_FIN = 21;
@@ -29,6 +74,7 @@ const DIA_LABELS = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"];
 
 function CitaDetalleModal({
   cita,
+  contacto,
   googleConectado,
   onCambiarEstado,
   onCerrar,
@@ -36,6 +82,7 @@ function CitaDetalleModal({
   onEliminar,
 }: {
   cita: CitaRow;
+  contacto: { telefono: string | null; email: string | null; nombre: string | null };
   googleConectado: boolean;
   onCambiarEstado: (estado: CitaEstado) => void;
   onCerrar: () => void;
@@ -44,6 +91,7 @@ function CitaDetalleModal({
 }) {
   const nombre = cita.pacienteNombre ?? cita.contactoNombre ?? "Sin nombre";
   const activa = cita.estado === "pendiente" || cita.estado === "confirmada";
+  const recordatorio = buildRecordatorio(cita, contacto);
 
   return (
     <ModalPortal>
@@ -65,6 +113,11 @@ function CitaDetalleModal({
             {cita.contactoTelefono ? <div>Teléfono: {cita.contactoTelefono}</div> : null}
             {cita.motivo ? <div>Motivo: {cita.motivo}</div> : null}
             {cita.notas ? <div className="text-slate-400">{cita.notas}</div> : null}
+            {cita.motivoEstado ? (
+              <div className="text-amber-300">
+                {cita.estado === "cancelada" ? "Motivo de cancelación" : "Motivo"}: {cita.motivoEstado}
+              </div>
+            ) : null}
             {cita.origen === "publica" ? (
               <div className="text-xs text-sky-300">Agendada desde el enlace público</div>
             ) : null}
@@ -109,6 +162,30 @@ function CitaDetalleModal({
               >
                 Cancelar cita
               </button>
+            </div>
+          ) : null}
+
+          {activa ? (
+            <div className="mt-4 border-t border-white/10 pt-4">
+              <div className="mb-2 text-xs font-semibold uppercase text-slate-400">Recordar al paciente</div>
+              <div className="flex flex-wrap gap-2">
+                <a
+                  className="inline-flex items-center gap-1.5 border border-emerald-300/40 bg-emerald-300/10 px-3 py-1.5 text-sm font-semibold text-emerald-200 transition hover:bg-emerald-300/20"
+                  href={recordatorio.whatsapp}
+                  rel="noreferrer"
+                  target="_blank"
+                >
+                  <Send className="h-4 w-4" />
+                  WhatsApp
+                </a>
+                <a
+                  className="inline-flex items-center gap-1.5 border border-sky-300/40 bg-sky-300/10 px-3 py-1.5 text-sm font-semibold text-sky-200 transition hover:bg-sky-300/20"
+                  href={recordatorio.mailto}
+                >
+                  <Mail className="h-4 w-4" />
+                  Correo
+                </a>
+              </div>
             </div>
           ) : null}
 
@@ -159,6 +236,7 @@ export function AgendaView({ pacientes }: { pacientes: PacienteRow[] }) {
   const [formAbierto, setFormAbierto] = useState(false);
   const [eliminando, setEliminando] = useState<CitaRow | null>(null);
   const [borrando, setBorrando] = useState(false);
+  const [motivoTarget, setMotivoTarget] = useState<{ cita: CitaRow; estado: "cancelada" | "no_asistio" } | null>(null);
 
   const semanaFin = useMemo(() => agregarDias(semanaInicio, 7), [semanaInicio]);
 
@@ -220,8 +298,8 @@ export function AgendaView({ pacientes }: { pacientes: PacienteRow[] }) {
     return { top, height };
   };
 
-  const handleCambiarEstado = async (cita: CitaRow, estado: CitaEstado) => {
-    const { error: err } = await cambiarEstadoCita(cita.id, estado);
+  const aplicarEstado = async (cita: CitaRow, estado: CitaEstado, motivo?: string) => {
+    const { error: err } = await cambiarEstadoCita(cita.id, estado, motivo);
     if (err) {
       setError(err);
       return;
@@ -232,7 +310,26 @@ export function AgendaView({ pacientes }: { pacientes: PacienteRow[] }) {
       void syncCitaConGoogle(cita.id, "update");
     }
     setDetalle(null);
+    setMotivoTarget(null);
     void cargar();
+  };
+
+  const handleCambiarEstado = (cita: CitaRow, estado: CitaEstado) => {
+    // Cancelar / no asistió abren un paso para anotar el motivo (opcional).
+    if (estado === "cancelada" || estado === "no_asistio") {
+      setMotivoTarget({ cita, estado });
+      return;
+    }
+    void aplicarEstado(cita, estado);
+  };
+
+  const contactoDeCita = (cita: CitaRow) => {
+    const paciente = cita.pacienteId ? pacientes.find((p) => p.id === cita.pacienteId) : null;
+    return {
+      telefono: paciente?.telefono ?? cita.contactoTelefono,
+      email: paciente?.email ?? cita.contactoEmail,
+      nombre: paciente?.nombre ?? cita.contactoNombre,
+    };
   };
 
   const handleEliminar = async () => {
@@ -445,8 +542,9 @@ export function AgendaView({ pacientes }: { pacientes: PacienteRow[] }) {
       {detalle ? (
         <CitaDetalleModal
           cita={detalle}
+          contacto={contactoDeCita(detalle)}
           googleConectado={googleConectado}
-          onCambiarEstado={(estado) => void handleCambiarEstado(detalle, estado)}
+          onCambiarEstado={(estado) => handleCambiarEstado(detalle, estado)}
           onCerrar={() => setDetalle(null)}
           onEditar={() => {
             setEditando(detalle);
@@ -454,6 +552,14 @@ export function AgendaView({ pacientes }: { pacientes: PacienteRow[] }) {
             setFormAbierto(true);
           }}
           onEliminar={() => setEliminando(detalle)}
+        />
+      ) : null}
+
+      {motivoTarget ? (
+        <MotivoEstadoModal
+          estado={motivoTarget.estado}
+          onCancelar={() => setMotivoTarget(null)}
+          onConfirmar={(motivo) => void aplicarEstado(motivoTarget.cita, motivoTarget.estado, motivo)}
         />
       ) : null}
 

@@ -11,6 +11,10 @@ export async function POST(request: Request) {
     email?: string | null;
     motivo?: string | null;
     inicio?: string;
+    consentimiento?: boolean;
+    yaEsPaciente?: boolean;
+    primeraSesion?: boolean;
+    darSeguimiento?: boolean;
     empresa?: string; // honeypot: las personas nunca lo llenan
   } | null;
 
@@ -39,6 +43,10 @@ export async function POST(request: Request) {
     p_email: body.email ?? null,
     p_motivo: body.motivo ?? null,
     p_inicio: inicioDate.toISOString(),
+    p_consentimiento: body.consentimiento ?? false,
+    p_ya_es_paciente: body.yaEsPaciente ?? false,
+    p_primera_sesion: body.primeraSesion ?? false,
+    p_dar_seguimiento: body.darSeguimiento ?? false,
   });
 
   if (error) {

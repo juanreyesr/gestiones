@@ -32,6 +32,9 @@ export type PacienteRow = {
   notasGenerales: string | null;
   estado: PacienteEstado;
   createdAt: string;
+  datosToken: string | null;
+  datosCompletadosAt: string | null;
+  consentimientoAceptadoAt: string | null;
 };
 
 export type PacientePayload = {
@@ -98,6 +101,7 @@ export type CitaRow = {
   modalidad: CitaModalidad | null;
   motivo: string | null;
   notas: string | null;
+  motivoEstado: string | null;
   gcalEventId: string | null;
   gcalSyncStatus: GcalSyncStatus | null;
 };
@@ -114,6 +118,9 @@ export type SolicitudRow = {
   pacienteId: string | null;
   citaId: string | null;
   createdAt: string;
+  yaEsPaciente: boolean;
+  primeraSesion: boolean;
+  darSeguimiento: boolean;
 };
 
 export type RangoHorario = { inicio: string; fin: string };
@@ -129,6 +136,7 @@ export type DisponibilidadConfig = {
   antelacionMaxDias: number;
   agendamientoPublico: boolean;
   horarioSemanal: HorarioSemanal;
+  consentimientoTexto: string;
 };
 
 export const PACIENTE_ESTADOS: { value: PacienteEstado; label: string }[] = [

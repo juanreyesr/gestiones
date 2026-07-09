@@ -6,15 +6,21 @@ import {
   ChevronLeft,
   ChevronUp,
   ClipboardList,
+  Copy,
+  FileDown,
+  Link2,
   Pencil,
   Phone,
   Play,
+  RefreshCw,
+  ShieldCheck,
   Mail,
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { fetchProximaCitaDePaciente } from "@/lib/clinica/citas";
 import { fetchCompromisosPendientes } from "@/lib/clinica/compromisos";
-import { fetchPaciente } from "@/lib/clinica/pacientes";
+import { ensureDatosToken, fetchPaciente, reactivarDatos } from "@/lib/clinica/pacientes";
+import { exportarExpedientePdf } from "@/lib/clinica/expediente-pdf";
 import { fetchSesionEnCurso, fetchSesionesDePaciente, iniciarSesion } from "@/lib/clinica/sesiones";
 import { formatoFechaCorta, formatoFechaHora } from "@/lib/clinica/slots";
 import type { CitaRow, CompromisoRow, PacienteRow, SesionRow } from "@/lib/clinica/types";
@@ -64,6 +70,8 @@ export function PacienteExpediente({
   const [error, setError] = useState("");
   const [iniciando, setIniciando] = useState(false);
   const [sesionAbierta, setSesionAbierta] = useState<string | null>(null);
+  const [copiado, setCopiado] = useState(false);
+  const [datosMsg, setDatosMsg] = useState("");
 
   const cargar = useCallback(async () => {
     setLoading(true);
@@ -112,6 +120,35 @@ export function PacienteExpediente({
     }
     await cargar();
     setVista("sesion");
+  };
+
+  const handleCopiarEnlaceDatos = async () => {
+    if (!paciente) return;
+    setDatosMsg("");
+    const { token, error: tokenError } = await ensureDatosToken(paciente.id, paciente.datosToken);
+    if (tokenError || !token) {
+      setDatosMsg(tokenError ?? "No se pudo generar el enlace.");
+      return;
+    }
+    const url = `${window.location.origin}/datos/${token}`;
+    try {
+      await navigator.clipboard.writeText(url);
+      setCopiado(true);
+      setTimeout(() => setCopiado(false), 2000);
+      if (!paciente.datosToken) void cargar();
+    } catch {
+      setDatosMsg(url);
+    }
+  };
+
+  const handleReactivarDatos = async () => {
+    if (!paciente) return;
+    const { error: err } = await reactivarDatos(paciente.id);
+    if (err) {
+      setDatosMsg(err);
+      return;
+    }
+    void cargar();
   };
 
   if (loading && !paciente) {
@@ -206,6 +243,10 @@ export function PacienteExpediente({
           ) : null}
         </div>
         <div className="flex flex-wrap gap-2">
+          <button className={BTN_GHOST} onClick={() => exportarExpedientePdf(paciente, sesiones)} type="button">
+            <FileDown className="h-4 w-4" />
+            Exportar PDF
+          </button>
           <button className={BTN_GHOST} onClick={() => setVista("editar")} type="button">
             <Pencil className="h-4 w-4" />
             Editar datos
@@ -265,6 +306,43 @@ export function PacienteExpediente({
         </div>
 
         <aside className="grid content-start gap-4">
+          <SectionCard title="Hoja de datos generales">
+            {paciente.datosCompletadosAt ? (
+              <div className="grid gap-2">
+                <p className="inline-flex items-center gap-1.5 text-sm text-emerald-300">
+                  <ShieldCheck className="h-4 w-4" />
+                  Completada por el paciente el {formatoFechaCorta(paciente.datosCompletadosAt)}
+                </p>
+                <button
+                  className="inline-flex w-fit items-center gap-1.5 text-xs font-semibold text-slate-400 transition hover:text-slate-200"
+                  onClick={handleReactivarDatos}
+                  type="button"
+                >
+                  <RefreshCw className="h-3.5 w-3.5" />
+                  Reabrir para que el paciente la vuelva a llenar
+                </button>
+              </div>
+            ) : (
+              <div className="grid gap-2">
+                <p className="text-sm leading-6 text-slate-300">
+                  Envía este enlace al paciente para que complete su información. Al guardarla, el enlace se desactiva.
+                </p>
+                <button className={BTN_GHOST} onClick={handleCopiarEnlaceDatos} type="button">
+                  <Link2 className="h-4 w-4" />
+                  {copiado ? "¡Enlace copiado!" : "Copiar enlace para datos generales"}
+                  {copiado ? null : <Copy className="h-3.5 w-3.5" />}
+                </button>
+              </div>
+            )}
+            {datosMsg ? <p className="mt-2 break-all text-xs text-slate-400">{datosMsg}</p> : null}
+            {paciente.consentimientoAceptadoAt ? (
+              <p className="mt-3 inline-flex items-center gap-1.5 border-t border-white/10 pt-3 text-xs text-slate-400">
+                <ShieldCheck className="h-3.5 w-3.5 text-emerald-300" />
+                Consentimiento aceptado el {formatoFechaCorta(paciente.consentimientoAceptadoAt)}
+              </p>
+            ) : null}
+          </SectionCard>
+
           <SectionCard title="Compromisos y tareas pendientes">
             {compromisos.length === 0 ? (
               <p className="text-sm text-slate-400">Sin pendientes.</p>

@@ -19,10 +19,16 @@ export async function GET() {
     activo: boolean;
     duracion_min: number;
     zona_horaria: string;
+    consentimiento_texto: string | null;
   };
 
   return NextResponse.json(
-    { activo: row.activo, duracionMin: row.duracion_min, zonaHoraria: row.zona_horaria },
+    {
+      activo: row.activo,
+      duracionMin: row.duracion_min,
+      zonaHoraria: row.zona_horaria,
+      consentimientoTexto: row.consentimiento_texto,
+    },
     { headers: { "Cache-Control": "no-store" } }
   );
 }

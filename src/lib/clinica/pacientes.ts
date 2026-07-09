@@ -24,10 +24,13 @@ type RawPaciente = {
   notas_generales: string | null;
   estado: PacienteEstado;
   created_at: string;
+  datos_token: string | null;
+  datos_completados_at: string | null;
+  consentimiento_aceptado_at: string | null;
 };
 
 const PACIENTE_COLUMNS =
-  "id,nombre,telefono,email,fecha_nacimiento,genero,ocupacion,escolaridad,estado_civil,direccion,emergencia_nombre,emergencia_telefono,emergencia_relacion,motivo_consulta,antecedentes_medicos,antecedentes_psicologicos,antecedentes_familiares,medicacion_actual,referido_por,notas_generales,estado,created_at";
+  "id,nombre,telefono,email,fecha_nacimiento,genero,ocupacion,escolaridad,estado_civil,direccion,emergencia_nombre,emergencia_telefono,emergencia_relacion,motivo_consulta,antecedentes_medicos,antecedentes_psicologicos,antecedentes_familiares,medicacion_actual,referido_por,notas_generales,estado,created_at,datos_token,datos_completados_at,consentimiento_aceptado_at";
 
 function mapPaciente(row: RawPaciente): PacienteRow {
   return {
@@ -53,6 +56,9 @@ function mapPaciente(row: RawPaciente): PacienteRow {
     notasGenerales: row.notas_generales,
     estado: row.estado,
     createdAt: row.created_at,
+    datosToken: row.datos_token,
+    datosCompletadosAt: row.datos_completados_at,
+    consentimientoAceptadoAt: row.consentimiento_aceptado_at,
   };
 }
 
@@ -104,5 +110,27 @@ export async function deletePaciente(id: string) {
   const supabase = getSupabaseClient();
   if (!supabase) return { error: "Faltan las variables de Supabase." };
   const { error } = await supabase.from("gestionesjj_pacientes").delete().eq("id", id);
+  return { error: error?.message ?? null };
+}
+
+/** Garantiza un token para el enlace de datos generales y lo devuelve. */
+export async function ensureDatosToken(id: string, tokenActual: string | null) {
+  if (tokenActual) return { token: tokenActual, error: null };
+  const supabase = getSupabaseClient();
+  if (!supabase) return { token: null as string | null, error: "Faltan las variables de Supabase." };
+
+  const nuevo = crypto.randomUUID();
+  const { error } = await supabase.from("gestionesjj_pacientes").update({ datos_token: nuevo }).eq("id", id);
+  return { token: error ? null : nuevo, error: error?.message ?? null };
+}
+
+/** Reabre el enlace de datos generales para que el paciente lo vuelva a llenar. */
+export async function reactivarDatos(id: string) {
+  const supabase = getSupabaseClient();
+  if (!supabase) return { error: "Faltan las variables de Supabase." };
+  const { error } = await supabase
+    .from("gestionesjj_pacientes")
+    .update({ datos_completados_at: null })
+    .eq("id", id);
   return { error: error?.message ?? null };
 }
