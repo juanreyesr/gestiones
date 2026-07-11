@@ -101,22 +101,32 @@ export function cursosUltimoPeriodo(rows: EvaluacionRow[]): CursosUltimoPeriodo 
     }
   }
 
+  // La clave ignora tildes, mayusculas y espacios repetidos: el mismo curso
+  // suele estar registrado con y sin acentos ("Practica..." / "Práctica...").
+  const clave = (nombre: string) =>
+    nombre
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .replace(/\s+/g, " ")
+      .trim()
+      .toLowerCase();
+
   const porCurso = new Map<string, EvaluacionRow[]>();
   for (const row of rows) {
     if (row.anio !== anio || row.trimestre !== trimestre) continue;
-    const key = row.curso_nombre.trim();
+    const key = clave(row.curso_nombre);
     const list = porCurso.get(key) ?? [];
     list.push(row);
     porCurso.set(key, list);
   }
 
-  const cursos = Array.from(porCurso.entries()).map(([curso, cursoRows]) => {
+  const cursos = Array.from(porCurso.values()).map((cursoRows) => {
     const ordenadas = [...cursoRows].sort(
       (a, b) => a.fecha_observacion.localeCompare(b.fecha_observacion) || a.created_at.localeCompare(b.created_at),
     );
     const notas = ordenadas.map((row) => row.porcentaje);
     return {
-      curso,
+      curso: ordenadas[ordenadas.length - 1].curso_nombre.trim(),
       notaMax: Math.max(...notas),
       notaMin: Math.min(...notas),
       delta: ordenadas.length > 1 ? ordenadas[ordenadas.length - 1].porcentaje - ordenadas[0].porcentaje : null,
