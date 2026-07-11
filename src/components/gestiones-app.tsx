@@ -19,6 +19,7 @@ import {
   LogOut,
   Mail,
   Plus,
+  Presentation,
   Printer,
   Save,
   Sparkles,
@@ -63,6 +64,7 @@ import { EmailDraftModal } from "./email-draft-modal";
 import { EntrevistaKiosk } from "./entrevista-kiosk";
 import { InformeDocenteView } from "./informe-docente-view";
 import { OrbitScene } from "./orbit-scene";
+import { PresentacionView } from "./presentacion-view";
 import type { ReporteData } from "./reporte-printable";
 
 const ALLOWED_EMAIL = "lic.juanreyesr@gmail.com";
@@ -70,7 +72,7 @@ const ALLOWED_EMAIL = "lic.juanreyesr@gmail.com";
 type Scores = Record<number, number>;
 type AreaId = (typeof AREAS)[number]["id"];
 type Entrevistas = Record<1 | 2, Record<number, number>>;
-type CoordinacionView = "resumen" | "nueva" | "informe" | "control";
+type CoordinacionView = "resumen" | "nueva" | "informe" | "control" | "presentacion";
 
 const areaIcons: Record<AreaId, React.ComponentType<{ className?: string }>> = {
   iglesia: Church,
@@ -804,6 +806,12 @@ export function GestionesApp() {
                         </div>
                       ) : null}
 
+                      {coordinacionView === "presentacion" ? (
+                        <div className="border border-white/10 bg-slate-950/58 p-4 backdrop-blur-xl sm:p-5">
+                          <PresentacionView />
+                        </div>
+                      ) : null}
+
                       {coordinacionView === "nueva" ? (
                         <div className="grid gap-5 xl:grid-cols-[1fr_360px]">
                           <div className="border border-white/10 bg-slate-950/58 p-4 backdrop-blur-xl sm:p-5">
@@ -1029,6 +1037,7 @@ function CoordinacionTabs({ onChange, value }: { onChange: (value: CoordinacionV
     { value: "nueva", label: "Nueva evaluacion", icon: Plus },
     { value: "informe", label: "Informe por docente", icon: GraduationCap },
     { value: "control", label: "Control de cursos y docentes", icon: CalendarClock },
+    { value: "presentacion", label: "Modo presentacion", icon: Presentation },
   ];
 
   return (
