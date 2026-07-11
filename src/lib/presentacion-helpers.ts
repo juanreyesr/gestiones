@@ -1,5 +1,5 @@
 import { getSupabaseClient } from "@/lib/supabase";
-import { agruparPorCurso, type EvaluacionRow } from "@/lib/evaluacion-helpers";
+import type { EvaluacionRow } from "@/lib/evaluacion-helpers";
 import type { Trimestre } from "@/data/evaluacion";
 
 type CarreraRel = { nombre: string } | { nombre: string }[] | null;
@@ -74,13 +74,20 @@ export function contarEntrevistas(rows: EvaluacionRow[]): number {
   return rows.reduce((sum, row) => sum + (row.entrevistas ?? []).length, 0);
 }
 
-export type CursoDestacado = { curso: string; promedio: number; evaluaciones: number };
+export type CursoDestacado = { curso: string; nota: number; delta: number | null; evaluaciones: number };
 export type CursosUltimoPeriodo = { periodo: string; mejores: CursoDestacado[]; menores: CursoDestacado[] };
 
 /**
  * Las clases mejor y peor calificadas del trimestre en curso, entendido como
  * el ultimo periodo (anio/trimestre) que tenga evaluaciones registradas. Sin
- * nombres de docentes. Las clases del top no se repiten en el listado bajo.
+ * nombres de docentes.
+ *
+ * Cada curso aparece una sola vez aunque tenga varias evaluaciones en el
+ * trimestre (se agrupa por nombre, porque el mismo curso puede existir como
+ * registros distintos): en las mejor calificadas entra con su nota mas alta y
+ * en las de reforzar con su nota mas baja. `delta` compara la primera y la
+ * ultima evaluacion del trimestre (+ mejoro / - bajo; null con una sola
+ * evaluacion). Un curso del top no se repite en el listado de reforzar.
  */
 export function cursosUltimoPeriodo(rows: EvaluacionRow[]): CursosUltimoPeriodo | null {
   if (!rows.length) return null;
@@ -94,12 +101,41 @@ export function cursosUltimoPeriodo(rows: EvaluacionRow[]): CursosUltimoPeriodo 
     }
   }
 
-  const cursos = agruparPorCurso(rows.filter((row) => row.anio === anio && row.trimestre === trimestre)).map(
-    (item) => ({ curso: item.nombre, promedio: item.promedio, evaluaciones: item.count }),
-  );
+  const porCurso = new Map<string, EvaluacionRow[]>();
+  for (const row of rows) {
+    if (row.anio !== anio || row.trimestre !== trimestre) continue;
+    const key = row.curso_nombre.trim();
+    const list = porCurso.get(key) ?? [];
+    list.push(row);
+    porCurso.set(key, list);
+  }
 
-  const mejores = cursos.slice(0, 3);
-  const menores = cursos.slice(3).slice(-3).reverse();
+  const cursos = Array.from(porCurso.entries()).map(([curso, cursoRows]) => {
+    const ordenadas = [...cursoRows].sort(
+      (a, b) => a.fecha_observacion.localeCompare(b.fecha_observacion) || a.created_at.localeCompare(b.created_at),
+    );
+    const notas = ordenadas.map((row) => row.porcentaje);
+    return {
+      curso,
+      notaMax: Math.max(...notas),
+      notaMin: Math.min(...notas),
+      delta: ordenadas.length > 1 ? ordenadas[ordenadas.length - 1].porcentaje - ordenadas[0].porcentaje : null,
+      evaluaciones: ordenadas.length,
+    };
+  });
+
+  const mejores = [...cursos]
+    .sort((a, b) => b.notaMax - a.notaMax)
+    .slice(0, 3)
+    .map((item) => ({ curso: item.curso, nota: item.notaMax, delta: item.delta, evaluaciones: item.evaluaciones }));
+
+  const enMejores = new Set(mejores.map((item) => item.curso));
+  const menores = cursos
+    .filter((item) => !enMejores.has(item.curso))
+    .sort((a, b) => a.notaMin - b.notaMin)
+    .slice(0, 3)
+    .map((item) => ({ curso: item.curso, nota: item.notaMin, delta: item.delta, evaluaciones: item.evaluaciones }));
+
   return { periodo: `T${trimestre} ${anio}`, mejores, menores };
 }
 
