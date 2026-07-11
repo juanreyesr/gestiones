@@ -107,14 +107,23 @@ function BarraH({
 }
 
 function ClaseDestacada({ item }: { item: CursoDestacado }) {
+  const ancho = Math.max(0, Math.min(100, item.nota));
   return (
-    <BarraH
-      label={item.curso}
-      sublabel={`${item.evaluaciones} ${item.evaluaciones === 1 ? "evaluacion" : "evaluaciones"}`}
-      sublabelClassName="text-xs text-slate-500"
-      percent={item.promedio}
-      color={SERIE_UNICA}
-    />
+    <div className="grid gap-1.5">
+      <div className="flex items-center justify-between gap-3">
+        <span className="text-sm font-medium text-slate-300">{item.curso}</span>
+        <span className="flex shrink-0 items-center gap-2">
+          {item.delta !== null ? <DeltaBadge delta={item.delta} /> : null}
+          <span className="text-sm font-semibold text-slate-100">{item.nota}%</span>
+        </span>
+      </div>
+      <div className="h-3.5 w-full bg-white/10">
+        <div className="h-3.5 rounded-r-sm" style={{ width: `${ancho}%`, backgroundColor: SERIE_UNICA }} />
+      </div>
+      <p className="text-xs text-slate-500">
+        {item.evaluaciones === 1 ? "1 evaluacion" : `${item.evaluaciones} evaluaciones en el trimestre`}
+      </p>
+    </div>
   );
 }
 
