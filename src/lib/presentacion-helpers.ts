@@ -1,5 +1,5 @@
 import { getSupabaseClient } from "@/lib/supabase";
-import type { EvaluacionRow } from "@/lib/evaluacion-helpers";
+import { agruparPorCurso, type EvaluacionRow } from "@/lib/evaluacion-helpers";
 import type { Trimestre } from "@/data/evaluacion";
 
 type CarreraRel = { nombre: string } | { nombre: string }[] | null;
@@ -72,6 +72,35 @@ export function resumenPorCarrera(rows: EvaluacionRow[], cursoCarrera: Map<strin
 
 export function contarEntrevistas(rows: EvaluacionRow[]): number {
   return rows.reduce((sum, row) => sum + (row.entrevistas ?? []).length, 0);
+}
+
+export type CursoDestacado = { curso: string; promedio: number; evaluaciones: number };
+export type CursosUltimoPeriodo = { periodo: string; mejores: CursoDestacado[]; menores: CursoDestacado[] };
+
+/**
+ * Las clases mejor y peor calificadas del trimestre en curso, entendido como
+ * el ultimo periodo (anio/trimestre) que tenga evaluaciones registradas. Sin
+ * nombres de docentes. Las clases del top no se repiten en el listado bajo.
+ */
+export function cursosUltimoPeriodo(rows: EvaluacionRow[]): CursosUltimoPeriodo | null {
+  if (!rows.length) return null;
+
+  let anio = rows[0].anio;
+  let trimestre = rows[0].trimestre;
+  for (const row of rows) {
+    if (row.anio > anio || (row.anio === anio && row.trimestre > trimestre)) {
+      anio = row.anio;
+      trimestre = row.trimestre;
+    }
+  }
+
+  const cursos = agruparPorCurso(rows.filter((row) => row.anio === anio && row.trimestre === trimestre)).map(
+    (item) => ({ curso: item.nombre, promedio: item.promedio, evaluaciones: item.count }),
+  );
+
+  const mejores = cursos.slice(0, 3);
+  const menores = cursos.slice(3).slice(-3).reverse();
+  return { periodo: `T${trimestre} ${anio}`, mejores, menores };
 }
 
 export function criteriosDebiles(

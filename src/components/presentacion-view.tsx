@@ -29,9 +29,11 @@ import {
 import {
   contarEntrevistas,
   criteriosDebiles,
+  cursosUltimoPeriodo,
   fetchCursoCarreraMap,
   resumenPorCarrera,
   resumenPorPeriodo,
+  type CursoDestacado,
   type PeriodoResumen,
 } from "@/lib/presentacion-helpers";
 import { TendenciaCategoriasChart } from "./tendencia-categorias-chart";
@@ -104,6 +106,18 @@ function BarraH({
   );
 }
 
+function ClaseDestacada({ item }: { item: CursoDestacado }) {
+  return (
+    <BarraH
+      label={item.curso}
+      sublabel={`${item.evaluaciones} ${item.evaluaciones === 1 ? "evaluacion" : "evaluaciones"}`}
+      sublabelClassName="text-xs text-slate-500"
+      percent={item.promedio}
+      color={SERIE_UNICA}
+    />
+  );
+}
+
 const PLOT_HEIGHT = 220;
 const COLUMN_MAX_WIDTH = 48;
 
@@ -168,11 +182,12 @@ export function PresentacionView() {
     if (evalRes.error) {
       setError(evalRes.error);
       setLoading(false);
-      return;
+      return false;
     }
     setRows(evalRes.data);
     setCursoCarrera(carreraRes.data);
     setLoading(false);
+    return true;
   }, []);
 
   useEffect(() => {
@@ -223,6 +238,8 @@ export function PresentacionView() {
     () => carreras.length > 0 && carreras.every((item) => item.carrera === "Sin carrera asignada"),
     [carreras],
   );
+
+  const cursosPeriodo = useMemo(() => cursosUltimoPeriodo(rows), [rows]);
 
   const preguntasBajasGlobal = useMemo(
     () =>
@@ -436,6 +453,32 @@ export function PresentacionView() {
               Asigna carrera a los cursos en Control de cursos y docentes para ver este analisis desglosado.
             </p>
           ) : null}
+          {cursosPeriodo && cursosPeriodo.mejores.length ? (
+            <div className="mt-8 grid gap-6 lg:grid-cols-2">
+              <div className="border border-white/10 bg-white/8 p-5">
+                <h3 className="text-xs font-semibold uppercase tracking-widest text-slate-400">
+                  Clases mejor calificadas · {cursosPeriodo.periodo}
+                </h3>
+                <div className="mt-4 grid gap-3">
+                  {cursosPeriodo.mejores.map((item) => (
+                    <ClaseDestacada key={item.curso} item={item} />
+                  ))}
+                </div>
+              </div>
+              {cursosPeriodo.menores.length ? (
+                <div className="border border-white/10 bg-white/8 p-5">
+                  <h3 className="text-xs font-semibold uppercase tracking-widest text-slate-400">
+                    Clases por reforzar · {cursosPeriodo.periodo}
+                  </h3>
+                  <div className="mt-4 grid gap-3">
+                    {cursosPeriodo.menores.map((item) => (
+                      <ClaseDestacada key={item.curso} item={item} />
+                    ))}
+                  </div>
+                </div>
+              ) : null}
+            </div>
+          ) : null}
         </div>
       ),
     });
@@ -621,6 +664,7 @@ export function PresentacionView() {
     tendencia,
     carreras,
     soloSinCarrera,
+    cursosPeriodo,
     oportunidades,
     itemAnalytics,
     preguntasBajasGlobal,
@@ -683,7 +727,11 @@ export function PresentacionView() {
         <button
           className="mt-5 inline-flex h-11 items-center justify-center gap-2 bg-emerald-300 px-6 text-sm font-bold text-slate-950 transition hover:bg-emerald-200 disabled:opacity-60"
           disabled={loading || rows.length === 0}
-          onClick={() => {
+          onClick={async () => {
+            // Recargar justo antes de abrir para presentar siempre datos al dia,
+            // aunque el tab haya quedado abierto mientras se registraban cambios.
+            const ok = await load();
+            if (!ok) return;
             setSlide(0);
             setActivo(true);
           }}
