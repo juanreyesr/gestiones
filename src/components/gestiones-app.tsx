@@ -18,6 +18,7 @@ import {
   LockKeyhole,
   LogOut,
   Mail,
+  NotebookPen,
   Plus,
   Presentation,
   Printer,
@@ -66,11 +67,13 @@ import { InformeDocenteView } from "./informe-docente-view";
 import { OrbitScene } from "./orbit-scene";
 import { PresentacionView } from "./presentacion-view";
 import type { ReporteData } from "./reporte-printable";
+import { ReunionesView } from "./reuniones-view";
 
 const ALLOWED_EMAIL = "lic.juanreyesr@gmail.com";
 
 type Scores = Record<number, number>;
 type AreaId = (typeof AREAS)[number]["id"];
+type PantallaId = AreaId | "reuniones";
 type Entrevistas = Record<1 | 2, Record<number, number>>;
 type CoordinacionView = "resumen" | "nueva" | "informe" | "control" | "presentacion";
 
@@ -130,7 +133,7 @@ type RawDocente = {
 };
 
 export function GestionesApp() {
-  const [activeArea, setActiveArea] = useState<AreaId | null>(null);
+  const [activeArea, setActiveArea] = useState<PantallaId | null>(null);
   const [coordinacionView, setCoordinacionView] = useState<CoordinacionView>("resumen");
   const [session, setSession] = useState<Session | null>(null);
   const [email, setEmail] = useState(ALLOWED_EMAIL);
@@ -765,6 +768,10 @@ export function GestionesApp() {
                     <div className="border border-white/10 bg-slate-950/58 p-4 backdrop-blur-xl sm:p-5">
                       <ClinicaView />
                     </div>
+                  ) : activeArea === "reuniones" ? (
+                    <div className="border border-white/10 bg-slate-950/58 p-4 backdrop-blur-xl sm:p-5">
+                      <ReunionesView />
+                    </div>
                   ) : activeArea !== "coordinacion" ? (
                     <div className="border border-white/10 bg-slate-950/58 p-4 backdrop-blur-xl sm:p-5">
                       <AreaPlaceholder areaId={activeArea} />
@@ -1005,7 +1012,7 @@ function LoginGate(props: {
   );
 }
 
-function AreaMenu({ onSelect }: { onSelect: (area: AreaId) => void }) {
+function AreaMenu({ onSelect }: { onSelect: (area: PantallaId) => void }) {
   return (
     <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
       {AREAS.map((area) => {
@@ -1027,6 +1034,21 @@ function AreaMenu({ onSelect }: { onSelect: (area: AreaId) => void }) {
           </button>
         );
       })}
+      <button
+        className="group flex flex-col items-start gap-4 border border-white/10 bg-white/8 p-6 text-left backdrop-blur-xl transition hover:border-emerald-300/50 hover:bg-white/12"
+        onClick={() => onSelect("reuniones")}
+        type="button"
+      >
+        <span className="flex h-12 w-12 items-center justify-center bg-white/10 transition group-hover:bg-emerald-300/20">
+          <NotebookPen className="h-6 w-6 text-emerald-200" />
+        </span>
+        <span>
+          <span className="block text-lg font-semibold text-white">Reuniones con docentes</span>
+          <span className="mt-1 block text-sm leading-6 text-slate-400">
+            Bitacora de reuniones, aspectos tratados y seguimiento de casos con docentes.
+          </span>
+        </span>
+      </button>
     </div>
   );
 }
