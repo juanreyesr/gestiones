@@ -64,15 +64,15 @@ export async function exportOfertaToExcel(input: {
     const filaInicio = sheet.rowCount + 1;
 
     cursosGrupo.forEach((curso) => {
-      const docente = curso.docenteId ? (docentesPorId.get(curso.docenteId) ?? null) : null;
+      const docente = curso.docenteId && !curso.esCas ? (docentesPorId.get(curso.docenteId) ?? null) : null;
       const fila = sheet.addRow([
         GRUPO_LABELS[anioCarrera],
         input.carreraNombre,
         curso.noEstudiantes,
-        curso.edificio,
+        curso.virtual ? "Virtual" : curso.edificio,
         curso.nrc,
         curso.nombre,
-        docente?.nombre ?? "",
+        curso.esCas ? "CAS" : (docente?.nombre ?? ""),
         curso.horario ?? "",
         docente?.codigo ?? "",
         docente?.correo ?? "",

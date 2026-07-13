@@ -1,4 +1,4 @@
-import type { AnioCarrera, Trimestre } from "@/data/evaluacion";
+import { HORARIOS_FIJOS, type AnioCarrera, type Trimestre } from "@/data/evaluacion";
 import type { CursoAdminRow } from "@/lib/cursos-admin";
 import { getSupabaseClient } from "@/lib/supabase";
 
@@ -11,6 +11,10 @@ export type OfertaCurso = {
   edificio: string;
   nrc: string;
   noEstudiantes: string;
+  /** Curso virtual: toma el ultimo horario del anio y no se intercambia. */
+  virtual: boolean;
+  /** Curso impartido por CAS (no es un docente): ultimo horario disponible o sin horario. */
+  esCas: boolean;
 };
 
 export type OfertaRow = {
@@ -53,7 +57,8 @@ export async function fetchOferta(carreraId: string, anio: number, trimestre: Tr
     anio: row.anio,
     trimestre: row.trimestre,
     estado: row.estado,
-    cursos: row.cursos ?? [],
+    // Borradores guardados antes de que existieran virtual/esCas
+    cursos: (row.cursos ?? []).map((curso) => ({ ...curso, virtual: curso.virtual ?? false, esCas: curso.esCas ?? false })),
   };
   return { data: oferta, error: null };
 }
@@ -115,7 +120,9 @@ export async function confirmarOferta(oferta: OfertaRow) {
       trimestre: oferta.trimestre,
       anio_carrera: curso.anioCarrera,
       carrera_id: oferta.carreraId,
-      docente_id: curso.docenteId,
+      docente_id: curso.esCas ? null : curso.docenteId,
+      virtual: curso.virtual,
+      es_cas: curso.esCas,
       activo: true,
     }));
     const { error: insertError } = await supabase.from("gestionesjj_cursos").insert(payload);
@@ -213,12 +220,56 @@ export function proponerCursos(
       id: crypto.randomUUID(),
       anioCarrera: curso.anioCarrera,
       nombre: curso.nombre,
-      docenteId: curso.docenteId,
+      docenteId: curso.esCas ? null : curso.docenteId,
       horario: curso.horario,
       edificio: curso.edificio ?? "",
       nrc: "",
       noEstudiantes: "",
+      virtual: curso.virtual,
+      esCas: curso.esCas,
     }));
 
   return { anioFuente, cursos: completarSalones(cursos, cursosAdmin, carreraId) };
+}
+
+/**
+ * Reordena los horarios de un anio de carrera: los cursos presenciales toman
+ * los primeros bloques en su orden actual, despues los cursos CAS y de
+ * ultimo los virtuales, sin dejar horarios muertos entre medio. Los cursos
+ * CAS sin horario no consumen bloque. Devuelve la lista completa de cursos
+ * con los horarios del anio recalculados.
+ */
+export function reordenarHorariosAnio(cursos: OfertaCurso[], anioCarrera: AnioCarrera): OfertaCurso[] {
+  const delAnio = cursos.filter((curso) => curso.anioCarrera === anioCarrera);
+  const indice = (curso: OfertaCurso) => {
+    const idx = curso.horario ? HORARIOS_FIJOS.indexOf(curso.horario) : -1;
+    return idx === -1 ? Number.MAX_SAFE_INTEGER : idx;
+  };
+
+  const normales = [...delAnio.filter((curso) => !curso.virtual && !curso.esCas)].sort((a, b) => indice(a) - indice(b));
+  const cas = delAnio.filter((curso) => curso.esCas && !curso.virtual);
+  const virtuales = delAnio.filter((curso) => curso.virtual);
+
+  const asignaciones = new Map<string, string | null>();
+  let slot = 0;
+  const tomarSiguiente = () => {
+    const horario = HORARIOS_FIJOS[slot] ?? null;
+    if (slot < HORARIOS_FIJOS.length) slot += 1;
+    return horario;
+  };
+
+  for (const curso of normales) {
+    asignaciones.set(curso.id, tomarSiguiente());
+  }
+  for (const curso of cas) {
+    // Un curso CAS puede quedarse deliberadamente sin horario.
+    asignaciones.set(curso.id, curso.horario === null ? null : tomarSiguiente());
+  }
+  for (const curso of virtuales) {
+    asignaciones.set(curso.id, tomarSiguiente());
+  }
+
+  return cursos.map((curso) =>
+    asignaciones.has(curso.id) ? { ...curso, horario: asignaciones.get(curso.id) ?? null } : curso,
+  );
 }

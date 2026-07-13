@@ -20,11 +20,17 @@ import {
   confirmarOferta,
   fetchOferta,
   proponerCursos,
+  reordenarHorariosAnio,
   siguientePeriodo,
   upsertOferta,
   type OfertaCurso,
   type OfertaRow,
 } from "@/lib/ofertas";
+
+/** Valor especial del selector de docente para cursos impartidos por CAS. */
+const CAS_VALUE = "__cas__";
+/** Valor del selector de horario de un curso CAS para pedir el ultimo bloque disponible. */
+const CAS_AUTO_HORARIO = "__auto__";
 
 export function OfertaAcademica({
   carreras,
@@ -151,17 +157,44 @@ export function OfertaAcademica({
   const choques = useMemo(() => {
     const map = new Map<string, string>();
     cursos.forEach((curso) => {
-      if (!curso.docenteId || !curso.horario) return;
-      const enConflicto = cursos.some(
-        (other) => other.id !== curso.id && other.docenteId === curso.docenteId && other.horario === curso.horario,
+      if (!curso.docenteId || curso.esCas) return;
+      const docente = docentesActivos.find((item) => item.id === curso.docenteId);
+      const nombre = docente?.nombre ?? "el docente";
+
+      const mismaHora =
+        curso.horario &&
+        cursos.some(
+          (other) =>
+            other.id !== curso.id && !other.esCas && other.docenteId === curso.docenteId && other.horario === curso.horario,
+        );
+      if (mismaHora) {
+        map.set(curso.id, `Choque de horario: ${nombre} tiene 2 cursos a la misma hora`);
+        return;
+      }
+
+      const mismoAnio = cursos.some(
+        (other) =>
+          other.id !== curso.id &&
+          !other.esCas &&
+          other.docenteId === curso.docenteId &&
+          other.anioCarrera === curso.anioCarrera,
       );
-      if (enConflicto) {
-        const docente = docentesActivos.find((item) => item.id === curso.docenteId);
-        map.set(curso.id, `Choque de horario: ${docente?.nombre ?? "el docente"} tiene 2 cursos a la misma hora`);
+      if (mismoAnio) {
+        map.set(curso.id, `${nombre} ya tiene otro curso en este año de carrera`);
       }
     });
     return map;
   }, [cursos, docentesActivos]);
+
+  /** Cursos por docente en toda la oferta, para el contador junto al nombre. */
+  const conteoPorDocente = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const curso of cursos) {
+      if (!curso.docenteId || curso.esCas) continue;
+      map.set(curso.docenteId, (map.get(curso.docenteId) ?? 0) + 1);
+    }
+    return map;
+  }, [cursos]);
 
   const hayChoques = choques.size > 0;
   const hayCursoConNombre = cursos.some((curso) => curso.nombre.trim());
@@ -178,6 +211,8 @@ export function OfertaAcademica({
         edificio: "",
         nrc: "",
         noEstudiantes: "",
+        virtual: false,
+        esCas: false,
       },
     ]);
   };
@@ -190,16 +225,52 @@ export function OfertaAcademica({
     setCursos((current) => current.map((curso) => (curso.id === id ? { ...curso, ...patch } : curso)));
   };
 
+  /** Aplica un cambio y recalcula los horarios del anio (CAS y virtuales al final). */
+  const updateCursoConReorden = (id: string, patch: Partial<OfertaCurso>) => {
+    setCursos((current) => {
+      const actualizados = current.map((curso) => (curso.id === id ? { ...curso, ...patch } : curso));
+      const curso = actualizados.find((item) => item.id === id);
+      return curso ? reordenarHorariosAnio(actualizados, curso.anioCarrera) : actualizados;
+    });
+  };
+
+  const handleDocenteChange = (curso: OfertaCurso, value: string) => {
+    if (value === CAS_VALUE) {
+      // CAS no es un docente: pasa al ultimo horario disponible del anio.
+      updateCursoConReorden(curso.id, { esCas: true, docenteId: null });
+      return;
+    }
+    const patch: Partial<OfertaCurso> = { docenteId: value || null, esCas: false };
+    if (curso.esCas) {
+      updateCursoConReorden(curso.id, patch);
+    } else {
+      updateCurso(curso.id, patch);
+    }
+  };
+
+  const handleVirtualChange = (curso: OfertaCurso, virtual: boolean) => {
+    updateCursoConReorden(curso.id, { virtual });
+  };
+
+  /** Horario de un curso CAS: alterna entre sin horario y el ultimo bloque disponible. */
+  const handleCasHorarioChange = (curso: OfertaCurso, value: string) => {
+    updateCursoConReorden(curso.id, { horario: value === "" ? null : HORARIOS_FIJOS[0] });
+  };
+
   const handleHorarioChange = (id: string, nuevoHorario: string | null) => {
     setCursos((current) => {
       const actual = current.find((curso) => curso.id === id);
       if (!actual) return current;
+
       const anterior = actual.horario;
       const intercambio = nuevoHorario
         ? current.find(
             (curso) => curso.id !== id && curso.anioCarrera === actual.anioCarrera && curso.horario === nuevoHorario,
           )
         : undefined;
+
+      // Los horarios de cursos virtuales o CAS no son intercambiables.
+      if (intercambio && (intercambio.virtual || intercambio.esCas)) return current;
 
       if (intercambio) {
         setAvisoIntercambio(`Se intercambio el horario con "${intercambio.nombre || "curso sin nombre"}".`);
@@ -418,16 +489,41 @@ export function OfertaAcademica({
                 ) : (
                   <div className="grid gap-3">
                     {grupo.cursos.map((curso) => {
-                      const ocupados = new Set(
+                      const ocupadosHora = new Set(
                         cursos
                           .filter(
                             (other) =>
                               other.id !== curso.id &&
+                              !other.esCas &&
                               other.horario &&
                               other.horario === curso.horario &&
                               other.docenteId,
                           )
                           .map((other) => other.docenteId),
+                      );
+                      // Un docente solo puede tener un curso por anio de carrera.
+                      const ocupadosAnio = new Set(
+                        cursos
+                          .filter(
+                            (other) =>
+                              other.id !== curso.id &&
+                              !other.esCas &&
+                              other.anioCarrera === curso.anioCarrera &&
+                              other.docenteId,
+                          )
+                          .map((other) => other.docenteId),
+                      );
+                      // Horarios en poder de cursos virtuales/CAS del mismo anio: no intercambiables.
+                      const horariosBloqueados = new Set(
+                        cursos
+                          .filter(
+                            (other) =>
+                              other.id !== curso.id &&
+                              other.anioCarrera === curso.anioCarrera &&
+                              (other.virtual || other.esCas) &&
+                              other.horario,
+                          )
+                          .map((other) => other.horario),
                       );
                       const choqueMsg = choques.get(curso.id);
                       return (
@@ -443,33 +539,69 @@ export function OfertaAcademica({
                             <select
                               aria-label="Docente"
                               className="field w-full sm:w-52"
-                              onChange={(event) => updateCurso(curso.id, { docenteId: event.target.value || null })}
-                              value={curso.docenteId ?? ""}
+                              onChange={(event) => handleDocenteChange(curso, event.target.value)}
+                              value={curso.esCas ? CAS_VALUE : (curso.docenteId ?? "")}
                             >
                               <option value="">Sin docente</option>
+                              <option value={CAS_VALUE}>CAS</option>
                               {docentesActivos.map((docente) => {
-                                const ocupado = ocupados.has(docente.id) && docente.id !== curso.docenteId;
+                                const esActual = docente.id === curso.docenteId && !curso.esCas;
+                                const ocupadoHora = ocupadosHora.has(docente.id) && !esActual;
+                                const ocupadoAnio = ocupadosAnio.has(docente.id) && !esActual;
+                                const conteo = conteoPorDocente.get(docente.id) ?? 0;
                                 return (
-                                  <option key={docente.id} disabled={ocupado} value={docente.id}>
+                                  <option key={docente.id} disabled={ocupadoHora || ocupadoAnio} value={docente.id}>
                                     {docente.nombre}
-                                    {ocupado ? " (ocupado a esa hora)" : ""}
+                                    {conteo > 0 ? ` (${conteo})` : ""}
+                                    {ocupadoHora ? " · ocupado a esa hora" : ocupadoAnio ? " · ya tiene curso en este año" : ""}
                                   </option>
                                 );
                               })}
                             </select>
-                            <select
-                              aria-label="Horario"
-                              className="field w-full sm:w-56"
-                              onChange={(event) => handleHorarioChange(curso.id, event.target.value || null)}
-                              value={curso.horario ?? ""}
-                            >
-                              <option value="">Sin horario</option>
-                              {HORARIOS_FIJOS.map((item) => (
-                                <option key={item} value={item}>
-                                  {item}
+                            {curso.esCas ? (
+                              <select
+                                aria-label="Horario"
+                                className="field w-full sm:w-56"
+                                onChange={(event) => handleCasHorarioChange(curso, event.target.value)}
+                                value={curso.horario ?? ""}
+                              >
+                                <option value="">Sin horario</option>
+                                <option value={curso.horario ?? CAS_AUTO_HORARIO}>
+                                  {curso.horario ?? "Ultimo horario disponible"}
                                 </option>
-                              ))}
-                            </select>
+                              </select>
+                            ) : (
+                              <select
+                                aria-label="Horario"
+                                className="field w-full sm:w-56 disabled:opacity-60"
+                                disabled={curso.virtual}
+                                onChange={(event) => handleHorarioChange(curso.id, event.target.value || null)}
+                                title={
+                                  curso.virtual
+                                    ? "Los cursos virtuales toman el ultimo horario del año y no se intercambian"
+                                    : undefined
+                                }
+                                value={curso.horario ?? ""}
+                              >
+                                <option value="">Sin horario</option>
+                                {HORARIOS_FIJOS.map((item) => (
+                                  <option disabled={horariosBloqueados.has(item)} key={item} value={item}>
+                                    {item}
+                                    {horariosBloqueados.has(item) ? " · bloqueado (virtual/CAS)" : ""}
+                                  </option>
+                                ))}
+                              </select>
+                            )}
+                            <label className="flex h-10 shrink-0 cursor-pointer items-center gap-1.5 border border-white/10 bg-white/8 px-3 text-xs font-semibold text-slate-300">
+                              <input
+                                aria-label="Curso virtual"
+                                checked={curso.virtual}
+                                className="h-3.5 w-3.5 accent-emerald-300"
+                                onChange={(event) => handleVirtualChange(curso, event.target.checked)}
+                                type="checkbox"
+                              />
+                              Virtual
+                            </label>
                             <input
                               aria-label="Edificio o salon"
                               className="field w-full sm:w-32"

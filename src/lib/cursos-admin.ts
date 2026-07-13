@@ -13,6 +13,8 @@ export type CursoAdminRow = {
   docenteId: string | null;
   docenteNombre: string | null;
   activo: boolean;
+  virtual: boolean;
+  esCas: boolean;
 };
 
 type RawCursoAdmin = {
@@ -26,6 +28,8 @@ type RawCursoAdmin = {
   carrera_id: string;
   docente_id: string | null;
   activo: boolean;
+  virtual: boolean | null;
+  es_cas: boolean | null;
   gestionesjj_docentes: { nombre: string } | null;
 };
 
@@ -52,7 +56,9 @@ export async function fetchCursosAdmin() {
 
   const { data, error } = await supabase
     .from("gestionesjj_cursos")
-    .select("id,nombre,horario,edificio,anio,trimestre,anio_carrera,carrera_id,docente_id,activo,gestionesjj_docentes(nombre)")
+    .select(
+      "id,nombre,horario,edificio,anio,trimestre,anio_carrera,carrera_id,docente_id,activo,virtual,es_cas,gestionesjj_docentes(nombre)",
+    )
     .order("nombre");
 
   if (error) return { data: [] as CursoAdminRow[], error: error.message };
@@ -69,6 +75,8 @@ export async function fetchCursosAdmin() {
     docenteId: row.docente_id,
     docenteNombre: row.gestionesjj_docentes?.nombre ?? null,
     activo: row.activo,
+    virtual: row.virtual ?? false,
+    esCas: row.es_cas ?? false,
   }));
 
   return { data: rows, error: null };
