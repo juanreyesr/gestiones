@@ -61,6 +61,7 @@ import { ClinicaView } from "./clinica/clinica-view";
 import { CodigoKioscoModal } from "./codigo-kiosco-modal";
 import { ConsultasView } from "./consultas-view";
 import { ControlCursosView } from "./control-cursos-view";
+import { ControlDocentesView } from "./control-docentes-view";
 import { EmailDraftModal } from "./email-draft-modal";
 import { EntrevistaKiosk } from "./entrevista-kiosk";
 import { InformeDocenteView } from "./informe-docente-view";
@@ -74,7 +75,7 @@ const ALLOWED_EMAIL = "lic.juanreyesr@gmail.com";
 type Scores = Record<number, number>;
 type AreaId = (typeof AREAS)[number]["id"];
 type Entrevistas = Record<1 | 2, Record<number, number>>;
-type CoordinacionView = "resumen" | "nueva" | "informe" | "control" | "presentacion" | "reuniones";
+type CoordinacionView = "resumen" | "nueva" | "informe" | "control" | "presentacion" | "reuniones" | "docentes";
 
 const areaIcons: Record<AreaId, React.ComponentType<{ className?: string }>> = {
   iglesia: Church,
@@ -820,6 +821,12 @@ export function GestionesApp() {
                         </div>
                       ) : null}
 
+                      {coordinacionView === "docentes" ? (
+                        <div className="border border-white/10 bg-slate-950/58 p-4 backdrop-blur-xl sm:p-5">
+                          <ControlDocentesView onDocentesChanged={fetchDocentes} />
+                        </div>
+                      ) : null}
+
                       {coordinacionView === "nueva" ? (
                         <div className="grid gap-5 xl:grid-cols-[1fr_360px]">
                           <div className="border border-white/10 bg-slate-950/58 p-4 backdrop-blur-xl sm:p-5">
@@ -1047,6 +1054,7 @@ function CoordinacionTabs({ onChange, value }: { onChange: (value: CoordinacionV
     { value: "control", label: "Control de cursos y docentes", icon: CalendarClock },
     { value: "presentacion", label: "Modo presentacion", icon: Presentation },
     { value: "reuniones", label: "Reuniones con docentes", icon: NotebookPen },
+    { value: "docentes", label: "Control de docentes", icon: UserRoundCog },
   ];
 
   return (

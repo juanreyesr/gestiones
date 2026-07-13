@@ -1,23 +1,43 @@
 "use client";
 
-import { CalendarDays, Eye, EyeOff, Pencil, Plus, Save, X } from "lucide-react";
+import { CalendarDays, Eye, EyeOff, Pencil, Plus, Save, Trash2, X } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   deleteReunion,
   fetchReuniones,
   insertReunion,
+  semaforoReunion,
   updateReunion,
+  updateSeguimientos,
   type ReunionRow,
+  type Seguimiento,
+  type SeguimientoEstado,
 } from "@/lib/reuniones";
 
 const AUTOSAVE_MS = 2 * 60 * 1000;
+
+const SEMAFORO_COLORES: Record<"verde" | "amarillo" | "rojo" | "gris", string> = {
+  verde: "#0ca30c",
+  amarillo: "#c98500",
+  rojo: "#d03b3b",
+  gris: "#64748b",
+};
+
+const ESTADO_LABELS: Record<SeguimientoEstado, string> = {
+  pendiente: "Pendiente",
+  proceso: "En proceso",
+  completado: "Completado",
+};
+
+const ESTADOS: SeguimientoEstado[] = ["pendiente", "proceso", "completado"];
 
 type EditorState = {
   id: string | null;
   fecha: string;
   notas: string;
+  seguimientos: Seguimiento[];
   /** Copia previa para poder restaurar al descartar una edicion. Null = reunion nueva. */
-  original: { fecha: string; notas: string; borrador: boolean } | null;
+  original: { fecha: string; notas: string; borrador: boolean; seguimientos: Seguimiento[] } | null;
 };
 
 const hoyLocal = () => {
@@ -34,6 +54,18 @@ function formatFecha(fecha: string) {
 
 function horaActual() {
   return new Date().toLocaleTimeString("es-GT", { hour: "2-digit", minute: "2-digit" });
+}
+
+function tituloSemaforo(seguimientos: Seguimiento[], hoy: string) {
+  if (!seguimientos.length) return "Sin seguimientos asignados";
+  const total = seguimientos.length;
+  const completadas = seguimientos.filter((item) => item.estado === "completado").length;
+  const vencidas = seguimientos.filter(
+    (item) => item.fechaEntrega !== "" && item.fechaEntrega < hoy && item.estado !== "completado",
+  ).length;
+  let texto = `${completadas}/${total} completadas`;
+  if (vencidas) texto += ` · ${vencidas} vencida${vencidas > 1 ? "s" : ""}`;
+  return texto;
 }
 
 export function ReunionesView() {
@@ -58,6 +90,8 @@ export function ReunionesView() {
   /** Hubo al menos un autoguardado desde que se abrio el editor. */
   const autosavedRef = useRef(false);
 
+  const hoy = hoyLocal();
+
   const load = useCallback(async () => {
     setLoading(true);
     setListError("");
@@ -72,7 +106,7 @@ export function ReunionesView() {
     load();
   }, [load]);
 
-  const snapshot = (state: EditorState) => `${state.fecha}|${state.notas}`;
+  const snapshot = (state: EditorState) => `${state.fecha}|${state.notas}|${JSON.stringify(state.seguimientos)}`;
 
   const abrirNueva = () => {
     setMessage("");
@@ -81,7 +115,7 @@ export function ReunionesView() {
     setConfirmDescartar(false);
     autosavedRef.current = false;
     lastSavedRef.current = null;
-    setEditor({ id: null, fecha: hoyLocal(), notas: "", original: null });
+    setEditor({ id: null, fecha: hoyLocal(), notas: "", seguimientos: [], original: null });
   };
 
   const abrirEdicion = (row: ReunionRow) => {
@@ -94,7 +128,8 @@ export function ReunionesView() {
       id: row.id,
       fecha: row.fecha,
       notas: row.notas,
-      original: { fecha: row.fecha, notas: row.notas, borrador: row.borrador },
+      seguimientos: row.seguimientos,
+      original: { fecha: row.fecha, notas: row.notas, borrador: row.borrador, seguimientos: row.seguimientos },
     };
     lastSavedRef.current = snapshot(state);
     setEditor(state);
@@ -111,10 +146,20 @@ export function ReunionesView() {
 
   const persistir = useCallback(async (state: EditorState, borrador: boolean) => {
     if (state.id) {
-      const { error } = await updateReunion(state.id, { fecha: state.fecha, notas: state.notas, borrador });
+      const { error } = await updateReunion(state.id, {
+        fecha: state.fecha,
+        notas: state.notas,
+        borrador,
+        seguimientos: state.seguimientos,
+      });
       return { id: state.id, error };
     }
-    const { id, error } = await insertReunion({ fecha: state.fecha, notas: state.notas, borrador });
+    const { id, error } = await insertReunion({
+      fecha: state.fecha,
+      notas: state.notas,
+      borrador,
+      seguimientos: state.seguimientos,
+    });
     return { id, error };
   }, []);
 
@@ -197,6 +242,45 @@ export function ReunionesView() {
     await load();
   };
 
+  const agregarSeguimiento = () => {
+    setEditor((prev) =>
+      prev
+        ? {
+            ...prev,
+            seguimientos: [
+              ...prev.seguimientos,
+              { id: crypto.randomUUID(), tarea: "", responsable: "", fechaEntrega: "", estado: "pendiente" },
+            ],
+          }
+        : prev,
+    );
+  };
+
+  const actualizarSeguimiento = (id: string, patch: Partial<Seguimiento>) => {
+    setEditor((prev) =>
+      prev
+        ? { ...prev, seguimientos: prev.seguimientos.map((item) => (item.id === id ? { ...item, ...patch } : item)) }
+        : prev,
+    );
+  };
+
+  const eliminarSeguimiento = (id: string) => {
+    setEditor((prev) => (prev ? { ...prev, seguimientos: prev.seguimientos.filter((item) => item.id !== id) } : prev));
+  };
+
+  const handleEstadoSeguimiento = async (row: ReunionRow, seguimientoId: string, estado: SeguimientoEstado) => {
+    const previo = row.seguimientos;
+    const actualizado = row.seguimientos.map((item) => (item.id === seguimientoId ? { ...item, estado } : item));
+    setReuniones((current) =>
+      current.map((item) => (item.id === row.id ? { ...item, seguimientos: actualizado } : item)),
+    );
+    const { error } = await updateSeguimientos(row.id, actualizado);
+    if (error) {
+      setReuniones((current) => current.map((item) => (item.id === row.id ? { ...item, seguimientos: previo } : item)));
+      setListError(`No se pudo actualizar el seguimiento: ${error}`);
+    }
+  };
+
   const listado = useMemo(() => reuniones, [reuniones]);
 
   if (editor) {
@@ -236,6 +320,77 @@ export function ReunionesView() {
               onChange={(event) => setEditor((prev) => (prev ? { ...prev, notas: event.target.value } : prev))}
             />
           </label>
+
+          <div className="grid gap-3">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <span className="text-xs font-semibold uppercase tracking-widest text-slate-400">
+                Seguimientos asignados
+              </span>
+              <button
+                className="inline-flex items-center gap-2 border border-emerald-300/40 bg-emerald-300/10 px-3 py-1.5 text-xs font-bold text-emerald-100 transition hover:border-emerald-300"
+                onClick={agregarSeguimiento}
+                type="button"
+              >
+                <Plus className="h-3.5 w-3.5" />
+                Asignar seguimiento
+              </button>
+            </div>
+
+            {editor.seguimientos.length === 0 ? (
+              <p className="text-sm text-slate-400">Sin seguimientos asignados.</p>
+            ) : (
+              <div className="grid gap-3">
+                {editor.seguimientos.map((seg) => (
+                  <div
+                    key={seg.id}
+                    className="grid grid-cols-1 items-center gap-2 border border-white/10 bg-white/5 p-3 sm:grid-cols-[1fr_repeat(3,minmax(0,auto))_auto]"
+                  >
+                    <input
+                      aria-label="Tarea"
+                      className="field min-w-0 flex-1"
+                      onChange={(event) => actualizarSeguimiento(seg.id, { tarea: event.target.value })}
+                      placeholder="Tarea"
+                      value={seg.tarea}
+                    />
+                    <input
+                      aria-label="Responsable"
+                      className="field w-full sm:w-40"
+                      onChange={(event) => actualizarSeguimiento(seg.id, { responsable: event.target.value })}
+                      placeholder="Responsable"
+                      value={seg.responsable}
+                    />
+                    <input
+                      aria-label="Fecha de entrega"
+                      className="field w-full sm:w-40"
+                      onChange={(event) => actualizarSeguimiento(seg.id, { fechaEntrega: event.target.value })}
+                      type="date"
+                      value={seg.fechaEntrega}
+                    />
+                    <select
+                      aria-label="Estado del seguimiento"
+                      className="field w-full sm:w-36"
+                      onChange={(event) =>
+                        actualizarSeguimiento(seg.id, { estado: event.target.value as SeguimientoEstado })
+                      }
+                      value={seg.estado}
+                    >
+                      <option value="pendiente">Pendiente</option>
+                      <option value="proceso">En proceso</option>
+                      <option value="completado">Completado</option>
+                    </select>
+                    <button
+                      aria-label="Eliminar seguimiento"
+                      className="flex h-10 w-10 shrink-0 items-center justify-center justify-self-start border border-red-300/40 bg-red-400/10 text-red-200 transition hover:border-red-300/70 sm:justify-self-auto"
+                      onClick={() => eliminarSeguimiento(seg.id)}
+                      type="button"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
 
         <div className="flex flex-wrap items-center gap-3">
@@ -326,19 +481,33 @@ export function ReunionesView() {
         <div className="grid gap-4">
           {listado.map((row) => {
             const abierta = expandedId === row.id;
+            const semaforo = semaforoReunion(row.seguimientos, hoy);
+            const completadas = row.seguimientos.filter((item) => item.estado === "completado").length;
             return (
-              <article key={row.id} className="border border-white/10 bg-white/8 p-5">
+              <article key={row.id} className="min-w-0 overflow-hidden border border-white/10 bg-white/8 p-5">
                 <div className="flex flex-wrap items-center justify-between gap-3">
-                  <div className="flex items-center gap-2">
-                    <CalendarDays className="h-4 w-4 text-emerald-200" />
-                    <span className="text-sm font-semibold capitalize text-slate-100">{formatFecha(row.fecha)}</span>
+                  <div className="flex min-w-0 items-center gap-2">
+                    <CalendarDays className="h-4 w-4 shrink-0 text-emerald-200" />
+                    <span className="truncate text-sm font-semibold capitalize text-slate-100">
+                      {formatFecha(row.fecha)}
+                    </span>
+                    <span
+                      className="h-3 w-3 shrink-0 rounded-full"
+                      style={{ backgroundColor: SEMAFORO_COLORES[semaforo] }}
+                      title={tituloSemaforo(row.seguimientos, hoy)}
+                    />
+                    {row.seguimientos.length ? (
+                      <span className="shrink-0 text-xs text-slate-400">
+                        {completadas}/{row.seguimientos.length} completadas
+                      </span>
+                    ) : null}
                     {row.borrador ? (
-                      <span className="border border-amber-300/40 bg-amber-300/10 px-2 py-0.5 text-xs font-semibold text-amber-200">
+                      <span className="shrink-0 border border-amber-300/40 bg-amber-300/10 px-2 py-0.5 text-xs font-semibold text-amber-200">
                         Borrador autoguardado
                       </span>
                     ) : null}
                   </div>
-                  <div className="flex flex-wrap gap-2">
+                  <div className="flex shrink-0 flex-wrap gap-2">
                     <button
                       className="inline-flex items-center gap-2 border border-white/10 bg-white/8 px-3 py-1.5 text-xs font-semibold text-slate-200 transition hover:border-white/30"
                       onClick={() => setExpandedId(abierta ? null : row.id)}
@@ -359,11 +528,71 @@ export function ReunionesView() {
                 </div>
 
                 {abierta ? (
-                  <p className="mt-4 whitespace-pre-wrap border-t border-white/10 pt-4 text-sm leading-7 text-slate-200">
-                    {row.notas || "(Sin notas)"}
-                  </p>
+                  <>
+                    <p className="mt-4 min-w-0 whitespace-pre-wrap break-words border-t border-white/10 pt-4 text-sm leading-7 text-slate-200">
+                      {row.notas || "(Sin notas)"}
+                    </p>
+                    {row.seguimientos.length ? (
+                      <div className="mt-4 grid gap-3 border-t border-white/10 pt-4">
+                        <p className="text-xs font-semibold uppercase tracking-widest text-slate-400">
+                          Seguimientos
+                        </p>
+                        {row.seguimientos.map((seg) => {
+                          const vencida =
+                            seg.fechaEntrega !== "" && seg.fechaEntrega < hoy && seg.estado !== "completado";
+                          return (
+                            <div
+                              key={seg.id}
+                              className="grid min-w-0 gap-2 border border-white/10 bg-white/5 p-3 sm:grid-cols-[1fr_auto] sm:items-center"
+                            >
+                              <div className="min-w-0">
+                                <p className="truncate text-sm font-semibold text-slate-100">
+                                  {seg.tarea || "(Sin tarea)"}
+                                </p>
+                                <p className="mt-1 truncate text-xs text-slate-400">
+                                  Responsable: {seg.responsable || "Sin asignar"}
+                                  {seg.fechaEntrega ? (
+                                    <>
+                                      {" "}
+                                      · Entrega:{" "}
+                                      <span className={vencida ? "font-semibold text-red-300" : undefined}>
+                                        {seg.fechaEntrega}
+                                      </span>
+                                    </>
+                                  ) : null}
+                                </p>
+                              </div>
+                              <div className="flex flex-wrap gap-2">
+                                {ESTADOS.map((estadoOpt) => {
+                                  const activo = seg.estado === estadoOpt;
+                                  const colorActivo =
+                                    estadoOpt === "completado"
+                                      ? "border-emerald-300/70 bg-emerald-300/14 text-white"
+                                      : estadoOpt === "proceso"
+                                        ? "border-amber-300/70 bg-amber-300/14 text-white"
+                                        : "border-slate-300/70 bg-slate-300/14 text-white";
+                                  return (
+                                    <button
+                                      key={estadoOpt}
+                                      className={`border px-2 py-1 text-xs font-semibold transition ${
+                                        activo ? colorActivo : "border-white/10 bg-white/8 text-slate-300 hover:border-white/30"
+                                      }`}
+                                      onClick={() => handleEstadoSeguimiento(row, seg.id, estadoOpt)}
+                                      type="button"
+                                    >
+                                      {ESTADO_LABELS[estadoOpt]}
+                                    </button>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    ) : null}
+                  </>
                 ) : (
-                  <p className="mt-3 truncate text-sm text-slate-400">{row.notas || "(Sin notas)"}</p>
+                  <p className="mt-3 min-w-0 truncate text-sm text-slate-400">{row.notas || "(Sin notas)"}</p>
                 )}
               </article>
             );
