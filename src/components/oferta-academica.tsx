@@ -13,7 +13,7 @@ import {
 } from "@/data/evaluacion";
 import type { CursoAdminRow } from "@/lib/cursos-admin";
 import { fetchDocentesAdmin, type DocenteAdminRow } from "@/lib/docentes-admin";
-import { currentTrimestre } from "@/lib/evaluacion-helpers";
+import { agruparPorDocente, currentTrimestre, fetchEvaluacionesPorPeriodo } from "@/lib/evaluacion-helpers";
 import { exportOfertaToExcel } from "@/lib/oferta-excel";
 import {
   completarSalones,
@@ -71,6 +71,20 @@ export function OfertaAcademica({
       const { data, error } = await fetchDocentesAdmin();
       if (error) setDocentesError(error);
       setDocentes(data);
+    })();
+  }, []);
+
+  // Promedio historico de evaluacion por docente, para asignar con evidencia.
+  const [promedioEvaluaciones, setPromedioEvaluaciones] = useState<Map<string, number>>(new Map());
+  useEffect(() => {
+    (async () => {
+      const { data } = await fetchEvaluacionesPorPeriodo(null, "todos");
+      if (!data.length) return;
+      const map = new Map<string, number>();
+      for (const item of agruparPorDocente(data)) {
+        if (item.docenteId) map.set(item.docenteId, item.promedio);
+      }
+      setPromedioEvaluaciones(map);
     })();
   }, []);
 
@@ -568,10 +582,12 @@ export function OfertaAcademica({
                                 const ocupadoHora = ocupadosHora.has(docente.id) && !esActual;
                                 const ocupadoAnio = ocupadosAnio.has(docente.id) && !esActual;
                                 const conteo = conteoPorDocente.get(docente.id) ?? 0;
+                                const promedio = promedioEvaluaciones.get(docente.id);
                                 return (
                                   <option key={docente.id} disabled={ocupadoHora || ocupadoAnio} value={docente.id}>
                                     {docente.nombre}
                                     {conteo > 0 ? ` (${conteo})` : ""}
+                                    {promedio !== undefined ? ` · ${promedio}%` : ""}
                                     {ocupadoHora ? " · ocupado a esa hora" : ocupadoAnio ? " · ya tiene curso en este año" : ""}
                                   </option>
                                 );

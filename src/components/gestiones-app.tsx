@@ -11,6 +11,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Church,
+  Download,
   GraduationCap,
   HeartPulse,
   KeyRound,
@@ -56,6 +57,8 @@ import {
 import { buildCorreoDocente } from "@/lib/email-draft";
 import { fetchKioscoCodigo, guardarKioscoCodigo } from "@/lib/kiosco-config";
 import { exportReporteToPdf } from "@/lib/pdf";
+import { exportRespaldoToExcel } from "@/lib/respaldo-excel";
+import { contarAlertasSeguimientos, fetchReuniones } from "@/lib/reuniones";
 import { getSupabaseClient, isSupabaseConfigured } from "@/lib/supabase";
 import { ClinicaView } from "./clinica/clinica-view";
 import { CodigoKioscoModal } from "./codigo-kiosco-modal";
@@ -135,6 +138,9 @@ type RawDocente = {
 export function GestionesApp() {
   const [activeArea, setActiveArea] = useState<AreaId | null>(null);
   const [coordinacionView, setCoordinacionView] = useState<CoordinacionView>("resumen");
+  const [alertasSeguimientos, setAlertasSeguimientos] = useState(0);
+  const [respaldoDescargando, setRespaldoDescargando] = useState(false);
+  const [respaldoMensaje, setRespaldoMensaje] = useState("");
   const [session, setSession] = useState<Session | null>(null);
   const [email, setEmail] = useState(ALLOWED_EMAIL);
   const [password, setPassword] = useState("");
@@ -254,6 +260,35 @@ export function GestionesApp() {
       loadKioscoCodigo();
     }
   }, [session, fetchDocentes, loadKioscoCodigo]);
+
+  const refreshAlertasSeguimientos = useCallback(async () => {
+    const { data, error } = await fetchReuniones();
+    if (error) return;
+    setAlertasSeguimientos(contarAlertasSeguimientos(data, localDateValue()));
+  }, []);
+
+  // Contador de tareas vencidas o por vencer esta semana en la pestana de
+  // reuniones: se refresca al iniciar sesion y en cada cambio de pestana.
+  useEffect(() => {
+    if (!session) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- refresco del contador de alertas
+    refreshAlertasSeguimientos();
+  }, [session, coordinacionView, refreshAlertasSeguimientos]);
+
+  const handleDescargarRespaldo = async () => {
+    if (respaldoDescargando) return;
+    setRespaldoDescargando(true);
+    setRespaldoMensaje("");
+    const { error, omitidas } = await exportRespaldoToExcel();
+    setRespaldoDescargando(false);
+    if (error) {
+      setRespaldoMensaje(error);
+      return;
+    }
+    setRespaldoMensaje(
+      omitidas.length ? `Respaldo descargado (sin ${omitidas.join(", ")}).` : "Respaldo descargado.",
+    );
+  };
 
   const handleLogin = async () => {
     setAuthMessage("");
@@ -747,6 +782,16 @@ export function GestionesApp() {
                   <KeyRound className="h-3.5 w-3.5" />
                   Cambiar codigo de modo kiosco
                 </button>
+                <button
+                  className="mt-1.5 inline-flex items-center gap-2 text-xs font-semibold text-slate-300 hover:text-white disabled:opacity-60"
+                  disabled={respaldoDescargando}
+                  onClick={handleDescargarRespaldo}
+                  type="button"
+                >
+                  <Download className="h-3.5 w-3.5" />
+                  {respaldoDescargando ? "Generando respaldo..." : "Descargar respaldo de datos"}
+                </button>
+                {respaldoMensaje ? <p className="mt-1 text-xs text-slate-400">{respaldoMensaje}</p> : null}
               </div>
             </header>
 
@@ -775,6 +820,7 @@ export function GestionesApp() {
                   ) : (
                     <div className="grid gap-5">
                       <CoordinacionTabs
+                        alertasReuniones={alertasSeguimientos}
                         onChange={(value) => {
                           if (value === "nueva") {
                             if (coordinacionView !== "nueva" || evaluacionIdRef.current !== null) {
@@ -1046,7 +1092,15 @@ function AreaMenu({ onSelect }: { onSelect: (area: AreaId) => void }) {
   );
 }
 
-function CoordinacionTabs({ onChange, value }: { onChange: (value: CoordinacionView) => void; value: CoordinacionView }) {
+function CoordinacionTabs({
+  alertasReuniones = 0,
+  onChange,
+  value,
+}: {
+  alertasReuniones?: number;
+  onChange: (value: CoordinacionView) => void;
+  value: CoordinacionView;
+}) {
   const tabs: Array<{ value: CoordinacionView; label: string; icon: React.ComponentType<{ className?: string }> }> = [
     { value: "resumen", label: "Resumen general", icon: BarChart3 },
     { value: "nueva", label: "Nueva evaluacion", icon: Plus },
@@ -1075,6 +1129,14 @@ function CoordinacionTabs({ onChange, value }: { onChange: (value: CoordinacionV
           >
             <Icon className="h-4 w-4" />
             {tab.label}
+            {tab.value === "reuniones" && alertasReuniones > 0 ? (
+              <span
+                className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-red-400 px-1.5 text-xs font-bold text-slate-950"
+                title="Tareas de seguimiento vencidas o que vencen esta semana"
+              >
+                {alertasReuniones}
+              </span>
+            ) : null}
           </button>
         );
       })}
