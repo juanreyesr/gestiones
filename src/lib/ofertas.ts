@@ -1,0 +1,164 @@
+import type { AnioCarrera, Trimestre } from "@/data/evaluacion";
+import type { CursoAdminRow } from "@/lib/cursos-admin";
+import { getSupabaseClient } from "@/lib/supabase";
+
+export type OfertaCurso = {
+  id: string; // uuid local (crypto.randomUUID())
+  anioCarrera: AnioCarrera; // 1-5
+  nombre: string;
+  docenteId: string | null;
+  horario: string | null; // uno de HORARIOS_FIJOS o null
+  edificio: string;
+  nrc: string;
+  noEstudiantes: string;
+};
+
+export type OfertaRow = {
+  id: string;
+  carreraId: string;
+  anio: number;
+  trimestre: Trimestre;
+  estado: "borrador" | "confirmada";
+  cursos: OfertaCurso[];
+};
+
+type RawOferta = {
+  id: string;
+  carrera_id: string;
+  anio: number;
+  trimestre: Trimestre;
+  estado: "borrador" | "confirmada";
+  cursos: OfertaCurso[] | null;
+};
+
+export async function fetchOferta(carreraId: string, anio: number, trimestre: Trimestre) {
+  const supabase = getSupabaseClient();
+  if (!supabase) return { data: null as OfertaRow | null, error: "Faltan las variables de Supabase." };
+
+  const { data, error } = await supabase
+    .from("gestionesjj_ofertas")
+    .select("id,carrera_id,anio,trimestre,estado,cursos")
+    .eq("carrera_id", carreraId)
+    .eq("anio", anio)
+    .eq("trimestre", trimestre)
+    .maybeSingle();
+
+  if (error) return { data: null as OfertaRow | null, error: error.message };
+  if (!data) return { data: null as OfertaRow | null, error: null };
+
+  const row = data as RawOferta;
+  const oferta: OfertaRow = {
+    id: row.id,
+    carreraId: row.carrera_id,
+    anio: row.anio,
+    trimestre: row.trimestre,
+    estado: row.estado,
+    cursos: row.cursos ?? [],
+  };
+  return { data: oferta, error: null };
+}
+
+export async function upsertOferta(payload: {
+  carreraId: string;
+  anio: number;
+  trimestre: Trimestre;
+  estado: "borrador" | "confirmada";
+  cursos: OfertaCurso[];
+}) {
+  const supabase = getSupabaseClient();
+  if (!supabase) return { id: null as string | null, error: "Faltan las variables de Supabase." };
+
+  const { data, error } = await supabase
+    .from("gestionesjj_ofertas")
+    .upsert(
+      {
+        carrera_id: payload.carreraId,
+        anio: payload.anio,
+        trimestre: payload.trimestre,
+        estado: payload.estado,
+        cursos: payload.cursos,
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: "carrera_id,anio,trimestre" },
+    )
+    .select("id")
+    .single();
+
+  return { id: (data?.id as string | undefined) ?? null, error: error?.message ?? null };
+}
+
+/**
+ * Ejecuta la confirmacion de una oferta en 3 pasos secuenciales (supabase-js no
+ * ofrece transacciones desde el cliente): desactiva los cursos actuales del
+ * periodo, inserta los cursos de la oferta y marca la oferta como confirmada.
+ * Si algun paso falla se aborta y se reporta el error sin continuar.
+ */
+export async function confirmarOferta(oferta: OfertaRow) {
+  const supabase = getSupabaseClient();
+  if (!supabase) return { error: "Faltan las variables de Supabase." };
+
+  const { error: desactivarError } = await supabase
+    .from("gestionesjj_cursos")
+    .update({ activo: false })
+    .eq("carrera_id", oferta.carreraId)
+    .eq("anio", oferta.anio)
+    .eq("trimestre", oferta.trimestre);
+  if (desactivarError) return { error: desactivarError.message };
+
+  const cursosValidos = oferta.cursos.filter((curso) => curso.nombre.trim());
+  if (cursosValidos.length) {
+    const payload = cursosValidos.map((curso) => ({
+      nombre: curso.nombre.trim(),
+      horario: curso.horario,
+      edificio: curso.edificio || null,
+      anio: oferta.anio,
+      trimestre: oferta.trimestre,
+      anio_carrera: curso.anioCarrera,
+      carrera_id: oferta.carreraId,
+      docente_id: curso.docenteId,
+      activo: true,
+    }));
+    const { error: insertError } = await supabase.from("gestionesjj_cursos").insert(payload);
+    if (insertError) return { error: insertError.message };
+  }
+
+  const { error: confirmarError } = await supabase
+    .from("gestionesjj_ofertas")
+    .update({ estado: "confirmada", updated_at: new Date().toISOString() })
+    .eq("id", oferta.id);
+  if (confirmarError) return { error: confirmarError.message };
+
+  return { error: null };
+}
+
+/**
+ * Propone los cursos de una oferta a partir del anio mas reciente (distinto
+ * de anioObjetivo) con cursos registrados para esa carrera y trimestre.
+ */
+export function proponerCursos(
+  cursosAdmin: CursoAdminRow[],
+  carreraId: string,
+  trimestre: Trimestre,
+  anioObjetivo: number,
+): { anioFuente: number | null; cursos: OfertaCurso[] } {
+  const candidatos = cursosAdmin.filter(
+    (curso) => curso.carreraId === carreraId && curso.trimestre === trimestre && curso.anio !== anioObjetivo,
+  );
+  if (!candidatos.length) return { anioFuente: null, cursos: [] };
+
+  const anioFuente = Math.max(...candidatos.map((curso) => curso.anio));
+  const cursos = candidatos
+    .filter((curso) => curso.anio === anioFuente)
+    .map((curso) => ({
+      id: crypto.randomUUID(),
+      anioCarrera: curso.anioCarrera,
+      nombre: curso.nombre,
+      docenteId: curso.docenteId,
+      horario: curso.horario,
+      edificio: curso.edificio ?? "",
+      nrc: "",
+      noEstudiantes: "",
+    }));
+
+  return { anioFuente, cursos };
+}

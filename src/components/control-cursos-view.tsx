@@ -1,6 +1,6 @@
 "use client";
 
-import { CalendarClock, Pencil, Plus, Trash2 } from "lucide-react";
+import { CalendarClock, ChevronDown, ChevronUp, Pencil, Plus, Trash2 } from "lucide-react";
 import type React from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
@@ -24,6 +24,7 @@ import {
 import { currentTrimestre } from "@/lib/evaluacion-helpers";
 import { ConfirmDialog } from "./confirm-dialog";
 import { ModalPortal } from "./modal-portal";
+import { OfertaAcademica } from "./oferta-academica";
 
 type CursoFormState = {
   nombre: string;
@@ -58,6 +59,8 @@ export function ControlCursosView({ docentes }: { docentes: DocenteRow[] }) {
   const [saveError, setSaveError] = useState("");
   const [deleteTarget, setDeleteTarget] = useState<CursoAdminRow | null>(null);
   const [deleting, setDeleting] = useState(false);
+
+  const [ofertaAbierta, setOfertaAbierta] = useState(false);
 
   const loadCarreras = useCallback(async () => {
     const { data, error } = await fetchCarreras();
@@ -224,6 +227,19 @@ export function ControlCursosView({ docentes }: { docentes: DocenteRow[] }) {
           permite repetir un horario en el mismo año dentro del mismo periodo.
         </p>
       </div>
+
+      <button
+        className="inline-flex w-fit items-center gap-2 border border-white/10 bg-white/8 px-4 py-2 text-sm font-semibold text-slate-200 transition hover:border-white/30"
+        onClick={() => setOfertaAbierta((current) => !current)}
+        type="button"
+      >
+        {ofertaAbierta ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+        Generar oferta academica
+      </button>
+
+      {ofertaAbierta ? (
+        <OfertaAcademica carreras={carreras} cursosAdmin={cursos} onConfirmada={loadCursos} />
+      ) : null}
 
       <div className="flex flex-wrap items-end gap-3">
         <Field label="Carrera">
