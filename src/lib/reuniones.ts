@@ -87,6 +87,26 @@ export async function deleteReunion(id: string) {
   return { error: error?.message ?? null };
 }
 
+/**
+ * Cuenta las tareas de seguimiento que requieren atencion: vencidas o que
+ * vencen dentro de la ventana de dias indicada (por defecto una semana).
+ * Alimenta el contador rojo de la pestana Reuniones con docentes.
+ */
+export function contarAlertasSeguimientos(reuniones: ReunionRow[], hoy: string, diasVentana = 7): number {
+  const limite = new Date(`${hoy}T00:00:00`);
+  limite.setDate(limite.getDate() + diasVentana);
+  const hasta = limite.toISOString().slice(0, 10);
+
+  let total = 0;
+  for (const reunion of reuniones) {
+    for (const item of reunion.seguimientos ?? []) {
+      if (item.estado === "completado" || !item.fechaEntrega) continue;
+      if (item.fechaEntrega <= hasta) total += 1;
+    }
+  }
+  return total;
+}
+
 export function semaforoReunion(seguimientos: Seguimiento[], hoy: string): "verde" | "amarillo" | "rojo" | "gris" {
   if (!seguimientos.length) return "gris";
 
