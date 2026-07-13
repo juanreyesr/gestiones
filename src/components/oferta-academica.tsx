@@ -16,9 +16,11 @@ import { fetchDocentesAdmin, type DocenteAdminRow } from "@/lib/docentes-admin";
 import { currentTrimestre } from "@/lib/evaluacion-helpers";
 import { exportOfertaToExcel } from "@/lib/oferta-excel";
 import {
+  completarSalones,
   confirmarOferta,
   fetchOferta,
   proponerCursos,
+  siguientePeriodo,
   upsertOferta,
   type OfertaCurso,
   type OfertaRow,
@@ -81,39 +83,61 @@ export function OfertaAcademica({
 
   const carreraNombre = carreras.find((item) => item.id === carreraId)?.nombre ?? "";
 
-  const handleGenerarPropuesta = useCallback(async () => {
-    if (!carreraId) return;
-    setLoadingPropuesta(true);
-    setPropuestaError("");
-    setAvisoPropuesta("");
-    setBorradorMensaje("");
-    setConfirmStep(false);
-    setConfirmError("");
+  const generarPropuesta = useCallback(
+    async (carrera: string, anio: number, tri: Trimestre) => {
+      if (!carrera) return;
+      setLoadingPropuesta(true);
+      setPropuestaError("");
+      setAvisoPropuesta("");
+      setBorradorMensaje("");
+      setConfirmStep(false);
+      setConfirmError("");
 
-    const { data, error } = await fetchOferta(carreraId, anioDestino, trimestre);
-    if (error) {
-      setPropuestaError(error);
+      const { data, error } = await fetchOferta(carrera, anio, tri);
+      if (error) {
+        setPropuestaError(error);
+        setLoadingPropuesta(false);
+        return;
+      }
+
+      if (data) {
+        setEstado(data.estado);
+        setCursos(completarSalones(data.cursos, cursosAdmin, carrera));
+        setAvisoPropuesta("Se cargo el borrador guardado.");
+      } else {
+        const { anioFuente, cursos: propuestos } = proponerCursos(cursosAdmin, carrera, tri, anio);
+        setEstado(null);
+        setCursos(propuestos);
+        setAvisoPropuesta(
+          anioFuente
+            ? `Propuesta basada en los cursos de ${anioFuente}.`
+            : "No hay cursos previos de este trimestre; agrega los cursos manualmente.",
+        );
+      }
+      setGenerado(true);
       setLoadingPropuesta(false);
-      return;
-    }
+    },
+    [cursosAdmin],
+  );
 
-    if (data) {
-      setEstado(data.estado);
-      setCursos(data.cursos);
-      setAvisoPropuesta("Se cargo el borrador guardado.");
-    } else {
-      const { anioFuente, cursos: propuestos } = proponerCursos(cursosAdmin, carreraId, trimestre, anioDestino);
-      setEstado(null);
-      setCursos(propuestos);
-      setAvisoPropuesta(
-        anioFuente
-          ? `Propuesta basada en los cursos de ${anioFuente}.`
-          : "No hay cursos previos de este trimestre; agrega los cursos manualmente.",
-      );
-    }
-    setGenerado(true);
-    setLoadingPropuesta(false);
-  }, [carreraId, anioDestino, trimestre, cursosAdmin]);
+  const handleGenerarPropuesta = useCallback(
+    () => generarPropuesta(carreraId, anioDestino, trimestre),
+    [generarPropuesta, carreraId, anioDestino, trimestre],
+  );
+
+  // Al entrar, propone en automatico el periodo siguiente al ultimo con
+  // cursos activos (tras el T3 sigue el T1 del anio siguiente) y genera la
+  // propuesta sin necesidad de tocar los selectores.
+  const [autoGenerado, setAutoGenerado] = useState(false);
+  useEffect(() => {
+    if (autoGenerado || generado || !carreraId || !cursosAdmin.length) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- inicializacion unica al abrir la seccion
+    setAutoGenerado(true);
+    const proximo = siguientePeriodo(cursosAdmin, carreraId);
+    setAnioDestino(proximo.anio);
+    setTrimestre(proximo.trimestre);
+    generarPropuesta(carreraId, proximo.anio, proximo.trimestre);
+  }, [autoGenerado, generado, carreraId, cursosAdmin, generarPropuesta]);
 
   const porAnioCarrera = useMemo(
     () =>

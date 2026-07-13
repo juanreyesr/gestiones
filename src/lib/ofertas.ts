@@ -132,11 +132,63 @@ export async function confirmarOferta(oferta: OfertaRow) {
 }
 
 /**
+ * El periodo siguiente al ultimo con cursos activos de la carrera: T1->T2->T3
+ * y despues del T3 sigue el T1 del anio siguiente. Sin cursos activos,
+ * propone el anio actual y trimestre 1.
+ */
+export function siguientePeriodo(cursosAdmin: CursoAdminRow[], carreraId: string): { anio: number; trimestre: Trimestre } {
+  const activos = cursosAdmin.filter((curso) => curso.carreraId === carreraId && curso.activo);
+  if (!activos.length) return { anio: new Date().getFullYear(), trimestre: 1 };
+
+  let anio = activos[0].anio;
+  let trimestre = activos[0].trimestre;
+  for (const curso of activos) {
+    if (curso.anio > anio || (curso.anio === anio && curso.trimestre > trimestre)) {
+      anio = curso.anio;
+      trimestre = curso.trimestre;
+    }
+  }
+  return trimestre === 3 ? { anio: anio + 1, trimestre: 1 } : { anio, trimestre: (trimestre + 1) as Trimestre };
+}
+
+/**
+ * Ultimo salon asignado a cada anio de carrera (el edificio del periodo mas
+ * reciente que tenga salon), para proponerlo automaticamente en la oferta.
+ */
+export function salonesPorAnioCarrera(cursosAdmin: CursoAdminRow[], carreraId: string): Map<AnioCarrera, string> {
+  const recientes = new Map<AnioCarrera, { anio: number; trimestre: number; edificio: string }>();
+  for (const curso of cursosAdmin) {
+    if (curso.carreraId !== carreraId || !curso.edificio) continue;
+    const previo = recientes.get(curso.anioCarrera);
+    if (!previo || curso.anio > previo.anio || (curso.anio === previo.anio && curso.trimestre > previo.trimestre)) {
+      recientes.set(curso.anioCarrera, { anio: curso.anio, trimestre: curso.trimestre, edificio: curso.edificio });
+    }
+  }
+  return new Map(Array.from(recientes.entries()).map(([anioCarrera, valor]) => [anioCarrera, valor.edificio]));
+}
+
+/**
+ * Completa el salon de los cursos que no tengan uno con el ultimo salon
+ * asignado a su anio de carrera.
+ */
+export function completarSalones(
+  cursos: OfertaCurso[],
+  cursosAdmin: CursoAdminRow[],
+  carreraId: string,
+): OfertaCurso[] {
+  const salones = salonesPorAnioCarrera(cursosAdmin, carreraId);
+  return cursos.map((curso) =>
+    curso.edificio ? curso : { ...curso, edificio: salones.get(curso.anioCarrera) ?? "" },
+  );
+}
+
+/**
  * Propone los cursos de una oferta a partir del anio mas reciente con cursos
  * registrados para esa carrera y trimestre. Prefiere anios anteriores al
  * anio objetivo, pero si el unico historial es el mismo anio destino (por
  * ejemplo, los cursos del trimestre ya cargados este anio) usa ese. Solo
- * considera cursos activos, salvo que no exista ninguno activo.
+ * considera cursos activos, salvo que no exista ninguno activo. Los cursos
+ * sin salon toman el ultimo salon asignado a su anio de carrera.
  */
 export function proponerCursos(
   cursosAdmin: CursoAdminRow[],
@@ -168,5 +220,5 @@ export function proponerCursos(
       noEstudiantes: "",
     }));
 
-  return { anioFuente, cursos };
+  return { anioFuente, cursos: completarSalones(cursos, cursosAdmin, carreraId) };
 }
