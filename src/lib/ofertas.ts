@@ -132,8 +132,11 @@ export async function confirmarOferta(oferta: OfertaRow) {
 }
 
 /**
- * Propone los cursos de una oferta a partir del anio mas reciente (distinto
- * de anioObjetivo) con cursos registrados para esa carrera y trimestre.
+ * Propone los cursos de una oferta a partir del anio mas reciente con cursos
+ * registrados para esa carrera y trimestre. Prefiere anios anteriores al
+ * anio objetivo, pero si el unico historial es el mismo anio destino (por
+ * ejemplo, los cursos del trimestre ya cargados este anio) usa ese. Solo
+ * considera cursos activos, salvo que no exista ninguno activo.
  */
 export function proponerCursos(
   cursosAdmin: CursoAdminRow[],
@@ -141,9 +144,14 @@ export function proponerCursos(
   trimestre: Trimestre,
   anioObjetivo: number,
 ): { anioFuente: number | null; cursos: OfertaCurso[] } {
-  const candidatos = cursosAdmin.filter(
-    (curso) => curso.carreraId === carreraId && curso.trimestre === trimestre && curso.anio !== anioObjetivo,
+  const delTrimestre = cursosAdmin.filter(
+    (curso) => curso.carreraId === carreraId && curso.trimestre === trimestre,
   );
+  const activos = delTrimestre.filter((curso) => curso.activo);
+  const universo = activos.length ? activos : delTrimestre;
+
+  const anteriores = universo.filter((curso) => curso.anio < anioObjetivo);
+  const candidatos = anteriores.length ? anteriores : universo;
   if (!candidatos.length) return { anioFuente: null, cursos: [] };
 
   const anioFuente = Math.max(...candidatos.map((curso) => curso.anio));
