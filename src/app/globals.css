@@ -36,25 +36,29 @@ button {
   cursor: pointer;
 }
 
-.field {
-  width: 100%;
-  border: 1px solid rgb(255 255 255 / 0.1);
-  background: rgb(2 6 23 / 0.72);
-  padding: 0.65rem 0.75rem;
-  color: white;
-  outline: none;
-  transition:
-    border-color 150ms ease,
-    box-shadow 150ms ease;
-}
+/* En @layer components para que las utilidades de Tailwind (w-52, sm:w-32...)
+   puedan ganarle al width: 100% cuando un campo necesita ancho fijo. */
+@layer components {
+  .field {
+    width: 100%;
+    border: 1px solid rgb(255 255 255 / 0.1);
+    background: rgb(2 6 23 / 0.72);
+    padding: 0.65rem 0.75rem;
+    color: white;
+    outline: none;
+    transition:
+      border-color 150ms ease,
+      box-shadow 150ms ease;
+  }
 
-.field:focus {
-  border-color: rgb(110 231 183 / 0.65);
-  box-shadow: 0 0 0 2px rgb(110 231 183 / 0.18);
-}
+  .field:focus {
+    border-color: rgb(110 231 183 / 0.65);
+    box-shadow: 0 0 0 2px rgb(110 231 183 / 0.18);
+  }
 
-.field option {
-  color: #0f172a;
+  .field option {
+    color: #0f172a;
+  }
 }
 
 @media print {
