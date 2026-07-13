@@ -120,9 +120,10 @@ export async function confirmarOferta(oferta: OfertaRow) {
       trimestre: oferta.trimestre,
       anio_carrera: curso.anioCarrera,
       carrera_id: oferta.carreraId,
-      docente_id: curso.esCas ? null : curso.docenteId,
+      docente_id: curso.esCas || curso.virtual ? null : curso.docenteId,
       virtual: curso.virtual,
       es_cas: curso.esCas,
+      nrc: curso.nrc || null,
       activo: true,
     }));
     const { error: insertError } = await supabase.from("gestionesjj_cursos").insert(payload);

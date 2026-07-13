@@ -31,6 +31,7 @@ type CursoFormState = {
   docenteId: string;
   horario: string;
   edificio: string;
+  nrc: string;
   anioCarrera: AnioCarrera;
   anio: number;
   trimestre: Trimestre;
@@ -132,7 +133,7 @@ export function ControlCursosView({ docentes }: { docentes: DocenteRow[] }) {
   const openCrear = (anioCarrera: AnioCarrera) => {
     setEditTarget(null);
     setCreating(true);
-    setForm({ nombre: "", docenteId: "", horario: "", edificio: "", anioCarrera, anio, trimestre, activo: true });
+    setForm({ nombre: "", docenteId: "", horario: "", edificio: "", nrc: "", anioCarrera, anio, trimestre, activo: true });
     setSaveError("");
   };
 
@@ -144,6 +145,7 @@ export function ControlCursosView({ docentes }: { docentes: DocenteRow[] }) {
       docenteId: curso.docenteId ?? "",
       horario: curso.horario ?? "",
       edificio: curso.edificio ?? "",
+      nrc: curso.nrc ?? "",
       anioCarrera: curso.anioCarrera,
       anio: curso.anio,
       trimestre: curso.trimestre,
@@ -187,6 +189,7 @@ export function ControlCursosView({ docentes }: { docentes: DocenteRow[] }) {
       carrera_id: carreraId,
       docente_id: form.docenteId || null,
       activo: form.activo,
+      nrc: form.nrc.trim() || null,
     };
     const { error } = await upsertCursoAdmin(editTarget?.id ?? null, payload);
     setSaving(false);
@@ -490,6 +493,15 @@ export function ControlCursosView({ docentes }: { docentes: DocenteRow[] }) {
                     className="field"
                     onChange={(event) => setForm((current) => (current ? { ...current, edificio: event.target.value } : current))}
                     value={form.edificio}
+                  />
+                </Field>
+
+                <Field label="NRC (lo asigna la facultad despues de aprobar la oferta)">
+                  <input
+                    aria-label="NRC"
+                    className="field"
+                    onChange={(event) => setForm((current) => (current ? { ...current, nrc: event.target.value } : current))}
+                    value={form.nrc}
                   />
                 </Field>
 

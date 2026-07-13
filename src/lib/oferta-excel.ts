@@ -1,4 +1,4 @@
-import type { Trimestre } from "@/data/evaluacion";
+import { HORARIOS_FIJOS, type Trimestre } from "@/data/evaluacion";
 import type { DocenteAdminRow } from "@/lib/docentes-admin";
 import type { OfertaCurso } from "@/lib/ofertas";
 
@@ -57,8 +57,17 @@ export async function exportOfertaToExcel(input: {
 
   const docentesPorId = new Map(input.docentes.map((docente) => [docente.id, docente]));
 
+  const ordenHorario = (curso: OfertaCurso) => {
+    if (!curso.horario) return HORARIOS_FIJOS.length + 1;
+    const idx = HORARIOS_FIJOS.indexOf(curso.horario);
+    return idx === -1 ? HORARIOS_FIJOS.length : idx;
+  };
+
   for (let anioCarrera = 1; anioCarrera <= 5; anioCarrera += 1) {
-    const cursosGrupo = input.cursos.filter((curso) => curso.anioCarrera === anioCarrera);
+    // Cada grupo sale en orden cronologico de horario, sin horario al final.
+    const cursosGrupo = input.cursos
+      .filter((curso) => curso.anioCarrera === anioCarrera)
+      .sort((a, b) => ordenHorario(a) - ordenHorario(b));
     if (!cursosGrupo.length) continue;
 
     const filaInicio = sheet.rowCount + 1;
@@ -72,7 +81,7 @@ export async function exportOfertaToExcel(input: {
         curso.virtual ? "Virtual" : curso.edificio,
         curso.nrc,
         curso.nombre,
-        curso.esCas ? "CAS" : (docente?.nombre ?? ""),
+        curso.virtual ? "UPANA virtual" : curso.esCas ? "CAS" : (docente?.nombre ?? ""),
         curso.horario ?? "",
         docente?.codigo ?? "",
         docente?.correo ?? "",

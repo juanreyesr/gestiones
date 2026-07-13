@@ -145,14 +145,21 @@ export function OfertaAcademica({
     generarPropuesta(carreraId, proximo.anio, proximo.trimestre);
   }, [autoGenerado, generado, carreraId, cursosAdmin, generarPropuesta]);
 
-  const porAnioCarrera = useMemo(
-    () =>
-      ANIOS_CARRERA.map((item) => ({
-        ...item,
-        cursos: cursos.filter((curso) => curso.anioCarrera === item.value),
-      })),
-    [cursos],
-  );
+  // Los cursos siempre se muestran en orden cronologico de horario
+  // (los sin horario al final), tambien despues de cada cambio o intercambio.
+  const porAnioCarrera = useMemo(() => {
+    const ordenHorario = (curso: OfertaCurso) => {
+      if (!curso.horario) return HORARIOS_FIJOS.length + 1;
+      const idx = HORARIOS_FIJOS.indexOf(curso.horario);
+      return idx === -1 ? HORARIOS_FIJOS.length : idx;
+    };
+    return ANIOS_CARRERA.map((item) => ({
+      ...item,
+      cursos: [...cursos.filter((curso) => curso.anioCarrera === item.value)].sort(
+        (a, b) => ordenHorario(a) - ordenHorario(b),
+      ),
+    }));
+  }, [cursos]);
 
   const choques = useMemo(() => {
     const map = new Map<string, string>();
@@ -249,7 +256,8 @@ export function OfertaAcademica({
   };
 
   const handleVirtualChange = (curso: OfertaCurso, virtual: boolean) => {
-    updateCursoConReorden(curso.id, { virtual });
+    // Un curso virtual lo imparte UPANA virtual: sin docente asignable.
+    updateCursoConReorden(curso.id, virtual ? { virtual, docenteId: null, esCas: false } : { virtual });
   };
 
   /** Horario de un curso CAS: alterna entre sin horario y el ultimo bloque disponible. */
@@ -536,6 +544,17 @@ export function OfertaAcademica({
                               placeholder="Nombre del curso"
                               value={curso.nombre}
                             />
+                            {curso.virtual ? (
+                              <select
+                                aria-label="Docente"
+                                className="field w-full sm:w-52 disabled:opacity-60"
+                                disabled
+                                title="Los cursos virtuales los imparte UPANA virtual"
+                                value="__upana__"
+                              >
+                                <option value="__upana__">UPANA virtual</option>
+                              </select>
+                            ) : (
                             <select
                               aria-label="Docente"
                               className="field w-full sm:w-52"
@@ -558,6 +577,7 @@ export function OfertaAcademica({
                                 );
                               })}
                             </select>
+                            )}
                             {curso.esCas ? (
                               <select
                                 aria-label="Horario"
@@ -608,13 +628,6 @@ export function OfertaAcademica({
                               onChange={(event) => updateCurso(curso.id, { edificio: event.target.value })}
                               placeholder="Edificio/salon"
                               value={curso.edificio}
-                            />
-                            <input
-                              aria-label="NRC"
-                              className="field w-full sm:w-24"
-                              onChange={(event) => updateCurso(curso.id, { nrc: event.target.value })}
-                              placeholder="NRC"
-                              value={curso.nrc}
                             />
                             <input
                               aria-label="Numero de estudiantes"
