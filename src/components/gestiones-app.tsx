@@ -65,6 +65,7 @@ import { CodigoKioscoModal } from "./codigo-kiosco-modal";
 import { ConsultasView } from "./consultas-view";
 import { ControlCursosView } from "./control-cursos-view";
 import { ControlDocentesView } from "./control-docentes-view";
+import { CursosView } from "./cursos/cursos-view";
 import { EmailDraftModal } from "./email-draft-modal";
 import { EntrevistaKiosk } from "./entrevista-kiosk";
 import { InformeDocenteView } from "./informe-docente-view";
@@ -812,6 +813,10 @@ export function GestionesApp() {
                   {activeArea === "clinica" ? (
                     <div className="border border-white/10 bg-slate-950/58 p-4 backdrop-blur-xl sm:p-5">
                       <ClinicaView />
+                    </div>
+                  ) : activeArea === "cursos" ? (
+                    <div className="border border-white/10 bg-slate-950/58 p-4 backdrop-blur-xl sm:p-5">
+                      <CursosView />
                     </div>
                   ) : activeArea !== "coordinacion" ? (
                     <div className="border border-white/10 bg-slate-950/58 p-4 backdrop-blur-xl sm:p-5">
