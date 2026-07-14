@@ -19,11 +19,16 @@ export function CursoReporteTab({ curso, universidad }: { curso: CursoImpartidoR
 
   const cargarResumen = useCallback(async () => {
     setLoading(true);
-    const [{ data: semanas }, { data: estudiantes }, { data: asistencias }] = await Promise.all([
+    const [
+      { data: semanas, error: errorSemanas },
+      { data: estudiantes, error: errorEstudiantes },
+      { data: asistencias, error: errorAsistencias },
+    ] = await Promise.all([
       fetchSemanas(curso.id),
       fetchEstudiantes(curso.id),
       fetchAsistenciasDeCurso(curso.id),
     ]);
+    setError(errorSemanas ?? errorEstudiantes ?? errorAsistencias ?? "");
     const activos = estudiantes.filter((e) => e.estado === "activo").length;
     const retirados = estudiantes.filter((e) => e.estado === "retirado").length;
     const validos = asistencias

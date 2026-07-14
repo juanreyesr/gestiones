@@ -50,12 +50,26 @@ export function CalificarActividadModal({
   const handleGuardar = async (estudianteId: string) => {
     const fila = filas[estudianteId];
     if (!fila) return;
+
+    const notaNum = fila.nota.trim() ? Number(fila.nota) : null;
+    if (notaNum !== null) {
+      if (Number.isNaN(notaNum) || notaNum < 0) {
+        setError("La nota debe ser un número válido y no puede ser negativa.");
+        return;
+      }
+      if (actividad.punteo !== null && notaNum > actividad.punteo) {
+        setError(`La nota no puede ser mayor al punteo máximo de la actividad (${actividad.punteo} pts).`);
+        return;
+      }
+    }
+
+    setError("");
     setGuardandoId(estudianteId);
     const { error: upsertError } = await upsertCalificacion({
       actividad_id: actividad.id,
       estudiante_id: estudianteId,
       entregado: fila.entregado,
-      nota: fila.nota.trim() ? Number(fila.nota) : null,
+      nota: notaNum,
       comentario: fila.comentario.trim() || null,
     });
     setGuardandoId(null);

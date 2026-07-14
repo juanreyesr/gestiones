@@ -151,7 +151,11 @@ export function CursoEstudiantesTab({ cursoId }: { cursoId: string }) {
                       className={BTN_GHOST}
                       onClick={async () => {
                         const { error: reincorporarError } = await reincorporarEstudiante(estudiante.id, cursoId);
-                        if (reincorporarError) setError(reincorporarError);
+                        if (reincorporarError) {
+                          // No recargamos aqui: cargar() limpiaria el mensaje de error.
+                          setError(reincorporarError);
+                          return;
+                        }
                         await cargar();
                       }}
                       type="button"

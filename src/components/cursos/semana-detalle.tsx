@@ -55,9 +55,9 @@ export function SemanaDetalle({
     setLoading(true);
     const [
       { data: contenidosData, error: errorContenidos },
-      { data: actividadesData },
-      { data: estudiantesData },
-      { data: semanasData },
+      { data: actividadesData, error: errorActividades },
+      { data: estudiantesData, error: errorEstudiantes },
+      { data: semanasData, error: errorSemanas },
     ] = await Promise.all([
       fetchContenidos(semana.id),
       fetchActividades(semana.id),
@@ -69,7 +69,7 @@ export function SemanaDetalle({
     setActividades(actividadesData);
     setEstudiantes(estudiantesData);
     setEstudiantesActivos(estudiantesData.filter((e) => e.estado === "activo"));
-    setError(errorContenidos ?? "");
+    setError(errorContenidos ?? errorActividades ?? errorEstudiantes ?? errorSemanas ?? "");
 
     const anterior = semanasData.find((s) => s.numero === semana.numero - 1) ?? null;
     setSemanaAnterior(anterior);

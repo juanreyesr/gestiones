@@ -207,6 +207,8 @@ function AgregarContenidoModal({
     });
     setGuardando(false);
     if (insertError) {
+      // Evita dejar el archivo huerfano en storage si el registro no se guardo.
+      if (archivoPath) await borrarArchivos([archivoPath]);
       setError(insertError);
       return;
     }

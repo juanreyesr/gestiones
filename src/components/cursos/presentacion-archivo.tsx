@@ -41,10 +41,11 @@ export function PresentacionArchivo({
   }, [archivoPath]);
 
   const handlePantallaCompleta = () => {
+    // iOS Safari no implementa la Fullscreen API en divs: verificar antes de invocar.
     if (document.fullscreenElement) {
-      void document.exitFullscreen();
-    } else {
-      void contenedorRef.current?.requestFullscreen();
+      if (typeof document.exitFullscreen === "function") void document.exitFullscreen();
+    } else if (typeof contenedorRef.current?.requestFullscreen === "function") {
+      void contenedorRef.current.requestFullscreen();
     }
   };
 
