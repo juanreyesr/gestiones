@@ -206,3 +206,134 @@ export async function descartarSesion(sesionId: string) {
   const { error } = await supabase.from("gestionesjj_sesiones").delete().eq("id", sesionId).eq("estado", "en_curso");
   return { error: error?.message ?? null };
 }
+
+export async function eliminarSesion(sesionId: string) {
+  const supabase = getSupabaseClient();
+  if (!supabase) return { error: "Faltan las variables de Supabase." };
+  const { error } = await supabase.from("gestionesjj_sesiones").delete().eq("id", sesionId);
+  return { error: error?.message ?? null };
+}
+
+export type ItemSesion = { id?: string; descripcion: string };
+
+export type SesionEditableInput = {
+  fechaIso: string;
+  modalidad: SesionModalidad | null;
+  tema: string | null;
+  notas: string | null;
+  resumen: string | null;
+  seguimiento: string | null;
+  compromisos: ItemSesion[];
+  tareas: ItemSesion[];
+};
+
+type SupabaseCliente = NonNullable<ReturnType<typeof getSupabaseClient>>;
+
+/**
+ * Sincroniza los compromisos/tareas de una sesión con la lista editada:
+ * inserta los nuevos, actualiza los existentes y borra los quitados,
+ * preservando el estado "cumplido" de los que permanecen.
+ */
+async function syncCompromisos(
+  supabase: SupabaseCliente,
+  sesionId: string,
+  pacienteId: string,
+  compromisos: ItemSesion[],
+  tareas: ItemSesion[]
+): Promise<string | null> {
+  const deseados = [
+    ...compromisos.map((item, index) => ({ ...item, tipo: "compromiso" as const, orden: index })),
+    ...tareas.map((item, index) => ({ ...item, tipo: "tarea" as const, orden: index })),
+  ].filter((item) => item.descripcion.trim().length > 0);
+
+  const { data: existentes, error: existErr } = await supabase
+    .from("gestionesjj_compromisos")
+    .select("id")
+    .eq("sesion_id", sesionId);
+  if (existErr) return existErr.message;
+
+  const existentesIds = new Set(((existentes ?? []) as { id: string }[]).map((row) => row.id));
+  const conservadosIds = new Set(deseados.filter((item) => item.id).map((item) => item.id as string));
+
+  const aBorrar = [...existentesIds].filter((id) => !conservadosIds.has(id));
+  if (aBorrar.length > 0) {
+    const { error } = await supabase.from("gestionesjj_compromisos").delete().in("id", aBorrar);
+    if (error) return error.message;
+  }
+
+  for (const item of deseados.filter((d) => d.id)) {
+    const { error } = await supabase
+      .from("gestionesjj_compromisos")
+      .update({ descripcion: item.descripcion.trim(), tipo: item.tipo, orden: item.orden })
+      .eq("id", item.id as string);
+    if (error) return error.message;
+  }
+
+  const nuevos = deseados
+    .filter((d) => !d.id)
+    .map((item) => ({
+      sesion_id: sesionId,
+      paciente_id: pacienteId,
+      tipo: item.tipo,
+      descripcion: item.descripcion.trim(),
+      orden: item.orden,
+    }));
+  if (nuevos.length > 0) {
+    const { error } = await supabase.from("gestionesjj_compromisos").insert(nuevos);
+    if (error) return error.message;
+  }
+
+  return null;
+}
+
+/** Crea una sesión pasada ya finalizada, con la fecha que indique el terapeuta. */
+export async function crearSesionManual(pacienteId: string, input: SesionEditableInput) {
+  const supabase = getSupabaseClient();
+  if (!supabase) return { id: null as string | null, error: "Faltan las variables de Supabase." };
+
+  const { data, error } = await supabase
+    .from("gestionesjj_sesiones")
+    .insert({
+      paciente_id: pacienteId,
+      estado: "finalizada",
+      modalidad: input.modalidad,
+      tema: input.modalidad === "tema_nuevo" ? input.tema : input.tema || null,
+      notas: input.notas,
+      resumen: input.resumen,
+      seguimiento: input.seguimiento,
+      resumen_origen: "manual",
+      iniciada_at: input.fechaIso,
+      finalizada_at: input.fechaIso,
+    })
+    .select("id")
+    .single();
+
+  if (error || !data) return { id: null as string | null, error: error?.message ?? "No se pudo crear la sesión." };
+
+  const syncErr = await syncCompromisos(supabase, data.id as string, pacienteId, input.compromisos, input.tareas);
+  return { id: data.id as string, error: syncErr };
+}
+
+/** Edita una sesión existente (fecha, contenido y compromisos/tareas). */
+export async function editarSesion(sesionId: string, pacienteId: string, input: SesionEditableInput) {
+  const supabase = getSupabaseClient();
+  if (!supabase) return { error: "Faltan las variables de Supabase." };
+
+  const { error } = await supabase
+    .from("gestionesjj_sesiones")
+    .update({
+      modalidad: input.modalidad,
+      tema: input.modalidad === "tema_nuevo" ? input.tema : input.tema || null,
+      notas: input.notas,
+      resumen: input.resumen,
+      seguimiento: input.seguimiento,
+      iniciada_at: input.fechaIso,
+      finalizada_at: input.fechaIso,
+    })
+    .eq("id", sesionId);
+
+  if (error) return { error: error.message };
+
+  const syncErr = await syncCompromisos(supabase, sesionId, pacienteId, input.compromisos, input.tareas);
+  return { error: syncErr };
+}
