@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  CalendarClock,
   CalendarDays,
   ChevronDown,
   ChevronLeft,
@@ -27,9 +28,10 @@ import type { CitaRow, CompromisoRow, PacienteRow, SesionRow } from "@/lib/clini
 import { PacienteForm } from "./paciente-form";
 import { SesionActiva } from "./sesion-activa";
 import { SesionDetalle } from "./sesion-detalle";
+import { SesionEditor } from "./sesion-editor";
 import { BTN_ACCENT, BTN_GHOST, EmptyState, PacienteBadge, SectionCard } from "./ui";
 
-type Vista = "ficha" | "editar" | "sesion";
+type Vista = "ficha" | "editar" | "sesion" | "editar-sesion";
 
 function edad(fechaNacimiento: string | null) {
   if (!fechaNacimiento) return null;
@@ -72,6 +74,7 @@ export function PacienteExpediente({
   const [sesionAbierta, setSesionAbierta] = useState<string | null>(null);
   const [copiado, setCopiado] = useState(false);
   const [datosMsg, setDatosMsg] = useState("");
+  const [sesionEditando, setSesionEditando] = useState<SesionRow | null>(null);
 
   const cargar = useCallback(async () => {
     setLoading(true);
@@ -206,6 +209,24 @@ export function PacienteExpediente({
     );
   }
 
+  if (vista === "editar-sesion") {
+    return (
+      <SesionEditor
+        onCancelar={() => {
+          setSesionEditando(null);
+          setVista("ficha");
+        }}
+        onGuardado={() => {
+          setSesionEditando(null);
+          setVista("ficha");
+          void cargar();
+        }}
+        paciente={paciente}
+        sesion={sesionEditando}
+      />
+    );
+  }
+
   return (
     <div className="grid gap-5">
       <button className={`${BTN_GHOST} w-fit`} onClick={onVolver} type="button">
@@ -251,6 +272,17 @@ export function PacienteExpediente({
             <Pencil className="h-4 w-4" />
             Editar datos
           </button>
+          <button
+            className={BTN_GHOST}
+            onClick={() => {
+              setSesionEditando(null);
+              setVista("editar-sesion");
+            }}
+            type="button"
+          >
+            <CalendarClock className="h-4 w-4" />
+            Agregar sesión anterior
+          </button>
           <button className={BTN_ACCENT} disabled={iniciando} onClick={handleIniciarSesion} type="button">
             <Play className="h-4 w-4" />
             {sesionEnCurso ? "Continuar sesión en curso" : "Iniciar sesión"}
@@ -294,6 +326,19 @@ export function PacienteExpediente({
                       </button>
                       {abierta ? (
                         <div className="border-t border-white/10 p-4">
+                          <div className="mb-3 flex justify-end">
+                            <button
+                              className="inline-flex items-center gap-1.5 border border-white/10 bg-white/8 px-3 py-1.5 text-xs font-semibold text-slate-200 transition hover:border-emerald-300/50"
+                              onClick={() => {
+                                setSesionEditando(sesion);
+                                setVista("editar-sesion");
+                              }}
+                              type="button"
+                            >
+                              <Pencil className="h-3.5 w-3.5" />
+                              Editar sesión
+                            </button>
+                          </div>
                           <SesionDetalle sesion={sesion} />
                         </div>
                       ) : null}
