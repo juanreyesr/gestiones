@@ -111,6 +111,7 @@ export function SesionActiva({
       compromisos: values.compromisos,
       tareas: values.tareas,
       compromisosCumplidosIds: Array.from(cumplidosIds),
+      seguimientoIds: values.seguimientoIds,
     });
     setSaving(false);
     if (finError) {
@@ -237,6 +238,7 @@ export function SesionActiva({
           notas={notas}
           onGuardar={handleGuardarCierre}
           onVolver={() => setEnCierre(false)}
+          pendientes={pendientes.filter((item) => !cumplidosIds.has(item.id))}
           resumenAnterior={sesionAnterior?.resumen ?? null}
           saving={saving}
           tema={tema || null}

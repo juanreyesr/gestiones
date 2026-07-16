@@ -139,6 +139,7 @@ export type FinalizarSesionInput = {
   compromisos: string[];
   tareas: string[];
   compromisosCumplidosIds: string[];
+  seguimientoIds: string[];
 };
 
 export async function finalizarSesion(input: FinalizarSesionInput) {
@@ -186,6 +187,16 @@ export async function finalizarSesion(input: FinalizarSesionInput) {
       .from("gestionesjj_compromisos")
       .update({ cumplido: true, cumplido_en_sesion_id: input.sesionId })
       .in("id", input.compromisosCumplidosIds);
+    if (error) return { error: error.message };
+  }
+
+  // Trasladar a esta sesión los compromisos/tareas previos que se decidió seguir
+  // (permanecen sin cumplir, pero ahora "cuelgan" de la sesión actual).
+  if (input.seguimientoIds.length > 0) {
+    const { error } = await supabase
+      .from("gestionesjj_compromisos")
+      .update({ sesion_id: input.sesionId })
+      .in("id", input.seguimientoIds);
     if (error) return { error: error.message };
   }
 

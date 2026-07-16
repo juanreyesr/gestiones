@@ -3,7 +3,7 @@
 import { CheckCheck, Plus, Sparkles, X } from "lucide-react";
 import { useState } from "react";
 import { generarResumenIA } from "@/lib/clinica/ai-client";
-import type { ResumenOrigen, SesionModalidad } from "@/lib/clinica/types";
+import type { CompromisoRow, ResumenOrigen, SesionModalidad } from "@/lib/clinica/types";
 import { BTN_ACCENT, BTN_GHOST, BTN_PRIMARY, Field } from "./ui";
 
 export type CierreValues = {
@@ -12,6 +12,7 @@ export type CierreValues = {
   compromisos: string[];
   tareas: string[];
   resumenOrigen: ResumenOrigen;
+  seguimientoIds: string[];
 };
 
 function ListaEditable({
@@ -65,6 +66,7 @@ export function CierreForm({
   notas,
   onGuardar,
   onVolver,
+  pendientes,
   resumenAnterior,
   saving,
   tema,
@@ -73,6 +75,7 @@ export function CierreForm({
   notas: string;
   onGuardar: (values: CierreValues) => void;
   onVolver: () => void;
+  pendientes: CompromisoRow[];
   resumenAnterior: string | null;
   saving: boolean;
   tema: string | null;
@@ -82,10 +85,19 @@ export function CierreForm({
   const [compromisos, setCompromisos] = useState<string[]>([]);
   const [tareas, setTareas] = useState<string[]>([]);
   const [origen, setOrigen] = useState<ResumenOrigen>("manual");
+  const [seguimientoIds, setSeguimientoIds] = useState<Set<string>>(new Set());
   const [generando, setGenerando] = useState(false);
   const [iaNoConfigurada, setIaNoConfigurada] = useState(false);
   const [iaError, setIaError] = useState("");
   const [error, setError] = useState("");
+
+  const toggleSeguimiento = (id: string) =>
+    setSeguimientoIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
 
   const handleGenerar = async () => {
     if (generando) return;
@@ -127,6 +139,7 @@ export function CierreForm({
       compromisos: compromisos.map((item) => item.trim()).filter(Boolean),
       tareas: tareas.map((item) => item.trim()).filter(Boolean),
       resumenOrigen: origen,
+      seguimientoIds: Array.from(seguimientoIds),
     });
   };
 
@@ -192,6 +205,40 @@ export function CierreForm({
           placeholder="Ej. Llevar registro de pensamientos"
         />
       </div>
+
+      {pendientes.length > 0 ? (
+        <div className="grid gap-2 border border-white/10 bg-white/4 p-4">
+          <div>
+            <span className="text-xs font-semibold uppercase text-slate-400">
+              Dar seguimiento a lo pendiente
+            </span>
+            <p className="mt-0.5 text-xs leading-5 text-slate-500">
+              Marca los compromisos o tareas de la sesión anterior que sigan vigentes: se trasladarán a esta
+              sesión para continuar dándoles seguimiento, sin volver a escribirlos.
+            </p>
+          </div>
+          <ul className="grid gap-2">
+            {pendientes.map((item) => (
+              <li key={item.id}>
+                <label className="flex cursor-pointer items-start gap-2.5 border border-white/10 bg-white/4 p-2.5 transition hover:border-emerald-300/40">
+                  <input
+                    checked={seguimientoIds.has(item.id)}
+                    className="mt-1 h-4 w-4 accent-emerald-300"
+                    onChange={() => toggleSeguimiento(item.id)}
+                    type="checkbox"
+                  />
+                  <span>
+                    <span className="block text-sm leading-5 text-slate-200">{item.descripcion}</span>
+                    <span className="mt-0.5 block text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+                      {item.tipo === "compromiso" ? "Compromiso" : "Tarea"}
+                    </span>
+                  </span>
+                </label>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
 
       {error ? <div className="border border-red-400/40 bg-red-400/10 p-3 text-sm text-red-200">{error}</div> : null}
 
