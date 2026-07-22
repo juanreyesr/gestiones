@@ -23,6 +23,7 @@ import {
   Plus,
   Presentation,
   Printer,
+  Radio,
   Save,
   Sparkles,
   Star,
@@ -71,6 +72,7 @@ import { EntrevistaKiosk } from "./entrevista-kiosk";
 import { InformeDocenteView } from "./informe-docente-view";
 import { OrbitScene } from "./orbit-scene";
 import { PresentacionView } from "./presentacion-view";
+import { RecursosView } from "./recursos/recursos-view";
 import type { ReporteData } from "./reporte-printable";
 import { ReunionesView } from "./reuniones-view";
 
@@ -87,6 +89,7 @@ const areaIcons: Record<AreaId, React.ComponentType<{ className?: string }>> = {
   coordinacion: GraduationCap,
   cursos: BookOpenCheck,
   caeduc: Building2,
+  recursos: Radio,
 };
 
 const STEP_LABELS = ["Datos generales", "Observacion de clase", "Entrevistas", "Fortalezas", "Resumen"];
@@ -817,6 +820,10 @@ export function GestionesApp() {
                   ) : activeArea === "cursos" ? (
                     <div className="border border-white/10 bg-slate-950/58 p-4 backdrop-blur-xl sm:p-5">
                       <CursosView />
+                    </div>
+                  ) : activeArea === "recursos" ? (
+                    <div className="border border-white/10 bg-slate-950/58 p-4 backdrop-blur-xl sm:p-5">
+                      <RecursosView />
                     </div>
                   ) : activeArea !== "coordinacion" ? (
                     <div className="border border-white/10 bg-slate-950/58 p-4 backdrop-blur-xl sm:p-5">
