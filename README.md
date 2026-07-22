@@ -49,6 +49,17 @@ Centro de gestion de los cursos que se imparten en distintas universidades:
 
 La migracion de este modulo esta en `supabase/migrations/008_gestionesjj_area_cursos.sql`, que ademas crea el bucket privado de storage `gestionesjj-cursos` (con politicas RLS equivalentes a las del resto de tablas del modulo) para logos de universidades y archivos de curso.
 
+## Modulo Recursos
+
+Herramientas interactivas propias, estilo Mentimeter/Kahoot pero en tu propio entorno cerrado (fase 1: encuestas en vivo):
+
+- **Mis recursos**: crea encuestas reutilizables con preguntas de opcion multiple (barras), nube de palabras, pregunta abierta o escala de valoracion.
+- **Lanzar en vivo**: genera una sesion con PIN de 6 digitos + QR + enlace publico (`/vivo/[pin]`). Los participantes entran desde su celular sin necesidad de cuenta, solo con un apodo.
+- **Vista de presentador**: pantalla para proyectar con el QR grande, el PIN, el contador de participantes conectados y los resultados de la pregunta activa actualizandose en vivo (Supabase Realtime) segun el tipo de pregunta.
+- **Historial**: al finalizar una sesion, sus resultados quedan guardados y consultables por separado.
+
+La migracion de este modulo esta en `supabase/migrations/009_gestionesjj_recursos.sql`. El flujo publico (unirse, consultar estado y responder) pasa por RPCs `SECURITY DEFINER` con validaciones anti-abuso, igual que el agendamiento de Clinica; no requiere `SUPABASE_SECRET_KEY`.
+
 ## Supabase
 
 Crear un archivo `.env.local` usando `.env.example`:

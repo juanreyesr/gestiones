@@ -61,6 +61,7 @@ export const AREAS = [
   { id: "coordinacion", nombre: "Coordinacion", descripcion: "Evaluacion docente, rendimiento academico y mejora continua." },
   { id: "cursos", nombre: "Cursos", descripcion: "Planificacion, materiales, avances, tareas y desempeno por curso." },
   { id: "caeduc", nombre: "CAEDUC", descripcion: "Procesos, reportes, acompanamiento y acciones institucionales." },
+  { id: "recursos", nombre: "Recursos", descripcion: "Encuestas y actividades interactivas en vivo con QR o enlace." },
 ] as const;
 
 export const TRIMESTRES: Trimestre[] = [1, 2, 3];
