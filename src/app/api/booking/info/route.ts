@@ -1,10 +1,15 @@
 import { NextResponse } from "next/server";
+import { rateLimit, rateLimitResponse } from "@/lib/server/rate-limit";
 import { getSupabaseClient } from "@/lib/supabase";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-export async function GET() {
+export async function GET(request: Request) {
+  if (!rateLimit(request, { key: "booking-info", limit: 20, windowMs: 60_000 })) {
+    return rateLimitResponse();
+  }
+
   const supabase = getSupabaseClient();
   if (!supabase) {
     return NextResponse.json({ activo: false, duracionMin: 50, zonaHoraria: "America/Guatemala" });

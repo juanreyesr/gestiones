@@ -1,10 +1,15 @@
 import { NextResponse } from "next/server";
+import { rateLimit, rateLimitResponse } from "@/lib/server/rate-limit";
 import { getSupabaseClient } from "@/lib/supabase";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 export async function POST(request: Request) {
+  if (!rateLimit(request, { key: "booking-solicitar", limit: 5, windowMs: 60_000 })) {
+    return rateLimitResponse();
+  }
+
   const body = (await request.json().catch(() => null)) as {
     nombre?: string;
     telefono?: string;

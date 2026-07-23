@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { rateLimit, rateLimitResponse } from "@/lib/server/rate-limit";
 import { getSupabaseClient } from "@/lib/supabase";
 
 export const runtime = "nodejs";
@@ -7,6 +8,10 @@ export const dynamic = "force-dynamic";
 const PIN_RE = /^\d{6}$/;
 
 export async function POST(request: Request) {
+  if (!rateLimit(request, { key: "recursos-unirse", limit: 20, windowMs: 60_000 })) {
+    return rateLimitResponse();
+  }
+
   const body = (await request.json().catch(() => null)) as { pin?: string; apodo?: string } | null;
 
   if (!body || !PIN_RE.test(body.pin ?? "") || typeof body.apodo !== "string" || !body.apodo.trim()) {
