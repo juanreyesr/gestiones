@@ -1,5 +1,6 @@
 "use client";
 
+import { Check } from "lucide-react";
 import { useMemo } from "react";
 import type { PreguntaRow, RespuestaRow } from "@/lib/recursos/types";
 
@@ -30,22 +31,32 @@ function ResultadosOpcionMultiple({ pregunta, respuestas }: { pregunta: Pregunta
   }, [respuestas]);
 
   const total = respuestas.length || 1;
+  const hayCorrecta = (pregunta.opciones ?? []).some((opcion) => opcion.correcta);
 
   return (
     <div className="grid gap-3">
       {(pregunta.opciones ?? []).map((opcion) => {
         const cantidad = conteos.get(opcion.id) ?? 0;
         const pct = Math.round((cantidad / total) * 100);
+        const esCorrecta = hayCorrecta && opcion.correcta;
         return (
           <div key={opcion.id}>
             <div className="mb-1 flex items-center justify-between text-sm">
-              <span className="font-semibold text-white">{opcion.texto}</span>
+              <span className={`flex items-center gap-1 font-semibold ${esCorrecta ? "text-emerald-300" : "text-white"}`}>
+                {esCorrecta ? <Check className="h-3.5 w-3.5" /> : null}
+                {opcion.texto}
+              </span>
               <span className="text-slate-400">
                 {cantidad} · {pct}%
               </span>
             </div>
             <div className="h-3 w-full bg-white/8">
-              <div className="h-3 bg-emerald-300 transition-all duration-500" style={{ width: `${pct}%` }} />
+              <div
+                className={`h-3 transition-all duration-500 ${
+                  !hayCorrecta ? "bg-emerald-300" : esCorrecta ? "bg-emerald-300" : "bg-slate-400/50"
+                }`}
+                style={{ width: `${pct}%` }}
+              />
             </div>
           </div>
         );

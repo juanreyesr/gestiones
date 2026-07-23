@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowDown, ArrowUp, ChevronLeft, Pencil, Plus, Radio, Trash2 } from "lucide-react";
+import { ArrowDown, ArrowUp, Check, ChevronLeft, Pencil, Plus, Radio, Trash2 } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { ConfirmDialog } from "../confirm-dialog";
 import { deletePregunta, fetchPreguntas, reordenarPreguntas, updateRecurso } from "@/lib/recursos/recursos";
@@ -28,6 +28,7 @@ export function RecursoDetalle({
   const [formAbierto, setFormAbierto] = useState<{ pregunta: PreguntaRow | null } | null>(null);
   const [borrando, setBorrando] = useState<PreguntaRow | null>(null);
   const [lanzando, setLanzando] = useState(false);
+  const esQuiz = recurso.tipo === "quiz";
 
   const cargar = useCallback(async () => {
     setLoading(true);
@@ -167,13 +168,21 @@ export function RecursoDetalle({
                   {pregunta.tipo_pregunta === "opcion_multiple" && pregunta.opciones ? (
                     <ul className="mt-1 grid gap-0.5 text-xs text-slate-400">
                       {pregunta.opciones.map((opcion) => (
-                        <li key={opcion.id}>• {opcion.texto}</li>
+                        <li className={opcion.correcta ? "font-semibold text-emerald-300" : undefined} key={opcion.id}>
+                          {opcion.correcta ? <Check className="mr-1 inline h-3 w-3" /> : "• "}
+                          {opcion.texto}
+                        </li>
                       ))}
                     </ul>
                   ) : null}
                   {pregunta.tipo_pregunta === "escala" ? (
                     <p className="mt-1 text-xs text-slate-400">
                       Escala de {pregunta.escala_min} a {pregunta.escala_max}
+                    </p>
+                  ) : null}
+                  {esQuiz ? (
+                    <p className="mt-1 text-xs text-slate-500">
+                      {pregunta.tiempo_limite ?? 20}s · {pregunta.puntos} puntos máx.
                     </p>
                   ) : null}
                 </div>
@@ -221,6 +230,7 @@ export function RecursoDetalle({
 
       {formAbierto ? (
         <PreguntaForm
+          esQuiz={esQuiz}
           onClose={() => setFormAbierto(null)}
           onSaved={() => {
             setFormAbierto(null);

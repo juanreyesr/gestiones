@@ -1,12 +1,14 @@
 "use client";
 
-import { X } from "lucide-react";
+import { Gamepad2, ListChecks, X } from "lucide-react";
 import { useState } from "react";
 import { insertRecurso } from "@/lib/recursos/recursos";
+import type { TipoRecurso } from "@/lib/recursos/types";
 import { ModalPortal } from "../modal-portal";
 import { BTN_GHOST, BTN_PRIMARY, Field } from "./ui";
 
 export function RecursoForm({ onClose, onSaved }: { onClose: () => void; onSaved: (id: string) => void }) {
+  const [tipo, setTipo] = useState<TipoRecurso>("encuesta");
   const [titulo, setTitulo] = useState("");
   const [descripcion, setDescripcion] = useState("");
   const [saving, setSaving] = useState(false);
@@ -17,13 +19,13 @@ export function RecursoForm({ onClose, onSaved }: { onClose: () => void; onSaved
     setSaving(true);
     setError("");
     const { id, error: saveError } = await insertRecurso({
-      tipo: "encuesta",
+      tipo,
       titulo: titulo.trim(),
       descripcion: descripcion.trim() || null,
     });
     setSaving(false);
     if (saveError || !id) {
-      setError(saveError ?? "No se pudo crear la encuesta.");
+      setError(saveError ?? "No se pudo crear el recurso.");
       return;
     }
     onSaved(id);
@@ -34,11 +36,39 @@ export function RecursoForm({ onClose, onSaved }: { onClose: () => void; onSaved
       <div className="print-hidden fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4" onClick={onClose}>
         <div className="grid w-full max-w-md gap-4 border border-white/10 bg-slate-950 p-5" onClick={(event) => event.stopPropagation()}>
           <div className="flex items-center justify-between">
-            <h3 className="text-lg font-semibold text-white">Nueva encuesta</h3>
+            <h3 className="text-lg font-semibold text-white">Nuevo recurso</h3>
             <button className="text-slate-400 hover:text-white" onClick={onClose} type="button">
               <X className="h-5 w-5" />
             </button>
           </div>
+
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              className={`flex flex-col items-center gap-2 border px-3 py-3 text-sm font-semibold transition ${
+                tipo === "encuesta" ? "border-emerald-300/70 bg-emerald-300/14 text-white" : "border-white/10 bg-white/8 text-slate-300 hover:border-white/30"
+              }`}
+              onClick={() => setTipo("encuesta")}
+              type="button"
+            >
+              <ListChecks className="h-5 w-5" />
+              Encuesta
+            </button>
+            <button
+              className={`flex flex-col items-center gap-2 border px-3 py-3 text-sm font-semibold transition ${
+                tipo === "quiz" ? "border-emerald-300/70 bg-emerald-300/14 text-white" : "border-white/10 bg-white/8 text-slate-300 hover:border-white/30"
+              }`}
+              onClick={() => setTipo("quiz")}
+              type="button"
+            >
+              <Gamepad2 className="h-5 w-5" />
+              Quiz
+            </button>
+          </div>
+          <p className="-mt-2 text-xs text-slate-400">
+            {tipo === "encuesta"
+              ? "Preguntas de opinión sin respuesta correcta ni puntaje."
+              : "Preguntas con respuesta correcta, temporizador y puntos por rapidez."}
+          </p>
 
           <Field label="Título">
             <input autoFocus className="field" maxLength={120} onChange={(event) => setTitulo(event.target.value)} value={titulo} />

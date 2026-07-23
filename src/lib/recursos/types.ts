@@ -4,7 +4,7 @@ export type TipoRecurso = "encuesta" | "quiz" | "qa";
 export type TipoPregunta = "opcion_multiple" | "nube_palabras" | "abierta" | "escala";
 export type EstadoSesion = "espera" | "activa" | "cerrada";
 
-export type OpcionPregunta = { id: string; texto: string };
+export type OpcionPregunta = { id: string; texto: string; correcta?: boolean };
 
 export type RecursoRow = {
   id: string;
@@ -28,6 +28,8 @@ export type PreguntaRow = {
   opciones: OpcionPregunta[] | null;
   escala_min: number;
   escala_max: number;
+  tiempo_limite: number | null;
+  puntos: number;
   created_at: string;
   updated_at: string;
 };
@@ -39,6 +41,7 @@ export type SesionRow = {
   pin: string;
   estado: EstadoSesion;
   pregunta_activa_id: string | null;
+  pregunta_activa_iniciada_at: string | null;
   created_at: string;
   updated_at: string;
   cerrada_at: string | null;
@@ -50,6 +53,7 @@ export type ParticipanteRow = {
   id: string;
   sesion_id: string;
   apodo: string;
+  puntaje: number;
   created_at: string;
 };
 
@@ -61,6 +65,9 @@ export type RespuestaRow = {
   pregunta_id: string;
   participante_id: string;
   valor: RespuestaValor;
+  es_correcta: boolean | null;
+  puntos_obtenidos: number;
+  tiempo_ms: number | null;
   created_at: string;
 };
 
