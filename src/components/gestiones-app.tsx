@@ -11,6 +11,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Church,
+  ClipboardList,
   Download,
   GraduationCap,
   HeartPulse,
@@ -68,6 +69,7 @@ import { ControlCursosView } from "./control-cursos-view";
 import { ControlDocentesView } from "./control-docentes-view";
 import { CursosView } from "./cursos/cursos-view";
 import { EmailDraftModal } from "./email-draft-modal";
+import { EncuestasView } from "./encuestas/encuestas-view";
 import { EntrevistaKiosk } from "./entrevista-kiosk";
 import { InformeDocenteView } from "./informe-docente-view";
 import { OrbitScene } from "./orbit-scene";
@@ -81,7 +83,7 @@ const ALLOWED_EMAIL = "lic.juanreyesr@gmail.com";
 type Scores = Record<number, number>;
 type AreaId = (typeof AREAS)[number]["id"];
 type Entrevistas = Record<1 | 2, Record<number, number>>;
-type CoordinacionView = "resumen" | "nueva" | "informe" | "control" | "presentacion" | "reuniones" | "docentes";
+type CoordinacionView = "resumen" | "nueva" | "informe" | "control" | "presentacion" | "reuniones" | "docentes" | "encuestas";
 
 const areaIcons: Record<AreaId, React.ComponentType<{ className?: string }>> = {
   iglesia: Church,
@@ -885,6 +887,12 @@ export function GestionesApp() {
                         </div>
                       ) : null}
 
+                      {coordinacionView === "encuestas" ? (
+                        <div className="border border-white/10 bg-slate-950/58 p-4 backdrop-blur-xl sm:p-5">
+                          <EncuestasView />
+                        </div>
+                      ) : null}
+
                       {coordinacionView === "nueva" ? (
                         <div className="grid gap-5 xl:grid-cols-[1fr_360px]">
                           <div className="border border-white/10 bg-slate-950/58 p-4 backdrop-blur-xl sm:p-5">
@@ -1121,6 +1129,7 @@ function CoordinacionTabs({
     { value: "presentacion", label: "Modo presentacion", icon: Presentation },
     { value: "reuniones", label: "Reuniones con docentes", icon: NotebookPen },
     { value: "docentes", label: "Control de docentes", icon: UserRoundCog },
+    { value: "encuestas", label: "Encuesta estudiantil", icon: ClipboardList },
   ];
 
   return (

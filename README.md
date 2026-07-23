@@ -49,6 +49,17 @@ Centro de gestion de los cursos que se imparten en distintas universidades:
 
 La migracion de este modulo esta en `supabase/migrations/008_gestionesjj_area_cursos.sql`, que ademas crea el bucket privado de storage `gestionesjj-cursos` (con politicas RLS equivalentes a las del resto de tablas del modulo) para logos de universidades y archivos de curso.
 
+## Encuesta estudiantil (dentro de Coordinacion)
+
+Mide, año contra año, por que los estudiantes de primer ingreso eligieron la universidad y la carrera, y que esperan de ambas — pensada para detectar el cambio de paradigma con el tiempo:
+
+- **Campañas**: cada encuesta se lanza como una campaña con un año asignable (permite captura retroactiva de años anteriores) y, opcionalmente, una carrera. Cada campaña genera un **QR/enlace publico** (`/encuesta/[token]`) para compartir con los estudiantes; se puede cerrar y reabrir cuando se desee.
+- **Formulario publico**: anonimo, sin cuenta, en 6 pasos cortos (como conocio la universidad, por que esta universidad, por que esta carrera, expectativas, perfil opcional, satisfaccion/NPS). Las preguntas de opcion multiple usan catalogos cerrados (con "otro" como escape) para que el dashboard pueda graficarlas de inmediato.
+- **Captura rapida**: para transcribir encuestas en papel de años anteriores; el owner llena el mismo formulario en una sola pantalla y sigue con la siguiente sin perder el progreso.
+- **Dashboard**: filtros por año(s) y carrera; metricas (respuestas, % primera opcion, satisfaccion promedio, NPS), graficas de barras por cada dimension (razones de universidad/carrera, fuente de conocimiento, quien influyo, expectativas), una **tabla de tendencia interanual** que muestra el % de cada razon de universidad por año (para comparar cualquier cantidad de años lado a lado), y las respuestas abiertas de "que esperas lograr".
+
+La migracion de este modulo esta en `supabase/migrations/013_gestionesjj_encuestas_estudiantiles.sql`. El flujo publico (consultar campaña, responder) pasa por RPCs `SECURITY DEFINER`, igual que el resto de flujos publicos de la app; no requiere `SUPABASE_SECRET_KEY`.
+
 ## Modulo Recursos
 
 Herramientas interactivas propias, estilo Mentimeter/Kahoot pero en tu propio entorno cerrado:
