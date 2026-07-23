@@ -27,10 +27,10 @@ export async function activarPregunta(sesionId: string, preguntaId: string) {
   const supabase = getSupabaseClient();
   if (!supabase) return { error: "Faltan las variables de Supabase." };
 
-  const { error } = await supabase
-    .from("gestionesjj_recurso_sesiones")
-    .update({ estado: "activa", pregunta_activa_id: preguntaId })
-    .eq("id", sesionId);
+  const { error } = await supabase.rpc("gestionesjj_activar_pregunta", {
+    p_sesion_id: sesionId,
+    p_pregunta_id: preguntaId,
+  });
 
   return { error: error?.message ?? null };
 }
@@ -73,6 +73,20 @@ export async function fetchParticipantes(sesionId: string) {
     .select("*")
     .eq("sesion_id", sesionId)
     .order("created_at");
+
+  if (error) return { data: [] as ParticipanteRow[], error: error.message };
+  return { data: (data ?? []) as ParticipanteRow[], error: null };
+}
+
+export async function fetchRanking(sesionId: string) {
+  const supabase = getSupabaseClient();
+  if (!supabase) return { data: [] as ParticipanteRow[], error: "Faltan las variables de Supabase." };
+
+  const { data, error } = await supabase
+    .from("gestionesjj_recurso_participantes")
+    .select("*")
+    .eq("sesion_id", sesionId)
+    .order("puntaje", { ascending: false });
 
   if (error) return { data: [] as ParticipanteRow[], error: error.message };
   return { data: (data ?? []) as ParticipanteRow[], error: null };

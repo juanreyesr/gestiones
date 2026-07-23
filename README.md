@@ -51,14 +51,15 @@ La migracion de este modulo esta en `supabase/migrations/008_gestionesjj_area_cu
 
 ## Modulo Recursos
 
-Herramientas interactivas propias, estilo Mentimeter/Kahoot pero en tu propio entorno cerrado (fase 1: encuestas en vivo):
+Herramientas interactivas propias, estilo Mentimeter/Kahoot pero en tu propio entorno cerrado:
 
-- **Mis recursos**: crea encuestas reutilizables con preguntas de opcion multiple (barras), nube de palabras, pregunta abierta o escala de valoracion.
+- **Mis recursos**: crea encuestas o quizzes reutilizables con preguntas de opcion multiple (barras), nube de palabras, pregunta abierta o escala de valoracion.
 - **Lanzar en vivo**: genera una sesion con PIN de 6 digitos + QR + enlace publico (`/vivo/[pin]`). Los participantes entran desde su celular sin necesidad de cuenta, solo con un apodo.
 - **Vista de presentador**: pantalla para proyectar con el QR grande, el PIN, el contador de participantes conectados y los resultados de la pregunta activa actualizandose en vivo (Supabase Realtime) segun el tipo de pregunta.
 - **Historial**: al finalizar una sesion, sus resultados quedan guardados y consultables por separado.
+- **Quiz tipo concurso (fase 2)**: al crear un recurso de tipo "Quiz", cada pregunta de opcion multiple marca su respuesta correcta, tiene un temporizador y un puntaje maximo. Los participantes ven la cuenta regresiva y, al responder, su resultado (correcto/incorrecto, puntos ganados) de inmediato. El presentador ve un ranking en vivo y, al finalizar la sesion, un podio con los primeros lugares. El tiempo transcurrido y los puntos se calculan siempre en el servidor (nunca con datos enviados por el participante) para que nadie pueda falsear su velocidad de respuesta.
 
-La migracion de este modulo esta en `supabase/migrations/009_gestionesjj_recursos.sql`. El flujo publico (unirse, consultar estado y responder) pasa por RPCs `SECURITY DEFINER` con validaciones anti-abuso, igual que el agendamiento de Clinica; no requiere `SUPABASE_SECRET_KEY`.
+Las migraciones de este modulo estan en `supabase/migrations/009_gestionesjj_recursos.sql` (encuestas) y `010_gestionesjj_recursos_quiz.sql` (quiz). El flujo publico (unirse, consultar estado y responder) pasa por RPCs `SECURITY DEFINER` con validaciones anti-abuso, igual que el agendamiento de Clinica; no requiere `SUPABASE_SECRET_KEY`.
 
 ## Supabase
 

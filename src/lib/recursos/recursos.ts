@@ -75,6 +75,8 @@ export async function insertPregunta(payload: {
   opciones?: OpcionPregunta[] | null;
   escala_min?: number;
   escala_max?: number;
+  tiempo_limite?: number | null;
+  puntos?: number;
 }) {
   const supabase = getSupabaseClient();
   if (!supabase) return { id: null as string | null, error: "Faltan las variables de Supabase." };
@@ -89,6 +91,8 @@ export async function insertPregunta(payload: {
       opciones: payload.tipo_pregunta === "opcion_multiple" ? (payload.opciones ?? []) : null,
       escala_min: payload.escala_min ?? 1,
       escala_max: payload.escala_max ?? 5,
+      tiempo_limite: payload.tiempo_limite ?? null,
+      puntos: payload.puntos ?? 1000,
     })
     .select("id")
     .single();
@@ -103,6 +107,8 @@ export async function updatePregunta(
     opciones?: OpcionPregunta[] | null;
     escala_min?: number;
     escala_max?: number;
+    tiempo_limite?: number | null;
+    puntos?: number;
   },
 ) {
   const supabase = getSupabaseClient();

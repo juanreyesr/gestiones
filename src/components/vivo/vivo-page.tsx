@@ -1,7 +1,7 @@
 "use client";
 
-import { CheckCircle2, PartyPopper, Send, Users } from "lucide-react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { CheckCircle2, PartyPopper, Send, Timer, Trophy, Users, XCircle } from "lucide-react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 type PreguntaPublica = {
   id: string;
@@ -10,6 +10,9 @@ type PreguntaPublica = {
   opciones: Array<{ id: string; texto: string }> | null;
   escalaMin: number | null;
   escalaMax: number | null;
+  iniciadaAt: string | null;
+  tiempoLimite: number | null;
+  puntos: number | null;
 };
 
 type Paso = "pin" | "verificando" | "invalido" | "apodo" | "esperando" | "pregunta" | "respondido" | "cerrada";
@@ -20,6 +23,7 @@ export function VivoPage({ pinInicial }: { pinInicial?: string }) {
   const [paso, setPaso] = useState<Paso>("pin");
   const [pin, setPin] = useState(pinInicial ?? "");
   const [recursoTitulo, setRecursoTitulo] = useState("");
+  const [recursoTipo, setRecursoTipo] = useState<string | null>(null);
   const [apodo, setApodo] = useState("");
   const [participanteId, setParticipanteId] = useState<string | null>(null);
   const [participantesCount, setParticipantesCount] = useState(0);
@@ -27,7 +31,13 @@ export function VivoPage({ pinInicial }: { pinInicial?: string }) {
   const [respuestaTexto, setRespuestaTexto] = useState("");
   const [enviando, setEnviando] = useState(false);
   const [error, setError] = useState("");
+  const [ahora, setAhora] = useState(() => Date.now());
+  const [miEsCorrecta, setMiEsCorrecta] = useState<boolean | null>(null);
+  const [miPuntosObtenidos, setMiPuntosObtenidos] = useState<number | null>(null);
+  const [miPuntajeTotal, setMiPuntajeTotal] = useState(0);
   const preguntaAnteriorId = useRef<string | null>(null);
+
+  const esQuiz = recursoTipo === "quiz";
 
   const verificarPin = useCallback(async (pinValor: string) => {
     setError("");
@@ -90,13 +100,19 @@ export function VivoPage({ pinInicial }: { pinInicial?: string }) {
         const res = await fetch(`/api/recursos/estado?participanteId=${participanteId}`);
         const data = (await res.json().catch(() => null)) as {
           estado?: string;
+          recursoTipo?: string | null;
           participantesCount?: number;
           pregunta?: PreguntaPublica | null;
           yaRespondio?: boolean;
+          miEsCorrecta?: boolean | null;
+          miPuntosObtenidos?: number | null;
+          miPuntajeTotal?: number;
         } | null;
         if (!activo || !data) return;
 
         setParticipantesCount(data.participantesCount ?? 0);
+        if (data.recursoTipo) setRecursoTipo(data.recursoTipo);
+        setMiPuntajeTotal(data.miPuntajeTotal ?? 0);
 
         if (data.estado === "cerrada") {
           setPaso("cerrada");
@@ -113,9 +129,17 @@ export function VivoPage({ pinInicial }: { pinInicial?: string }) {
           preguntaAnteriorId.current = data.pregunta.id;
           setPregunta(data.pregunta);
           setRespuestaTexto("");
+          setMiEsCorrecta(null);
+          setMiPuntosObtenidos(null);
+          setAhora(Date.now());
           setPaso(data.yaRespondio ? "respondido" : "pregunta");
         } else if (data.yaRespondio) {
           setPaso("respondido");
+        }
+
+        if (data.yaRespondio) {
+          setMiEsCorrecta(data.miEsCorrecta ?? null);
+          setMiPuntosObtenidos(data.miPuntosObtenidos ?? null);
         }
       } catch {
         // Se reintenta en el siguiente ciclo.
@@ -130,8 +154,23 @@ export function VivoPage({ pinInicial }: { pinInicial?: string }) {
     };
   }, [participanteId]);
 
+  useEffect(() => {
+    if (paso !== "pregunta" || !pregunta?.tiempoLimite) return;
+    const interval = setInterval(() => setAhora(Date.now()), 250);
+    return () => clearInterval(interval);
+  }, [paso, pregunta?.id, pregunta?.tiempoLimite]);
+
+  const restanteSeg = useMemo(() => {
+    if (!pregunta?.tiempoLimite || !pregunta.iniciadaAt) return null;
+    const limiteMs = pregunta.tiempoLimite * 1000;
+    const transcurridoMs = ahora - new Date(pregunta.iniciadaAt).getTime();
+    return Math.max(0, Math.ceil((limiteMs - transcurridoMs) / 1000));
+  }, [ahora, pregunta]);
+
+  const tiempoAgotado = restanteSeg === 0;
+
   const handleResponder = async (valor: Record<string, unknown>) => {
-    if (!pregunta || !participanteId || enviando) return;
+    if (!pregunta || !participanteId || enviando || tiempoAgotado) return;
     setEnviando(true);
     setError("");
     try {
@@ -223,72 +262,96 @@ export function VivoPage({ pinInicial }: { pinInicial?: string }) {
               <p className="text-lg font-semibold text-white">¡Estás dentro!</p>
               <p className="text-sm leading-6 text-slate-400">Esperando a que el presentador active una pregunta...</p>
               <p className="text-xs text-slate-500">{participantesCount} participantes conectados</p>
+              {esQuiz ? (
+                <p className="mt-1 inline-flex items-center justify-center gap-1.5 text-sm font-semibold text-emerald-200">
+                  <Trophy className="h-4 w-4" />
+                  {miPuntajeTotal} puntos
+                </p>
+              ) : null}
             </div>
           ) : null}
 
           {paso === "pregunta" && pregunta ? (
             <div className="grid gap-4">
-              <p className="text-center text-lg font-semibold leading-6 text-white">{pregunta.texto}</p>
-
-              {pregunta.tipo === "opcion_multiple" && pregunta.opciones ? (
-                <div className="grid gap-2">
-                  {pregunta.opciones.map((opcion) => (
-                    <button
-                      className="border border-white/10 bg-white/4 px-4 py-3 text-left text-sm font-semibold text-white transition hover:border-emerald-300/60 hover:bg-emerald-300/10 disabled:opacity-50"
-                      disabled={enviando}
-                      key={opcion.id}
-                      onClick={() => void handleResponder({ opcion_id: opcion.id })}
-                      type="button"
-                    >
-                      {opcion.texto}
-                    </button>
-                  ))}
-                </div>
-              ) : null}
-
-              {pregunta.tipo === "escala" ? (
-                <div className="grid grid-cols-5 gap-2">
-                  {Array.from(
-                    { length: (pregunta.escalaMax ?? 5) - (pregunta.escalaMin ?? 1) + 1 },
-                    (_, index) => (pregunta.escalaMin ?? 1) + index,
-                  ).map((valor) => (
-                    <button
-                      className="flex h-14 items-center justify-center border border-white/10 bg-white/4 text-lg font-bold text-white transition hover:border-emerald-300/60 hover:bg-emerald-300/10 disabled:opacity-50"
-                      disabled={enviando}
-                      key={valor}
-                      onClick={() => void handleResponder({ valor })}
-                      type="button"
-                    >
-                      {valor}
-                    </button>
-                  ))}
-                </div>
-              ) : null}
-
-              {pregunta.tipo === "abierta" || pregunta.tipo === "nube_palabras" ? (
-                <div className="grid gap-2">
-                  <input
-                    autoFocus
-                    className="field"
-                    maxLength={pregunta.tipo === "nube_palabras" ? 40 : 500}
-                    onChange={(event) => setRespuestaTexto(event.target.value)}
-                    onKeyDown={(event) => {
-                      if (event.key === "Enter" && respuestaTexto.trim()) void handleResponder({ texto: respuestaTexto.trim() });
-                    }}
-                    placeholder={pregunta.tipo === "nube_palabras" ? "Una palabra o frase corta" : "Tu respuesta"}
-                    value={respuestaTexto}
-                  />
-                  <button
-                    className="inline-flex h-11 items-center justify-center gap-2 bg-emerald-300 px-4 text-sm font-bold text-slate-950 transition hover:bg-emerald-200 disabled:opacity-50"
-                    disabled={!respuestaTexto.trim() || enviando}
-                    onClick={() => void handleResponder({ texto: respuestaTexto.trim() })}
-                    type="button"
+              <div className="flex items-center justify-between gap-3">
+                <p className="text-lg font-semibold leading-6 text-white">{pregunta.texto}</p>
+                {restanteSeg !== null ? (
+                  <span
+                    className={`inline-flex shrink-0 items-center gap-1.5 border px-2.5 py-1 text-sm font-bold ${
+                      restanteSeg <= 5 ? "border-red-400/50 bg-red-400/10 text-red-200" : "border-white/10 bg-white/8 text-slate-200"
+                    }`}
                   >
-                    <Send className="h-4 w-4" />
-                    Enviar
-                  </button>
-                </div>
-              ) : null}
+                    <Timer className="h-3.5 w-3.5" />
+                    {restanteSeg}s
+                  </span>
+                ) : null}
+              </div>
+
+              {tiempoAgotado ? (
+                <p className="text-center text-sm font-semibold text-red-300">¡Se acabó el tiempo!</p>
+              ) : (
+                <>
+                  {pregunta.tipo === "opcion_multiple" && pregunta.opciones ? (
+                    <div className="grid gap-2">
+                      {pregunta.opciones.map((opcion) => (
+                        <button
+                          className="border border-white/10 bg-white/4 px-4 py-3 text-left text-sm font-semibold text-white transition hover:border-emerald-300/60 hover:bg-emerald-300/10 disabled:opacity-50"
+                          disabled={enviando}
+                          key={opcion.id}
+                          onClick={() => void handleResponder({ opcion_id: opcion.id })}
+                          type="button"
+                        >
+                          {opcion.texto}
+                        </button>
+                      ))}
+                    </div>
+                  ) : null}
+
+                  {pregunta.tipo === "escala" ? (
+                    <div className="grid grid-cols-5 gap-2">
+                      {Array.from(
+                        { length: (pregunta.escalaMax ?? 5) - (pregunta.escalaMin ?? 1) + 1 },
+                        (_, index) => (pregunta.escalaMin ?? 1) + index,
+                      ).map((valor) => (
+                        <button
+                          className="flex h-14 items-center justify-center border border-white/10 bg-white/4 text-lg font-bold text-white transition hover:border-emerald-300/60 hover:bg-emerald-300/10 disabled:opacity-50"
+                          disabled={enviando}
+                          key={valor}
+                          onClick={() => void handleResponder({ valor })}
+                          type="button"
+                        >
+                          {valor}
+                        </button>
+                      ))}
+                    </div>
+                  ) : null}
+
+                  {pregunta.tipo === "abierta" || pregunta.tipo === "nube_palabras" ? (
+                    <div className="grid gap-2">
+                      <input
+                        autoFocus
+                        className="field"
+                        maxLength={pregunta.tipo === "nube_palabras" ? 40 : 500}
+                        onChange={(event) => setRespuestaTexto(event.target.value)}
+                        onKeyDown={(event) => {
+                          if (event.key === "Enter" && respuestaTexto.trim()) void handleResponder({ texto: respuestaTexto.trim() });
+                        }}
+                        placeholder={pregunta.tipo === "nube_palabras" ? "Una palabra o frase corta" : "Tu respuesta"}
+                        value={respuestaTexto}
+                      />
+                      <button
+                        className="inline-flex h-11 items-center justify-center gap-2 bg-emerald-300 px-4 text-sm font-bold text-slate-950 transition hover:bg-emerald-200 disabled:opacity-50"
+                        disabled={!respuestaTexto.trim() || enviando}
+                        onClick={() => void handleResponder({ texto: respuestaTexto.trim() })}
+                        type="button"
+                      >
+                        <Send className="h-4 w-4" />
+                        Enviar
+                      </button>
+                    </div>
+                  ) : null}
+                </>
+              )}
 
               {error ? <p className="text-center text-sm font-semibold text-red-300">{error}</p> : null}
             </div>
@@ -296,11 +359,29 @@ export function VivoPage({ pinInicial }: { pinInicial?: string }) {
 
           {paso === "respondido" ? (
             <div className="grid gap-3 py-6 text-center">
-              <div className="mx-auto flex h-14 w-14 items-center justify-center border border-emerald-300/40 bg-emerald-300/10">
-                <CheckCircle2 className="h-7 w-7 text-emerald-300" />
-              </div>
-              <p className="text-lg font-semibold text-white">¡Respuesta enviada!</p>
-              <p className="text-sm leading-6 text-slate-400">Espera la siguiente pregunta.</p>
+              {esQuiz && miEsCorrecta !== null ? (
+                <>
+                  <div
+                    className={`mx-auto flex h-14 w-14 items-center justify-center border ${
+                      miEsCorrecta ? "border-emerald-300/40 bg-emerald-300/10" : "border-red-400/40 bg-red-400/10"
+                    }`}
+                  >
+                    {miEsCorrecta ? <CheckCircle2 className="h-7 w-7 text-emerald-300" /> : <XCircle className="h-7 w-7 text-red-300" />}
+                  </div>
+                  <p className="text-lg font-semibold text-white">{miEsCorrecta ? "¡Correcto!" : "Incorrecto"}</p>
+                  <p className="text-sm leading-6 text-slate-400">
+                    {miPuntosObtenidos ? `+${miPuntosObtenidos} puntos` : "0 puntos"} · {miPuntajeTotal} en total
+                  </p>
+                </>
+              ) : (
+                <>
+                  <div className="mx-auto flex h-14 w-14 items-center justify-center border border-emerald-300/40 bg-emerald-300/10">
+                    <CheckCircle2 className="h-7 w-7 text-emerald-300" />
+                  </div>
+                  <p className="text-lg font-semibold text-white">¡Respuesta enviada!</p>
+                  <p className="text-sm leading-6 text-slate-400">Espera la siguiente pregunta.</p>
+                </>
+              )}
             </div>
           ) : null}
 
@@ -311,6 +392,12 @@ export function VivoPage({ pinInicial }: { pinInicial?: string }) {
               </div>
               <p className="text-lg font-semibold text-white">La actividad ha terminado</p>
               <p className="text-sm leading-6 text-slate-400">Gracias por participar.</p>
+              {esQuiz ? (
+                <p className="mt-1 inline-flex items-center justify-center gap-1.5 text-sm font-semibold text-emerald-200">
+                  <Trophy className="h-4 w-4" />
+                  Terminaste con {miPuntajeTotal} puntos
+                </p>
+              ) : null}
             </div>
           ) : null}
         </div>

@@ -59,6 +59,7 @@ export function RecursosView() {
           setPestana("historial");
         }}
         pin={nav.pin}
+        recursoTipo={nav.recurso.tipo}
         recursoTitulo={nav.recurso.titulo}
         sesionId={nav.sesionId}
       />
@@ -109,7 +110,7 @@ export function RecursosView() {
         {pestana === "recursos" ? (
           <button className={BTN_PRIMARY} onClick={() => setFormAbierto(true)} type="button">
             <Plus className="h-4 w-4" />
-            Nueva encuesta
+            Nuevo recurso
           </button>
         ) : null}
       </div>
@@ -122,7 +123,7 @@ export function RecursosView() {
           {loading ? (
             <p className="text-sm text-slate-400">Cargando recursos...</p>
           ) : recursos.length === 0 ? (
-            <EmptyState>Aún no has creado ninguna encuesta. Usa &quot;Nueva encuesta&quot; para empezar.</EmptyState>
+            <EmptyState>Aún no has creado ningún recurso. Usa &quot;Nuevo recurso&quot; para empezar.</EmptyState>
           ) : (
             <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
               {recursos.map((recurso) => (
@@ -174,7 +175,7 @@ export function RecursosView() {
         onCancel={() => setBorrando(null)}
         onConfirm={() => void handleBorrar()}
         open={Boolean(borrando)}
-        title="Borrar encuesta"
+        title="Borrar recurso"
       />
     </div>
   );
