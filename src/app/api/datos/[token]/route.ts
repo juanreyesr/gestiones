@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { rateLimit, rateLimitResponse } from "@/lib/server/rate-limit";
 import { getSupabaseClient } from "@/lib/supabase";
 
 export const runtime = "nodejs";
@@ -6,7 +7,11 @@ export const dynamic = "force-dynamic";
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-export async function GET(_request: Request, { params }: { params: Promise<{ token: string }> }) {
+export async function GET(request: Request, { params }: { params: Promise<{ token: string }> }) {
+  if (!rateLimit(request, { key: "datos-token", limit: 20, windowMs: 60_000 })) {
+    return rateLimitResponse();
+  }
+
   const { token } = await params;
   if (!UUID_RE.test(token)) {
     return NextResponse.json({ estado: "invalido" });
@@ -24,6 +29,10 @@ export async function GET(_request: Request, { params }: { params: Promise<{ tok
 }
 
 export async function POST(request: Request, { params }: { params: Promise<{ token: string }> }) {
+  if (!rateLimit(request, { key: "datos-token", limit: 20, windowMs: 60_000 })) {
+    return rateLimitResponse();
+  }
+
   const { token } = await params;
   if (!UUID_RE.test(token)) {
     return NextResponse.json({ estado: "invalido" }, { status: 422 });

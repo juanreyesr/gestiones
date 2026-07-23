@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { rateLimit, rateLimitResponse } from "@/lib/server/rate-limit";
 import { getSupabaseClient } from "@/lib/supabase";
 import { isGoogleConfigured, queryFreeBusy } from "@/lib/server/google-calendar";
 
@@ -12,6 +13,10 @@ function seTraslapan(aInicio: string, aFin: string, bInicio: string, bFin: strin
 }
 
 export async function GET(request: Request) {
+  if (!rateLimit(request, { key: "booking-slots", limit: 30, windowMs: 60_000 })) {
+    return rateLimitResponse();
+  }
+
   const url = new URL(request.url);
   const desde = url.searchParams.get("desde") ?? "";
   const hasta = url.searchParams.get("hasta") ?? "";
