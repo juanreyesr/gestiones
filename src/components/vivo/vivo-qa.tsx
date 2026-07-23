@@ -22,6 +22,7 @@ export function VivoQa({ participanteId, recursoTitulo }: { participanteId: stri
   const [votandoId, setVotandoId] = useState<string | null>(null);
 
   const cargar = useCallback(async () => {
+    if (typeof document !== "undefined" && document.hidden) return;
     try {
       const res = await fetch(`/api/recursos/qa/lista?participanteId=${participanteId}`);
       const data = (await res.json().catch(() => null)) as { preguntas?: QaPreguntaPublica[] } | null;
@@ -35,7 +36,16 @@ export function VivoQa({ participanteId, recursoTitulo }: { participanteId: stri
     // eslint-disable-next-line react-hooks/set-state-in-effect -- carga inicial de preguntas al montar el Q&A
     void cargar();
     const interval = setInterval(cargar, 2000);
-    return () => clearInterval(interval);
+
+    const handleVisibilidad = () => {
+      if (!document.hidden) void cargar();
+    };
+    document.addEventListener("visibilitychange", handleVisibilidad);
+
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener("visibilitychange", handleVisibilidad);
+    };
   }, [cargar]);
 
   const handleEnviar = async () => {

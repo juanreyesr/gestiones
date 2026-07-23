@@ -20,6 +20,10 @@ type Paso = "pin" | "verificando" | "invalido" | "apodo" | "esperando" | "pregun
 
 const PIN_RE = /^\d{6}$/;
 
+function claveParticipante(pin: string) {
+  return `gestionesjj_vivo_${pin}`;
+}
+
 export function VivoPage({ pinInicial }: { pinInicial?: string }) {
   const [paso, setPaso] = useState<Paso>("pin");
   const [pin, setPin] = useState(pinInicial ?? "");
@@ -41,6 +45,22 @@ export function VivoPage({ pinInicial }: { pinInicial?: string }) {
   const esQuiz = recursoTipo === "quiz";
   const esQa = recursoTipo === "qa";
 
+  const intentarReconectar = async (pinValor: string, participanteGuardado: string) => {
+    try {
+      const res = await fetch(`/api/recursos/estado?participanteId=${participanteGuardado}`);
+      const data = (await res.json().catch(() => null)) as { estado?: string } | null;
+      if (!data || data.estado === "invalido") {
+        window.localStorage.removeItem(claveParticipante(pinValor));
+        return false;
+      }
+      setParticipanteId(participanteGuardado);
+      setPaso("esperando");
+      return true;
+    } catch {
+      return false;
+    }
+  };
+
   const verificarPin = useCallback(async (pinValor: string) => {
     setError("");
     setPaso("verificando");
@@ -54,6 +74,12 @@ export function VivoPage({ pinInicial }: { pinInicial?: string }) {
       }
       setRecursoTitulo(data.recursoTitulo ?? "");
       setPin(pinValor);
+
+      const participanteGuardado = window.localStorage.getItem(claveParticipante(pinValor));
+      if (participanteGuardado && (await intentarReconectar(pinValor, participanteGuardado))) {
+        return;
+      }
+
       setPaso("apodo");
     } catch {
       setError("Error de conexión. Intenta de nuevo.");
@@ -84,6 +110,7 @@ export function VivoPage({ pinInicial }: { pinInicial?: string }) {
         setError(data?.error ?? "No se pudo unir a la sesión.");
         return;
       }
+      window.localStorage.setItem(claveParticipante(pin), data.participanteId);
       setParticipanteId(data.participanteId);
       setPaso("esperando");
     } catch {
@@ -92,12 +119,22 @@ export function VivoPage({ pinInicial }: { pinInicial?: string }) {
     }
   };
 
+  const handleSalir = () => {
+    window.localStorage.removeItem(claveParticipante(pin));
+    setParticipanteId(null);
+    setApodo("");
+    setPregunta(null);
+    preguntaAnteriorId.current = null;
+    setPaso("apodo");
+  };
+
   useEffect(() => {
     if (!participanteId) return;
 
     let activo = true;
 
     const consultar = async () => {
+      if (typeof document !== "undefined" && document.hidden) return;
       try {
         const res = await fetch(`/api/recursos/estado?participanteId=${participanteId}`);
         const data = (await res.json().catch(() => null)) as {
@@ -149,12 +186,20 @@ export function VivoPage({ pinInicial }: { pinInicial?: string }) {
     };
 
     void consultar();
-    const interval = setInterval(consultar, 1500);
+    const intervaloMs = paso === "pregunta" ? 1500 : 4000;
+    const interval = setInterval(consultar, intervaloMs);
+
+    const handleVisibilidad = () => {
+      if (!document.hidden) void consultar();
+    };
+    document.addEventListener("visibilitychange", handleVisibilidad);
+
     return () => {
       activo = false;
       clearInterval(interval);
+      document.removeEventListener("visibilitychange", handleVisibilidad);
     };
-  }, [participanteId]);
+  }, [participanteId, paso]);
 
   useEffect(() => {
     if (paso !== "pregunta" || !pregunta?.tiempoLimite) return;
@@ -274,6 +319,9 @@ export function VivoPage({ pinInicial }: { pinInicial?: string }) {
                   {miPuntajeTotal} puntos
                 </p>
               ) : null}
+              <button className="mt-2 text-xs text-slate-500 underline underline-offset-2 hover:text-slate-300" onClick={handleSalir} type="button">
+                ¿No eres tú? Entrar con otro apodo
+              </button>
             </div>
           ) : null}
 
@@ -388,6 +436,9 @@ export function VivoPage({ pinInicial }: { pinInicial?: string }) {
                   <p className="text-sm leading-6 text-slate-400">Espera la siguiente pregunta.</p>
                 </>
               )}
+              <button className="mt-2 text-xs text-slate-500 underline underline-offset-2 hover:text-slate-300" onClick={handleSalir} type="button">
+                ¿No eres tú? Entrar con otro apodo
+              </button>
             </div>
           ) : null}
 
