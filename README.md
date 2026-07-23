@@ -82,6 +82,10 @@ Las migraciones de este modulo estan en `supabase/migrations/009_gestionesjj_rec
 - **RPCs de un solo uso (owner)**: `gestionesjj_crear_sesion` y `gestionesjj_activar_pregunta` estan restringidas a la cuenta autorizada a nivel de permisos de Postgres (`supabase/migrations/012_gestionesjj_seguridad_rpcs_owner.sql`), ademas de la validacion que ya hacian por dentro.
 - Se recomienda activar "Leaked password protection" en el panel de Supabase (Authentication → Policies) para bloquear contrasenas filtradas conocidas; es una opcion del proyecto, no requiere cambios de codigo.
 
+## Rendimiento
+
+Las librerias pesadas (`jspdf` para exportar PDFs, `exceljs` para Excel, y `three`/`@react-three` del fondo 3D) se cargan solo cuando realmente se usan (import dinamico / `next/dynamic` con `ssr: false`) en vez de ir en el paquete inicial de la app — confirmado revisando que no aparecen en el manifiesto de carga inmediata del build de produccion.
+
 ## Supabase
 
 Crear un archivo `.env.local` usando `.env.example`:

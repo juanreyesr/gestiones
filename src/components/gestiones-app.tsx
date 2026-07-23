@@ -33,6 +33,7 @@ import {
   Users,
   X,
 } from "lucide-react";
+import dynamic from "next/dynamic";
 import type React from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
@@ -72,11 +73,15 @@ import { EmailDraftModal } from "./email-draft-modal";
 import { EncuestasView } from "./encuestas/encuestas-view";
 import { EntrevistaKiosk } from "./entrevista-kiosk";
 import { InformeDocenteView } from "./informe-docente-view";
-import { OrbitScene } from "./orbit-scene";
 import { PresentacionView } from "./presentacion-view";
 import { RecursosView } from "./recursos/recursos-view";
 import type { ReporteData } from "./reporte-printable";
 import { ReunionesView } from "./reuniones-view";
+
+// three.js/@react-three pesan varios cientos de KB: el fondo 3D se carga solo
+// en el navegador y despues de la hidratacion, en vez de ir en el paquete
+// inicial de la app.
+const OrbitScene = dynamic(() => import("./orbit-scene").then((mod) => mod.OrbitScene), { ssr: false });
 
 const ALLOWED_EMAIL = "lic.juanreyesr@gmail.com";
 

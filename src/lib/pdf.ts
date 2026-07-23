@@ -1,4 +1,4 @@
-import { jsPDF } from "jspdf";
+import type { jsPDF } from "jspdf";
 import type { ReporteData } from "@/components/reporte-printable";
 import { CATEGORIA_COLORES, CATEGORIA_DESCRIPCIONES } from "@/data/evaluacion";
 import type { EvaluacionRow, TendenciaCategoria } from "@/lib/evaluacion-helpers";
@@ -25,10 +25,10 @@ class PdfWriter {
   y: number;
   contentWidth: number;
 
-  constructor() {
-    this.doc = new jsPDF({ unit: "pt", format: "a4" });
+  constructor(doc: jsPDF) {
+    this.doc = doc;
     this.y = MARGIN;
-    this.contentWidth = this.doc.internal.pageSize.getWidth() - MARGIN * 2;
+    this.contentWidth = doc.internal.pageSize.getWidth() - MARGIN * 2;
   }
 
   private ensureSpace(height: number) {
@@ -159,6 +159,13 @@ class PdfWriter {
   }
 }
 
+// jsPDF pesa varios cientos de KB: se carga solo cuando realmente se exporta
+// un PDF, en vez de ir en el paquete inicial de la app.
+async function crearPdfWriter(): Promise<PdfWriter> {
+  const { jsPDF: JsPdf } = await import("jspdf");
+  return new PdfWriter(new JsPdf({ unit: "pt", format: "a4" }));
+}
+
 function writeReporte(w: PdfWriter, data: ReporteData) {
   w.text(`Docente: ${data.docenteNombre}`, { size: 11 });
   w.text(`Curso: ${data.cursoNombre}`, { size: 11 });
@@ -203,8 +210,8 @@ function writeReporte(w: PdfWriter, data: ReporteData) {
   }
 }
 
-export function exportReporteToPdf(data: ReporteData, filename: string) {
-  const w = new PdfWriter();
+export async function exportReporteToPdf(data: ReporteData, filename: string) {
+  const w = await crearPdfWriter();
   w.text("Reporte de evaluación docente", { size: 20, bold: true });
   w.text("M. A. Juan J. Reyes - Coordinación académica", { size: 11, color: MUTED });
   w.spacer(12);
@@ -212,7 +219,7 @@ export function exportReporteToPdf(data: ReporteData, filename: string) {
   w.save(filename);
 }
 
-export function exportInformeDocenteToPdf(
+export async function exportInformeDocenteToPdf(
   input: {
     docenteNombre: string;
     rows: EvaluacionRow[];
@@ -241,7 +248,7 @@ export function exportInformeDocenteToPdf(
     itemAnalytics,
     tendenciaCategorias,
   } = input;
-  const w = new PdfWriter();
+  const w = await crearPdfWriter();
 
   w.text("Informe de docente", { size: 20, bold: true });
   w.text("M. A. Juan J. Reyes - Coordinación académica", { size: 11, color: MUTED });
@@ -330,7 +337,7 @@ export function exportInformeDocenteToPdf(
   w.save(filename);
 }
 
-export function exportResumenGeneralToPdf(
+export async function exportResumenGeneralToPdf(
   input: {
     rows: EvaluacionRow[];
     porCurso: Array<{ cursoId: string | null; nombre: string; count: number; promedio: number }>;
@@ -359,7 +366,7 @@ export function exportResumenGeneralToPdf(
     promedioEntrevistasValor,
     docentesUnicos,
   } = input;
-  const w = new PdfWriter();
+  const w = await crearPdfWriter();
 
   w.text("Resumen general de evaluaciones docentes", { size: 20, bold: true });
   w.text("M. A. Juan J. Reyes - Coordinación académica", { size: 11, color: MUTED });
