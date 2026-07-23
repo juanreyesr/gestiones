@@ -2,9 +2,10 @@
 
 import { ChevronLeft, ChevronRight, Users } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
+import { fetchQaPreguntas } from "@/lib/recursos/qa";
 import { fetchPreguntas } from "@/lib/recursos/recursos";
 import { fetchHistorial, fetchParticipantes, fetchRespuestas } from "@/lib/recursos/sesiones";
-import type { PreguntaRow, RespuestaRow, SesionConRecurso } from "@/lib/recursos/types";
+import type { PreguntaRow, QaPreguntaOwnerRow, RespuestaRow, SesionConRecurso } from "@/lib/recursos/types";
 import { ResultadosPregunta } from "./resultados-pregunta";
 import { CardBox, EmptyState, ErrorBanner } from "./ui";
 
@@ -35,7 +36,11 @@ export function HistorialView() {
   }, [cargar]);
 
   if (sesionActiva) {
-    return <SesionHistorialDetalle onVolver={() => setSesionActiva(null)} sesion={sesionActiva} />;
+    return sesionActiva.gestionesjj_recursos?.tipo === "qa" ? (
+      <SesionHistorialQa onVolver={() => setSesionActiva(null)} sesion={sesionActiva} />
+    ) : (
+      <SesionHistorialDetalle onVolver={() => setSesionActiva(null)} sesion={sesionActiva} />
+    );
   }
 
   return (
@@ -126,6 +131,72 @@ function SesionHistorialDetalle({ onVolver, sesion }: { onVolver: () => void; se
                 {index + 1}. {pregunta.texto}
               </p>
               <ResultadosPregunta pregunta={pregunta} respuestas={respuestasPorPregunta[pregunta.id] ?? []} />
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function SesionHistorialQa({ onVolver, sesion }: { onVolver: () => void; sesion: SesionConRecurso }) {
+  const [preguntas, setPreguntas] = useState<QaPreguntaOwnerRow[]>([]);
+  const [participantesCount, setParticipantesCount] = useState(0);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let activo = true;
+    (async () => {
+      setLoading(true);
+      const [preguntasRes, participantesRes] = await Promise.all([fetchQaPreguntas(sesion.id), fetchParticipantes(sesion.id)]);
+      if (!activo) return;
+      setPreguntas(preguntasRes.data);
+      setParticipantesCount(participantesRes.data.length);
+      setLoading(false);
+    })();
+    return () => {
+      activo = false;
+    };
+  }, [sesion.id]);
+
+  return (
+    <div className="grid gap-5">
+      <button
+        className="inline-flex w-fit items-center gap-2 border border-white/10 bg-white/8 px-4 py-2 text-sm font-semibold text-slate-200 transition hover:border-white/30"
+        onClick={onVolver}
+        type="button"
+      >
+        <ChevronLeft className="h-4 w-4" />
+        Historial
+      </button>
+
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-xl font-semibold text-white">{sesion.gestionesjj_recursos?.titulo ?? "Preguntas del público"}</h2>
+          <p className="text-sm text-slate-400">{formatearFechaHora(sesion.cerrada_at)}</p>
+        </div>
+        <span className="inline-flex items-center gap-2 border border-white/10 bg-white/8 px-3 py-1.5 text-sm font-semibold text-slate-200">
+          <Users className="h-4 w-4 text-emerald-300" />
+          {participantesCount} participantes
+        </span>
+      </div>
+
+      {loading ? (
+        <p className="text-sm text-slate-400">Cargando preguntas...</p>
+      ) : preguntas.length === 0 ? (
+        <EmptyState>Nadie envió preguntas en esta sesión.</EmptyState>
+      ) : (
+        <div className="grid gap-2">
+          {preguntas.map((pregunta) => (
+            <div
+              className={`border p-3 ${pregunta.destacada ? "border-amber-300/60 bg-amber-300/10" : "border-white/10 bg-white/6"}`}
+              key={pregunta.id}
+            >
+              <p className="text-sm leading-6 text-white">{pregunta.texto}</p>
+              <p className="mt-1 text-xs text-slate-400">
+                {pregunta.gestionesjj_recurso_participantes?.apodo ?? "Participante"} · {pregunta.votos} votos
+                {pregunta.estado === "respondida" ? " · Respondida" : ""}
+              </p>
             </div>
           ))}
         </div>
