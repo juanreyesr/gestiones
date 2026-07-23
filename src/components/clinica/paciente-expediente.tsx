@@ -264,7 +264,7 @@ export function PacienteExpediente({
           ) : null}
         </div>
         <div className="flex flex-wrap gap-2">
-          <button className={BTN_GHOST} onClick={() => exportarExpedientePdf(paciente, sesiones)} type="button">
+          <button className={BTN_GHOST} onClick={() => void exportarExpedientePdf(paciente, sesiones)} type="button">
             <FileDown className="h-4 w-4" />
             Exportar PDF
           </button>

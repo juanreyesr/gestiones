@@ -1,4 +1,3 @@
-import { jsPDF } from "jspdf";
 import { formatoFechaCorta, formatoFechaLarga, formatoHora } from "./slots";
 import type { PacienteRow, SesionRow } from "./types";
 
@@ -7,7 +6,10 @@ const INK: [number, number, number] = [15, 23, 42];
 const MUTED: [number, number, number] = [90, 100, 118];
 const ACCENT: [number, number, number] = [16, 130, 100];
 
-export function exportarExpedientePdf(paciente: PacienteRow, sesiones: SesionRow[]) {
+// jsPDF pesa varios cientos de KB: se carga solo cuando realmente se exporta
+// el expediente, en vez de ir en el paquete inicial de la app.
+export async function exportarExpedientePdf(paciente: PacienteRow, sesiones: SesionRow[]) {
+  const { jsPDF } = await import("jspdf");
   const doc = new jsPDF({ unit: "pt", format: "a4" });
   const width = doc.internal.pageSize.getWidth();
   const height = doc.internal.pageSize.getHeight();
