@@ -20,20 +20,30 @@ export async function fetchRecursos() {
   return { data: rows, error: null };
 }
 
-export async function insertRecurso(payload: { tipo: TipoRecurso; titulo: string; descripcion?: string | null }) {
+export async function insertRecurso(payload: {
+  tipo: TipoRecurso;
+  titulo: string;
+  descripcion?: string | null;
+  qa_anonimo?: boolean;
+}) {
   const supabase = getSupabaseClient();
   if (!supabase) return { id: null as string | null, error: "Faltan las variables de Supabase." };
 
   const { data, error } = await supabase
     .from("gestionesjj_recursos")
-    .insert({ tipo: payload.tipo, titulo: payload.titulo, descripcion: payload.descripcion ?? null })
+    .insert({
+      tipo: payload.tipo,
+      titulo: payload.titulo,
+      descripcion: payload.descripcion ?? null,
+      qa_anonimo: payload.qa_anonimo ?? false,
+    })
     .select("id")
     .single();
 
   return { id: (data?.id as string | undefined) ?? null, error: error?.message ?? null };
 }
 
-export async function updateRecurso(id: string, payload: { titulo?: string; descripcion?: string | null }) {
+export async function updateRecurso(id: string, payload: { titulo?: string; descripcion?: string | null; qa_anonimo?: boolean }) {
   const supabase = getSupabaseClient();
   if (!supabase) return { error: "Faltan las variables de Supabase." };
 

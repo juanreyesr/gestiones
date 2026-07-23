@@ -12,6 +12,7 @@ export type RecursoRow = {
   tipo: TipoRecurso;
   titulo: string;
   descripcion: string | null;
+  qa_anonimo: boolean;
   created_at: string;
   updated_at: string;
 };
@@ -69,6 +70,20 @@ export type RespuestaRow = {
   puntos_obtenidos: number;
   tiempo_ms: number | null;
   created_at: string;
+};
+
+export type EstadoQaPregunta = "visible" | "respondida" | "oculta";
+
+export type QaPreguntaOwnerRow = {
+  id: string;
+  sesion_id: string;
+  participante_id: string;
+  texto: string;
+  estado: EstadoQaPregunta;
+  destacada: boolean;
+  votos: number;
+  created_at: string;
+  gestionesjj_recurso_participantes: { apodo: string } | null;
 };
 
 export const TIPO_PREGUNTA_LABELS: Record<TipoPregunta, string> = {

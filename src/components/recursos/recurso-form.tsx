@@ -1,6 +1,6 @@
 "use client";
 
-import { Gamepad2, ListChecks, X } from "lucide-react";
+import { Gamepad2, ListChecks, MessagesSquare, X } from "lucide-react";
 import { useState } from "react";
 import { insertRecurso } from "@/lib/recursos/recursos";
 import type { TipoRecurso } from "@/lib/recursos/types";
@@ -11,6 +11,7 @@ export function RecursoForm({ onClose, onSaved }: { onClose: () => void; onSaved
   const [tipo, setTipo] = useState<TipoRecurso>("encuesta");
   const [titulo, setTitulo] = useState("");
   const [descripcion, setDescripcion] = useState("");
+  const [qaAnonimo, setQaAnonimo] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
@@ -22,6 +23,7 @@ export function RecursoForm({ onClose, onSaved }: { onClose: () => void; onSaved
       tipo,
       titulo: titulo.trim(),
       descripcion: descripcion.trim() || null,
+      qa_anonimo: tipo === "qa" ? qaAnonimo : false,
     });
     setSaving(false);
     if (saveError || !id) {
@@ -42,7 +44,7 @@ export function RecursoForm({ onClose, onSaved }: { onClose: () => void; onSaved
             </button>
           </div>
 
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid grid-cols-3 gap-2">
             <button
               className={`flex flex-col items-center gap-2 border px-3 py-3 text-sm font-semibold transition ${
                 tipo === "encuesta" ? "border-emerald-300/70 bg-emerald-300/14 text-white" : "border-white/10 bg-white/8 text-slate-300 hover:border-white/30"
@@ -63,11 +65,23 @@ export function RecursoForm({ onClose, onSaved }: { onClose: () => void; onSaved
               <Gamepad2 className="h-5 w-5" />
               Quiz
             </button>
+            <button
+              className={`flex flex-col items-center gap-2 border px-3 py-3 text-sm font-semibold transition ${
+                tipo === "qa" ? "border-emerald-300/70 bg-emerald-300/14 text-white" : "border-white/10 bg-white/8 text-slate-300 hover:border-white/30"
+              }`}
+              onClick={() => setTipo("qa")}
+              type="button"
+            >
+              <MessagesSquare className="h-5 w-5" />
+              Q&amp;A
+            </button>
           </div>
           <p className="-mt-2 text-xs text-slate-400">
             {tipo === "encuesta"
               ? "Preguntas de opinión sin respuesta correcta ni puntaje."
-              : "Preguntas con respuesta correcta, temporizador y puntos por rapidez."}
+              : tipo === "quiz"
+                ? "Preguntas con respuesta correcta, temporizador y puntos por rapidez."
+                : "El público envía preguntas en vivo y las vota; tú moderas y respondes."}
           </p>
 
           <Field label="Título">
@@ -76,6 +90,18 @@ export function RecursoForm({ onClose, onSaved }: { onClose: () => void; onSaved
           <Field label="Descripción (opcional)">
             <textarea className="field resize-y" maxLength={300} onChange={(event) => setDescripcion(event.target.value)} rows={2} value={descripcion} />
           </Field>
+
+          {tipo === "qa" ? (
+            <label className="flex cursor-pointer items-center gap-2.5 border border-white/10 bg-white/4 p-3 text-sm text-slate-200">
+              <input
+                checked={qaAnonimo}
+                className="h-4 w-4 accent-emerald-300"
+                onChange={(event) => setQaAnonimo(event.target.checked)}
+                type="checkbox"
+              />
+              Preguntas anónimas (no se muestra quién preguntó)
+            </label>
+          ) : null}
 
           {error ? <p className="border border-red-400/30 bg-red-400/10 p-3 text-sm text-red-200">{error}</p> : null}
 

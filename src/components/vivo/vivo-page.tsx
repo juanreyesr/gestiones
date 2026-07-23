@@ -2,6 +2,7 @@
 
 import { CheckCircle2, PartyPopper, Send, Timer, Trophy, Users, XCircle } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { VivoQa } from "./vivo-qa";
 
 type PreguntaPublica = {
   id: string;
@@ -38,6 +39,7 @@ export function VivoPage({ pinInicial }: { pinInicial?: string }) {
   const preguntaAnteriorId = useRef<string | null>(null);
 
   const esQuiz = recursoTipo === "quiz";
+  const esQa = recursoTipo === "qa";
 
   const verificarPin = useCallback(async (pinValor: string) => {
     setError("");
@@ -254,7 +256,11 @@ export function VivoPage({ pinInicial }: { pinInicial?: string }) {
             </div>
           ) : null}
 
-          {paso === "esperando" ? (
+          {paso === "esperando" && esQa && participanteId ? (
+            <VivoQa participanteId={participanteId} recursoTitulo={recursoTitulo} />
+          ) : null}
+
+          {paso === "esperando" && !esQa ? (
             <div className="grid gap-3 py-6 text-center">
               <div className="mx-auto flex h-14 w-14 items-center justify-center border border-emerald-300/40 bg-emerald-300/10">
                 <Users className="h-7 w-7 text-emerald-300" />

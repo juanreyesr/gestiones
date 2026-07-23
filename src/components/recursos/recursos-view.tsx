@@ -6,6 +6,7 @@ import { deleteRecurso, fetchRecursos } from "@/lib/recursos/recursos";
 import { TIPO_RECURSO_LABELS, type RecursoConConteo } from "@/lib/recursos/types";
 import { ConfirmDialog } from "../confirm-dialog";
 import { HistorialView } from "./historial-view";
+import { PresentadorQA } from "./presentador-qa";
 import { PresentadorView } from "./presentador-view";
 import { RecursoDetalle } from "./recurso-detalle";
 import { RecursoForm } from "./recurso-form";
@@ -52,12 +53,20 @@ export function RecursosView() {
   };
 
   if (nav.nivel === "presentador") {
+    const onCerrar = () => {
+      setNav({ nivel: "lista" });
+      setPestana("historial");
+    };
+
+    if (nav.recurso.tipo === "qa") {
+      return (
+        <PresentadorQA onCerrar={onCerrar} pin={nav.pin} recursoTitulo={nav.recurso.titulo} sesionId={nav.sesionId} />
+      );
+    }
+
     return (
       <PresentadorView
-        onCerrar={() => {
-          setNav({ nivel: "lista" });
-          setPestana("historial");
-        }}
+        onCerrar={onCerrar}
         pin={nav.pin}
         recursoTipo={nav.recurso.tipo}
         recursoTitulo={nav.recurso.titulo}
