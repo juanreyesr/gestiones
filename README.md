@@ -84,7 +84,7 @@ Un gestor de tareas propio inspirado en Monday, reducido a lo que se usa de verd
 - **Descarga en Word (.docx real)**: constancia o programa con el encabezado de la iglesia, los datos generales, la tabla de participantes, el programa y las lineas de firma de quienes corresponde segun el tipo de evento. El nombre de la iglesia se configura desde el boton "Encabezado" y se guarda en el dispositivo.
 - **Generar pendientes**: vuelca los preparativos tipicos del tipo de evento (consejeria prematrimonial, reservar el templo, ensayo...) como pendientes reales en el tablero que elijas, enlazados al evento.
 
-La migracion de esta area es `supabase/migrations/014_gestionesjj_iglesia.sql`, con el mismo patron de seguridad del resto (RLS owner-lock, sin acceso anonimo). Incluye disparadores que sellan la fecha de completado al pasar un pendiente a "Listo", impiden subtareas de subtareas y hacen que las subtareas sigan a su pendiente cuando cambia de grupo.
+Las migraciones de esta area son `supabase/migrations/014_gestionesjj_iglesia.sql` (tablas, RLS y disparadores) y `015_gestionesjj_iglesia_indices_fk.sql` (dos indices de llave foranea). Siguen el mismo patron de seguridad del resto (RLS owner-lock, sin acceso anonimo) e incluyen disparadores que sellan la fecha de completado al pasar un pendiente a "Listo", impiden subtareas de subtareas y hacen que las subtareas sigan a su pendiente cuando cambia de grupo. Ambas ya estan aplicadas en el proyecto de Supabase.
 
 ## Modulo Recursos
 
