@@ -3,20 +3,14 @@
 import { CalendarDays, Clock, FileDown, ListChecks, MapPin, Pencil, Trash2, UserRound, X } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { ModalPortal } from "@/components/modal-portal";
-import { formatoCompleto, formatoHora } from "@/lib/iglesia/fechas";
+import { formatoCompleto, formatoHora } from "@/lib/fechas";
 import { fetchParticipantes } from "@/lib/iglesia/eventos";
-import { insertItems } from "@/lib/iglesia/items";
-import { fetchGrupos, fetchTableros } from "@/lib/iglesia/tableros";
-import {
-  estadoEventoInfo,
-  rolLabel,
-  tipoEventoInfo,
-  type EventoRow,
-  type ParticipanteRow,
-  type TableroRow,
-} from "@/lib/iglesia/types";
+import { insertItems } from "@/lib/pendientes/items";
+import { fetchGrupos, fetchTableros } from "@/lib/pendientes/tableros";
+import { estadoEventoInfo, rolLabel, tipoEventoInfo, type EventoRow, type ParticipanteRow } from "@/lib/iglesia/types";
+import type { TableroRow } from "@/lib/pendientes/types";
 import { descargarEventoWord } from "@/lib/iglesia/word";
-import { Avatar, BTN_GHOST, BTN_PRIMARY, ErrorBanner, Modal, Pastilla } from "../ui";
+import { Avatar, BTN_GHOST, BTN_PRIMARY, ErrorBanner, Modal, Pastilla } from "@/components/ui-comun";
 
 export function EventoDetalle({
   encabezado,

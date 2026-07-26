@@ -75,6 +75,7 @@ import { EmailDraftModal } from "./email-draft-modal";
 import { EncuestasView } from "./encuestas/encuestas-view";
 import { EntrevistaKiosk } from "./entrevista-kiosk";
 import { IglesiaView } from "./iglesia/iglesia-view";
+import { PendientesView } from "./pendientes/pendientes-view";
 import { InformeDocenteView } from "./informe-docente-view";
 import { PresentacionView } from "./presentacion-view";
 import { RecursosView } from "./recursos/recursos-view";
@@ -100,6 +101,7 @@ const areaIcons: Record<AreaId, React.ComponentType<{ className?: string }>> = {
   cursos: BookOpenCheck,
   caeduc: Building2,
   recursos: Radio,
+  pendientes: ListChecks,
 };
 
 const STEP_LABELS = ["Datos generales", "Observacion de clase", "Entrevistas", "Fortalezas", "Resumen"];
@@ -916,6 +918,10 @@ export function GestionesApp() {
                     <div className="border border-white/10 bg-slate-950/58 p-4 backdrop-blur-xl sm:p-5">
                       <IglesiaView />
                     </div>
+                  ) : activeArea === "pendientes" ? (
+                    <div className="border border-white/10 bg-slate-950/58 p-4 backdrop-blur-xl sm:p-5">
+                      <PendientesView />
+                    </div>
                   ) : activeArea === "cursos" ? (
                     <div className="border border-white/10 bg-slate-950/58 p-4 backdrop-blur-xl sm:p-5">
                       <CursosView />
@@ -1204,6 +1210,7 @@ const areaAcentos: Record<AreaId, { icono: string; borde: string; resplandor: st
   cursos: { icono: "text-sky-200", borde: "border-sky-300/20", resplandor: "bg-sky-300/12" },
   caeduc: { icono: "text-amber-200", borde: "border-amber-300/20", resplandor: "bg-amber-300/12" },
   recursos: { icono: "text-cyan-200", borde: "border-cyan-300/20", resplandor: "bg-cyan-300/12" },
+  pendientes: { icono: "text-lime-200", borde: "border-lime-300/20", resplandor: "bg-lime-300/12" },
 };
 
 function AreaMenu({ onSelect }: { onSelect: (area: AreaId) => void }) {

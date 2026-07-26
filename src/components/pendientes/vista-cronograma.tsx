@@ -1,8 +1,8 @@
 "use client";
 
-import { fechaISO, formatoLargo, parseFecha } from "@/lib/iglesia/fechas";
-import { estadoInfo, type GrupoRow, type ItemRow } from "@/lib/iglesia/types";
-import { EmptyState } from "../ui";
+import { fechaISO, formatoLargo, parseFecha } from "@/lib/fechas";
+import { estadoInfo, type GrupoRow, type ItemRow } from "@/lib/pendientes/types";
+import { EmptyState } from "@/components/ui-comun";
 import type { AccionesTablero } from "./tipos";
 
 const ANCHO_DIA = 26;

@@ -12,7 +12,7 @@ export async function fetchTableros() {
   if (!supabase) return { data: [] as TableroRow[], error: SIN_SUPABASE };
 
   const { data, error } = await supabase
-    .from("gestionesjj_iglesia_tableros")
+    .from("gestionesjj_pendientes_tableros")
     .select("*")
     .order("archivado")
     .order("orden")
@@ -27,7 +27,7 @@ export async function insertTablero(payload: { nombre: string; descripcion?: str
   if (!supabase) return { id: null as string | null, error: SIN_SUPABASE };
 
   const { data, error } = await supabase
-    .from("gestionesjj_iglesia_tableros")
+    .from("gestionesjj_pendientes_tableros")
     .insert(payload)
     .select("id")
     .single();
@@ -42,7 +42,7 @@ export async function updateTablero(
   const supabase = getSupabaseClient();
   if (!supabase) return { error: SIN_SUPABASE };
 
-  const { error } = await supabase.from("gestionesjj_iglesia_tableros").update(payload).eq("id", id);
+  const { error } = await supabase.from("gestionesjj_pendientes_tableros").update(payload).eq("id", id);
   return { error: error?.message ?? null };
 }
 
@@ -50,7 +50,7 @@ export async function deleteTablero(id: string) {
   const supabase = getSupabaseClient();
   if (!supabase) return { error: SIN_SUPABASE };
 
-  const { error } = await supabase.from("gestionesjj_iglesia_tableros").delete().eq("id", id);
+  const { error } = await supabase.from("gestionesjj_pendientes_tableros").delete().eq("id", id);
   return { error: error?.message ?? null };
 }
 
@@ -82,7 +82,7 @@ export async function fetchGrupos(tableroId: string) {
   if (!supabase) return { data: [] as GrupoRow[], error: SIN_SUPABASE };
 
   const { data, error } = await supabase
-    .from("gestionesjj_iglesia_grupos")
+    .from("gestionesjj_pendientes_grupos")
     .select("*")
     .eq("tablero_id", tableroId)
     .order("orden")
@@ -96,7 +96,7 @@ export async function insertGrupo(payload: { tablero_id: string; nombre: string;
   const supabase = getSupabaseClient();
   if (!supabase) return { id: null as string | null, error: SIN_SUPABASE };
 
-  const { data, error } = await supabase.from("gestionesjj_iglesia_grupos").insert(payload).select("id").single();
+  const { data, error } = await supabase.from("gestionesjj_pendientes_grupos").insert(payload).select("id").single();
   return { id: (data?.id as string | undefined) ?? null, error: error?.message ?? null };
 }
 
@@ -104,7 +104,7 @@ async function insertGrupos(payload: Array<{ tablero_id: string; nombre: string;
   const supabase = getSupabaseClient();
   if (!supabase) return { error: SIN_SUPABASE };
 
-  const { error } = await supabase.from("gestionesjj_iglesia_grupos").insert(payload);
+  const { error } = await supabase.from("gestionesjj_pendientes_grupos").insert(payload);
   return { error: error?.message ?? null };
 }
 
@@ -115,7 +115,7 @@ export async function updateGrupo(
   const supabase = getSupabaseClient();
   if (!supabase) return { error: SIN_SUPABASE };
 
-  const { error } = await supabase.from("gestionesjj_iglesia_grupos").update(payload).eq("id", id);
+  const { error } = await supabase.from("gestionesjj_pendientes_grupos").update(payload).eq("id", id);
   return { error: error?.message ?? null };
 }
 
@@ -123,7 +123,7 @@ export async function deleteGrupo(id: string) {
   const supabase = getSupabaseClient();
   if (!supabase) return { error: SIN_SUPABASE };
 
-  const { error } = await supabase.from("gestionesjj_iglesia_grupos").delete().eq("id", id);
+  const { error } = await supabase.from("gestionesjj_pendientes_grupos").delete().eq("id", id);
   return { error: error?.message ?? null };
 }
 
@@ -133,7 +133,7 @@ export async function reordenarGrupos(ids: string[]) {
   if (!supabase) return { error: SIN_SUPABASE };
 
   const resultados = await Promise.all(
-    ids.map((id, indice) => supabase.from("gestionesjj_iglesia_grupos").update({ orden: indice }).eq("id", id)),
+    ids.map((id, indice) => supabase.from("gestionesjj_pendientes_grupos").update({ orden: indice }).eq("id", id)),
   );
   const fallo = resultados.find((r) => r.error);
   return { error: fallo?.error?.message ?? null };

@@ -2,8 +2,8 @@
 
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useState } from "react";
-import { fechaISO } from "@/lib/iglesia/fechas";
-import { estadoInfo, type ItemRow } from "@/lib/iglesia/types";
+import { fechaISO } from "@/lib/fechas";
+import { estadoInfo, type ItemRow } from "@/lib/pendientes/types";
 import type { AccionesTablero } from "./tipos";
 
 const DIAS = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"];

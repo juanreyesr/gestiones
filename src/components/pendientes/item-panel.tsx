@@ -3,14 +3,14 @@
 import { MessageSquare, Plus, Send, Tag, Trash2, X } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { ModalPortal } from "@/components/modal-portal";
-import { fechaHoraLegible } from "@/lib/iglesia/fechas";
+import { fechaHoraLegible } from "@/lib/fechas";
 import {
   deleteActualizacion,
   fetchActualizaciones,
   insertActualizacion,
-} from "@/lib/iglesia/items";
-import { ESTADOS, PRIORIDADES, type ActualizacionRow, type GrupoRow, type ItemRow } from "@/lib/iglesia/types";
-import { BTN_GHOST, ErrorBanner, Field, INPUT } from "../ui";
+} from "@/lib/pendientes/items";
+import { ESTADOS, PRIORIDADES, type ActualizacionRow, type GrupoRow, type ItemRow } from "@/lib/pendientes/types";
+import { BTN_GHOST, ErrorBanner, Field, INPUT } from "@/components/ui-comun";
 import { CeldaResponsable, SelectorPastilla } from "./celdas";
 import type { AccionesTablero } from "./tipos";
 

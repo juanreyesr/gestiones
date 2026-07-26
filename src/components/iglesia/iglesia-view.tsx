@@ -1,14 +1,12 @@
 "use client";
 
-import { CalendarHeart, ChevronLeft, ChevronRight, Church, ListChecks, Plus } from "lucide-react";
+import { CalendarHeart, ChevronLeft, ChevronRight, Church, Plus } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { fetchEventos } from "@/lib/iglesia/eventos";
-import { hoyISO } from "@/lib/iglesia/fechas";
-import { fetchItemsPendientes } from "@/lib/iglesia/items";
+import { hoyISO } from "@/lib/fechas";
 import { EventosView } from "./eventos/eventos-view";
-import { PendientesView } from "./pendientes/pendientes-view";
 
-type Recurso = "pendientes" | "eventos";
+type Recurso = "eventos";
 
 const RECURSOS: Array<{
   clave: Recurso;
@@ -17,14 +15,6 @@ const RECURSOS: Array<{
   color: string;
   titulo: string;
 }> = [
-  {
-    clave: "pendientes",
-    titulo: "Gestión de pendientes",
-    descripcion:
-      "Tableros de tareas y proyectos con grupos, estados, responsables, fechas y subtareas. Vistas de tabla, kanban, calendario y cronograma.",
-    icono: ListChecks,
-    color: "#00c875",
-  },
   {
     clave: "eventos",
     titulo: "Bodas, cumpleaños y eventos",
@@ -39,19 +29,20 @@ const RECURSOS: Array<{
  * Portada del area Iglesia. Es deliberadamente una rejilla de "botones":
  * agregar un recurso nuevo mas adelante es anadir una entrada a RECURSOS y su
  * vista, sin tocar nada de lo que ya funciona.
+ *
+ * La gestion de pendientes vivio aqui en su primera version, pero sirve para
+ * cualquier area (clinica, cursos, coordinacion), asi que se movio al menu
+ * principal como area propia. Los eventos si pueden generar pendientes desde
+ * su detalle, y ese puente sigue funcionando.
  */
 export function IglesiaView() {
   const [recurso, setRecurso] = useState<Recurso | null>(null);
-  const [resumen, setResumen] = useState({ pendientes: 0, vencidos: 0, eventos: 0 });
+  const [proximos, setProximos] = useState(0);
 
   const cargarResumen = useCallback(async () => {
     const hoy = hoyISO();
-    const [itemsRes, eventosRes] = await Promise.all([fetchItemsPendientes(), fetchEventos()]);
-    setResumen({
-      pendientes: itemsRes.data.length,
-      vencidos: itemsRes.data.filter((item) => item.fecha_limite && item.fecha_limite < hoy).length,
-      eventos: eventosRes.data.filter((evento) => evento.fecha >= hoy).length,
-    });
+    const { data } = await fetchEventos();
+    setProximos(data.filter((evento) => evento.fecha >= hoy).length);
   }, []);
 
   useEffect(() => {
@@ -75,12 +66,10 @@ export function IglesiaView() {
             Iglesia
           </button>
           <ChevronRight className="h-3.5 w-3.5 text-slate-600" />
-          <span className="font-semibold text-white">
-            {RECURSOS.find((item) => item.clave === recurso)?.titulo}
-          </span>
+          <span className="font-semibold text-white">{RECURSOS.find((item) => item.clave === recurso)?.titulo}</span>
         </nav>
 
-        {recurso === "pendientes" ? <PendientesView /> : <EventosView />}
+        <EventosView />
       </div>
     );
   }
@@ -95,10 +84,6 @@ export function IglesiaView() {
       <div className="grid gap-3 sm:grid-cols-2">
         {RECURSOS.map((item) => {
           const Icono = item.icono;
-          const contador =
-            item.clave === "pendientes"
-              ? `${resumen.pendientes} pendientes abiertos${resumen.vencidos ? ` · ${resumen.vencidos} vencidos` : ""}`
-              : `${resumen.eventos} eventos próximos`;
 
           return (
             <button
@@ -107,15 +92,12 @@ export function IglesiaView() {
               onClick={() => setRecurso(item.clave)}
               type="button"
             >
-              <span
-                className="mb-3 flex h-11 w-11 items-center justify-center"
-                style={{ backgroundColor: item.color }}
-              >
+              <span className="mb-3 flex h-11 w-11 items-center justify-center" style={{ backgroundColor: item.color }}>
                 <Icono className="h-5 w-5 text-slate-950" />
               </span>
               <h3 className="text-lg font-semibold text-white">{item.titulo}</h3>
               <p className="mt-1 text-sm leading-6 text-slate-400">{item.descripcion}</p>
-              <p className="mt-3 text-xs font-semibold text-emerald-200">{contador}</p>
+              <p className="mt-3 text-xs font-semibold text-emerald-200">{proximos} eventos próximos</p>
             </button>
           );
         })}

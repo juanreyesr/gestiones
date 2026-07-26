@@ -4,7 +4,7 @@ import { CalendarHeart, Plus, Search, Settings2, Users, X } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { deleteEvento, fetchEventos, fetchParticipantesDeEventos } from "@/lib/iglesia/eventos";
-import { formatoLargo, hoyISO } from "@/lib/iglesia/fechas";
+import { formatoLargo, hoyISO } from "@/lib/fechas";
 import {
   ESTADOS_EVENTO,
   TIPOS_EVENTO,
@@ -16,7 +16,7 @@ import {
   type ParticipanteRow,
   type TipoEvento,
 } from "@/lib/iglesia/types";
-import { BTN_GHOST, BTN_PRIMARY, EmptyState, ErrorBanner, Field, INPUT, Modal, Pastilla } from "../ui";
+import { BTN_GHOST, BTN_PRIMARY, EmptyState, ErrorBanner, Field, INPUT, Modal, Pastilla } from "@/components/ui-comun";
 import { EventoDetalle } from "./evento-detalle";
 import { EventoForm } from "./evento-form";
 

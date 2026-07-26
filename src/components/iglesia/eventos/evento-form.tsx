@@ -20,7 +20,7 @@ import {
   type RolParticipante,
   type TipoEvento,
 } from "@/lib/iglesia/types";
-import { BTN_GHOST, BTN_PRIMARY, ErrorBanner, Field, INPUT, Modal } from "../ui";
+import { BTN_GHOST, BTN_PRIMARY, ErrorBanner, Field, INPUT, Modal } from "@/components/ui-comun";
 
 const filaVacia = (rol: RolParticipante): ParticipanteBorrador => ({
   rol,

@@ -3,16 +3,16 @@
 import { Archive, ArchiveRestore, LayoutDashboard, ListChecks, Pencil, Plus, Trash2 } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { ConfirmDialog } from "@/components/confirm-dialog";
-import { hoyISO } from "@/lib/iglesia/fechas";
-import { fetchResumenTableros, type ResumenTablero } from "@/lib/iglesia/items";
+import { hoyISO } from "@/lib/fechas";
+import { fetchResumenTableros, type ResumenTablero } from "@/lib/pendientes/items";
 import {
   deleteTablero,
   fetchTableros,
   insertTableroConGrupos,
   updateTablero,
-} from "@/lib/iglesia/tableros";
-import { COLORES_TABLERO, type TableroRow } from "@/lib/iglesia/types";
-import { BTN_GHOST, BTN_PRIMARY, EmptyState, ErrorBanner, Field, INPUT, Modal } from "../ui";
+} from "@/lib/pendientes/tableros";
+import { COLORES_TABLERO, type TableroRow } from "@/lib/pendientes/types";
+import { BTN_GHOST, BTN_PRIMARY, EmptyState, ErrorBanner, Field, INPUT, Modal } from "@/components/ui-comun";
 import { TableroDetalle } from "./tablero-detalle";
 
 export function PendientesView() {
