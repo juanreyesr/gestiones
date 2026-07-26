@@ -80,6 +80,18 @@ export async function updateCurso(
   return { error: error?.message ?? null };
 }
 
+/** Archiva o reactiva un curso sin perder ningun dato (contenidos, semanas, etc.). */
+export async function setEstadoCurso(id: string, estado: EstadoCurso) {
+  const supabase = getSupabaseClient();
+  if (!supabase) return { error: "Faltan las variables de Supabase." };
+
+  const { error } = await supabase
+    .from("gestionesjj_cursos_impartidos")
+    .update({ estado, updated_at: new Date().toISOString() })
+    .eq("id", id);
+  return { error: error?.message ?? null };
+}
+
 export async function deleteCurso(id: string) {
   const supabase = getSupabaseClient();
   if (!supabase) return { error: "Faltan las variables de Supabase." };

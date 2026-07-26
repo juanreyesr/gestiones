@@ -33,6 +33,20 @@ export async function insertEstudiante(payload: { curso_id: string; nombre: stri
   return { id: estudianteId, error: null };
 }
 
+export async function updateEstudiante(
+  id: string,
+  payload: { nombre: string; correo?: string | null; carne?: string | null },
+) {
+  const supabase = getSupabaseClient();
+  if (!supabase) return { error: "Faltan las variables de Supabase." };
+
+  const { error } = await supabase
+    .from("gestionesjj_curso_estudiantes")
+    .update({ ...payload, updated_at: new Date().toISOString() })
+    .eq("id", id);
+  return { error: error?.message ?? null };
+}
+
 export async function retirarEstudiante(id: string, cursoId: string, nota?: string | null) {
   const supabase = getSupabaseClient();
   if (!supabase) return { error: "Faltan las variables de Supabase." };

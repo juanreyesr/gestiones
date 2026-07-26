@@ -1,6 +1,6 @@
 "use client";
 
-import { ChevronDown, ChevronUp, Trash2, UserMinus, UserPlus } from "lucide-react";
+import { ChevronDown, ChevronUp, Pencil, Trash2, UserMinus, UserPlus } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { ModalPortal } from "@/components/modal-portal";
@@ -11,6 +11,7 @@ import {
   insertEstudiante,
   reincorporarEstudiante,
   retirarEstudiante,
+  updateEstudiante,
 } from "@/lib/cursos/estudiantes";
 import {
   TIPO_EVENTO_LABELS,
@@ -30,6 +31,7 @@ export function CursoEstudiantesTab({ cursoId }: { cursoId: string }) {
   const [carne, setCarne] = useState("");
   const [guardando, setGuardando] = useState(false);
   const [retirarObjetivo, setRetirarObjetivo] = useState<EstudianteRow | null>(null);
+  const [editarObjetivo, setEditarObjetivo] = useState<EstudianteRow | null>(null);
   const [eliminarObjetivo, setEliminarObjetivo] = useState<EstudianteRow | null>(null);
   const [eliminando, setEliminando] = useState(false);
   const [historialAbierto, setHistorialAbierto] = useState(false);
@@ -133,6 +135,14 @@ export function CursoEstudiantesTab({ cursoId }: { cursoId: string }) {
                 <div className="text-xs text-slate-500">Asignado: {formatearFechaHora(estudiante.asignado_en)}</div>
               </div>
               <div className="flex items-center gap-2">
+                <button
+                  className="flex h-9 w-9 items-center justify-center border border-white/10 bg-white/8 text-slate-200 hover:border-emerald-300/50"
+                  onClick={() => setEditarObjetivo(estudiante)}
+                  title="Editar datos del estudiante"
+                  type="button"
+                >
+                  <Pencil className="h-4 w-4" />
+                </button>
                 {estudiante.estado === "activo" ? (
                   <button
                     className={BTN_GHOST}
@@ -205,6 +215,17 @@ export function CursoEstudiantesTab({ cursoId }: { cursoId: string }) {
         ) : null}
       </div>
 
+      {editarObjetivo ? (
+        <EditarEstudianteModal
+          estudiante={editarObjetivo}
+          onClose={() => setEditarObjetivo(null)}
+          onGuardado={async () => {
+            setEditarObjetivo(null);
+            await cargar();
+          }}
+        />
+      ) : null}
+
       {retirarObjetivo ? (
         <RetirarModal
           cursoId={cursoId}
@@ -273,6 +294,74 @@ function RetirarModal({
             </button>
             <button className={BTN_PRIMARY} disabled={guardando} onClick={handleRetirar} type="button">
               {guardando ? "Guardando..." : "Confirmar retiro"}
+            </button>
+          </div>
+        </div>
+      </div>
+    </ModalPortal>
+  );
+}
+
+function EditarEstudianteModal({
+  estudiante,
+  onClose,
+  onGuardado,
+}: {
+  estudiante: EstudianteRow;
+  onClose: () => void;
+  onGuardado: () => void | Promise<void>;
+}) {
+  const [nombre, setNombre] = useState(estudiante.nombre);
+  const [correo, setCorreo] = useState(estudiante.correo ?? "");
+  const [carne, setCarne] = useState(estudiante.carne ?? "");
+  const [guardando, setGuardando] = useState(false);
+  const [error, setError] = useState("");
+
+  const handleGuardar = async () => {
+    if (!nombre.trim()) {
+      setError("El nombre del estudiante es obligatorio.");
+      return;
+    }
+    setGuardando(true);
+    const { error: updateError } = await updateEstudiante(estudiante.id, {
+      nombre: nombre.trim(),
+      correo: correo.trim() || null,
+      carne: carne.trim() || null,
+    });
+    setGuardando(false);
+    if (updateError) {
+      setError(updateError);
+      return;
+    }
+    await onGuardado();
+  };
+
+  return (
+    <ModalPortal>
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4" onClick={onClose}>
+        <div
+          className="w-full max-w-sm border border-white/10 bg-slate-950 p-5"
+          onClick={(event) => event.stopPropagation()}
+        >
+          <h3 className="mb-4 text-lg font-semibold text-white">Editar estudiante</h3>
+          <div className="grid gap-3">
+            <Field label="Nombre">
+              <input className="field" onChange={(event) => setNombre(event.target.value)} value={nombre} />
+            </Field>
+            <Field label="Correo">
+              <input className="field" onChange={(event) => setCorreo(event.target.value)} value={correo} />
+            </Field>
+            <Field label="Carné">
+              <input className="field" onChange={(event) => setCarne(event.target.value)} value={carne} />
+            </Field>
+          </div>
+          <ErrorBanner message={error} />
+          <div className="mt-5 flex justify-end gap-3">
+            <button className={BTN_GHOST} onClick={onClose} type="button">
+              Cancelar
+            </button>
+            <button className={BTN_PRIMARY} disabled={guardando} onClick={handleGuardar} type="button">
+              {guardando ? "Guardando..." : "Guardar"}
             </button>
           </div>
         </div>

@@ -1,6 +1,6 @@
 "use client";
 
-import { Building2, Pencil, Plus, Sparkles, Trash2 } from "lucide-react";
+import { Archive, Building2, Pencil, Plus, RotateCcw, Sparkles, Trash2 } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { ModalPortal } from "@/components/modal-portal";
@@ -11,6 +11,7 @@ import {
   fetchCursosPorUniversidad,
   fetchTodosLosCursos,
   insertCurso,
+  setEstadoCurso,
   updateCurso,
 } from "@/lib/cursos/cursos";
 import { ESTADO_CURSO_LABELS, type CursoConUniversidadRow, type CursoImpartidoRow, type UniversidadRow } from "@/lib/cursos/types";
@@ -39,6 +40,8 @@ export function UniversidadDetalle({
   const [editando, setEditando] = useState<CursoImpartidoRow | null>(null);
   const [eliminarCurso, setEliminarCurso] = useState<CursoImpartidoRow | null>(null);
   const [eliminando, setEliminando] = useState(false);
+  const [verInactivos, setVerInactivos] = useState(false);
+  const [cambiandoEstadoId, setCambiandoEstadoId] = useState<string | null>(null);
 
   const cargarCursos = useCallback(async () => {
     setLoading(true);
@@ -81,6 +84,21 @@ export function UniversidadDetalle({
     await cargarCursos();
   };
 
+  const handleCambiarEstado = async (curso: CursoImpartidoRow, estado: "activo" | "archivado") => {
+    setCambiandoEstadoId(curso.id);
+    const { error: estadoError } = await setEstadoCurso(curso.id, estado);
+    setCambiandoEstadoId(null);
+    if (estadoError) {
+      setError(estadoError);
+      return;
+    }
+    await cargarCursos();
+  };
+
+  const cursosActivos = cursos.filter((curso) => curso.estado !== "archivado");
+  const cursosInactivos = cursos.filter((curso) => curso.estado === "archivado");
+  const cursosVisibles = verInactivos ? cursosInactivos : cursosActivos;
+
   return (
     <div className="grid gap-5">
       <div className="flex flex-col gap-4 border-b border-white/10 pb-4 sm:flex-row sm:items-center sm:justify-between">
@@ -101,24 +119,36 @@ export function UniversidadDetalle({
             {universidad.siglas ? <p className="text-sm text-slate-400">{universidad.siglas}</p> : null}
           </div>
         </div>
-        <button className={BTN_PRIMARY} onClick={() => setWizardOpen(true)} type="button">
-          <Plus className="h-4 w-4" />
-          Crear curso
-        </button>
+        <div className="flex flex-wrap gap-2">
+          <button
+            className={verInactivos ? BTN_PRIMARY : BTN_GHOST}
+            onClick={() => setVerInactivos((prev) => !prev)}
+            type="button"
+          >
+            <Archive className="h-4 w-4" />
+            {verInactivos ? "Ver cursos activos" : `Cursos inactivos (${cursosInactivos.length})`}
+          </button>
+          <button className={BTN_PRIMARY} onClick={() => setWizardOpen(true)} type="button">
+            <Plus className="h-4 w-4" />
+            Crear curso
+          </button>
+        </div>
       </div>
 
       <ErrorBanner message={error} />
 
       {loading ? (
         <p className="text-sm text-slate-300">Cargando...</p>
-      ) : cursos.length === 0 ? (
+      ) : cursosVisibles.length === 0 ? (
         <EmptyState>
           <Building2 className="mx-auto mb-2 h-6 w-6 text-slate-500" />
-          Aún no hay cursos en esta universidad.
+          {verInactivos
+            ? "No hay cursos inactivos. Los cursos que desactives aparecerán aquí sin perder su contenido."
+            : "Aún no hay cursos activos en esta universidad."}
         </EmptyState>
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-          {cursos.map((curso) => (
+          {cursosVisibles.map((curso) => (
             <CardBox key={curso.id} onClick={() => onOpenCurso(curso)}>
               <div className="absolute right-3 top-3 z-10 flex gap-1.5 opacity-0 transition group-hover:opacity-100">
                 <button
@@ -132,6 +162,33 @@ export function UniversidadDetalle({
                 >
                   <Pencil className="h-3.5 w-3.5" />
                 </button>
+                {curso.estado === "archivado" ? (
+                  <button
+                    className="flex h-7 w-7 items-center justify-center border border-emerald-300/40 bg-slate-950/80 text-emerald-200 hover:border-emerald-300 disabled:opacity-50"
+                    disabled={cambiandoEstadoId === curso.id}
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      void handleCambiarEstado(curso, "activo");
+                    }}
+                    title="Reactivar curso"
+                    type="button"
+                  >
+                    <RotateCcw className="h-3.5 w-3.5" />
+                  </button>
+                ) : (
+                  <button
+                    className="flex h-7 w-7 items-center justify-center border border-amber-300/40 bg-slate-950/80 text-amber-200 hover:border-amber-300 disabled:opacity-50"
+                    disabled={cambiandoEstadoId === curso.id}
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      void handleCambiarEstado(curso, "archivado");
+                    }}
+                    title="Desactivar curso (conserva todo el contenido)"
+                    type="button"
+                  >
+                    <Archive className="h-3.5 w-3.5" />
+                  </button>
+                )}
                 <button
                   className="flex h-7 w-7 items-center justify-center border border-red-400/30 bg-slate-950/80 text-red-200 hover:border-red-300"
                   onClick={(event) => {
@@ -152,6 +209,20 @@ export function UniversidadDetalle({
                 {curso.periodo ? <span>Periodo: {curso.periodo}</span> : null}
                 {curso.horario ? <span>Horario: {curso.horario}</span> : null}
               </div>
+              {curso.estado === "archivado" ? (
+                <button
+                  className={`${BTN_GHOST} mt-3 w-full justify-center`}
+                  disabled={cambiandoEstadoId === curso.id}
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    void handleCambiarEstado(curso, "activo");
+                  }}
+                  type="button"
+                >
+                  <RotateCcw className="h-4 w-4" />
+                  {cambiandoEstadoId === curso.id ? "Reactivando..." : "Reactivar curso"}
+                </button>
+              ) : null}
             </CardBox>
           ))}
         </div>
