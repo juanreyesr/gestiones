@@ -4,18 +4,26 @@ import { KeyRound, X } from "lucide-react";
 import { useState } from "react";
 import { ModalPortal } from "./modal-portal";
 
+/**
+ * Cambia un codigo de acceso. Se usa tanto para el modo kiosco de
+ * entrevistas como para el codigo que protege el area de Clinica.
+ */
 export function CodigoKioscoModal({
+  descripcion,
   error,
   onClose,
   onGuardar,
   open,
   saving,
+  titulo,
 }: {
+  descripcion?: string;
   error: string;
   onClose: () => void;
   onGuardar: (nuevoCodigo: string) => void;
   open: boolean;
   saving: boolean;
+  titulo?: string;
 }) {
   const [codigo, setCodigo] = useState("");
   const [confirmacion, setConfirmacion] = useState("");
@@ -31,7 +39,7 @@ export function CodigoKioscoModal({
           <div className="mb-4 flex items-center justify-between">
             <h3 className="flex items-center gap-2 text-lg font-semibold text-white">
               <KeyRound className="h-5 w-5 text-amber-200" />
-              Cambiar codigo de modo kiosco
+              {titulo ?? "Cambiar codigo de modo kiosco"}
             </h3>
             <button onClick={onClose} type="button">
               <X className="h-5 w-5 text-slate-400 hover:text-white" />
@@ -39,8 +47,8 @@ export function CodigoKioscoModal({
           </div>
 
           <p className="mb-4 text-sm leading-6 text-slate-300">
-            Este codigo lo pedira el modo entrevista al estudiante antes de devolverte el dispositivo, para evitar que
-            vea por error la evaluacion del docente.
+            {descripcion ??
+              "Este codigo lo pedira el modo entrevista al estudiante antes de devolverte el dispositivo, para evitar que vea por error la evaluacion del docente."}
           </p>
 
           <div className="grid gap-3">

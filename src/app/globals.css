@@ -1,8 +1,42 @@
 @import "tailwindcss";
 
+/* ============================================================
+   SISTEMA DE DISENO GESTIONESJJ
+   ------------------------------------------------------------
+   Los modulos (coordinacion, clinica, cursos, recursos) repiten
+   los mismos patrones de clases para sus superficies:
+
+     border border-white/10 bg-white/8 p-4 backdrop-blur-xl
+     border border-white/10 bg-slate-950/58 ...
+
+   En vez de duplicar utilidades de radio, sombra y transicion en
+   cada uno de los ~60 componentes, este archivo define el aspecto
+   base de esas superficies una sola vez. Cualquier componente que
+   necesite algo distinto lo sobreescribe con utilidades de
+   Tailwind (rounded-full, rounded-none...), porque la capa
+   utilities siempre gana sobre la capa base.
+   ============================================================ */
+
 :root {
   --background: #ffffff;
   --foreground: #171717;
+
+  /* Curvas de animacion: mas marcadas que las nativas de CSS,
+     para que la interfaz responda de inmediato al usuario. */
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
+
+  /* Radios */
+  --radius-control: 10px;
+  --radius-surface: 14px;
+  --radius-panel: 20px;
+
+  /* Profundidad: un brillo interno arriba + sombra suave abajo
+     es lo que da la sensacion de vidrio y relieve. */
+  --surface-highlight: inset 0 1px 0 rgb(255 255 255 / 0.07);
+  --surface-shadow: 0 1px 2px rgb(0 0 0 / 0.3), 0 14px 34px -20px rgb(0 0 0 / 0.7);
+
+  --accent: 110 231 183;
 }
 
 @theme inline {
@@ -23,17 +57,127 @@ body {
   background: var(--background);
   color: var(--foreground);
   font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  /* El tracking ligeramente negativo es lo que separa una tipografia
+     de producto moderna de la configuracion por defecto. */
+  letter-spacing: -0.011em;
+  font-synthesis-weight: none;
 }
 
-button,
-input,
-select,
-textarea {
-  border-radius: 8px;
-}
+@layer base {
+  html {
+    -webkit-tap-highlight-color: transparent;
+  }
 
-button {
-  cursor: pointer;
+  h1,
+  h2,
+  h3 {
+    letter-spacing: -0.022em;
+    text-wrap: balance;
+  }
+
+  /* --- Superficies -------------------------------------------------
+     Todo contenedor con borde completo ("border" + color) recibe el
+     radio base. Los que ademas son de vidrio (backdrop-blur-xl) son
+     paneles principales: radio mayor y profundidad. */
+  [class~="border"] {
+    border-radius: var(--radius-surface);
+  }
+
+  [class~="border"][class~="backdrop-blur-xl"] {
+    border-radius: var(--radius-panel);
+    box-shadow: var(--surface-highlight), var(--surface-shadow);
+  }
+
+  /* Tarjetas clicables: elevacion sutil al pasar el cursor.
+     Se limita a dispositivos con mouse real para que en pantallas
+     tactiles el toque no dispare un hover fantasma. */
+  @media (hover: hover) and (pointer: fine) {
+    [class~="cursor-pointer"][class~="border"] {
+      transition:
+        transform 220ms var(--ease-out),
+        border-color 220ms ease,
+        box-shadow 220ms ease;
+    }
+
+    [class~="cursor-pointer"][class~="border"]:hover {
+      transform: translateY(-2px);
+    }
+  }
+
+  /* --- Controles --------------------------------------------------- */
+  button,
+  input,
+  select,
+  textarea {
+    border-radius: var(--radius-control);
+  }
+
+  /* Los botones y campos con borde usan el radio de control, no el de
+     superficie (mas especifico que la regla de arriba). */
+  button[class~="border"],
+  input[class~="border"],
+  select[class~="border"],
+  textarea[class~="border"] {
+    border-radius: var(--radius-control);
+  }
+
+  button {
+    cursor: pointer;
+    transition:
+      transform 160ms var(--ease-out),
+      background-color 160ms ease,
+      border-color 160ms ease,
+      color 160ms ease,
+      box-shadow 160ms ease;
+  }
+
+  /* Respuesta tactil: el boton se hunde apenas al presionarlo, para
+     que la interfaz confirme que escucho al usuario. */
+  button:active:not(:disabled) {
+    transform: scale(0.97);
+  }
+
+  button:disabled {
+    cursor: not-allowed;
+  }
+
+  :focus-visible {
+    outline: 2px solid rgb(var(--accent) / 0.75);
+    outline-offset: 2px;
+    border-radius: var(--radius-control);
+  }
+
+  /* --- Detalles de sistema ----------------------------------------- */
+  ::selection {
+    background: rgb(var(--accent) / 0.3);
+    color: #fff;
+  }
+
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: rgb(255 255 255 / 0.18) transparent;
+  }
+
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: rgb(255 255 255 / 0.16);
+    border: 2px solid transparent;
+    background-clip: content-box;
+    border-radius: 999px;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: rgb(255 255 255 / 0.3);
+    background-clip: content-box;
+  }
 }
 
 /* En @layer components para que las utilidades de Tailwind (w-52, sm:w-32...)
@@ -41,23 +185,87 @@ button {
 @layer components {
   .field {
     width: 100%;
-    border: 1px solid rgb(255 255 255 / 0.1);
+    border: 1px solid rgb(255 255 255 / 0.12);
     background: rgb(2 6 23 / 0.72);
-    padding: 0.65rem 0.75rem;
+    border-radius: var(--radius-control);
+    padding: 0.65rem 0.8rem;
     color: white;
     outline: none;
     transition:
-      border-color 150ms ease,
-      box-shadow 150ms ease;
+      border-color 160ms ease,
+      box-shadow 160ms ease,
+      background-color 160ms ease;
+  }
+
+  .field:hover:not(:disabled) {
+    border-color: rgb(255 255 255 / 0.2);
   }
 
   .field:focus {
-    border-color: rgb(110 231 183 / 0.65);
-    box-shadow: 0 0 0 2px rgb(110 231 183 / 0.18);
+    border-color: rgb(var(--accent) / 0.7);
+    background: rgb(2 6 23 / 0.9);
+    box-shadow: 0 0 0 3px rgb(var(--accent) / 0.15);
+  }
+
+  .field::placeholder {
+    color: rgb(148 163 184 / 0.75);
   }
 
   .field option {
     color: #0f172a;
+  }
+
+  /* Entrada escalonada para rejillas de tarjetas. El retraso lo pone
+     cada elemento con --i, y se mantiene corto (55ms) para que la
+     pantalla nunca se sienta lenta. */
+  .rise {
+    animation: rise 460ms var(--ease-out) both;
+    animation-delay: calc(var(--i, 0) * 55ms);
+  }
+
+  @keyframes rise {
+    from {
+      opacity: 0;
+      transform: translateY(12px);
+    }
+  }
+
+  /* Sacudida corta para un codigo incorrecto. */
+  .shake {
+    animation: shake 420ms var(--ease-in-out);
+  }
+
+  @keyframes shake {
+    10%,
+    90% {
+      transform: translateX(-2px);
+    }
+    20%,
+    80% {
+      transform: translateX(4px);
+    }
+    30%,
+    50%,
+    70% {
+      transform: translateX(-7px);
+    }
+    40%,
+    60% {
+      transform: translateX(7px);
+    }
+  }
+}
+
+/* Las animaciones pueden causar mareo: se reducen a lo minimo, pero se
+   conservan los cambios de opacidad que ayudan a entender la interfaz. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
   }
 }
 
