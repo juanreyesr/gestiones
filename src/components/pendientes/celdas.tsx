@@ -2,8 +2,8 @@
 
 import { CalendarDays, Check, UserRound, X } from "lucide-react";
 import { useState } from "react";
-import { Avatar, MenuAnclado } from "../ui";
-import { etiquetaVencimiento, formatoCorto, parseFecha } from "@/lib/iglesia/fechas";
+import { Avatar, MenuAnclado } from "@/components/ui-comun";
+import { etiquetaVencimiento, formatoCorto, parseFecha } from "@/lib/fechas";
 
 type Opcion<T extends string> = { valor: T; label: string; color: string; texto: string };
 

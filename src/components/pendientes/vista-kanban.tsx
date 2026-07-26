@@ -2,9 +2,9 @@
 
 import { CalendarDays, MessageSquare, Plus } from "lucide-react";
 import { useState } from "react";
-import { formatoCorto } from "@/lib/iglesia/fechas";
-import { ESTADOS, prioridadInfo, type GrupoRow, type ItemRow } from "@/lib/iglesia/types";
-import { Avatar, Pastilla } from "../ui";
+import { formatoCorto } from "@/lib/fechas";
+import { ESTADOS, prioridadInfo, type GrupoRow, type ItemRow } from "@/lib/pendientes/types";
+import { Avatar, Pastilla } from "@/components/ui-comun";
 import type { AccionesTablero } from "./tipos";
 
 /**

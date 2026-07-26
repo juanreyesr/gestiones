@@ -11,8 +11,8 @@ import {
   Trash2,
 } from "lucide-react";
 import { useState } from "react";
-import { ESTADOS, PRIORIDADES, estadoInfo, type GrupoRow, type ItemRow } from "@/lib/iglesia/types";
-import { MenuAnclado, OpcionMenu } from "../ui";
+import { ESTADOS, PRIORIDADES, estadoInfo, type GrupoRow, type ItemRow } from "@/lib/pendientes/types";
+import { MenuAnclado, OpcionMenu } from "@/components/ui-comun";
 import { CeldaFecha, CeldaResponsable, CeldaTexto, SelectorPastilla } from "./celdas";
 import type { AccionesTablero } from "./tipos";
 

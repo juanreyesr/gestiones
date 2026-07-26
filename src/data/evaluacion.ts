@@ -62,6 +62,10 @@ export const AREAS = [
   { id: "cursos", nombre: "Cursos", descripcion: "Planificación, materiales, avances, tareas y desempeño por curso." },
   { id: "caeduc", nombre: "CAEDUC", descripcion: "Procesos, reportes, acompañamiento y acciones institucionales." },
   { id: "recursos", nombre: "Recursos", descripcion: "Encuestas y actividades interactivas en vivo con QR o enlace." },
+  // Pendientes no es un area de la vida sino una herramienta transversal: sus
+  // tableros sirven igual para la iglesia, la clinica, los cursos o lo
+  // personal. Por eso vive en el menu principal y no dentro de un area.
+  { id: "pendientes", nombre: "Pendientes", descripcion: "Tableros de tareas y proyectos de cualquier area: estados, responsables, fechas y vistas de tabla, kanban, calendario y cronograma." },
 ] as const;
 
 export const TRIMESTRES: Trimestre[] = [1, 2, 3];

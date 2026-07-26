@@ -17,7 +17,7 @@ import {
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { ConfirmDialog } from "@/components/confirm-dialog";
-import { diasRestantes } from "@/lib/iglesia/fechas";
+import { diasRestantes } from "@/lib/fechas";
 import {
   deleteItem,
   deleteItems,
@@ -28,8 +28,8 @@ import {
   reordenarItems,
   updateItem,
   updateItemsEnLote,
-} from "@/lib/iglesia/items";
-import { deleteGrupo, fetchGrupos, insertGrupo, updateGrupo } from "@/lib/iglesia/tableros";
+} from "@/lib/pendientes/items";
+import { deleteGrupo, fetchGrupos, insertGrupo, updateGrupo } from "@/lib/pendientes/tableros";
 import {
   COLORES_GRUPO,
   ESTADOS,
@@ -40,9 +40,9 @@ import {
   type ItemRow,
   type PrioridadItem,
   type TableroRow,
-} from "@/lib/iglesia/types";
-import { descargarTableroWord } from "@/lib/iglesia/word";
-import { BTN_GHOST, BTN_PRIMARY, ErrorBanner, Field, INPUT, MenuAnclado, Modal, OpcionMenu } from "../ui";
+} from "@/lib/pendientes/types";
+import { descargarTableroWord } from "@/lib/pendientes/word";
+import { BTN_GHOST, BTN_PRIMARY, ErrorBanner, Field, INPUT, MenuAnclado, Modal, OpcionMenu } from "@/components/ui-comun";
 import { ItemPanel } from "./item-panel";
 import type { AccionesTablero } from "./tipos";
 import { VistaCalendario } from "./vista-calendario";

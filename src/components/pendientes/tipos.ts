@@ -1,4 +1,4 @@
-import type { GrupoRow, ItemEditable, ItemRow } from "@/lib/iglesia/types";
+import type { GrupoRow, ItemEditable, ItemRow } from "@/lib/pendientes/types";
 
 /**
  * Contrato que el tablero pasa a cada vista (tabla, kanban, calendario,

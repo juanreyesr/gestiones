@@ -13,7 +13,7 @@ export async function fetchItems(tableroId: string) {
   if (!supabase) return { data: [] as ItemRow[], error: SIN_SUPABASE };
 
   const { data, error } = await supabase
-    .from("gestionesjj_iglesia_items")
+    .from("gestionesjj_pendientes_items")
     .select("*")
     .eq("tablero_id", tableroId)
     .order("orden")
@@ -29,7 +29,7 @@ export async function fetchItemsPendientes(limite = 200) {
   if (!supabase) return { data: [] as ItemRow[], error: SIN_SUPABASE };
 
   const { data, error } = await supabase
-    .from("gestionesjj_iglesia_items")
+    .from("gestionesjj_pendientes_items")
     .select("*")
     .neq("estado", "listo")
     .is("item_padre_id", null)
@@ -52,7 +52,7 @@ export async function fetchResumenTableros(hoy: string) {
   if (!supabase) return { data: {} as Record<string, ResumenTablero>, error: SIN_SUPABASE };
 
   const { data, error } = await supabase
-    .from("gestionesjj_iglesia_items")
+    .from("gestionesjj_pendientes_items")
     .select("tablero_id, estado, fecha_limite")
     .is("item_padre_id", null);
 
@@ -87,7 +87,7 @@ export async function insertItem(payload: {
   const supabase = getSupabaseClient();
   if (!supabase) return { data: null as ItemRow | null, error: SIN_SUPABASE };
 
-  const { data, error } = await supabase.from("gestionesjj_iglesia_items").insert(payload).select("*").single();
+  const { data, error } = await supabase.from("gestionesjj_pendientes_items").insert(payload).select("*").single();
   return { data: (data as ItemRow | null) ?? null, error: error?.message ?? null };
 }
 
@@ -98,7 +98,7 @@ export async function insertItems(
   if (!supabase) return { error: SIN_SUPABASE };
   if (!payload.length) return { error: null };
 
-  const { error } = await supabase.from("gestionesjj_iglesia_items").insert(payload);
+  const { error } = await supabase.from("gestionesjj_pendientes_items").insert(payload);
   return { error: error?.message ?? null };
 }
 
@@ -106,7 +106,7 @@ export async function updateItem(id: string, payload: ItemEditable) {
   const supabase = getSupabaseClient();
   if (!supabase) return { error: SIN_SUPABASE };
 
-  const { error } = await supabase.from("gestionesjj_iglesia_items").update(payload).eq("id", id);
+  const { error } = await supabase.from("gestionesjj_pendientes_items").update(payload).eq("id", id);
   return { error: error?.message ?? null };
 }
 
@@ -114,7 +114,7 @@ export async function deleteItem(id: string) {
   const supabase = getSupabaseClient();
   if (!supabase) return { error: SIN_SUPABASE };
 
-  const { error } = await supabase.from("gestionesjj_iglesia_items").delete().eq("id", id);
+  const { error } = await supabase.from("gestionesjj_pendientes_items").delete().eq("id", id);
   return { error: error?.message ?? null };
 }
 
@@ -123,7 +123,7 @@ export async function deleteItems(ids: string[]) {
   if (!supabase) return { error: SIN_SUPABASE };
   if (!ids.length) return { error: null };
 
-  const { error } = await supabase.from("gestionesjj_iglesia_items").delete().in("id", ids);
+  const { error } = await supabase.from("gestionesjj_pendientes_items").delete().in("id", ids);
   return { error: error?.message ?? null };
 }
 
@@ -133,7 +133,7 @@ export async function updateItemsEnLote(ids: string[], payload: ItemEditable) {
   if (!supabase) return { error: SIN_SUPABASE };
   if (!ids.length) return { error: null };
 
-  const { error } = await supabase.from("gestionesjj_iglesia_items").update(payload).in("id", ids);
+  const { error } = await supabase.from("gestionesjj_pendientes_items").update(payload).in("id", ids);
   return { error: error?.message ?? null };
 }
 
@@ -149,7 +149,7 @@ export async function reordenarItems(items: Array<{ id: string; grupo_id: string
   const resultados = await Promise.all(
     items.map((item) =>
       supabase
-        .from("gestionesjj_iglesia_items")
+        .from("gestionesjj_pendientes_items")
         .update({ grupo_id: item.grupo_id, orden: item.orden })
         .eq("id", item.id),
     ),
@@ -180,7 +180,7 @@ export async function duplicarItem(item: ItemRow, subitems: ItemRow[]) {
   const supabase = getSupabaseClient();
   if (!supabase) return { error: SIN_SUPABASE };
 
-  const { error: subError } = await supabase.from("gestionesjj_iglesia_items").insert(
+  const { error: subError } = await supabase.from("gestionesjj_pendientes_items").insert(
     subitems.map((sub, indice) => ({
       tablero_id: sub.tablero_id,
       grupo_id: sub.grupo_id,
@@ -206,7 +206,7 @@ export async function fetchActualizaciones(itemId: string) {
   if (!supabase) return { data: [] as ActualizacionRow[], error: SIN_SUPABASE };
 
   const { data, error } = await supabase
-    .from("gestionesjj_iglesia_actualizaciones")
+    .from("gestionesjj_pendientes_actualizaciones")
     .select("*")
     .eq("item_id", itemId)
     .order("created_at", { ascending: false });
@@ -220,7 +220,7 @@ export async function insertActualizacion(itemId: string, texto: string) {
   if (!supabase) return { error: SIN_SUPABASE };
 
   const { error } = await supabase
-    .from("gestionesjj_iglesia_actualizaciones")
+    .from("gestionesjj_pendientes_actualizaciones")
     .insert({ item_id: itemId, texto });
   return { error: error?.message ?? null };
 }
@@ -229,7 +229,7 @@ export async function deleteActualizacion(id: string) {
   const supabase = getSupabaseClient();
   if (!supabase) return { error: SIN_SUPABASE };
 
-  const { error } = await supabase.from("gestionesjj_iglesia_actualizaciones").delete().eq("id", id);
+  const { error } = await supabase.from("gestionesjj_pendientes_actualizaciones").delete().eq("id", id);
   return { error: error?.message ?? null };
 }
 
@@ -239,7 +239,7 @@ export async function fetchConteoActualizaciones(tableroId: string) {
   if (!supabase) return { data: {} as Record<string, number>, error: SIN_SUPABASE };
 
   const { data: items, error: itemsError } = await supabase
-    .from("gestionesjj_iglesia_items")
+    .from("gestionesjj_pendientes_items")
     .select("id")
     .eq("tablero_id", tableroId);
 
@@ -249,7 +249,7 @@ export async function fetchConteoActualizaciones(tableroId: string) {
   if (!ids.length) return { data: {} as Record<string, number>, error: null };
 
   const { data, error } = await supabase
-    .from("gestionesjj_iglesia_actualizaciones")
+    .from("gestionesjj_pendientes_actualizaciones")
     .select("item_id")
     .in("item_id", ids);
 
