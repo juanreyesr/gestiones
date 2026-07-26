@@ -26,6 +26,7 @@ import {
   Printer,
   Radio,
   Save,
+  ShieldCheck,
   Sparkles,
   Star,
   TrendingUp,
@@ -58,11 +59,12 @@ import {
   upsertEvaluacion,
 } from "@/lib/evaluacion-helpers";
 import { buildCorreoDocente } from "@/lib/email-draft";
-import { fetchKioscoCodigo, guardarKioscoCodigo } from "@/lib/kiosco-config";
+import { fetchConfigCodigos, guardarClinicaCodigo, guardarKioscoCodigo } from "@/lib/kiosco-config";
 import { exportReporteToPdf } from "@/lib/pdf";
 import { exportRespaldoToExcel } from "@/lib/respaldo-excel";
 import { contarAlertasSeguimientos, fetchReuniones } from "@/lib/reuniones";
 import { getSupabaseClient, isSupabaseConfigured } from "@/lib/supabase";
+import { ClinicaLock } from "./clinica-lock";
 import { ClinicaView } from "./clinica/clinica-view";
 import { CodigoKioscoModal } from "./codigo-kiosco-modal";
 import { ConsultasView } from "./consultas-view";
@@ -195,6 +197,11 @@ export function GestionesApp() {
   const [cambiarCodigoOpen, setCambiarCodigoOpen] = useState(false);
   const [savingCodigo, setSavingCodigo] = useState(false);
   const [codigoError, setCodigoError] = useState("");
+  const [clinicaCodigo, setClinicaCodigo] = useState<string | null>(null);
+  const [clinicaDesbloqueada, setClinicaDesbloqueada] = useState(false);
+  const [cambiarCodigoClinicaOpen, setCambiarCodigoClinicaOpen] = useState(false);
+  const [savingCodigoClinica, setSavingCodigoClinica] = useState(false);
+  const [codigoClinicaError, setCodigoClinicaError] = useState("");
 
   const docente = docentes.find((item) => item.id === selectedDocenteId);
   const curso = docente?.cursos.find((item) => item.id === selectedCursoId);
@@ -256,11 +263,12 @@ export function GestionesApp() {
     return () => subscription.subscription.unsubscribe();
   }, []);
 
-  const loadKioscoCodigo = useCallback(async () => {
-    const { id, codigo, error } = await fetchKioscoCodigo();
+  const loadConfigCodigos = useCallback(async () => {
+    const { id, kioscoCodigo: kiosco, clinicaCodigo: clinica, error } = await fetchConfigCodigos();
     if (!error) {
       kioscoCodigoIdRef.current = id;
-      setKioscoCodigo(codigo);
+      setKioscoCodigo(kiosco);
+      setClinicaCodigo(clinica);
     }
   }, []);
 
@@ -268,9 +276,9 @@ export function GestionesApp() {
     if (session) {
       // eslint-disable-next-line react-hooks/set-state-in-effect -- syncs docentes with Supabase whenever the session changes
       fetchDocentes();
-      loadKioscoCodigo();
+      loadConfigCodigos();
     }
-  }, [session, fetchDocentes, loadKioscoCodigo]);
+  }, [session, fetchDocentes, loadConfigCodigos]);
 
   const refreshAlertasSeguimientos = useCallback(async () => {
     const { data, error } = await fetchReuniones();
@@ -328,7 +336,7 @@ export function GestionesApp() {
     }
 
     setSession(data.session);
-    setAuthMessage("Sesion iniciada correctamente.");
+    setAuthMessage("Sesión iniciada correctamente.");
     setAuthLoading(false);
   };
 
@@ -685,7 +693,7 @@ export function GestionesApp() {
     setSaveMessage("");
     setStep(0);
     setCoordinacionView("nueva");
-    setActiveArea("coordinacion");
+    handleCambiarArea("coordinacion");
   };
 
   const handleGenerarCorreoDesdeFila = (row: EvaluacionRow) => {
@@ -718,7 +726,7 @@ export function GestionesApp() {
   const handleVolverMenu = () => {
     resetWizard();
     setCoordinacionView("resumen");
-    setActiveArea(null);
+    handleCambiarArea(null);
   };
 
   const handleGuardarCodigo = async (nuevoCodigo: string) => {
@@ -734,6 +742,32 @@ export function GestionesApp() {
     setKioscoCodigo(nuevoCodigo);
     setCambiarCodigoOpen(false);
   };
+
+  const handleGuardarCodigoClinica = async (nuevoCodigo: string) => {
+    setSavingCodigoClinica(true);
+    setCodigoClinicaError("");
+    const { id, error } = await guardarClinicaCodigo(kioscoCodigoIdRef.current, nuevoCodigo);
+    setSavingCodigoClinica(false);
+    if (error) {
+      setCodigoClinicaError(error);
+      return;
+    }
+    kioscoCodigoIdRef.current = id;
+    setClinicaCodigo(nuevoCodigo);
+    setCambiarCodigoClinicaOpen(false);
+  };
+
+  /**
+   * Cambiar de area vuelve a bloquear Clinica: si el equipo queda abierto en
+   * el menu principal, nadie puede volver a entrar sin el codigo.
+   */
+  const handleCambiarArea = (area: AreaId | null) => {
+    if (area !== "clinica") setClinicaDesbloqueada(false);
+    setActiveArea(area);
+  };
+
+  const areaActiva = activeArea ? (AREAS.find((item) => item.id === activeArea) ?? null) : null;
+  const AreaActivaIcon = activeArea ? areaIcons[activeArea] : Sparkles;
 
   if (!session) {
     return (
@@ -751,31 +785,64 @@ export function GestionesApp() {
 
   return (
     <>
-      <main className="min-h-screen bg-[#08111f] text-slate-50 print-hidden">
+      <main className="min-h-screen bg-[#060c17] text-slate-50 print-hidden">
         <section className="relative min-h-screen overflow-x-clip">
           <OrbitScene />
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_25%_15%,rgba(74,222,128,0.24),transparent_28%),linear-gradient(135deg,rgba(8,17,31,0.78),rgba(8,17,31,0.96)_58%,rgba(15,23,42,0.9))]" />
+          <div className="absolute inset-0 bg-[radial-gradient(ellipse_75%_45%_at_18%_-5%,rgba(52,211,153,0.20),transparent_62%),radial-gradient(ellipse_55%_45%_at_88%_8%,rgba(56,189,248,0.13),transparent_58%),radial-gradient(ellipse_70%_55%_at_55%_108%,rgba(139,92,246,0.12),transparent_62%),linear-gradient(180deg,rgba(6,12,23,0.82),rgba(6,12,23,0.95)_55%,rgba(9,15,28,0.99))]" />
 
           <div className="relative z-10 mx-auto flex min-h-screen w-full max-w-7xl flex-col gap-6 px-4 py-5 sm:px-6 lg:px-8">
-            <header className="flex flex-col gap-4 border-b border-white/10 pb-5 lg:flex-row lg:items-center lg:justify-between">
-              <div>
-                <div className="mb-2 inline-flex items-center gap-2 rounded-full border border-emerald-300/30 bg-emerald-300/10 px-3 py-1 text-xs font-semibold text-emerald-100">
-                  <Sparkles className="h-3.5 w-3.5" />
-                  GestionesJJ
+            <header className="flex flex-col gap-5 border-b border-white/10 pb-5 lg:flex-row lg:items-end lg:justify-between">
+              <div className="min-w-0">
+                {/* Fila de navegacion: el retorno al menu vive aqui, pequeno y
+                    lejos del area de trabajo, para no salirse por accidente. */}
+                <div className="mb-3 flex flex-wrap items-center gap-2">
+                  {activeArea ? (
+                    <button
+                      className="inline-flex items-center gap-1 rounded-full border border-white/12 bg-white/8 py-1 pl-1.5 pr-2.5 text-xs font-semibold text-slate-300 transition hover:border-emerald-300/50 hover:text-white"
+                      onClick={() => handleCambiarArea(null)}
+                      title="Volver al menu principal"
+                      type="button"
+                    >
+                      <ChevronLeft className="h-3.5 w-3.5" />
+                      Menu
+                    </button>
+                  ) : null}
+                  <span className="inline-flex items-center gap-2 rounded-full border border-emerald-300/30 bg-emerald-300/10 px-3 py-1 text-xs font-semibold text-emerald-100">
+                    <Sparkles className="h-3.5 w-3.5" />
+                    GestionesJJ
+                  </span>
+                  {areaActiva ? (
+                    <span className="inline-flex items-center gap-1 text-xs font-semibold text-slate-500">
+                      <ChevronRight className="h-3.5 w-3.5" />
+                      {areaActiva.nombre}
+                    </span>
+                  ) : null}
                 </div>
-                <h1 className="max-w-3xl text-3xl font-semibold tracking-normal text-white sm:text-5xl">
-                  Centro personal de gestion y mejora continua
-                </h1>
+
+                {areaActiva ? (
+                  <h1 className="flex items-center gap-3 text-2xl font-semibold text-white sm:text-3xl">
+                    <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-white/10 bg-white/8">
+                      <AreaActivaIcon className="h-5 w-5 text-emerald-200" />
+                    </span>
+                    <span className="truncate">{areaActiva.nombre}</span>
+                  </h1>
+                ) : (
+                  <h1 className="max-w-3xl text-4xl font-semibold text-white sm:text-6xl">
+                    Centro personal de{" "}
+                    <span className="bg-gradient-to-br from-emerald-200 via-emerald-100 to-sky-200 bg-clip-text text-transparent">
+                      gestión y mejora continua
+                    </span>
+                  </h1>
+                )}
               </div>
 
-              <div className="w-full max-w-md border border-white/12 bg-white/8 p-4 shadow-2xl shadow-black/20 backdrop-blur-xl">
-                <div className="mb-3 flex items-center justify-between gap-2 text-sm font-semibold text-slate-100">
-                  <span className="flex items-center gap-2">
-                    <LockKeyhole className="h-4 w-4 text-amber-200" />
-                    Acceso privado
-                  </span>
+              {activeArea ? (
+                /* Dentro de un area el encabezado se reduce para dejarle la
+                   pantalla al trabajo: solo identidad y salida. */
+                <div className="flex shrink-0 items-center gap-3 rounded-full border border-white/12 bg-white/8 py-1.5 pl-4 pr-1.5 backdrop-blur-xl">
+                  <span className="text-xs font-semibold text-emerald-200">M.A. Juan J. Reyes</span>
                   <button
-                    className="inline-flex items-center gap-1 text-xs font-semibold text-slate-300 hover:text-white"
+                    className="inline-flex items-center gap-1 rounded-full border border-white/10 bg-white/8 px-3 py-1 text-xs font-semibold text-slate-300 transition hover:border-white/30 hover:text-white"
                     onClick={handleLogout}
                     type="button"
                   >
@@ -783,47 +850,67 @@ export function GestionesApp() {
                     Salir
                   </button>
                 </div>
+              ) : (
+                <div className="w-full max-w-md border border-white/12 bg-white/8 p-4 backdrop-blur-xl">
+                  <div className="mb-3 flex items-center justify-between gap-2 text-sm font-semibold text-slate-100">
+                    <span className="flex items-center gap-2">
+                      <LockKeyhole className="h-4 w-4 text-amber-200" />
+                      Acceso privado
+                    </span>
+                    <button
+                      className="inline-flex items-center gap-1 text-xs font-semibold text-slate-300 hover:text-white"
+                      onClick={handleLogout}
+                      type="button"
+                    >
+                      <LogOut className="h-3.5 w-3.5" />
+                      Salir
+                    </button>
+                  </div>
 
-                <p className="text-sm text-emerald-200">M.A. Juan J. Reyes</p>
-                <button
-                  className="mt-2 inline-flex items-center gap-2 text-xs font-semibold text-slate-300 hover:text-white"
-                  onClick={() => setCambiarCodigoOpen(true)}
-                  type="button"
-                >
-                  <KeyRound className="h-3.5 w-3.5" />
-                  Cambiar codigo de modo kiosco
-                </button>
-                <button
-                  className="mt-1.5 inline-flex items-center gap-2 text-xs font-semibold text-slate-300 hover:text-white disabled:opacity-60"
-                  disabled={respaldoDescargando}
-                  onClick={handleDescargarRespaldo}
-                  type="button"
-                >
-                  <Download className="h-3.5 w-3.5" />
-                  {respaldoDescargando ? "Generando respaldo..." : "Descargar respaldo de datos"}
-                </button>
-                {respaldoMensaje ? <p className="mt-1 text-xs text-slate-400">{respaldoMensaje}</p> : null}
-              </div>
+                  <p className="text-sm text-emerald-200">M.A. Juan J. Reyes</p>
+                  <button
+                    className="mt-2 inline-flex items-center gap-2 text-xs font-semibold text-slate-300 hover:text-white"
+                    onClick={() => setCambiarCodigoClinicaOpen(true)}
+                    type="button"
+                  >
+                    <ShieldCheck className="h-3.5 w-3.5" />
+                    {clinicaCodigo ? "Cambiar código de Clínica" : "Activar código de Clínica"}
+                  </button>
+                  <button
+                    className="mt-1.5 inline-flex items-center gap-2 text-xs font-semibold text-slate-300 hover:text-white"
+                    onClick={() => setCambiarCodigoOpen(true)}
+                    type="button"
+                  >
+                    <KeyRound className="h-3.5 w-3.5" />
+                    Cambiar codigo de modo kiosco
+                  </button>
+                  <button
+                    className="mt-1.5 inline-flex items-center gap-2 text-xs font-semibold text-slate-300 hover:text-white disabled:opacity-60"
+                    disabled={respaldoDescargando}
+                    onClick={handleDescargarRespaldo}
+                    type="button"
+                  >
+                    <Download className="h-3.5 w-3.5" />
+                    {respaldoDescargando ? "Generando respaldo..." : "Descargar respaldo de datos"}
+                  </button>
+                  {respaldoMensaje ? <p className="mt-1 text-xs text-slate-400">{respaldoMensaje}</p> : null}
+                </div>
+              )}
             </header>
 
             <div className="flex-1">
               {activeArea === null ? (
-                <AreaMenu onSelect={setActiveArea} />
+                <AreaMenu onSelect={handleCambiarArea} />
               ) : (
                 <div className="grid gap-5">
-                  <button
-                    className="inline-flex w-fit items-center gap-2 border border-white/10 bg-white/8 px-4 py-2 text-sm font-semibold text-slate-200 transition hover:border-white/30"
-                    onClick={() => setActiveArea(null)}
-                    type="button"
-                  >
-                    <ChevronLeft className="h-4 w-4" />
-                    Volver al menu principal
-                  </button>
-
                   {activeArea === "clinica" ? (
-                    <div className="border border-white/10 bg-slate-950/58 p-4 backdrop-blur-xl sm:p-5">
-                      <ClinicaView />
-                    </div>
+                    clinicaDesbloqueada ? (
+                      <div className="border border-white/10 bg-slate-950/58 p-4 backdrop-blur-xl sm:p-5">
+                        <ClinicaView />
+                      </div>
+                    ) : (
+                      <ClinicaLock codigo={clinicaCodigo} onUnlock={() => setClinicaDesbloqueada(true)} />
+                    )
                   ) : activeArea === "cursos" ? (
                     <div className="border border-white/10 bg-slate-950/58 p-4 backdrop-blur-xl sm:p-5">
                       <CursosView />
@@ -1020,6 +1107,19 @@ export function GestionesApp() {
         open={cambiarCodigoOpen}
         saving={savingCodigo}
       />
+
+      <CodigoKioscoModal
+        descripcion="Este codigo se pedira cada vez que entres al area de Clinica, ademas de tu contrasena. Protege los expedientes si el equipo queda con la sesion abierta."
+        error={codigoClinicaError}
+        onClose={() => {
+          setCambiarCodigoClinicaOpen(false);
+          setCodigoClinicaError("");
+        }}
+        onGuardar={handleGuardarCodigoClinica}
+        open={cambiarCodigoClinicaOpen}
+        saving={savingCodigoClinica}
+        titulo="Codigo de acceso a Clinica"
+      />
     </>
   );
 }
@@ -1034,10 +1134,10 @@ function LoginGate(props: {
   setPassword: (value: string) => void;
 }) {
   return (
-    <main className="min-h-screen bg-[#08111f] text-slate-50">
+    <main className="min-h-screen bg-[#060c17] text-slate-50">
       <section className="relative flex min-h-screen items-center justify-center overflow-x-hidden">
         <OrbitScene />
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_25%_15%,rgba(74,222,128,0.24),transparent_28%),linear-gradient(135deg,rgba(8,17,31,0.78),rgba(8,17,31,0.96)_58%,rgba(15,23,42,0.9))]" />
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_75%_45%_at_18%_-5%,rgba(52,211,153,0.20),transparent_62%),radial-gradient(ellipse_55%_45%_at_88%_8%,rgba(56,189,248,0.13),transparent_58%),radial-gradient(ellipse_70%_55%_at_55%_108%,rgba(139,92,246,0.12),transparent_62%),linear-gradient(180deg,rgba(6,12,23,0.82),rgba(6,12,23,0.95)_55%,rgba(9,15,28,0.99))]" />
 
         <div className="relative z-10 w-full max-w-md border border-white/12 bg-white/8 p-6 shadow-2xl shadow-black/20 backdrop-blur-xl sm:p-8">
           <div className="mb-2 inline-flex items-center gap-2 rounded-full border border-emerald-300/30 bg-emerald-300/10 px-3 py-1 text-xs font-semibold text-emerald-100">
@@ -1046,21 +1146,21 @@ function LoginGate(props: {
           </div>
           <h1 className="mt-3 text-2xl font-semibold text-white">Acceso privado</h1>
           <p className="mt-2 text-sm leading-6 text-slate-300">
-            Centro personal de gestion. Ingresa con tu correo y contrasena autorizados para continuar.
+            Centro personal de gestión. Ingresa con tu correo y contraseña autorizados para continuar.
           </p>
 
           <div className="mt-6 grid gap-3">
-            <Field label="Correo electronico">
+            <Field label="Correo electrónico">
               <input
-                aria-label="Correo electronico"
+                aria-label="Correo electrónico"
                 className="field"
                 value={props.email}
                 onChange={(event) => props.setEmail(event.target.value)}
               />
             </Field>
-            <Field label="Contrasena">
+            <Field label="Contraseña">
               <input
-                aria-label="Contrasena"
+                aria-label="Contraseña"
                 className="field"
                 type="password"
                 value={props.password}
@@ -1068,7 +1168,7 @@ function LoginGate(props: {
                 onKeyDown={(event) => {
                   if (event.key === "Enter") props.onLogin();
                 }}
-                placeholder="Contrasena"
+                placeholder="Contraseña"
               />
             </Field>
             <button
@@ -1091,25 +1191,56 @@ function LoginGate(props: {
   );
 }
 
+/** Cada area tiene su propio acento para reconocerla de un vistazo. */
+const areaAcentos: Record<AreaId, { icono: string; borde: string; resplandor: string }> = {
+  iglesia: { icono: "text-violet-200", borde: "border-violet-300/20", resplandor: "bg-violet-300/12" },
+  clinica: { icono: "text-rose-200", borde: "border-rose-300/20", resplandor: "bg-rose-300/12" },
+  coordinacion: { icono: "text-emerald-200", borde: "border-emerald-300/20", resplandor: "bg-emerald-300/12" },
+  cursos: { icono: "text-sky-200", borde: "border-sky-300/20", resplandor: "bg-sky-300/12" },
+  caeduc: { icono: "text-amber-200", borde: "border-amber-300/20", resplandor: "bg-amber-300/12" },
+  recursos: { icono: "text-cyan-200", borde: "border-cyan-300/20", resplandor: "bg-cyan-300/12" },
+};
+
 function AreaMenu({ onSelect }: { onSelect: (area: AreaId) => void }) {
   return (
     <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-      {AREAS.map((area) => {
+      {AREAS.map((area, indice) => {
         const Icon = areaIcons[area.id];
+        const acento = areaAcentos[area.id];
         return (
           <button
             key={area.id}
-            className="group flex flex-col items-start gap-4 border border-white/10 bg-white/8 p-6 text-left backdrop-blur-xl transition hover:border-emerald-300/50 hover:bg-white/12"
+            className="rise group relative flex flex-col items-start gap-5 overflow-hidden border border-white/10 bg-white/8 p-6 text-left backdrop-blur-xl transition hover:border-white/25 hover:bg-white/12"
             onClick={() => onSelect(area.id)}
+            style={{ "--i": indice } as React.CSSProperties}
             type="button"
           >
-            <span className="flex h-12 w-12 items-center justify-center bg-white/10 transition group-hover:bg-emerald-300/20">
-              <Icon className="h-6 w-6 text-emerald-200" />
+            {/* Halo del acento: aparece solo al enfocar la tarjeta. */}
+            <span
+              aria-hidden
+              className={`pointer-events-none absolute -right-16 -top-16 h-40 w-40 rounded-full ${acento.resplandor} opacity-0 blur-2xl transition-opacity duration-500 group-hover:opacity-100`}
+            />
+
+            <span
+              className={`relative flex h-12 w-12 items-center justify-center rounded-2xl border ${acento.borde} ${acento.resplandor} transition duration-300 group-hover:scale-105`}
+            >
+              <Icon className={`h-6 w-6 ${acento.icono}`} />
             </span>
-            <span>
-              <span className="block text-lg font-semibold text-white">{area.nombre}</span>
-              <span className="mt-1 block text-sm leading-6 text-slate-400">{area.descripcion}</span>
+
+            <span className="relative">
+              <span className="flex items-center gap-1.5 text-lg font-semibold text-white">
+                {area.nombre}
+                <ChevronRight className="h-4 w-4 -translate-x-1 text-slate-500 opacity-0 transition duration-300 group-hover:translate-x-0 group-hover:opacity-100" />
+              </span>
+              <span className="mt-1.5 block text-sm leading-6 text-slate-400">{area.descripcion}</span>
             </span>
+
+            {area.id === "clinica" ? (
+              <span className="relative inline-flex items-center gap-1 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+                <ShieldCheck className="h-3 w-3" />
+                Protegida con código
+              </span>
+            ) : null}
           </button>
         );
       })}
