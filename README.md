@@ -60,6 +60,32 @@ Mide, año contra año, por que los estudiantes de primer ingreso eligieron la u
 
 La migracion de este modulo esta en `supabase/migrations/013_gestionesjj_encuestas_estudiantiles.sql`. El flujo publico (consultar campaña, responder) pasa por RPCs `SECURITY DEFINER`, igual que el resto de flujos publicos de la app; no requiere `SUPABASE_SECRET_KEY`.
 
+## Area Iglesia
+
+El area funciona como una rejilla de "botones": cada recurso es independiente y se van sumando sin tocar los anteriores. Hoy tiene dos.
+
+### Gestion de pendientes (tareas y proyectos)
+
+Un gestor de tareas propio inspirado en Monday, reducido a lo que se usa de verdad y con la estetica del resto de la app (fondo oscuro, esquinas rectas) pero conservando el lenguaje visual de Monday: franjas de color por grupo y pastillas de color por estado.
+
+- **Tableros → grupos → pendientes → subtareas**: cada tablero es un frente de trabajo (un ministerio, un proyecto, el mes en curso); los grupos son las franjas de colores dentro del tablero. Al crear un tablero vienen tres grupos listos ("Esta semana", "Proximamente", "En espera").
+- **Columnas editables en el sitio**: titulo, responsable (avatar con iniciales y autocompletado de los nombres ya usados), estado (Sin empezar / Trabajando en ello / Atorado / En revision / Listo), prioridad (Critica a Baja), fecha de inicio y fecha limite (en rojo si vencio, ambar si vence hoy o manana) y etiquetas libres.
+- **Cuatro vistas de los mismos datos**: **Tabla** (con arrastrar y soltar para reordenar y mover entre grupos), **Kanban** (arrastrar una tarjeta a otra columna cambia su estado), **Calendario** (arrastrar a otro dia reprograma la fecha limite) y **Cronograma** (barras de inicio a limite, con el dia de hoy marcado).
+- **Busqueda, filtros y orden**: por texto, estado, prioridad, responsable, ocultar los que ya estan listos; orden manual (arrastrando) o automatico por fecha, prioridad, estado o alfabetico.
+- **Acciones en lote**: seleccionar varias filas para marcarlas listas, cambiarles el estado, moverlas de grupo o eliminarlas.
+- **Panel del pendiente**: detalle completo, subtareas con su contador (2/5) e hilo de **actualizaciones** (la bitacora de lo que se fue haciendo).
+- **Exportar a Word**: el tablero completo, agrupado, con estado, responsable, prioridad y fechas.
+
+### Bodas, cumpleanos y eventos
+
+- **Doce tipos de evento** con su propio documento y sus roles: boda religiosa, matrimonio civil, aniversario de bodas, cumpleanos, quince anos, bautizo, presentacion de ninos, dedicacion, funeral, culto de accion de gracias, graduacion y otro.
+- **Participantes por rol** (novio, novia, contrayente, festejado, bautizado, padres, padrinos, testigos, oficiante...) con documento y telefono; el titulo se sugiere solo ("Boda de Ana y Luis").
+- **Ficha completa**: fecha, hora, lugar, direccion, oficiante, estado (planificado / confirmado / realizado / cancelado), contacto, asistentes estimados, programa u orden del culto y notas internas.
+- **Descarga en Word (.docx real)**: constancia o programa con el encabezado de la iglesia, los datos generales, la tabla de participantes, el programa y las lineas de firma de quienes corresponde segun el tipo de evento. El nombre de la iglesia se configura desde el boton "Encabezado" y se guarda en el dispositivo.
+- **Generar pendientes**: vuelca los preparativos tipicos del tipo de evento (consejeria prematrimonial, reservar el templo, ensayo...) como pendientes reales en el tablero que elijas, enlazados al evento.
+
+Las migraciones de esta area son `supabase/migrations/014_gestionesjj_iglesia.sql` (tablas, RLS y disparadores) y `015_gestionesjj_iglesia_indices_fk.sql` (dos indices de llave foranea). Siguen el mismo patron de seguridad del resto (RLS owner-lock, sin acceso anonimo) e incluyen disparadores que sellan la fecha de completado al pasar un pendiente a "Listo", impiden subtareas de subtareas y hacen que las subtareas sigan a su pendiente cuando cambia de grupo. Ambas ya estan aplicadas en el proyecto de Supabase.
+
 ## Modulo Recursos
 
 Herramientas interactivas propias, estilo Mentimeter/Kahoot pero en tu propio entorno cerrado:
@@ -84,7 +110,7 @@ Las migraciones de este modulo estan en `supabase/migrations/009_gestionesjj_rec
 
 ## Rendimiento
 
-Las librerias pesadas (`jspdf` para exportar PDFs, `exceljs` para Excel, y `three`/`@react-three` del fondo 3D) se cargan solo cuando realmente se usan (import dinamico / `next/dynamic` con `ssr: false`) en vez de ir en el paquete inicial de la app — confirmado revisando que no aparecen en el manifiesto de carga inmediata del build de produccion.
+Las librerias pesadas (`jspdf` para exportar PDFs, `exceljs` para Excel, `docx` para los documentos Word del area Iglesia, y `three`/`@react-three` del fondo 3D) se cargan solo cuando realmente se usan (import dinamico / `next/dynamic` con `ssr: false`) en vez de ir en el paquete inicial de la app — confirmado revisando que no aparecen en el manifiesto de carga inmediata del build de produccion.
 
 ## Supabase
 

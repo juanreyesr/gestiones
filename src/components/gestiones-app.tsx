@@ -74,6 +74,7 @@ import { CursosView } from "./cursos/cursos-view";
 import { EmailDraftModal } from "./email-draft-modal";
 import { EncuestasView } from "./encuestas/encuestas-view";
 import { EntrevistaKiosk } from "./entrevista-kiosk";
+import { IglesiaView } from "./iglesia/iglesia-view";
 import { InformeDocenteView } from "./informe-docente-view";
 import { PresentacionView } from "./presentacion-view";
 import { RecursosView } from "./recursos/recursos-view";
@@ -911,6 +912,10 @@ export function GestionesApp() {
                     ) : (
                       <ClinicaLock codigo={clinicaCodigo} onUnlock={() => setClinicaDesbloqueada(true)} />
                     )
+                  ) : activeArea === "iglesia" ? (
+                    <div className="border border-white/10 bg-slate-950/58 p-4 backdrop-blur-xl sm:p-5">
+                      <IglesiaView />
+                    </div>
                   ) : activeArea === "cursos" ? (
                     <div className="border border-white/10 bg-slate-950/58 p-4 backdrop-blur-xl sm:p-5">
                       <CursosView />
