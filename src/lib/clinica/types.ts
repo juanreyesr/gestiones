@@ -9,6 +9,19 @@ export type CitaModalidad = "presencial" | "virtual";
 export type SolicitudEstado = "pendiente" | "aprobada" | "rechazada" | "expirada";
 export type GcalSyncStatus = "sincronizada" | "pendiente" | "error" | "no_configurado";
 
+export type HijoInfo = { nombre: string; edad: string };
+
+export const CONVIVE_OPCIONES = [
+  "Pareja",
+  "Padres",
+  "Hijos",
+  "Hermanos",
+  "Abuelos",
+  "Tíos",
+  "Amigos",
+  "Otros",
+] as const;
+
 export type PacienteRow = {
   id: string;
   nombre: string;
@@ -30,6 +43,12 @@ export type PacienteRow = {
   medicacionActual: string | null;
   referidoPor: string | null;
   notasGenerales: string | null;
+  tieneHijos: boolean | null;
+  hijos: HijoInfo[];
+  viveSolo: boolean | null;
+  conviveCon: string[];
+  conviveOtros: string | null;
+  horarioTrabajo: string | null;
   estado: PacienteEstado;
   createdAt: string;
   datosToken: string | null;
@@ -57,6 +76,12 @@ export type PacientePayload = {
   medicacion_actual?: string | null;
   referido_por?: string | null;
   notas_generales?: string | null;
+  tiene_hijos?: boolean | null;
+  hijos?: HijoInfo[];
+  vive_solo?: boolean | null;
+  convive_con?: string[];
+  convive_otros?: string | null;
+  horario_trabajo?: string | null;
   estado?: PacienteEstado;
 };
 

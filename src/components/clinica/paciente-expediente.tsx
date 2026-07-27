@@ -408,12 +408,57 @@ export function PacienteExpediente({
             )}
           </SectionCard>
 
+          <SectionCard title="Situación familiar y laboral">
+            <div className="grid gap-3">
+              <DatoFicha label="¿En qué trabaja?" value={paciente.ocupacion} />
+              <DatoFicha label="Horario de trabajo" value={paciente.horarioTrabajo} />
+              <DatoFicha
+                label="¿Tiene hijos?"
+                value={paciente.tieneHijos === true ? "Sí" : paciente.tieneHijos === false ? "No" : null}
+              />
+              {paciente.tieneHijos && paciente.hijos.length > 0 ? (
+                <div>
+                  <div className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Hijos</div>
+                  <ul className="mt-0.5 grid gap-0.5 text-sm leading-6 text-slate-200">
+                    {paciente.hijos.map((h, i) => (
+                      <li key={i}>
+                        {h.nombre || `Hijo ${i + 1}`}
+                        {h.edad ? ` · ${h.edad} años` : ""}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ) : null}
+              <DatoFicha
+                label="¿Vive solo/a?"
+                value={paciente.viveSolo === true ? "Sí" : paciente.viveSolo === false ? "No" : null}
+              />
+              {paciente.viveSolo === false ? (
+                <DatoFicha
+                  label="Vive con"
+                  value={
+                    [
+                      ...paciente.conviveCon.filter((o) => o !== "Otros"),
+                      ...(paciente.conviveOtros
+                        ? [paciente.conviveOtros]
+                        : paciente.conviveCon.includes("Otros")
+                          ? ["Otros"]
+                          : []),
+                    ].join(", ") || null
+                  }
+                />
+              ) : null}
+              {paciente.tieneHijos === null && paciente.viveSolo === null && !paciente.ocupacion ? (
+                <p className="text-sm text-slate-400">El paciente aún no ha completado esta información.</p>
+              ) : null}
+            </div>
+          </SectionCard>
+
           <SectionCard title="Ficha clínica">
             <div className="grid gap-3">
               <DatoFicha label="Motivo de consulta" value={paciente.motivoConsulta} />
               <DatoFicha label="Antecedentes psicológicos" value={paciente.antecedentesPsicologicos} />
               <DatoFicha label="Medicación actual" value={paciente.medicacionActual} />
-              <DatoFicha label="Ocupación" value={paciente.ocupacion} />
               <DatoFicha label="Estado civil" value={paciente.estadoCivil} />
               <DatoFicha
                 label="Contacto de emergencia"

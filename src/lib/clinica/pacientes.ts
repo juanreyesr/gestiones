@@ -1,5 +1,5 @@
 import { getSupabaseClient } from "@/lib/supabase";
-import type { PacienteEstado, PacientePayload, PacienteRow } from "./types";
+import type { HijoInfo, PacienteEstado, PacientePayload, PacienteRow } from "./types";
 
 type RawPaciente = {
   id: string;
@@ -22,6 +22,12 @@ type RawPaciente = {
   medicacion_actual: string | null;
   referido_por: string | null;
   notas_generales: string | null;
+  tiene_hijos: boolean | null;
+  hijos: HijoInfo[] | null;
+  vive_solo: boolean | null;
+  convive_con: string[] | null;
+  convive_otros: string | null;
+  horario_trabajo: string | null;
   estado: PacienteEstado;
   created_at: string;
   datos_token: string | null;
@@ -30,7 +36,7 @@ type RawPaciente = {
 };
 
 const PACIENTE_COLUMNS =
-  "id,nombre,telefono,email,fecha_nacimiento,genero,ocupacion,escolaridad,estado_civil,direccion,emergencia_nombre,emergencia_telefono,emergencia_relacion,motivo_consulta,antecedentes_medicos,antecedentes_psicologicos,antecedentes_familiares,medicacion_actual,referido_por,notas_generales,estado,created_at,datos_token,datos_completados_at,consentimiento_aceptado_at";
+  "id,nombre,telefono,email,fecha_nacimiento,genero,ocupacion,escolaridad,estado_civil,direccion,emergencia_nombre,emergencia_telefono,emergencia_relacion,motivo_consulta,antecedentes_medicos,antecedentes_psicologicos,antecedentes_familiares,medicacion_actual,referido_por,notas_generales,tiene_hijos,hijos,vive_solo,convive_con,convive_otros,horario_trabajo,estado,created_at,datos_token,datos_completados_at,consentimiento_aceptado_at";
 
 function mapPaciente(row: RawPaciente): PacienteRow {
   return {
@@ -54,6 +60,12 @@ function mapPaciente(row: RawPaciente): PacienteRow {
     medicacionActual: row.medicacion_actual,
     referidoPor: row.referido_por,
     notasGenerales: row.notas_generales,
+    tieneHijos: row.tiene_hijos,
+    hijos: Array.isArray(row.hijos) ? row.hijos : [],
+    viveSolo: row.vive_solo,
+    conviveCon: Array.isArray(row.convive_con) ? row.convive_con : [],
+    conviveOtros: row.convive_otros,
+    horarioTrabajo: row.horario_trabajo,
     estado: row.estado,
     createdAt: row.created_at,
     datosToken: row.datos_token,

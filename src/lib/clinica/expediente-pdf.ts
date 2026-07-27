@@ -87,6 +87,32 @@ export async function exportarExpedientePdf(paciente: PacienteRow, sesiones: Ses
       ? `${paciente.emergenciaNombre}${paciente.emergenciaTelefono ? ` · ${paciente.emergenciaTelefono}` : ""}${paciente.emergenciaRelacion ? ` (${paciente.emergenciaRelacion})` : ""}`
       : null
   );
+  field("Horario de trabajo", paciente.horarioTrabajo);
+  field(
+    "Hijos",
+    paciente.tieneHijos === true
+      ? paciente.hijos.length > 0
+        ? paciente.hijos.map((h) => `${h.nombre || "—"}${h.edad ? ` (${h.edad})` : ""}`).join(", ")
+        : "Sí"
+      : paciente.tieneHijos === false
+        ? "No"
+        : null
+  );
+  field(
+    "Convivencia",
+    paciente.viveSolo === true
+      ? "Vive solo/a"
+      : paciente.viveSolo === false
+        ? [
+            ...paciente.conviveCon.filter((o) => o !== "Otros"),
+            ...(paciente.conviveOtros
+              ? [paciente.conviveOtros]
+              : paciente.conviveCon.includes("Otros")
+                ? ["Otros"]
+                : []),
+          ].join(", ") || null
+        : null
+  );
 
   if (
     paciente.motivoConsulta ||

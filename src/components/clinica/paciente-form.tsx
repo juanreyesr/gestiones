@@ -5,6 +5,7 @@ import { useMemo, useState } from "react";
 import { upsertPaciente } from "@/lib/clinica/pacientes";
 import type { PacienteEstado, PacientePayload, PacienteRow } from "@/lib/clinica/types";
 import { PACIENTE_ESTADOS } from "@/lib/clinica/types";
+import { SituacionFields, type SituacionValue } from "./situacion-fields";
 import { BTN_PRIMARY, Field } from "./ui";
 
 type FormState = {
@@ -13,7 +14,6 @@ type FormState = {
   email: string;
   fechaNacimiento: string;
   genero: string;
-  ocupacion: string;
   escolaridad: string;
   estadoCivil: string;
   direccion: string;
@@ -37,7 +37,6 @@ function toFormState(paciente: PacienteRow | null): FormState {
     email: paciente?.email ?? "",
     fechaNacimiento: paciente?.fechaNacimiento ?? "",
     genero: paciente?.genero ?? "",
-    ocupacion: paciente?.ocupacion ?? "",
     escolaridad: paciente?.escolaridad ?? "",
     estadoCivil: paciente?.estadoCivil ?? "",
     direccion: paciente?.direccion ?? "",
@@ -55,7 +54,19 @@ function toFormState(paciente: PacienteRow | null): FormState {
   };
 }
 
-function toPayload(form: FormState): PacientePayload {
+function toSituacion(paciente: PacienteRow | null): SituacionValue {
+  return {
+    tieneHijos: paciente?.tieneHijos ?? null,
+    hijos: paciente?.hijos ?? [],
+    viveSolo: paciente?.viveSolo ?? null,
+    conviveCon: paciente?.conviveCon ?? [],
+    conviveOtros: paciente?.conviveOtros ?? "",
+    ocupacion: paciente?.ocupacion ?? "",
+    horarioTrabajo: paciente?.horarioTrabajo ?? "",
+  };
+}
+
+function toPayload(form: FormState, situacion: SituacionValue): PacientePayload {
   const opt = (value: string) => (value.trim() === "" ? null : value.trim());
   return {
     nombre: form.nombre.trim(),
@@ -63,7 +74,7 @@ function toPayload(form: FormState): PacientePayload {
     email: opt(form.email),
     fecha_nacimiento: opt(form.fechaNacimiento),
     genero: opt(form.genero),
-    ocupacion: opt(form.ocupacion),
+    ocupacion: opt(situacion.ocupacion),
     escolaridad: opt(form.escolaridad),
     estado_civil: opt(form.estadoCivil),
     direccion: opt(form.direccion),
@@ -77,6 +88,16 @@ function toPayload(form: FormState): PacientePayload {
     medicacion_actual: opt(form.medicacionActual),
     referido_por: opt(form.referidoPor),
     notas_generales: opt(form.notasGenerales),
+    tiene_hijos: situacion.tieneHijos,
+    hijos: situacion.tieneHijos
+      ? situacion.hijos
+          .map((h) => ({ nombre: h.nombre.trim(), edad: h.edad.trim() }))
+          .filter((h) => h.nombre !== "" || h.edad !== "")
+      : [],
+    vive_solo: situacion.viveSolo,
+    convive_con: situacion.viveSolo === false ? situacion.conviveCon : [],
+    convive_otros: situacion.viveSolo === false ? opt(situacion.conviveOtros) : null,
+    horario_trabajo: opt(situacion.horarioTrabajo),
     estado: form.estado,
   };
 }
@@ -115,10 +136,12 @@ export function PacienteForm({
   paciente: PacienteRow | null;
 }) {
   const [form, setForm] = useState<FormState>(() => toFormState(paciente));
+  const [situacion, setSituacion] = useState<SituacionValue>(() => toSituacion(paciente));
   const [openSections, setOpenSections] = useState<Record<string, boolean>>({
     personales: true,
     contacto: !!paciente,
     emergencia: false,
+    situacion: !!paciente,
     clinica: !!paciente,
     notas: false,
   });
@@ -126,12 +149,20 @@ export function PacienteForm({
   const [error, setError] = useState("");
   const [savedAt, setSavedAt] = useState<string | null>(null);
 
-  const original = useMemo(() => toFormState(paciente), [paciente]);
-  const dirty = useMemo(() => JSON.stringify(form) !== JSON.stringify(original), [form, original]);
+  const original = useMemo(
+    () => JSON.stringify({ form: toFormState(paciente), situacion: toSituacion(paciente) }),
+    [paciente]
+  );
+  const dirty = useMemo(() => JSON.stringify({ form, situacion }) !== original, [form, situacion, original]);
   const canSave = form.nombre.trim().length > 0 && form.telefono.trim().length > 0;
 
   const set = (key: keyof FormState) => (value: string) => {
     setForm((prev) => ({ ...prev, [key]: value }));
+    setSavedAt(null);
+  };
+
+  const setSituacionValue = (value: SituacionValue) => {
+    setSituacion(value);
     setSavedAt(null);
   };
 
@@ -141,7 +172,7 @@ export function PacienteForm({
     if (!canSave || saving) return;
     setSaving(true);
     setError("");
-    const { id, error: saveError } = await upsertPaciente(paciente?.id ?? null, toPayload(form));
+    const { id, error: saveError } = await upsertPaciente(paciente?.id ?? null, toPayload(form, situacion));
     setSaving(false);
     if (saveError || !id) {
       setError(saveError ?? "No se pudo guardar el paciente.");
@@ -196,7 +227,6 @@ export function PacienteForm({
               <option value="Otro">Otro</option>
             </select>
           </Field>
-          <Field label="Ocupación">{input("ocupacion")}</Field>
           <Field label="Escolaridad">{input("escolaridad")}</Field>
           <Field label="Estado civil">
             <select className="field" onChange={(event) => set("estadoCivil")(event.target.value)} value={form.estadoCivil}>
@@ -238,6 +268,10 @@ export function PacienteForm({
           <Field label="Teléfono">{input("emergenciaTelefono")}</Field>
           <Field label="Relación / parentesco">{input("emergenciaRelacion")}</Field>
         </div>
+      </Section>
+
+      <Section onToggle={() => toggle("situacion")} open={openSections.situacion} title="Situación familiar y laboral">
+        <SituacionFields onChange={setSituacionValue} value={situacion} />
       </Section>
 
       <Section onToggle={() => toggle("clinica")} open={openSections.clinica} title="Información clínica">
