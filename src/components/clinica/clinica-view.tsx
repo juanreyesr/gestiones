@@ -127,6 +127,7 @@ export function ClinicaView() {
         pacientesScreen.view === "lista" ? (
           <PacientesList
             loading={loadingPacientes}
+            onChanged={() => void cargarPacientes()}
             onNuevo={() => setPacientesScreen({ view: "nuevo" })}
             onOpen={(paciente) => setPacientesScreen({ view: "expediente", pacienteId: paciente.id })}
             pacientes={pacientes}
