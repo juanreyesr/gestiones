@@ -2,6 +2,8 @@
 
 import { CheckCircle2, ClipboardList, HeartPulse, Save } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
+import { SituacionFields, type SituacionValue } from "@/components/clinica/situacion-fields";
+import type { HijoInfo } from "@/lib/clinica/types";
 
 type Estado = "cargando" | "ok" | "completado" | "invalido" | "enviado";
 
@@ -11,18 +13,12 @@ type FormState = {
   email: string;
   fechaNacimiento: string;
   genero: string;
-  ocupacion: string;
   escolaridad: string;
   estadoCivil: string;
   direccion: string;
   emergenciaNombre: string;
   emergenciaTelefono: string;
   emergenciaRelacion: string;
-  motivoConsulta: string;
-  antecedentesMedicos: string;
-  antecedentesPsicologicos: string;
-  antecedentesFamiliares: string;
-  medicacionActual: string;
   referidoPor: string;
 };
 
@@ -32,19 +28,34 @@ const VACIO: FormState = {
   email: "",
   fechaNacimiento: "",
   genero: "",
-  ocupacion: "",
   escolaridad: "",
   estadoCivil: "",
   direccion: "",
   emergenciaNombre: "",
   emergenciaTelefono: "",
   emergenciaRelacion: "",
-  motivoConsulta: "",
-  antecedentesMedicos: "",
-  antecedentesPsicologicos: "",
-  antecedentesFamiliares: "",
-  medicacionActual: "",
   referidoPor: "",
+};
+
+const SITUACION_VACIA: SituacionValue = {
+  tieneHijos: null,
+  hijos: [],
+  viveSolo: null,
+  conviveCon: [],
+  conviveOtros: "",
+  ocupacion: "",
+  horarioTrabajo: "",
+};
+
+type DatosRespuesta = Partial<FormState> & {
+  estado?: string;
+  ocupacion?: string | null;
+  tieneHijos?: boolean | null;
+  hijos?: HijoInfo[] | null;
+  viveSolo?: boolean | null;
+  conviveCon?: string[] | null;
+  conviveOtros?: string | null;
+  horarioTrabajo?: string | null;
 };
 
 function Campo({
@@ -66,25 +77,17 @@ function Campo({
   );
 }
 
-function Area({ label, onChange, value }: { label: string; onChange: (v: string) => void; value: string }) {
-  return (
-    <label className="grid gap-1.5">
-      <span className="text-xs font-semibold uppercase text-slate-400">{label}</span>
-      <textarea className="field resize-y" onChange={(e) => onChange(e.target.value)} rows={2} value={value} />
-    </label>
-  );
-}
-
 export function DatosPacientePage({ token }: { token: string }) {
   const [estado, setEstado] = useState<Estado>("cargando");
   const [form, setForm] = useState<FormState>(VACIO);
+  const [situacion, setSituacion] = useState<SituacionValue>(SITUACION_VACIA);
   const [guardando, setGuardando] = useState(false);
   const [error, setError] = useState("");
 
   const cargar = useCallback(async () => {
     try {
       const res = await fetch(`/api/datos/${token}`);
-      const data = (await res.json()) as Partial<FormState> & { estado?: string };
+      const data = (await res.json()) as DatosRespuesta;
       if (data.estado === "completado") {
         setEstado("completado");
         return;
@@ -99,19 +102,22 @@ export function DatosPacientePage({ token }: { token: string }) {
         email: data.email ?? "",
         fechaNacimiento: data.fechaNacimiento ?? "",
         genero: data.genero ?? "",
-        ocupacion: data.ocupacion ?? "",
         escolaridad: data.escolaridad ?? "",
         estadoCivil: data.estadoCivil ?? "",
         direccion: data.direccion ?? "",
         emergenciaNombre: data.emergenciaNombre ?? "",
         emergenciaTelefono: data.emergenciaTelefono ?? "",
         emergenciaRelacion: data.emergenciaRelacion ?? "",
-        motivoConsulta: data.motivoConsulta ?? "",
-        antecedentesMedicos: data.antecedentesMedicos ?? "",
-        antecedentesPsicologicos: data.antecedentesPsicologicos ?? "",
-        antecedentesFamiliares: data.antecedentesFamiliares ?? "",
-        medicacionActual: data.medicacionActual ?? "",
         referidoPor: data.referidoPor ?? "",
+      });
+      setSituacion({
+        tieneHijos: data.tieneHijos ?? null,
+        hijos: Array.isArray(data.hijos) ? data.hijos : [],
+        viveSolo: data.viveSolo ?? null,
+        conviveCon: Array.isArray(data.conviveCon) ? data.conviveCon : [],
+        conviveOtros: data.conviveOtros ?? "",
+        ocupacion: data.ocupacion ?? "",
+        horarioTrabajo: data.horarioTrabajo ?? "",
       });
       setEstado("ok");
     } catch {
@@ -134,11 +140,25 @@ export function DatosPacientePage({ token }: { token: string }) {
     }
     setGuardando(true);
     setError("");
+    const payload = {
+      ...form,
+      ocupacion: situacion.ocupacion,
+      horarioTrabajo: situacion.horarioTrabajo,
+      tieneHijos: situacion.tieneHijos,
+      hijos: situacion.tieneHijos
+        ? situacion.hijos
+            .map((h) => ({ nombre: h.nombre.trim(), edad: h.edad.trim() }))
+            .filter((h) => h.nombre !== "" || h.edad !== "")
+        : [],
+      viveSolo: situacion.viveSolo,
+      conviveCon: situacion.viveSolo === false ? situacion.conviveCon : [],
+      conviveOtros: situacion.viveSolo === false ? situacion.conviveOtros : "",
+    };
     try {
       const res = await fetch(`/api/datos/${token}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(form),
+        body: JSON.stringify(payload),
       });
       const data = (await res.json()) as { estado?: string; error?: string };
       setGuardando(false);
@@ -211,11 +231,18 @@ export function DatosPacientePage({ token }: { token: string }) {
                 <Campo label="Correo electrónico" onChange={set("email")} type="email" value={form.email} />
                 <Campo label="Fecha de nacimiento" onChange={set("fechaNacimiento")} type="date" value={form.fechaNacimiento} />
                 <Campo label="Género" onChange={set("genero")} value={form.genero} />
-                <Campo label="Ocupación" onChange={set("ocupacion")} value={form.ocupacion} />
                 <Campo label="Escolaridad" onChange={set("escolaridad")} value={form.escolaridad} />
                 <Campo label="Estado civil" onChange={set("estadoCivil")} value={form.estadoCivil} />
               </div>
-              <Area label="Dirección" onChange={set("direccion")} value={form.direccion} />
+              <label className="grid gap-1.5">
+                <span className="text-xs font-semibold uppercase text-slate-400">Dirección</span>
+                <textarea
+                  className="field resize-y"
+                  onChange={(e) => set("direccion")(e.target.value)}
+                  rows={2}
+                  value={form.direccion}
+                />
+              </label>
 
               <div className="border-t border-white/10 pt-4 text-xs font-semibold uppercase tracking-wide text-slate-400">
                 Contacto de emergencia
@@ -227,15 +254,10 @@ export function DatosPacientePage({ token }: { token: string }) {
               </div>
 
               <div className="border-t border-white/10 pt-4 text-xs font-semibold uppercase tracking-wide text-slate-400">
-                Información clínica
+                Tu situación
               </div>
-              <Area label="Motivo de consulta" onChange={set("motivoConsulta")} value={form.motivoConsulta} />
-              <div className="grid gap-4 sm:grid-cols-2">
-                <Area label="Antecedentes psicológicos" onChange={set("antecedentesPsicologicos")} value={form.antecedentesPsicologicos} />
-                <Area label="Antecedentes médicos" onChange={set("antecedentesMedicos")} value={form.antecedentesMedicos} />
-                <Area label="Antecedentes familiares" onChange={set("antecedentesFamiliares")} value={form.antecedentesFamiliares} />
-                <Area label="Medicación actual" onChange={set("medicacionActual")} value={form.medicacionActual} />
-              </div>
+              <SituacionFields onChange={setSituacion} value={situacion} />
+
               <Campo label="¿Cómo llegaste a la consulta?" onChange={set("referidoPor")} value={form.referidoPor} />
 
               {error ? <div className="border border-red-400/40 bg-red-400/10 p-3 text-sm text-red-200">{error}</div> : null}
