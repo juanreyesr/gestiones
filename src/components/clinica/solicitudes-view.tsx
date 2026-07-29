@@ -60,7 +60,7 @@ function AprobarModal({
 
   return (
     <ModalPortal>
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4" onClick={onClose}>
+      <div className="clinica-scope fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4" onClick={onClose}>
         <div className="w-full max-w-md border border-white/10 bg-slate-950 p-5" onClick={(event) => event.stopPropagation()}>
           <h3 className="text-lg font-semibold text-white">Aprobar solicitud</h3>
           <p className="mt-1 text-sm text-slate-300">

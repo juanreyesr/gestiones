@@ -99,7 +99,7 @@ export function ClinicaView() {
   };
 
   return (
-    <div className="grid gap-5">
+    <div className="clinica-scope grid gap-5">
       <ClinicaTabs
         onChange={(value) => {
           setTab(value);
