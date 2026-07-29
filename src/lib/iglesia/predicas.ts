@@ -1,13 +1,15 @@
 import { fechaISO } from "@/lib/fechas";
 import { getSupabaseClient } from "@/lib/supabase";
 import {
-  CIERRE_PASTORES,
   HORARIOS_DOMINGO,
   HORARIO_MARTES,
   type AsignacionPredicaRow,
+  type CierrePersonaRow,
   type HorarioPredica,
   type MesPredicasRow,
+  type PersonaRow,
   type PredicadorRow,
+  type TemaAnioRow,
 } from "./types";
 
 const SIN_SUPABASE = "Faltan las variables de Supabase.";
@@ -72,13 +74,15 @@ export async function fetchUsoPredicadores() {
 
   const { data, error } = await supabase
     .from("gestionesjj_iglesia_predicas_asignaciones")
-    .select("predicador_id, cierre_predicador_id");
+    .select("predicador_id, cierre_persona_id");
 
   if (error) return { data: {} as Record<string, number>, error: error.message };
 
+  // Las dos claves conviven en el mismo mapa sin chocar: son catalogos
+  // distintos, asi que un id nunca esta en los dos.
   const uso: Record<string, number> = {};
   for (const fila of data ?? []) {
-    for (const id of [fila.predicador_id, fila.cierre_predicador_id]) {
+    for (const id of [fila.predicador_id, fila.cierre_persona_id]) {
       if (id) uso[id as string] = (uso[id as string] ?? 0) + 1;
     }
   }
@@ -112,10 +116,6 @@ export function celebracionesDelMes(anio: number, mes: number): Celebracion[] {
 
   return celebraciones;
 }
-
-/** Cierre que se propone al crear la celebracion segun su horario. */
-export const cierrePorDefecto = (horario: HorarioPredica) =>
-  horario === "09:30" || horario === "11:30" ? CIERRE_PASTORES : null;
 
 export async function fetchMeses() {
   const supabase = getSupabaseClient();
@@ -158,9 +158,17 @@ export async function crearMes(anio: number, mes: number, instruccionesPrevias: 
   const supabase = getSupabaseClient();
   if (!supabase) return { data: null as MesPredicasRow | null, error: SIN_SUPABASE };
 
+  // El tema sale del calendario anual de temas, si ya esta definido.
+  const { data: temaAnio } = await supabase
+    .from("gestionesjj_iglesia_temas_anio")
+    .select("tema")
+    .eq("anio", anio)
+    .eq("mes", mes)
+    .maybeSingle();
+
   const { data, error } = await supabase
     .from("gestionesjj_iglesia_predicas_meses")
-    .insert({ anio, mes, instrucciones: instruccionesPrevias })
+    .insert({ anio, mes, instrucciones: instruccionesPrevias, tema: (temaAnio?.tema as string | undefined) ?? null })
     .select("*")
     .single();
 
@@ -195,7 +203,6 @@ export async function generarCelebraciones(mesRow: MesPredicasRow) {
       mes_id: mesRow.id,
       fecha: celebracion.fecha,
       horario: celebracion.horario,
-      cierre_texto: cierrePorDefecto(celebracion.horario),
     }));
 
   if (!faltantes.length) return { error: null };
@@ -224,7 +231,10 @@ export async function fetchAsignaciones(mesId: string) {
 }
 
 export type AsignacionEditable = Partial<
-  Pick<AsignacionPredicaRow, "predicador_id" | "cierre_predicador_id" | "cierre_texto" | "notas">
+  Pick<
+    AsignacionPredicaRow,
+    "predicador_id" | "predicador_texto" | "cierre_persona_id" | "cierre_texto" | "notas"
+  >
 >;
 
 export async function updateAsignacion(id: string, payload: AsignacionEditable) {
@@ -248,4 +258,102 @@ export async function updateAsignaciones(cambios: Array<{ id: string } & Asignac
   );
   const fallo = resultados.find((resultado) => resultado.error);
   return { error: fallo?.error?.message ?? null };
+}
+
+// ============================================================
+// CATALOGO DE PERSONAS DE CIERRE
+// Es un listado aparte del de predicadores: se precargo con ellos, pero desde
+// aqui se agrega y se quita gente sin tocar el otro.
+// ============================================================
+
+export async function fetchCierresPersonas() {
+  const supabase = getSupabaseClient();
+  if (!supabase) return { data: [] as CierrePersonaRow[], error: SIN_SUPABASE };
+
+  const { data, error } = await supabase
+    .from("gestionesjj_iglesia_cierres_personas")
+    .select("*")
+    .order("activo", { ascending: false })
+    .order("nombre");
+
+  if (error) return { data: [] as CierrePersonaRow[], error: error.message };
+  return { data: (data ?? []) as CierrePersonaRow[], error: null };
+}
+
+export async function insertCierrePersona(payload: { nombre: string; telefono?: string | null; notas?: string | null }) {
+  const supabase = getSupabaseClient();
+  if (!supabase) return { data: null as CierrePersonaRow | null, error: SIN_SUPABASE };
+
+  const { data, error } = await supabase
+    .from("gestionesjj_iglesia_cierres_personas")
+    .insert(payload)
+    .select("*")
+    .single();
+
+  if (error?.code === "23505") return { data: null, error: "Ya existe una persona de cierre con ese nombre." };
+  return { data: (data as CierrePersonaRow | null) ?? null, error: error?.message ?? null };
+}
+
+export async function updateCierrePersona(
+  id: string,
+  payload: Partial<Pick<PersonaRow, "nombre" | "telefono" | "notas" | "activo">>,
+) {
+  const supabase = getSupabaseClient();
+  if (!supabase) return { error: SIN_SUPABASE };
+
+  const { error } = await supabase.from("gestionesjj_iglesia_cierres_personas").update(payload).eq("id", id);
+  if (error?.code === "23505") return { error: "Ya existe una persona de cierre con ese nombre." };
+  return { error: error?.message ?? null };
+}
+
+export async function deleteCierrePersona(id: string) {
+  const supabase = getSupabaseClient();
+  if (!supabase) return { error: SIN_SUPABASE };
+
+  const { error } = await supabase.from("gestionesjj_iglesia_cierres_personas").delete().eq("id", id);
+  return { error: error?.message ?? null };
+}
+
+// ============================================================
+// TEMAS POR ANIO
+// ============================================================
+
+export async function fetchTemas() {
+  const supabase = getSupabaseClient();
+  if (!supabase) return { data: [] as TemaAnioRow[], error: SIN_SUPABASE };
+
+  const { data, error } = await supabase
+    .from("gestionesjj_iglesia_temas_anio")
+    .select("*")
+    .order("anio", { ascending: false })
+    .order("mes");
+
+  if (error) return { data: [] as TemaAnioRow[], error: error.message };
+  return { data: (data ?? []) as TemaAnioRow[], error: null };
+}
+
+/**
+ * Guarda de una vez los doce meses de un anio. Se manda como upsert sobre la
+ * llave (anio, mes) para que editar y crear sean la misma operacion.
+ */
+export async function guardarTemasDelAnio(anio: number, temas: Array<{ mes: number; tema: string }>) {
+  const supabase = getSupabaseClient();
+  if (!supabase) return { error: SIN_SUPABASE };
+
+  const { error } = await supabase
+    .from("gestionesjj_iglesia_temas_anio")
+    .upsert(
+      temas.map((fila) => ({ anio, mes: fila.mes, tema: fila.tema.trim() || null })),
+      { onConflict: "anio,mes" },
+    );
+
+  return { error: error?.message ?? null };
+}
+
+export async function deleteTemasDelAnio(anio: number) {
+  const supabase = getSupabaseClient();
+  if (!supabase) return { error: SIN_SUPABASE };
+
+  const { error } = await supabase.from("gestionesjj_iglesia_temas_anio").delete().eq("anio", anio);
+  return { error: error?.message ?? null };
 }

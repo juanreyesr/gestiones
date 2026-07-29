@@ -84,12 +84,14 @@ El area funciona como una rejilla de "botones": cada recurso es independiente y 
 
 Arma el calendario mensual de predicadores. Cada domingo tiene tres celebraciones (7:30, 9:30 y 11:30) y el martes una (7:00 PM); el mes se genera completo con sus fechas al crearlo.
 
-- **Catalogo de predicadores**: agregar, editar, inactivar (deja de aparecer al asignar pero conserva los meses ya armados) y eliminar. Muestra cuantas asignaciones acumula cada uno.
-- **Asignacion por celebracion**: quien predica y quien cierra. El cierre puede ser una persona del catalogo o el texto fijo "Pastores de celebracion", que es el que llevan las celebraciones de 9:30 y 11:30.
+- **Dos catalogos independientes**: **Predicadores** y **Personas de cierre**. El segundo se precargo con los mismos nombres del primero, pero agregar o quitar en uno no toca al otro. En ambos se puede editar, inactivar (deja de aparecer al asignar pero conserva los meses ya armados) y eliminar.
+- **Invitados**: al final de cada lista esta la opcion "Invitado…", que abre un espacio para escribir el nombre. Ese nombre vale solo para esa celebracion y no entra a ningun catalogo.
+- **Cierre del domingo bajo casilla**: como normalmente no se designa a nadie, el domingo solo muestra "Asignar persona de cierre"; al marcarla aparece el selector. Si no se designa a nadie, el documento exportado dice **"No asignado"** (que es cuando cierra el pastor de la celebracion). El martes si lleva el cierre siempre a la vista.
 - **Control de repeticiones**: junto a cada nombre aparece entre parentesis cuantas veces lleva asignado ese mes, y la celda se pinta en ambar cuando repite a alguien en el mismo horario dentro del mes, con un resumen arriba. Es un aviso, nunca un bloqueo.
-- **Importar desde texto**: pega la lista tal como se comparte cada mes ("Domingo 5" con sus tres predicadores, "Martes 7" con predica y cierre, "Tema del mes:") y arma el calendario. Antes de aplicar muestra que entendio y a quien no reconocio, y ofrece agregar al catalogo los nombres nuevos.
+- **Temas del ano**: los doce temas se definen una vez por ano y quedan precargados al crear cada mes. La seccion muestra primero el ano en curso, permite saltar a los demas anos cargados, editarlos todos de una vez, ver una tabla comparativa de todos los anos y exportar el listado a **PDF** ("Temas de Predicas" con su ano).
+- **Texto para enviar**: genera el calendario en el mismo formato plano que se comparte por mensaje (Domingo N con sus tres predicadores, Martes N con predica y cierre, tema e instrucciones), editable antes de copiarlo, con boton de copiar y de descargar `.txt`.
 - **Autoguardado**: cada cambio se guarda solo y todo sigue editable.
-- **Exportar a Excel**: el calendario con el mes y el tema en el encabezado, una fila por celebracion agrupada por fecha, las instrucciones extra al pie y una hoja de resumen con cuantas predicas y cierres lleva cada persona.
+- **Exportar a Excel**: el calendario con el mes y el tema en el encabezado, una fila por celebracion agrupada por fecha, las instrucciones extra al pie y una hoja de resumen con cuantas predicas y cierres lleva cada persona (los invitados aparecen marcados como tales).
 
 ### Bodas, cumpleanos y eventos
 
@@ -99,7 +101,7 @@ Arma el calendario mensual de predicadores. Cada domingo tiene tres celebracione
 - **Descarga en Word (.docx real)**: constancia o programa con el encabezado de la iglesia, los datos generales, la tabla de participantes, el programa y las lineas de firma de quienes corresponde segun el tipo de evento. El nombre de la iglesia se configura desde el boton "Encabezado" y se guarda en el dispositivo.
 - **Generar pendientes**: vuelca los preparativos tipicos del tipo de evento (consejeria prematrimonial, reservar el templo, ensayo...) como pendientes reales en el tablero que elijas, enlazados al evento. Es el puente entre esta area y el modulo Pendientes.
 
-Las migraciones de estos modulos son `017_gestionesjj_iglesia_predicas.sql` (predicas del mes), `014_gestionesjj_iglesia.sql` (tablas, RLS y disparadores), `015_gestionesjj_iglesia_indices_fk.sql` (indices de llave foranea) y `016_gestionesjj_pendientes_renombrar.sql` (renombra las tablas de pendientes al salir del area). Siguen el mismo patron de seguridad del resto: RLS owner-lock, sin acceso anonimo. Las tres estan aplicadas en el proyecto de Supabase.
+Las migraciones de estos modulos son `017_gestionesjj_iglesia_predicas.sql` y `018_gestionesjj_iglesia_predicas_cierres_temas.sql` (predicas del mes), `014_gestionesjj_iglesia.sql` (tablas, RLS y disparadores), `015_gestionesjj_iglesia_indices_fk.sql` (indices de llave foranea) y `016_gestionesjj_pendientes_renombrar.sql` (renombra las tablas de pendientes al salir del area). Siguen el mismo patron de seguridad del resto: RLS owner-lock, sin acceso anonimo. Las tres estan aplicadas en el proyecto de Supabase.
 
 ## Modulo Recursos
 
