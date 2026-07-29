@@ -95,7 +95,7 @@ function CitaDetalleModal({
 
   return (
     <ModalPortal>
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4" onClick={onCerrar}>
+      <div className="clinica-scope fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4" onClick={onCerrar}>
         <div
           className="w-full max-w-md border border-white/10 bg-slate-950 p-5"
           onClick={(event) => event.stopPropagation()}

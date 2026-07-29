@@ -116,7 +116,7 @@ export function CitaForm({
 
   return (
     <ModalPortal>
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4" onClick={onClose}>
+      <div className="clinica-scope fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4" onClick={onClose}>
         <div
           className="max-h-[90vh] w-full max-w-lg overflow-y-auto border border-white/10 bg-slate-950 p-5"
           onClick={(event) => event.stopPropagation()}
