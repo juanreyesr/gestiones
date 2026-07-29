@@ -287,3 +287,81 @@ export const ESTADOS_EVENTO: Array<{ valor: EstadoEvento; label: string; color: 
 
 export const estadoEventoInfo = (estado: EstadoEvento) =>
   ESTADOS_EVENTO.find((e) => e.valor === estado) ?? ESTADOS_EVENTO[0];
+
+// ============================================================
+// PREDICAS DEL MES
+// ============================================================
+
+/**
+ * Horarios fijos de las celebraciones. Los tres primeros son de domingo y el
+ * ultimo es la reunion del martes; son exactamente los del CHECK de la
+ * migracion 017.
+ */
+export type HorarioPredica = "07:30" | "09:30" | "11:30" | "19:00";
+
+export const HORARIOS_DOMINGO: HorarioPredica[] = ["07:30", "09:30", "11:30"];
+export const HORARIO_MARTES: HorarioPredica = "19:00";
+
+export const HORARIO_LABEL: Record<HorarioPredica, string> = {
+  "07:30": "7:30 AM",
+  "09:30": "9:30 AM",
+  "11:30": "11:30 AM",
+  "19:00": "7:00 PM",
+};
+
+/** Cierre por defecto de las celebraciones de 9:30 y 11:30 del domingo. */
+export const CIERRE_PASTORES = "Pastores de celebración";
+
+export type PredicadorRow = {
+  id: string;
+  created_by: string;
+  nombre: string;
+  telefono: string | null;
+  notas: string | null;
+  activo: boolean;
+  created_at: string;
+  updated_at: string;
+};
+
+export type MesPredicasRow = {
+  id: string;
+  created_by: string;
+  anio: number;
+  mes: number;
+  tema: string | null;
+  instrucciones: string | null;
+  notas: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type AsignacionPredicaRow = {
+  id: string;
+  created_by: string;
+  mes_id: string;
+  fecha: string;
+  horario: HorarioPredica;
+  predicador_id: string | null;
+  cierre_predicador_id: string | null;
+  cierre_texto: string | null;
+  notas: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export const MESES_LABEL = [
+  "Enero",
+  "Febrero",
+  "Marzo",
+  "Abril",
+  "Mayo",
+  "Junio",
+  "Julio",
+  "Agosto",
+  "Septiembre",
+  "Octubre",
+  "Noviembre",
+  "Diciembre",
+];
+
+export const mesLabel = (mes: number) => MESES_LABEL[mes - 1] ?? String(mes);

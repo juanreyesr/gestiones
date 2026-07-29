@@ -1,12 +1,13 @@
 "use client";
 
-import { CalendarHeart, ChevronLeft, ChevronRight, Church, Plus } from "lucide-react";
+import { CalendarHeart, CalendarRange, ChevronLeft, ChevronRight, Church, Plus } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { fetchEventos } from "@/lib/iglesia/eventos";
 import { hoyISO } from "@/lib/fechas";
 import { EventosView } from "./eventos/eventos-view";
+import { PredicasView } from "./predicas/predicas-view";
 
-type Recurso = "eventos";
+type Recurso = "predicas" | "eventos";
 
 const RECURSOS: Array<{
   clave: Recurso;
@@ -15,6 +16,14 @@ const RECURSOS: Array<{
   color: string;
   titulo: string;
 }> = [
+  {
+    clave: "predicas",
+    titulo: "Prédicas del mes",
+    descripcion:
+      "Calendario mensual de predicadores: las tres celebraciones de cada domingo y la del martes, con catálogo de predicadores, aviso de repeticiones y exportación a Excel.",
+    icono: CalendarRange,
+    color: "#6d5bd0",
+  },
   {
     clave: "eventos",
     titulo: "Bodas, cumpleaños y eventos",
@@ -69,7 +78,7 @@ export function IglesiaView() {
           <span className="font-semibold text-white">{RECURSOS.find((item) => item.clave === recurso)?.titulo}</span>
         </nav>
 
-        <EventosView />
+        {recurso === "predicas" ? <PredicasView /> : <EventosView />}
       </div>
     );
   }
@@ -97,7 +106,9 @@ export function IglesiaView() {
               </span>
               <h3 className="text-lg font-semibold text-white">{item.titulo}</h3>
               <p className="mt-1 text-sm leading-6 text-slate-400">{item.descripcion}</p>
-              <p className="mt-3 text-xs font-semibold text-emerald-200">{proximos} eventos próximos</p>
+              {item.clave === "eventos" ? (
+                <p className="mt-3 text-xs font-semibold text-emerald-200">{proximos} eventos próximos</p>
+              ) : null}
             </button>
           );
         })}
