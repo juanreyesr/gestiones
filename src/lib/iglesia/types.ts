@@ -309,10 +309,15 @@ export const HORARIO_LABEL: Record<HorarioPredica, string> = {
   "19:00": "7:00 PM",
 };
 
-/** Cierre por defecto de las celebraciones de 9:30 y 11:30 del domingo. */
-export const CIERRE_PASTORES = "Pastores de celebración";
+/**
+ * Lo que se imprime en el documento cuando una celebracion no tiene persona de
+ * cierre asignada: normalmente cierra el pastor de la celebracion y no se
+ * designa a nadie por nombre.
+ */
+export const CIERRE_SIN_ASIGNAR = "No asignado";
 
-export type PredicadorRow = {
+/** Misma forma para el catalogo de predicadores y el de personas de cierre. */
+export type PersonaRow = {
   id: string;
   created_by: string;
   nombre: string;
@@ -322,6 +327,9 @@ export type PredicadorRow = {
   created_at: string;
   updated_at: string;
 };
+
+export type PredicadorRow = PersonaRow;
+export type CierrePersonaRow = PersonaRow;
 
 export type MesPredicasRow = {
   id: string;
@@ -342,7 +350,10 @@ export type AsignacionPredicaRow = {
   fecha: string;
   horario: HorarioPredica;
   predicador_id: string | null;
-  cierre_predicador_id: string | null;
+  // Invitado que predica: nombre suelto, no entra al catalogo.
+  predicador_texto: string | null;
+  cierre_persona_id: string | null;
+  // Invitado que cierra, con el mismo criterio.
   cierre_texto: string | null;
   notas: string | null;
   created_at: string;
@@ -365,3 +376,13 @@ export const MESES_LABEL = [
 ];
 
 export const mesLabel = (mes: number) => MESES_LABEL[mes - 1] ?? String(mes);
+
+export type TemaAnioRow = {
+  id: string;
+  created_by: string;
+  anio: number;
+  mes: number;
+  tema: string | null;
+  created_at: string;
+  updated_at: string;
+};

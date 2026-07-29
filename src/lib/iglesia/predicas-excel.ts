@@ -7,12 +7,12 @@
 
 import { formatoCompleto } from "@/lib/fechas";
 import {
-  CIERRE_PASTORES,
+  CIERRE_SIN_ASIGNAR,
   HORARIO_LABEL,
   mesLabel,
   type AsignacionPredicaRow,
   type MesPredicasRow,
-  type PredicadorRow,
+  type PersonaRow,
 } from "./types";
 
 const MORADO = "FF3B2E7E";
@@ -28,12 +28,14 @@ const BORDE = {
 
 export async function exportPredicasToExcel({
   asignaciones,
+  cierres,
   mes,
   predicadores,
 }: {
   asignaciones: AsignacionPredicaRow[];
+  cierres: PersonaRow[];
   mes: MesPredicasRow;
-  predicadores: PredicadorRow[];
+  predicadores: PersonaRow[];
 }) {
   const ExcelJS = (await import("exceljs")).default;
   const workbook = new ExcelJS.Workbook();
@@ -41,10 +43,20 @@ export async function exportPredicasToExcel({
 
   sheet.columns = [{ width: 30 }, { width: 12 }, { width: 30 }, { width: 30 }];
 
-  const nombrePorId = new Map(predicadores.map((predicador) => [predicador.id, predicador.nombre]));
-  const nombre = (id: string | null) => (id ? (nombrePorId.get(id) ?? "") : "");
+  const nombrePredicador = new Map(predicadores.map((persona) => [persona.id, persona.nombre]));
+  const nombreCierre = new Map(cierres.map((persona) => [persona.id, persona.nombre]));
+
+  // Un invitado no esta en ningun catalogo: su nombre viaja en la asignacion.
+  const predicaDe = (asignacion: AsignacionPredicaRow) =>
+    asignacion.predicador_texto?.trim() ||
+    (asignacion.predicador_id ? (nombrePredicador.get(asignacion.predicador_id) ?? "") : "");
+
+  // Sin persona designada cierra el pastor de la celebracion, y el documento
+  // lo dice asi en vez de dejar la casilla vacia.
   const cierreDe = (asignacion: AsignacionPredicaRow) =>
-    nombre(asignacion.cierre_predicador_id) || asignacion.cierre_texto || "";
+    asignacion.cierre_texto?.trim() ||
+    (asignacion.cierre_persona_id ? (nombreCierre.get(asignacion.cierre_persona_id) ?? "") : "") ||
+    CIERRE_SIN_ASIGNAR;
 
   // --- Encabezado -------------------------------------------------
   const titulo = sheet.addRow([`${mesLabel(mes.mes).toUpperCase()} ${mes.anio}`]);
@@ -88,7 +100,7 @@ export async function exportPredicasToExcel({
       const fila = sheet.addRow([
         indice === 0 ? formatoCompleto(fecha) : "",
         HORARIO_LABEL[asignacion.horario],
-        nombre(asignacion.predicador_id),
+        predicaDe(asignacion),
         cierreDe(asignacion),
       ]);
 
@@ -99,8 +111,8 @@ export async function exportPredicasToExcel({
       });
       fila.getCell(1).font = { bold: true };
       fila.getCell(2).alignment = { horizontal: "center", vertical: "middle" };
-      // El cierre fijo se distingue en gris para que resalte quien si es persona.
-      if (cierreDe(asignacion) === CIERRE_PASTORES) {
+      // "No asignado" va en gris para que resalte quien si es una persona.
+      if (cierreDe(asignacion) === CIERRE_SIN_ASIGNAR) {
         fila.getCell(4).font = { italic: true, color: { argb: "FF666666" } };
       }
     });
@@ -150,13 +162,43 @@ export async function exportPredicasToExcel({
     cell.border = BORDE;
   });
 
-  for (const predicador of predicadores) {
-    const predicas = asignaciones.filter((asignacion) => asignacion.predicador_id === predicador.id);
-    const cierres = asignaciones.filter((asignacion) => asignacion.cierre_predicador_id === predicador.id);
-    if (!predicas.length && !cierres.length) continue;
+  // Una misma persona puede estar en los dos catalogos; se muestra una sola
+  // vez, sumando lo que predica y lo que cierra.
+  const personas = [...predicadores];
+  for (const persona of cierres) {
+    if (!personas.some((existente) => existente.nombre === persona.nombre)) personas.push(persona);
+  }
+
+  for (const persona of personas) {
+    const predicas = asignaciones.filter((asignacion) => predicaDe(asignacion) === persona.nombre);
+    const cerradas = asignaciones.filter(
+      (asignacion) => cierreDe(asignacion) === persona.nombre,
+    );
+    if (!predicas.length && !cerradas.length) continue;
 
     const horarios = predicas.map((asignacion) => HORARIO_LABEL[asignacion.horario]);
-    const fila = resumen.addRow([predicador.nombre, predicas.length, cierres.length, horarios.join(", ")]);
+    const fila = resumen.addRow([persona.nombre, predicas.length, cerradas.length, horarios.join(", ")]);
+    fila.eachCell((cell) => {
+      cell.border = BORDE;
+    });
+  }
+
+  // Los invitados no estan en ningun catalogo pero si en el calendario.
+  const invitados = [
+    ...new Set(
+      asignaciones
+        .map((asignacion) => asignacion.predicador_texto?.trim())
+        .filter((nombre): nombre is string => Boolean(nombre)),
+    ),
+  ];
+  for (const invitado of invitados) {
+    const predicas = asignaciones.filter((asignacion) => asignacion.predicador_texto?.trim() === invitado);
+    const fila = resumen.addRow([
+      `${invitado} (invitado)`,
+      predicas.length,
+      0,
+      predicas.map((asignacion) => HORARIO_LABEL[asignacion.horario]).join(", "),
+    ]);
     fila.eachCell((cell) => {
       cell.border = BORDE;
     });

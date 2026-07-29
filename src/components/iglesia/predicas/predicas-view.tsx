@@ -3,12 +3,14 @@
 import {
   CalendarRange,
   Check,
-  ClipboardPaste,
+  ClipboardList,
   FileSpreadsheet,
+  ListOrdered,
   Loader2,
   Plus,
   Trash2,
   TriangleAlert,
+  UserCheck,
   Users,
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -17,36 +19,49 @@ import { BTN_GHOST, BTN_PRIMARY, EmptyState, ErrorBanner, Field, INPUT, Modal } 
 import { formatoCompleto } from "@/lib/fechas";
 import {
   crearMes,
+  deleteCierrePersona,
   deleteMes,
+  deletePredicador,
   fetchAsignaciones,
+  fetchCierresPersonas,
   fetchMeses,
   fetchPredicadores,
+  fetchTemas,
   fetchUsoPredicadores,
   generarCelebraciones,
+  insertCierrePersona,
+  insertPredicador,
   updateAsignacion,
-  updateAsignaciones,
+  updateCierrePersona,
   updateMes,
+  updatePredicador,
+  type AsignacionEditable,
 } from "@/lib/iglesia/predicas";
 import { exportPredicasToExcel } from "@/lib/iglesia/predicas-excel";
 import {
-  CIERRE_PASTORES,
   HORARIO_LABEL,
   MESES_LABEL,
   mesLabel,
   type AsignacionPredicaRow,
+  type CierrePersonaRow,
   type MesPredicasRow,
   type PredicadorRow,
+  type TemaAnioRow,
 } from "@/lib/iglesia/types";
-import { ImportarTexto } from "./importar-texto";
-import { PredicadoresPanel } from "./predicadores-panel";
+import { TextoPlano } from "./texto-plano";
+import { PersonasPanel } from "./personas-panel";
 import { SelectorPersona, type ValorPersona } from "./selector-persona";
+import { TemasPanel } from "./temas-panel";
 
 type Guardado = "limpio" | "guardando" | "guardado";
+type Catalogo = "predicadores" | "cierres";
 
 export function PredicasView() {
   const [meses, setMeses] = useState<MesPredicasRow[]>([]);
   const [mesActivoId, setMesActivoId] = useState<string | null>(null);
   const [predicadores, setPredicadores] = useState<PredicadorRow[]>([]);
+  const [cierres, setCierres] = useState<CierrePersonaRow[]>([]);
+  const [temas, setTemas] = useState<TemaAnioRow[]>([]);
   const [uso, setUso] = useState<Record<string, number>>({});
   const [asignaciones, setAsignaciones] = useState<AsignacionPredicaRow[]>([]);
   const [cargando, setCargando] = useState(true);
@@ -56,11 +71,17 @@ export function PredicasView() {
   const [tema, setTema] = useState("");
   const [instrucciones, setInstrucciones] = useState("");
 
-  const [rosterAbierto, setRosterAbierto] = useState(false);
-  const [importarAbierto, setImportarAbierto] = useState(false);
+  const [catalogoAbierto, setCatalogoAbierto] = useState<Catalogo | null>(null);
+  const [temasAbierto, setTemasAbierto] = useState(false);
+  const [textoAbierto, setTextoAbierto] = useState(false);
   const [nuevoMesAbierto, setNuevoMesAbierto] = useState(false);
   const [mesAEliminar, setMesAEliminar] = useState<MesPredicasRow | null>(null);
   const [exportando, setExportando] = useState(false);
+
+  // Celebraciones de domingo en las que se pidio asignar cierre. Normalmente no
+  // se designa a nadie (cierra el pastor de la celebracion), asi que la casilla
+  // arranca apagada y el selector solo aparece al marcarla.
+  const [cierresAbiertos, setCierresAbiertos] = useState<Set<string>>(new Set());
 
   const mesActivo = meses.find((mes) => mes.id === mesActivoId) ?? null;
 
@@ -68,10 +89,17 @@ export function PredicasView() {
   // Carga
   // ----------------------------------------------------------------
 
-  const cargarCatalogo = useCallback(async () => {
-    const [predicadoresRes, usoRes] = await Promise.all([fetchPredicadores(), fetchUsoPredicadores()]);
+  const cargarCatalogos = useCallback(async () => {
+    const [predicadoresRes, cierresRes, usoRes, temasRes] = await Promise.all([
+      fetchPredicadores(),
+      fetchCierresPersonas(),
+      fetchUsoPredicadores(),
+      fetchTemas(),
+    ]);
     setPredicadores(predicadoresRes.data);
+    setCierres(cierresRes.data);
     setUso(usoRes.data);
+    setTemas(temasRes.data);
     if (predicadoresRes.error) setError(predicadoresRes.error);
   }, []);
 
@@ -86,23 +114,24 @@ export function PredicasView() {
   useEffect(() => {
     void (async () => {
       setCargando(true);
-      await Promise.all([cargarCatalogo(), cargarMeses()]);
+      await Promise.all([cargarCatalogos(), cargarMeses()]);
       setCargando(false);
     })();
-  }, [cargarCatalogo, cargarMeses]);
+  }, [cargarCatalogos, cargarMeses]);
 
   const cargarMesActivo = useCallback(async () => {
     if (!mesActivo) {
       setAsignaciones([]);
       return;
     }
-    // Completa las celebraciones que falten (por si el mes se creo antes de
-    // agregar un horario, o quedo a medias por un error de red).
+    // Completa las celebraciones que falten (por si el mes quedo a medias por
+    // un error de red).
     await generarCelebraciones(mesActivo);
     const { data, error: fetchError } = await fetchAsignaciones(mesActivo.id);
     setAsignaciones(data);
     setTema(mesActivo.tema ?? "");
     setInstrucciones(mesActivo.instrucciones ?? "");
+    setCierresAbiertos(new Set());
     if (fetchError) setError(fetchError);
   }, [mesActivo]);
 
@@ -112,7 +141,7 @@ export function PredicasView() {
   }, [cargarMesActivo]);
 
   // ----------------------------------------------------------------
-  // Autoguardado de los campos de texto del mes
+  // Autoguardado del tema y las instrucciones
   // ----------------------------------------------------------------
 
   const primerRender = useRef(true);
@@ -162,8 +191,8 @@ export function PredicasView() {
   const conteoCierres = useMemo(() => {
     const conteo: Record<string, number> = {};
     for (const asignacion of asignaciones) {
-      if (asignacion.cierre_predicador_id) {
-        conteo[asignacion.cierre_predicador_id] = (conteo[asignacion.cierre_predicador_id] ?? 0) + 1;
+      if (asignacion.cierre_persona_id) {
+        conteo[asignacion.cierre_persona_id] = (conteo[asignacion.cierre_persona_id] ?? 0) + 1;
       }
     }
     return conteo;
@@ -197,24 +226,18 @@ export function PredicasView() {
     [predicadores],
   );
 
-  const activos = useMemo(() => predicadores.filter((predicador) => predicador.activo), [predicadores]);
+  const predicadoresActivos = useMemo(() => predicadores.filter((persona) => persona.activo), [predicadores]);
+  const cierresActivos = useMemo(() => cierres.filter((persona) => persona.activo), [cierres]);
 
   // ----------------------------------------------------------------
   // Edicion de celdas (guarda con cada cambio)
   // ----------------------------------------------------------------
 
-  const asignar = async (asignacion: AsignacionPredicaRow, campo: "predica" | "cierre", valor: ValorPersona) => {
-    const cambios =
-      campo === "predica"
-        ? { predicador_id: valor.predicadorId }
-        : { cierre_predicador_id: valor.predicadorId, cierre_texto: valor.texto };
-
-    setAsignaciones((previas) =>
-      previas.map((fila) => (fila.id === asignacion.id ? { ...fila, ...cambios } : fila)),
-    );
+  const guardarCambios = async (asignacionId: string, cambios: AsignacionEditable) => {
+    setAsignaciones((previas) => previas.map((fila) => (fila.id === asignacionId ? { ...fila, ...cambios } : fila)));
     setGuardado("guardando");
 
-    const { error: updateError } = await updateAsignacion(asignacion.id, cambios);
+    const { error: updateError } = await updateAsignacion(asignacionId, cambios);
     if (updateError) {
       setError(updateError);
       setGuardado("limpio");
@@ -222,6 +245,25 @@ export function PredicasView() {
       return;
     }
     setGuardado("guardado");
+  };
+
+  const asignarPredica = (asignacion: AsignacionPredicaRow, valor: ValorPersona) =>
+    guardarCambios(asignacion.id, { predicador_id: valor.personaId, predicador_texto: valor.texto });
+
+  const asignarCierre = (asignacion: AsignacionPredicaRow, valor: ValorPersona) =>
+    guardarCambios(asignacion.id, { cierre_persona_id: valor.personaId, cierre_texto: valor.texto });
+
+  const alternarCierre = (asignacion: AsignacionPredicaRow, activar: boolean) => {
+    setCierresAbiertos((previo) => {
+      const siguiente = new Set(previo);
+      if (activar) siguiente.add(asignacion.id);
+      else siguiente.delete(asignacion.id);
+      return siguiente;
+    });
+    // Al desmarcar se limpia lo que hubiera, para que el documento diga "No asignado".
+    if (!activar && (asignacion.cierre_persona_id || asignacion.cierre_texto !== null)) {
+      void guardarCambios(asignacion.id, { cierre_persona_id: null, cierre_texto: null });
+    }
   };
 
   const crearNuevoMes = async (anio: number, mes: number) => {
@@ -240,7 +282,12 @@ export function PredicasView() {
     if (!mesActivo) return;
     setExportando(true);
     try {
-      await exportPredicasToExcel({ asignaciones, mes: { ...mesActivo, tema, instrucciones }, predicadores });
+      await exportPredicasToExcel({
+        asignaciones,
+        cierres,
+        mes: { ...mesActivo, tema, instrucciones },
+        predicadores,
+      });
     } catch (fallo) {
       setError(fallo instanceof Error ? fallo.message : "No se pudo generar el Excel.");
     }
@@ -262,7 +309,9 @@ export function PredicasView() {
   }, [asignaciones]);
 
   const totalCelebraciones = asignaciones.length;
-  const asignadas = asignaciones.filter((asignacion) => asignacion.predicador_id).length;
+  const asignadas = asignaciones.filter(
+    (asignacion) => asignacion.predicador_id || asignacion.predicador_texto,
+  ).length;
 
   return (
     <div className="grid gap-4">
@@ -273,15 +322,23 @@ export function PredicasView() {
         </h3>
 
         <div className="ml-auto flex flex-wrap items-center gap-2">
-          <button className={BTN_GHOST} onClick={() => setRosterAbierto(true)} type="button">
+          <button className={BTN_GHOST} onClick={() => setCatalogoAbierto("predicadores")} type="button">
             <Users className="h-4 w-4" />
-            Predicadores ({activos.length})
+            Predicadores ({predicadoresActivos.length})
+          </button>
+          <button className={BTN_GHOST} onClick={() => setCatalogoAbierto("cierres")} type="button">
+            <UserCheck className="h-4 w-4" />
+            Cierres ({cierresActivos.length})
+          </button>
+          <button className={BTN_GHOST} onClick={() => setTemasAbierto(true)} type="button">
+            <ListOrdered className="h-4 w-4" />
+            Temas del año
           </button>
           {mesActivo ? (
             <>
-              <button className={BTN_GHOST} onClick={() => setImportarAbierto(true)} type="button">
-                <ClipboardPaste className="h-4 w-4" />
-                <span className="hidden sm:inline">Importar texto</span>
+              <button className={BTN_GHOST} onClick={() => setTextoAbierto(true)} type="button">
+                <ClipboardList className="h-4 w-4" />
+                <span className="hidden sm:inline">Texto para enviar</span>
               </button>
               <button className={BTN_GHOST} disabled={exportando} onClick={() => void exportar()} type="button">
                 <FileSpreadsheet className="h-4 w-4" />
@@ -297,8 +354,8 @@ export function PredicasView() {
       </div>
 
       <p className="text-sm text-slate-400">
-        Cada domingo tiene tres celebraciones (7:30, 9:30 y 11:30) y el martes una (7:00 PM). Selecciona quién predica
-        y quién cierra; todo se guarda solo y se puede cambiar cuando quieras.
+        Cada domingo tiene tres celebraciones (7:30, 9:30 y 11:30) y el martes una (7:00 PM). En domingo el cierre solo
+        se pide si marcas la casilla; si no, el documento sale como &quot;No asignado&quot;. Todo se guarda solo.
       </p>
 
       <ErrorBanner message={error} />
@@ -390,7 +447,7 @@ export function PredicasView() {
 
           <div className="grid gap-3 lg:grid-cols-2">
             {porFecha.map(([fecha, celebraciones]) => {
-              const esDomingo = celebraciones.length > 1 || celebraciones[0]?.horario !== "19:00";
+              const esDomingo = celebraciones[0]?.horario !== "19:00";
               return (
                 <section
                   className="border border-white/10 bg-white/5 p-3"
@@ -399,50 +456,66 @@ export function PredicasView() {
                 >
                   <h4 className="mb-2 text-sm font-bold capitalize text-white">{formatoCompleto(fecha)}</h4>
 
-                  <div className="hidden grid-cols-[76px_1fr_1fr] gap-2 pb-1 text-[10px] font-bold uppercase tracking-wide text-slate-500 sm:grid">
-                    <span />
-                    <span>Predica</span>
-                    <span>Cierre</span>
-                  </div>
+                  <div className="grid gap-3">
+                    {celebraciones.map((asignacion) => {
+                      const tieneCierre =
+                        Boolean(asignacion.cierre_persona_id) || asignacion.cierre_texto !== null;
+                      const mostrarCierre = !esDomingo || tieneCierre || cierresAbiertos.has(asignacion.id);
 
-                  <div className="grid gap-2">
-                    {celebraciones.map((asignacion) => (
-                      <div
-                        className="grid gap-1.5 sm:grid-cols-[76px_1fr_1fr] sm:items-center sm:gap-2"
-                        key={asignacion.id}
-                      >
-                        <span className="text-xs font-bold text-slate-300">{HORARIO_LABEL[asignacion.horario]}</span>
-
-                        <div>
-                          <span className="mb-0.5 block text-[10px] font-bold uppercase text-slate-500 sm:hidden">
-                            Predica
+                      return (
+                        <div className="grid gap-1.5 sm:grid-cols-[76px_1fr] sm:gap-2" key={asignacion.id}>
+                          <span className="pt-2 text-xs font-bold text-slate-300">
+                            {HORARIO_LABEL[asignacion.horario]}
                           </span>
-                          <SelectorPersona
-                            conteos={conteoPredicas}
-                            onChange={(valor) => void asignar(asignacion, "predica", valor)}
-                            predicadores={activos}
-                            repetido={repeticiones.marcados.has(asignacion.id)}
-                            valor={{ predicadorId: asignacion.predicador_id, texto: null }}
-                          />
-                        </div>
 
-                        <div>
-                          <span className="mb-0.5 block text-[10px] font-bold uppercase text-slate-500 sm:hidden">
-                            Cierre
-                          </span>
-                          <SelectorPersona
-                            conteos={conteoCierres}
-                            onChange={(valor) => void asignar(asignacion, "cierre", valor)}
-                            opcionesFijas={[CIERRE_PASTORES]}
-                            predicadores={activos}
-                            valor={{
-                              predicadorId: asignacion.cierre_predicador_id,
-                              texto: asignacion.cierre_texto,
-                            }}
-                          />
+                          <div className="grid gap-1.5">
+                            <div>
+                              <span className="mb-0.5 block text-[10px] font-bold uppercase text-slate-500">
+                                Predica
+                              </span>
+                              <SelectorPersona
+                                conteos={conteoPredicas}
+                                onChange={(valor) => void asignarPredica(asignacion, valor)}
+                                personas={predicadoresActivos}
+                                placeholderInvitado="Nombre del predicador invitado"
+                                repetido={repeticiones.marcados.has(asignacion.id)}
+                                valor={{
+                                  personaId: asignacion.predicador_id,
+                                  texto: asignacion.predicador_texto,
+                                }}
+                              />
+                            </div>
+
+                            {esDomingo ? (
+                              <label className="flex items-center gap-1.5 text-[11px] font-semibold text-slate-400">
+                                <input
+                                  checked={mostrarCierre}
+                                  className="h-3.5 w-3.5 accent-emerald-400"
+                                  onChange={(evento) => alternarCierre(asignacion, evento.target.checked)}
+                                  type="checkbox"
+                                />
+                                Asignar persona de cierre
+                              </label>
+                            ) : (
+                              <span className="block text-[10px] font-bold uppercase text-slate-500">Cierre</span>
+                            )}
+
+                            {mostrarCierre ? (
+                              <SelectorPersona
+                                conteos={conteoCierres}
+                                onChange={(valor) => void asignarCierre(asignacion, valor)}
+                                personas={cierresActivos}
+                                placeholderInvitado="Nombre de quien cierra"
+                                valor={{
+                                  personaId: asignacion.cierre_persona_id,
+                                  texto: asignacion.cierre_texto,
+                                }}
+                              />
+                            ) : null}
+                          </div>
                         </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 </section>
               );
@@ -451,7 +524,8 @@ export function PredicasView() {
 
           <p className="text-xs text-slate-500">
             El número entre paréntesis es cuántas veces lleva asignada esa persona en el mes (predicando o cerrando,
-            según la columna). Las celdas en ámbar repiten a alguien en el mismo horario.
+            según la columna). Las celdas en ámbar repiten a alguien en el mismo horario. &quot;Invitado…&quot; abre un
+            espacio para escribir el nombre y no se guarda en ningún catálogo.
           </p>
 
           <Field label="Instrucciones extra (una por línea, salen al pie del Excel)">
@@ -468,43 +542,66 @@ export function PredicasView() {
         </>
       )}
 
-      {rosterAbierto ? (
-        <PredicadoresPanel
-          onCambio={async () => {
-            await cargarCatalogo();
+      {catalogoAbierto === "predicadores" ? (
+        <PersonasPanel
+          acciones={{
+            actualizar: updatePredicador,
+            eliminar: deletePredicador,
+            insertar: async (payload) => {
+              const { error: insertError } = await insertPredicador(payload);
+              return { error: insertError };
+            },
           }}
-          onCerrar={() => setRosterAbierto(false)}
-          predicadores={predicadores}
+          descripcion="Agrega a los predicadores con los que sueles contar. Después los asignas en el calendario del mes."
+          etiqueta="del predicador"
+          onCambio={cargarCatalogos}
+          onCerrar={() => setCatalogoAbierto(null)}
+          personas={predicadores}
+          titulo="Predicadores disponibles"
           uso={uso}
         />
       ) : null}
 
-      {importarAbierto && mesActivo ? (
-        <ImportarTexto
-          asignaciones={asignaciones}
-          mes={mesActivo}
-          onAplicar={async (cambios) => {
-            if (cambios.tema) setTema(cambios.tema);
-            const { error: aplicarError } = await updateAsignaciones(cambios.asignaciones);
-            if (aplicarError) {
-              setError(aplicarError);
-              return;
-            }
-            if (cambios.tema) await updateMes(mesActivo.id, { tema: cambios.tema });
-            await cargarMesActivo();
-            await cargarCatalogo();
-            setGuardado("guardado");
+      {catalogoAbierto === "cierres" ? (
+        <PersonasPanel
+          acciones={{
+            actualizar: updateCierrePersona,
+            eliminar: deleteCierrePersona,
+            insertar: async (payload) => {
+              const { error: insertError } = await insertCierrePersona(payload);
+              return { error: insertError };
+            },
           }}
-          onCerrar={() => setImportarAbierto(false)}
-          onPredicadoresCambiados={cargarCatalogo}
+          descripcion="Este listado es aparte del de predicadores: lo que agregues o quites aquí no afecta al otro."
+          etiqueta="de la persona"
+          onCambio={cargarCatalogos}
+          onCerrar={() => setCatalogoAbierto(null)}
+          personas={cierres}
+          titulo="Personas de cierre"
+          uso={uso}
+        />
+      ) : null}
+
+      {temasAbierto ? (
+        <TemasPanel onCambio={cargarCatalogos} onCerrar={() => setTemasAbierto(false)} temas={temas} />
+      ) : null}
+
+      {textoAbierto && mesActivo ? (
+        <TextoPlano
+          asignaciones={asignaciones}
+          cierres={cierres}
+          mes={{ ...mesActivo, tema, instrucciones }}
+          onCerrar={() => setTextoAbierto(false)}
           predicadores={predicadores}
         />
       ) : null}
 
-      {nuevoMesAbierto ? <NuevoMes meses={meses} onCerrar={() => setNuevoMesAbierto(false)} onCrear={crearNuevoMes} /> : null}
+      {nuevoMesAbierto ? (
+        <NuevoMes meses={meses} onCerrar={() => setNuevoMesAbierto(false)} onCrear={crearNuevoMes} temas={temas} />
+      ) : null}
 
       <ConfirmDialog
-        message={`Se eliminará ${mesAEliminar ? `${mesLabel(mesAEliminar.mes)} ${mesAEliminar.anio}` : "el mes"} con todas sus asignaciones. El catálogo de predicadores no se toca.`}
+        message={`Se eliminará ${mesAEliminar ? `${mesLabel(mesAEliminar.mes)} ${mesAEliminar.anio}` : "el mes"} con todas sus asignaciones. Los catálogos y los temas del año no se tocan.`}
         onCancel={() => setMesAEliminar(null)}
         onConfirm={async () => {
           if (!mesAEliminar) return;
@@ -524,15 +621,17 @@ export function PredicasView() {
   );
 }
 
-/** Alta de un mes: propone el siguiente al ultimo creado. */
+/** Alta de un mes: propone el siguiente al ultimo creado y muestra su tema. */
 function NuevoMes({
   meses,
   onCerrar,
   onCrear,
+  temas,
 }: {
   meses: MesPredicasRow[];
   onCerrar: () => void;
   onCrear: (anio: number, mes: number) => Promise<void>;
+  temas: TemaAnioRow[];
 }) {
   const siguiente = useMemo(() => {
     const hoy = new Date();
@@ -546,6 +645,7 @@ function NuevoMes({
   const [creando, setCreando] = useState(false);
 
   const yaExiste = meses.some((existente) => existente.anio === anio && existente.mes === mes);
+  const temaDelAnio = temas.find((fila) => fila.anio === anio && fila.mes === mes)?.tema ?? "";
 
   return (
     <Modal ancho="max-w-sm" onClose={onCerrar} titulo="Nuevo mes">
@@ -579,6 +679,16 @@ function NuevoMes({
             />
           </Field>
         </div>
+
+        {temaDelAnio ? (
+          <p className="border border-emerald-300/30 bg-emerald-300/8 p-2 text-xs text-emerald-100">
+            Tema que se cargará: <strong>{temaDelAnio}</strong>
+          </p>
+        ) : (
+          <p className="text-xs text-slate-500">
+            Este mes no tiene tema definido en &quot;Temas del año&quot;; podrás escribirlo después.
+          </p>
+        )}
 
         <p className="text-xs text-slate-500">
           Se crearán todas las celebraciones del mes: tres por domingo y una por martes. Las instrucciones extra se

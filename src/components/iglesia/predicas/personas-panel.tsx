@@ -4,23 +4,42 @@ import { Check, Pencil, Plus, Power, Trash2, UserRound, X } from "lucide-react";
 import { useState } from "react";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { Avatar, BTN_GHOST, BTN_PRIMARY, EmptyState, ErrorBanner, INPUT, Modal } from "@/components/ui-comun";
-import { deletePredicador, insertPredicador, updatePredicador } from "@/lib/iglesia/predicas";
-import type { PredicadorRow } from "@/lib/iglesia/types";
+import type { PersonaRow } from "@/lib/iglesia/types";
 
 /**
- * Catalogo de predicadores. "Inactivar" es la via recomendada: deja de
- * aparecer al asignar pero conserva los meses ya armados. Borrar tambien se
- * permite, avisando que las celebraciones donde estaba quedaran sin asignar.
+ * Catalogo de personas, reutilizado por los dos listados del modulo:
+ * predicadores y personas de cierre. Son independientes entre si — agregar o
+ * quitar en uno no toca al otro — y por eso las operaciones llegan por
+ * parametro en vez de estar fijas aqui.
+ *
+ * "Inactivar" es la via recomendada: deja de aparecer al asignar pero conserva
+ * los meses ya armados. Borrar tambien se permite, avisando que las
+ * celebraciones donde estaba quedaran sin asignar.
  */
-export function PredicadoresPanel({
+export function PersonasPanel({
+  acciones,
+  descripcion,
+  etiqueta,
   onCerrar,
   onCambio,
-  predicadores,
+  personas,
+  titulo,
   uso,
 }: {
+  acciones: {
+    eliminar: (id: string) => Promise<{ error: string | null }>;
+    insertar: (payload: { nombre: string; telefono?: string | null }) => Promise<{ error: string | null }>;
+    actualizar: (
+      id: string,
+      payload: Partial<Pick<PersonaRow, "nombre" | "telefono" | "activo">>,
+    ) => Promise<{ error: string | null }>;
+  };
+  descripcion: string;
+  etiqueta: string;
   onCerrar: () => void;
   onCambio: () => void | Promise<void>;
-  predicadores: PredicadorRow[];
+  personas: PersonaRow[];
+  titulo: string;
   uso: Record<string, number>;
 }) {
   const [nombre, setNombre] = useState("");
@@ -28,7 +47,7 @@ export function PredicadoresPanel({
   const [editando, setEditando] = useState<string | null>(null);
   const [borradorNombre, setBorradorNombre] = useState("");
   const [borradorTelefono, setBorradorTelefono] = useState("");
-  const [aEliminar, setAEliminar] = useState<PredicadorRow | null>(null);
+  const [aEliminar, setAEliminar] = useState<PersonaRow | null>(null);
   const [error, setError] = useState("");
   const [guardando, setGuardando] = useState(false);
 
@@ -36,7 +55,7 @@ export function PredicadoresPanel({
     const limpio = nombre.trim();
     if (!limpio) return;
     setGuardando(true);
-    const { error: insertError } = await insertPredicador({ nombre: limpio, telefono: telefono.trim() || null });
+    const { error: insertError } = await acciones.insertar({ nombre: limpio, telefono: telefono.trim() || null });
     setGuardando(false);
     if (insertError) {
       setError(insertError);
@@ -48,10 +67,10 @@ export function PredicadoresPanel({
     await onCambio();
   };
 
-  const guardarEdicion = async (predicador: PredicadorRow) => {
+  const guardarEdicion = async (persona: PersonaRow) => {
     const limpio = borradorNombre.trim();
     if (!limpio) return;
-    const { error: updateError } = await updatePredicador(predicador.id, {
+    const { error: updateError } = await acciones.actualizar(persona.id, {
       nombre: limpio,
       telefono: borradorTelefono.trim() || null,
     });
@@ -64,8 +83,8 @@ export function PredicadoresPanel({
     await onCambio();
   };
 
-  const alternarActivo = async (predicador: PredicadorRow) => {
-    const { error: updateError } = await updatePredicador(predicador.id, { activo: !predicador.activo });
+  const alternarActivo = async (persona: PersonaRow) => {
+    const { error: updateError } = await acciones.actualizar(persona.id, { activo: !persona.activo });
     if (updateError) {
       setError(updateError);
       return;
@@ -73,24 +92,24 @@ export function PredicadoresPanel({
     await onCambio();
   };
 
-  const activos = predicadores.filter((predicador) => predicador.activo);
-  const inactivos = predicadores.filter((predicador) => !predicador.activo);
+  const activos = personas.filter((persona) => persona.activo);
+  const inactivos = personas.filter((persona) => !persona.activo);
 
-  const fila = (predicador: PredicadorRow) => (
+  const fila = (persona: PersonaRow) => (
     <div
       className={`flex flex-wrap items-center gap-2 border border-white/10 p-2 ${
-        predicador.activo ? "bg-white/6" : "bg-white/3 opacity-70"
+        persona.activo ? "bg-white/6" : "bg-white/3 opacity-70"
       }`}
-      key={predicador.id}
+      key={persona.id}
     >
-      {editando === predicador.id ? (
+      {editando === persona.id ? (
         <>
           <input
             autoFocus
             className={`${INPUT} flex-1 min-w-[160px]`}
             onChange={(evento) => setBorradorNombre(evento.target.value)}
             onKeyDown={(evento) => {
-              if (evento.key === "Enter") void guardarEdicion(predicador);
+              if (evento.key === "Enter") void guardarEdicion(persona);
               if (evento.key === "Escape") setEditando(null);
             }}
             value={borradorNombre}
@@ -103,7 +122,7 @@ export function PredicadoresPanel({
           />
           <button
             className="flex h-8 w-8 items-center justify-center border border-emerald-300/40 bg-emerald-300/10 text-emerald-200"
-            onClick={() => void guardarEdicion(predicador)}
+            onClick={() => void guardarEdicion(persona)}
             title="Guardar"
             type="button"
           >
@@ -120,21 +139,21 @@ export function PredicadoresPanel({
         </>
       ) : (
         <>
-          <Avatar nombre={predicador.nombre} size={28} />
+          <Avatar nombre={persona.nombre} size={28} />
           <div className="min-w-0 flex-1">
-            <p className="truncate text-sm font-semibold text-slate-100">{predicador.nombre}</p>
+            <p className="truncate text-sm font-semibold text-slate-100">{persona.nombre}</p>
             <p className="text-xs text-slate-500">
-              {predicador.telefono ? `${predicador.telefono} · ` : ""}
-              {uso[predicador.id] ? `${uso[predicador.id]} asignaciones en total` : "sin asignaciones"}
-              {predicador.activo ? "" : " · inactivo"}
+              {persona.telefono ? `${persona.telefono} · ` : ""}
+              {uso[persona.id] ? `${uso[persona.id]} asignaciones en total` : "sin asignaciones"}
+              {persona.activo ? "" : " · inactivo"}
             </p>
           </div>
           <button
             className="flex h-8 w-8 items-center justify-center border border-white/10 text-slate-300 transition hover:border-emerald-300/50 hover:text-white"
             onClick={() => {
-              setEditando(predicador.id);
-              setBorradorNombre(predicador.nombre);
-              setBorradorTelefono(predicador.telefono ?? "");
+              setEditando(persona.id);
+              setBorradorNombre(persona.nombre);
+              setBorradorTelefono(persona.telefono ?? "");
             }}
             title="Editar"
             type="button"
@@ -143,19 +162,19 @@ export function PredicadoresPanel({
           </button>
           <button
             className={`flex h-8 w-8 items-center justify-center border transition ${
-              predicador.activo
+              persona.activo
                 ? "border-white/10 text-slate-300 hover:border-amber-300/60 hover:text-amber-200"
                 : "border-emerald-300/40 text-emerald-200"
             }`}
-            onClick={() => void alternarActivo(predicador)}
-            title={predicador.activo ? "Inactivar" : "Reactivar"}
+            onClick={() => void alternarActivo(persona)}
+            title={persona.activo ? "Inactivar" : "Reactivar"}
             type="button"
           >
             <Power className="h-3.5 w-3.5" />
           </button>
           <button
             className="flex h-8 w-8 items-center justify-center border border-red-400/30 text-red-200 transition hover:border-red-300"
-            onClick={() => setAEliminar(predicador)}
+            onClick={() => setAEliminar(persona)}
             title="Eliminar"
             type="button"
           >
@@ -167,7 +186,7 @@ export function PredicadoresPanel({
   );
 
   return (
-    <Modal ancho="max-w-2xl" onClose={onCerrar} titulo="Predicadores disponibles">
+    <Modal ancho="max-w-2xl" onClose={onCerrar} titulo={titulo}>
       <div className="grid gap-4">
         <ErrorBanner message={error} />
 
@@ -181,7 +200,7 @@ export function PredicadoresPanel({
           <input
             className={`${INPUT} flex-1 min-w-[180px]`}
             onChange={(evento) => setNombre(evento.target.value)}
-            placeholder="Nombre del predicador"
+            placeholder={`Nombre ${etiqueta}`}
             value={nombre}
           />
           <input
@@ -196,7 +215,7 @@ export function PredicadoresPanel({
           </button>
         </form>
 
-        {predicadores.length ? (
+        {personas.length ? (
           <div className="grid gap-3">
             <div className="grid gap-1.5">
               <p className="text-xs font-bold uppercase tracking-wide text-slate-500">Activos ({activos.length})</p>
@@ -215,7 +234,7 @@ export function PredicadoresPanel({
         ) : (
           <EmptyState>
             <UserRound className="mx-auto mb-2 h-6 w-6 text-slate-500" />
-            Agrega a los predicadores con los que sueles contar. Después los asignas en el calendario del mes.
+            {descripcion}
           </EmptyState>
         )}
 
@@ -230,18 +249,18 @@ export function PredicadoresPanel({
         message={
           uso[aEliminar?.id ?? ""]
             ? `"${aEliminar?.nombre ?? ""}" está asignado en ${uso[aEliminar?.id ?? ""]} celebraciones; esas quedarán sin asignar. Si solo quieres que deje de aparecer al asignar, usa "Inactivar" en vez de eliminar.`
-            : `Se eliminará a "${aEliminar?.nombre ?? ""}" del catálogo.`
+            : `Se eliminará a "${aEliminar?.nombre ?? ""}" de este catálogo.`
         }
         onCancel={() => setAEliminar(null)}
         onConfirm={async () => {
           if (!aEliminar) return;
-          const { error: deleteError } = await deletePredicador(aEliminar.id);
+          const { error: deleteError } = await acciones.eliminar(aEliminar.id);
           setAEliminar(null);
           if (deleteError) setError(deleteError);
           await onCambio();
         }}
         open={Boolean(aEliminar)}
-        title="Eliminar predicador"
+        title={`Eliminar ${etiqueta}`}
       />
     </Modal>
   );
