@@ -80,6 +80,17 @@ Sus tablas (`gestionesjj_pendientes_*`) nacieron en `014_gestionesjj_iglesia.sql
 
 El area funciona como una rejilla de "botones": cada recurso es independiente y se van sumando sin tocar los anteriores.
 
+### Predicas del mes
+
+Arma el calendario mensual de predicadores. Cada domingo tiene tres celebraciones (7:30, 9:30 y 11:30) y el martes una (7:00 PM); el mes se genera completo con sus fechas al crearlo.
+
+- **Catalogo de predicadores**: agregar, editar, inactivar (deja de aparecer al asignar pero conserva los meses ya armados) y eliminar. Muestra cuantas asignaciones acumula cada uno.
+- **Asignacion por celebracion**: quien predica y quien cierra. El cierre puede ser una persona del catalogo o el texto fijo "Pastores de celebracion", que es el que llevan las celebraciones de 9:30 y 11:30.
+- **Control de repeticiones**: junto a cada nombre aparece entre parentesis cuantas veces lleva asignado ese mes, y la celda se pinta en ambar cuando repite a alguien en el mismo horario dentro del mes, con un resumen arriba. Es un aviso, nunca un bloqueo.
+- **Importar desde texto**: pega la lista tal como se comparte cada mes ("Domingo 5" con sus tres predicadores, "Martes 7" con predica y cierre, "Tema del mes:") y arma el calendario. Antes de aplicar muestra que entendio y a quien no reconocio, y ofrece agregar al catalogo los nombres nuevos.
+- **Autoguardado**: cada cambio se guarda solo y todo sigue editable.
+- **Exportar a Excel**: el calendario con el mes y el tema en el encabezado, una fila por celebracion agrupada por fecha, las instrucciones extra al pie y una hoja de resumen con cuantas predicas y cierres lleva cada persona.
+
 ### Bodas, cumpleanos y eventos
 
 - **Doce tipos de evento** con su propio documento y sus roles: boda religiosa, matrimonio civil, aniversario de bodas, cumpleanos, quince anos, bautizo, presentacion de ninos, dedicacion, funeral, culto de accion de gracias, graduacion y otro.
@@ -88,7 +99,7 @@ El area funciona como una rejilla de "botones": cada recurso es independiente y 
 - **Descarga en Word (.docx real)**: constancia o programa con el encabezado de la iglesia, los datos generales, la tabla de participantes, el programa y las lineas de firma de quienes corresponde segun el tipo de evento. El nombre de la iglesia se configura desde el boton "Encabezado" y se guarda en el dispositivo.
 - **Generar pendientes**: vuelca los preparativos tipicos del tipo de evento (consejeria prematrimonial, reservar el templo, ensayo...) como pendientes reales en el tablero que elijas, enlazados al evento. Es el puente entre esta area y el modulo Pendientes.
 
-Las migraciones de estos dos modulos son `014_gestionesjj_iglesia.sql` (tablas, RLS y disparadores), `015_gestionesjj_iglesia_indices_fk.sql` (indices de llave foranea) y `016_gestionesjj_pendientes_renombrar.sql` (renombra las tablas de pendientes al salir del area). Siguen el mismo patron de seguridad del resto: RLS owner-lock, sin acceso anonimo. Las tres estan aplicadas en el proyecto de Supabase.
+Las migraciones de estos modulos son `017_gestionesjj_iglesia_predicas.sql` (predicas del mes), `014_gestionesjj_iglesia.sql` (tablas, RLS y disparadores), `015_gestionesjj_iglesia_indices_fk.sql` (indices de llave foranea) y `016_gestionesjj_pendientes_renombrar.sql` (renombra las tablas de pendientes al salir del area). Siguen el mismo patron de seguridad del resto: RLS owner-lock, sin acceso anonimo. Las tres estan aplicadas en el proyecto de Supabase.
 
 ## Modulo Recursos
 
