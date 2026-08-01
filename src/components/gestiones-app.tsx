@@ -935,7 +935,7 @@ export function GestionesApp() {
                       <AreaPlaceholder areaId={activeArea} />
                     </div>
                   ) : (
-                    <div className="grid gap-5">
+                    <div className="coordinacion-scope grid gap-5">
                       <CoordinacionTabs
                         alertasReuniones={alertasSeguimientos}
                         onChange={(value) => {
@@ -1269,35 +1269,63 @@ function CoordinacionTabs({
   onChange: (value: CoordinacionView) => void;
   value: CoordinacionView;
 }) {
-  const tabs: Array<{ value: CoordinacionView; label: string; icon: React.ComponentType<{ className?: string }> }> = [
-    { value: "resumen", label: "Resumen general", icon: BarChart3 },
-    { value: "nueva", label: "Nueva evaluacion", icon: Plus },
-    { value: "informe", label: "Informe por docente", icon: GraduationCap },
-    { value: "control", label: "Control de cursos y docentes", icon: CalendarClock },
-    { value: "presentacion", label: "Modo presentacion", icon: Presentation },
-    { value: "reuniones", label: "Reuniones con docentes", icon: NotebookPen },
-    { value: "docentes", label: "Control de docentes", icon: UserRoundCog },
-    { value: "encuestas", label: "Encuesta estudiantil", icon: ClipboardList },
+  /* `corto` es lo que se ve en movil: con ocho pestanas, los nombres largos
+     obligaban a leer la barra en cinco renglones antes de llegar al contenido. */
+  const tabs: Array<{
+    value: CoordinacionView;
+    label: string;
+    corto: string;
+    icon: React.ComponentType<{ className?: string }>;
+  }> = [
+    { value: "resumen", label: "Resumen general", corto: "Resumen", icon: BarChart3 },
+    { value: "nueva", label: "Nueva evaluacion", corto: "Nueva", icon: Plus },
+    { value: "informe", label: "Informe por docente", corto: "Informe", icon: GraduationCap },
+    { value: "control", label: "Control de cursos y docentes", corto: "Cursos", icon: CalendarClock },
+    { value: "presentacion", label: "Modo presentacion", corto: "Presentación", icon: Presentation },
+    { value: "reuniones", label: "Reuniones con docentes", corto: "Reuniones", icon: NotebookPen },
+    { value: "docentes", label: "Control de docentes", corto: "Docentes", icon: UserRoundCog },
+    { value: "encuestas", label: "Encuesta estudiantil", corto: "Encuesta", icon: ClipboardList },
   ];
 
+  const tiraRef = useRef<HTMLDivElement | null>(null);
+
+  /* La pestana activa se centra sola en la tira: al entrar al area o al volver
+     de otra vista, el usuario ve donde esta parado sin tener que desplazarse. */
+  useEffect(() => {
+    const tira = tiraRef.current;
+    if (!tira || tira.scrollWidth <= tira.clientWidth) return;
+    const activa = tira.querySelector<HTMLElement>('[data-activa="true"]');
+    activa?.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "center" });
+  }, [value]);
+
   return (
-    <div className="flex flex-wrap gap-2">
+    /* En movil es una tira deslizable de un solo renglon (los margenes
+       negativos la dejan llegar a los bordes de la pantalla); desde sm vuelve a
+       ser una barra que se acomoda en varias lineas. */
+    <div
+      className="-mx-4 flex snap-x snap-mandatory gap-2 overflow-x-auto px-4 pb-1 [-ms-overflow-style:none] [scrollbar-width:none] sm:mx-0 sm:flex-wrap sm:overflow-visible sm:px-0 sm:pb-0 [&::-webkit-scrollbar]:hidden"
+      ref={tiraRef}
+    >
       {tabs.map((tab) => {
         const Icon = tab.icon;
         const active = value === tab.value;
         return (
           <button
             key={tab.value}
-            className={`inline-flex items-center gap-2 border px-4 py-2 text-sm font-semibold transition ${
+            aria-current={active ? "page" : undefined}
+            className={`inline-flex shrink-0 snap-center items-center gap-2 border px-4 py-2 text-sm font-semibold whitespace-nowrap transition ${
               active
                 ? "border-emerald-300/70 bg-emerald-300/14 text-white"
                 : "border-white/10 bg-white/8 text-slate-300 hover:border-white/30"
             }`}
+            data-activa={active}
             onClick={() => onChange(tab.value)}
+            title={tab.label}
             type="button"
           >
-            <Icon className="h-4 w-4" />
-            {tab.label}
+            <Icon className="h-4 w-4 shrink-0" />
+            <span className="sm:hidden">{tab.corto}</span>
+            <span className="hidden sm:inline">{tab.label}</span>
             {tab.value === "reuniones" && alertasReuniones > 0 ? (
               <span
                 className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-red-400 px-1.5 text-xs font-bold text-slate-950"
