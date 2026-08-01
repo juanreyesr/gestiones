@@ -24,6 +24,7 @@ import { exportInformeDocenteToPdf, exportReporteToPdf } from "@/lib/pdf";
 import { ConfirmDialog } from "./confirm-dialog";
 import { EvaluacionDetalleModal } from "./evaluacion-detalle-modal";
 import { TendenciaCategoriasChart } from "./tendencia-categorias-chart";
+import { EmptyState, Field } from "./ui-comun";
 
 type PeriodoValor = Trimestre | "todos" | "historico";
 
@@ -34,6 +35,15 @@ const PERIODOS: Array<{ label: string; value: PeriodoValor }> = [
   { label: "Todo el año", value: "todos" },
   { label: "Todo el historial", value: "historico" },
 ];
+
+/* Las acciones de cada evaluacion aparecen dos veces: en la tabla de escritorio
+   y en las tarjetas de movil. Los estilos viven aqui para que ambas se vean
+   igual y solo cambie el tamano del area tactil. */
+const ACCION = "inline-flex items-center justify-center gap-1 border px-2 py-1 text-xs font-semibold transition";
+const ACCION_VER = `${ACCION} border-white/10 bg-white/8 text-slate-100 hover:border-white/30`;
+const ACCION_EDITAR = `${ACCION} border-sky-400/30 bg-sky-400/10 text-sky-200 hover:border-sky-400/60`;
+const ACCION_CORREO = `${ACCION} border-emerald-400/30 bg-emerald-400/10 text-emerald-200 hover:border-emerald-400/60`;
+const ACCION_BORRAR = `${ACCION} border-red-400/30 bg-red-400/10 text-red-200 hover:border-red-400/60`;
 
 function agruparPorAnio(rows: EvaluacionRow[]) {
   const map = new Map<number, EvaluacionRow[]>();
@@ -172,9 +182,9 @@ export function InformeDocenteView({
   return (
     <div className="grid gap-5">
       <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-        <div>
+        <div className="min-w-0">
           <div className="mb-2 inline-flex items-center gap-2 text-xs font-semibold uppercase text-emerald-200">
-            <GraduationCap className="h-4 w-4" />
+            <GraduationCap className="h-4 w-4 shrink-0" />
             Informe por docente
           </div>
           <h2 className="text-2xl font-semibold text-white sm:text-3xl">Historial completo</h2>
@@ -183,48 +193,66 @@ export function InformeDocenteView({
           </p>
         </div>
         <button
-          className="inline-flex h-11 w-fit items-center justify-center gap-2 border border-white/10 bg-white/8 px-6 text-sm font-bold text-slate-100 transition hover:border-white/30 disabled:opacity-40"
+          className="inline-flex h-11 w-full shrink-0 items-center justify-center gap-2 border border-white/10 bg-white/8 px-6 text-sm font-bold text-slate-100 transition hover:border-white/30 disabled:opacity-40 lg:w-fit"
           disabled={!rows.length || exportingResumen}
           onClick={handlePrintResumen}
           type="button"
         >
-          <Printer className="h-4 w-4" />
+          <Printer className="h-4 w-4 shrink-0" />
           {exportingResumen ? "Generando PDF..." : "Descargar informe en PDF"}
         </button>
       </div>
 
-      <Field label="Docente">
-        <select className="field max-w-md" onChange={(event) => setDocenteId(event.target.value)} value={docenteId}>
-          {docentes.map((item) => (
-            <option key={item.id} value={item.id}>
-              {item.nombre}
-            </option>
-          ))}
-        </select>
-      </Field>
+      {/* Filtros agrupados: en movil ocupan el ancho completo y se apilan, para
+          que ningun control quede fuera de la pantalla. */}
+      <div className="grid gap-4 border border-white/10 bg-white/6 p-4">
+        {docentes.length ? (
+          <Field label="Docente">
+            <select className="field sm:max-w-md" onChange={(event) => setDocenteId(event.target.value)} value={docenteId}>
+              {docentes.map((item) => (
+                <option key={item.id} value={item.id}>
+                  {item.nombre}
+                </option>
+              ))}
+            </select>
+          </Field>
+        ) : (
+          <p className="text-sm text-slate-400">Aún no hay docentes registrados.</p>
+        )}
 
-      <div className="flex flex-wrap items-center gap-2">
-        {PERIODOS.map((item) => (
-          <button
-            key={item.label}
-            className={`border px-3 py-1.5 text-xs font-semibold transition ${
-              periodo === item.value
-                ? "border-emerald-300/70 bg-emerald-300/14 text-white"
-                : "border-white/10 bg-white/8 text-slate-300 hover:border-white/30"
-            }`}
-            onClick={() => setPeriodo(item.value)}
-            type="button"
-          >
-            {item.label}
-          </button>
-        ))}
-        <input
-          className="field w-28 disabled:opacity-40"
-          disabled={esHistorico}
-          onChange={(event) => setAnio(Number(event.target.value))}
-          type="number"
-          value={anio}
-        />
+        <div className="grid gap-3 sm:flex sm:flex-wrap sm:items-end sm:gap-4">
+          <div className="grid min-w-0 gap-1.5">
+            <span className="text-xs font-semibold uppercase text-slate-400">Periodo</span>
+            <div className="flex flex-wrap gap-2">
+              {PERIODOS.map((item) => (
+                <button
+                  key={item.label}
+                  aria-pressed={periodo === item.value}
+                  className={`inline-flex h-9 items-center border px-3 text-xs font-semibold transition ${
+                    periodo === item.value
+                      ? "border-emerald-300/70 bg-emerald-300/14 text-white"
+                      : "border-white/10 bg-white/8 text-slate-300 hover:border-white/30"
+                  }`}
+                  onClick={() => setPeriodo(item.value)}
+                  type="button"
+                >
+                  {item.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <Field label="Año">
+            <input
+              className="field w-28 disabled:opacity-40"
+              disabled={esHistorico}
+              onChange={(event) => setAnio(Number(event.target.value))}
+              title={esHistorico ? "Todo el historial no depende de un año" : undefined}
+              type="number"
+              value={anio}
+            />
+          </Field>
+        </div>
       </div>
 
       {error ? <p className="border border-red-400/30 bg-red-400/10 p-3 text-sm text-red-200">{error}</p> : null}
@@ -232,137 +260,146 @@ export function InformeDocenteView({
 
       {!loading && !error ? (
         <>
-          <div className="grid gap-4 sm:grid-cols-3">
+          <div className="grid gap-3 sm:grid-cols-3">
             <SummaryCard title="Evaluaciones registradas" value={`${rows.length}`} />
             <SummaryCard title="Promedio del periodo" value={`${promedioGeneral(rows)}%`} />
             <SummaryCard title="Entrevistas promedio" value={`${promedioEntrevistas(rows)}%`} />
           </div>
 
-          <div className="grid gap-4 md:grid-cols-2">
-            <div className="border border-white/10 bg-white/6 p-4">
-              <div className="mb-3 flex items-center gap-2 text-sm font-semibold">
-                <Star className="h-4 w-4 text-emerald-300" />
-                Areas mas sobresalientes
+          {rows.length ? (
+            <>
+              <div className="grid gap-4 md:grid-cols-2">
+                <Panel icon={Star} iconClass="text-emerald-300" title="Áreas más sobresalientes">
+                  <div className="grid gap-3">
+                    {sobresalientes.map((item, index) => (
+                      <MetricaFila key={`${item.label}-${index}`} label={item.label} percent={item.percent} tono="emerald" />
+                    ))}
+                  </div>
+                </Panel>
+
+                <Panel
+                  icon={Star}
+                  iconClass="text-amber-300"
+                  subtitle="Porcentaje que aún falta por mejorar en cada área."
+                  title="Áreas de oportunidad"
+                >
+                  {categoriasOportunidad.length ? (
+                    <div className="grid gap-3">
+                      {categoriasOportunidad.map((item) => (
+                        <MetricaFila key={item.categoria} label={item.categoria} percent={100 - item.percent} tono="amber" />
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-sm text-emerald-200">Todas las áreas evaluadas están al 100% en este periodo.</p>
+                  )}
+                </Panel>
+
+                <Panel icon={Users} iconClass="text-emerald-300" title="Más valorado según estudiantes">
+                  {preguntasDestacadas.length ? (
+                    <div className="grid gap-3">
+                      {preguntasDestacadas.map((item) => (
+                        <MetricaFila key={item.id} label={item.texto} percent={item.promedio ?? 0} tono="emerald" />
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-sm text-slate-400">Sin entrevistas registradas en este periodo.</p>
+                  )}
+                </Panel>
+
+                <Panel
+                  icon={Users}
+                  iconClass="text-amber-300"
+                  subtitle="Porcentaje que aún falta por mejorar según los estudiantes."
+                  title="A reforzar según estudiantes"
+                >
+                  {preguntasOportunidad.length ? (
+                    <div className="grid gap-3">
+                      {preguntasOportunidad.map((item) => (
+                        <MetricaFila key={item.id} label={item.texto} percent={100 - (item.promedio ?? 0)} tono="amber" />
+                      ))}
+                    </div>
+                  ) : preguntasAgg.length ? (
+                    <p className="text-sm text-emerald-200">
+                      Los estudiantes calificaron todo con el máximo puntaje en este periodo.
+                    </p>
+                  ) : (
+                    <p className="text-sm text-slate-400">Sin entrevistas registradas en este periodo.</p>
+                  )}
+                </Panel>
               </div>
-              {rows.length ? (
-                <div className="grid gap-2">
-                  {sobresalientes.map((item, index) => (
-                    <div
-                      key={`${item.label}-${index}`}
-                      className="flex items-center justify-between gap-3 text-sm text-slate-200"
-                    >
-                      <span className="min-w-0">{item.label}</span>
-                      <span className="shrink-0 font-semibold text-emerald-200">{item.percent}%</span>
+
+              <Panel title="Rendimiento por año">
+                <div className="grid gap-3">
+                  {porAnio.map((item) => (
+                    <div key={item.anio} className="grid gap-1.5">
+                      <div className="flex items-baseline justify-between gap-3 text-xs text-slate-300">
+                        <span className="min-w-0">
+                          {item.anio} <span className="text-slate-500">({item.count} evaluaciones)</span>
+                        </span>
+                        <span className="shrink-0 tabular-nums">{item.promedio}%</span>
+                      </div>
+                      <Barra percent={item.promedio} tono="emerald" />
                     </div>
                   ))}
                 </div>
-              ) : (
-                <p className="text-sm text-slate-400">Sin datos para este periodo.</p>
-              )}
-            </div>
+              </Panel>
+            </>
+          ) : (
+            <EmptyState>
+              No hay evaluaciones guardadas en este periodo. Cambia el periodo o el año para ver otros registros.
+            </EmptyState>
+          )}
 
-            <div className="border border-white/10 bg-white/6 p-4">
-              <div className="mb-3 flex items-center gap-2 text-sm font-semibold">
-                <Star className="h-4 w-4 text-amber-300" />
-                Areas de oportunidad
-              </div>
-              <p className="mb-2 text-xs text-slate-400">Porcentaje que aun falta por mejorar en cada area.</p>
-              {categoriasOportunidad.length ? (
-                <div className="grid gap-2">
-                  {categoriasOportunidad.map((item) => (
-                    <div key={item.categoria} className="flex items-center justify-between gap-3 text-sm text-slate-200">
-                      <span className="min-w-0">{item.categoria}</span>
-                      <span className="shrink-0 font-semibold text-amber-200">{100 - item.percent}%</span>
-                    </div>
-                  ))}
-                </div>
-              ) : rows.length ? (
-                <p className="text-sm text-emerald-200">Todas las areas evaluadas estan al 100% en este periodo.</p>
-              ) : (
-                <p className="text-sm text-slate-400">Sin datos para este periodo.</p>
-              )}
-            </div>
+          <Panel
+            icon={TrendingUp}
+            iconClass="text-sky-300"
+            subtitle="Avance de cada área evaluada a través de los periodos, para ver si viene mejorando o empeorando."
+            title="Tendencia por área (todo el historial de este docente)"
+          >
+            <TendenciaCategoriasChart series={tendenciaCategorias} />
+          </Panel>
 
-            <div className="border border-white/10 bg-white/6 p-4">
-              <div className="mb-3 flex items-center gap-2 text-sm font-semibold">
-                <Users className="h-4 w-4 text-emerald-300" />
-                Mas valorado segun estudiantes
-              </div>
-              {preguntasDestacadas.length ? (
-                <div className="grid gap-2">
-                  {preguntasDestacadas.map((item) => (
-                    <div key={item.id} className="flex items-center justify-between gap-3 text-sm text-slate-200">
-                      <span className="min-w-0">{item.texto}</span>
-                      <span className="shrink-0 font-semibold text-emerald-200">{item.promedio}%</span>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-sm text-slate-400">Sin entrevistas registradas en este periodo.</p>
-              )}
-            </div>
-
-            <div className="border border-white/10 bg-white/6 p-4">
-              <div className="mb-3 flex items-center gap-2 text-sm font-semibold">
-                <Users className="h-4 w-4 text-amber-300" />
-                A reforzar segun estudiantes
-              </div>
-              <p className="mb-2 text-xs text-slate-400">Porcentaje que aun falta por mejorar segun los estudiantes.</p>
-              {preguntasOportunidad.length ? (
-                <div className="grid gap-2">
-                  {preguntasOportunidad.map((item) => (
-                    <div key={item.id} className="flex items-center justify-between gap-3 text-sm text-slate-200">
-                      <span className="min-w-0">{item.texto}</span>
-                      <span className="shrink-0 font-semibold text-amber-200">{100 - (item.promedio ?? 0)}%</span>
-                    </div>
-                  ))}
-                </div>
-              ) : preguntasAgg.length ? (
-                <p className="text-sm text-emerald-200">Los estudiantes calificaron todo con el maximo puntaje en este periodo.</p>
-              ) : (
-                <p className="text-sm text-slate-400">Sin entrevistas registradas en este periodo.</p>
-              )}
-            </div>
-          </div>
-
-          <div className="border border-white/10 bg-white/6 p-4">
-            <div className="mb-3 text-sm font-semibold">Rendimiento por año</div>
-            {porAnio.length ? (
-              <div className="grid gap-3">
-                {porAnio.map((item) => (
-                  <div key={item.anio}>
-                    <div className="mb-1 flex justify-between gap-3 text-xs text-slate-300">
-                      <span className="min-w-0">
-                        {item.anio} <span className="text-slate-500">({item.count} evaluaciones)</span>
+          {rows.length ? (
+            <Panel title="Detalle de evaluaciones">
+              {/* En movil una tabla obliga a desplazarse en horizontal y los
+                  botones quedan fuera de la pantalla, asi que cada evaluacion
+                  se muestra como tarjeta con sus acciones a la vista. */}
+              <div className="grid gap-2 md:hidden">
+                {rows.map((row) => (
+                  <div key={row.id} className="border border-white/10 bg-white/4 p-3">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="text-sm font-semibold text-slate-100">{row.curso_nombre}</p>
+                        <p className="mt-0.5 text-xs text-slate-400">
+                          T{row.trimestre} {row.anio} · {row.fecha_observacion}
+                        </p>
+                      </div>
+                      <span className="shrink-0 border border-emerald-300/30 bg-emerald-300/10 px-2 py-1 text-sm font-bold tabular-nums text-emerald-200">
+                        {row.porcentaje}%
                       </span>
-                      <span className="shrink-0">{item.promedio}%</span>
                     </div>
-                    <div className="h-2 bg-slate-800">
-                      <div className="h-full bg-emerald-300" style={{ width: `${item.promedio}%` }} />
+                    <div className="mt-3 grid grid-cols-2 gap-2">
+                      <button className={`${ACCION_VER} h-9`} onClick={() => setViewRow(row)} type="button">
+                        Ver
+                      </button>
+                      <button className={`${ACCION_EDITAR} h-9`} onClick={() => onEditar(row)} type="button">
+                        <Pencil className="h-3.5 w-3.5 shrink-0" />
+                        Editar
+                      </button>
+                      <button className={`${ACCION_CORREO} h-9`} onClick={() => onGenerarCorreo(row)} type="button">
+                        <Mail className="h-3.5 w-3.5 shrink-0" />
+                        Correo
+                      </button>
+                      <button className={`${ACCION_BORRAR} h-9`} onClick={() => setDeleteTarget(row)} type="button">
+                        <Trash2 className="h-3.5 w-3.5 shrink-0" />
+                        Borrar
+                      </button>
                     </div>
                   </div>
                 ))}
               </div>
-            ) : (
-              <p className="text-sm text-slate-300">Este docente aun no tiene evaluaciones guardadas.</p>
-            )}
-          </div>
 
-          <div className="border border-white/10 bg-white/6 p-4">
-            <div className="mb-3 flex items-center gap-2 text-sm font-semibold">
-              <TrendingUp className="h-4 w-4 text-sky-300" />
-              Tendencia por area (todo el historial de este docente)
-            </div>
-            <p className="mb-3 text-xs text-slate-400">
-              Avance de cada area evaluada a traves de los periodos, para ver si viene mejorando o empeorando.
-            </p>
-            <TendenciaCategoriasChart series={tendenciaCategorias} />
-          </div>
-
-          <div className="border border-white/10 bg-white/6 p-4">
-            <div className="mb-3 text-sm font-semibold">Detalle de evaluaciones</div>
-            {rows.length ? (
-              <div className="overflow-x-auto">
+              <div className="hidden overflow-x-auto md:block">
                 <table className="w-full text-left text-sm">
                   <thead>
                     <tr className="text-xs uppercase text-slate-400">
@@ -377,22 +414,18 @@ export function InformeDocenteView({
                     {rows.map((row) => (
                       <tr key={row.id} className="border-t border-white/8">
                         <td className="py-2 pr-3">{row.curso_nombre}</td>
-                        <td className="py-2 pr-3">
+                        <td className="whitespace-nowrap py-2 pr-3">
                           T{row.trimestre} {row.anio}
                         </td>
-                        <td className="py-2 pr-3">{row.fecha_observacion}</td>
-                        <td className="py-2 pr-3">{row.porcentaje}%</td>
+                        <td className="whitespace-nowrap py-2 pr-3">{row.fecha_observacion}</td>
+                        <td className="py-2 pr-3 tabular-nums">{row.porcentaje}%</td>
                         <td className="py-2">
-                          <div className="flex gap-2">
-                            <button
-                              className="border border-white/10 bg-white/8 px-2 py-1 text-xs font-semibold text-slate-100 transition hover:border-white/30"
-                              onClick={() => setViewRow(row)}
-                              type="button"
-                            >
+                          <div className="flex justify-end gap-2">
+                            <button className={ACCION_VER} onClick={() => setViewRow(row)} type="button">
                               Ver
                             </button>
                             <button
-                              className="flex items-center gap-1 border border-sky-400/30 bg-sky-400/10 px-2 py-1 text-xs font-semibold text-sky-200 transition hover:border-sky-400/60"
+                              className={ACCION_EDITAR}
                               onClick={() => onEditar(row)}
                               title="Editar evaluacion"
                               type="button"
@@ -401,7 +434,7 @@ export function InformeDocenteView({
                               Editar
                             </button>
                             <button
-                              className="flex items-center gap-1 border border-emerald-400/30 bg-emerald-400/10 px-2 py-1 text-xs font-semibold text-emerald-200 transition hover:border-emerald-400/60"
+                              className={ACCION_CORREO}
                               onClick={() => onGenerarCorreo(row)}
                               title="Generar correo para el docente"
                               type="button"
@@ -410,7 +443,7 @@ export function InformeDocenteView({
                               Correo
                             </button>
                             <button
-                              className="flex items-center justify-center border border-red-400/30 bg-red-400/10 px-2 py-1 text-xs font-semibold text-red-200 transition hover:border-red-400/60"
+                              className={ACCION_BORRAR}
                               onClick={() => setDeleteTarget(row)}
                               title="Borrar registro"
                               type="button"
@@ -424,8 +457,8 @@ export function InformeDocenteView({
                   </tbody>
                 </table>
               </div>
-            ) : null}
-          </div>
+            </Panel>
+          ) : null}
         </>
       ) : null}
 
@@ -448,20 +481,63 @@ export function InformeDocenteView({
   );
 }
 
+/** Tarjeta contenedora de cada bloque del informe, con su titulo y ayuda. */
+function Panel({
+  children,
+  icon: Icon,
+  iconClass = "",
+  subtitle,
+  title,
+}: {
+  children: React.ReactNode;
+  icon?: React.ComponentType<{ className?: string }>;
+  iconClass?: string;
+  subtitle?: string;
+  title: string;
+}) {
+  return (
+    <section className="border border-white/10 bg-white/6 p-4">
+      <div className="flex items-center gap-2 text-sm font-semibold text-slate-100">
+        {Icon ? <Icon className={`h-4 w-4 shrink-0 ${iconClass}`} /> : null}
+        <span className="min-w-0">{title}</span>
+      </div>
+      {subtitle ? <p className="mt-1.5 text-xs leading-5 text-slate-400">{subtitle}</p> : null}
+      <div className="mt-3">{children}</div>
+    </section>
+  );
+}
+
 function SummaryCard({ title, value }: { title: string; value: string }) {
   return (
-    <div className="border border-white/10 bg-white/8 p-4 backdrop-blur-xl">
-      <div className="text-xs font-semibold uppercase text-slate-400">{title}</div>
-      <div className="mt-2 text-3xl font-semibold text-white">{value}</div>
+    <div className="flex items-center justify-between gap-3 border border-white/10 bg-white/8 p-4 backdrop-blur-xl sm:block">
+      <div className="min-w-0 text-xs font-semibold uppercase text-slate-400">{title}</div>
+      <div className="shrink-0 text-2xl font-semibold tabular-nums text-white sm:mt-2 sm:text-3xl">{value}</div>
     </div>
   );
 }
 
-function Field({ children, label }: { children: React.ReactNode; label: string }) {
+/** Etiqueta + porcentaje + barra: el mismo dato se lee de un vistazo. */
+function MetricaFila({ label, percent, tono }: { label: string; percent: number; tono: "amber" | "emerald" }) {
   return (
-    <label className="grid gap-1.5">
-      <span className="text-xs font-semibold uppercase text-slate-400">{label}</span>
-      {children}
-    </label>
+    <div className="grid gap-1.5">
+      <div className="flex items-baseline justify-between gap-3 text-sm text-slate-200">
+        <span className="min-w-0">{label}</span>
+        <span className={`shrink-0 font-semibold tabular-nums ${tono === "emerald" ? "text-emerald-200" : "text-amber-200"}`}>
+          {percent}%
+        </span>
+      </div>
+      <Barra percent={percent} tono={tono} />
+    </div>
+  );
+}
+
+function Barra({ percent, tono }: { percent: number; tono: "amber" | "emerald" }) {
+  return (
+    <div className="h-1.5 overflow-hidden rounded-full bg-white/8">
+      <div
+        className={`h-full rounded-full ${tono === "emerald" ? "bg-emerald-300" : "bg-amber-300"}`}
+        style={{ width: `${Math.max(0, Math.min(100, percent))}%` }}
+      />
+    </div>
   );
 }

@@ -276,14 +276,17 @@ body {
 }
 
 /* Los elementos de una grilla o fila flexible tienen `min-width: auto`, asi que
-   un texto sin ajuste (por ejemplo el resumen truncado de una sesion) estira su
-   columna y desborda la pagina completa en pantallas pequenas, dejando botones
-   fuera del area visible. Dentro del modulo de Clinica se permite que encojan
-   para que el contenido se recorte dentro de su tarjeta en vez de empujar el
-   ancho de la pagina. Se usa :where() para no ganarle especificidad a las
-   clases de utilidad de los componentes. */
+   un contenido que no se puede encoger (un texto sin ajuste, un desplegable tan
+   ancho como su opcion mas larga) estira su columna y desborda la pagina
+   completa en pantallas pequenas, dejando controles fuera del area visible.
+   Dentro de estos modulos se permite que encojan para que el contenido se
+   recorte dentro de su tarjeta en vez de empujar el ancho de la pagina. Se usa
+   :where() para no ganarle especificidad a las clases de utilidad de los
+   componentes, que conservan sus anchos minimos explicitos (min-w-*). */
 @layer base {
-  .clinica-scope :where(.grid, .flex) > * {
+  .clinica-scope :where(.grid, .flex) > *,
+  .coordinacion-scope,
+  .coordinacion-scope :where(.grid, .flex) > * {
     min-width: 0;
   }
 }

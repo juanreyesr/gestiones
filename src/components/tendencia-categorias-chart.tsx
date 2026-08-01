@@ -29,60 +29,66 @@ export function TendenciaCategoriasChart({ series }: { series: TendenciaCategori
 
   return (
     <div className="grid gap-4">
-      <div className="overflow-x-auto">
-        <svg
-          className="min-w-[520px]"
-          height={HEIGHT}
-          role="img"
-          viewBox={`0 0 ${WIDTH} ${HEIGHT}`}
-          aria-label="Tendencia de cada area evaluada a traves de los periodos"
-        >
-          {[0, 25, 50, 75, 100].map((tick) => (
-            <g key={tick}>
-              <line
-                stroke="#2c2c2a"
-                strokeWidth={1}
-                x1={PAD_LEFT}
-                x2={WIDTH - PAD_RIGHT}
-                y1={yFor(tick)}
-                y2={yFor(tick)}
-              />
-              <text fill="#898781" fontSize={9} textAnchor="end" x={PAD_LEFT - 6} y={yFor(tick) + 3}>
-                {tick}
-              </text>
-            </g>
-          ))}
-
-          {periodos.map((periodo, index) => (
-            <text
-              key={periodo}
-              fill="#898781"
-              fontSize={9}
-              textAnchor="middle"
-              x={xFor(index)}
-              y={HEIGHT - PAD_BOTTOM + 14}
-            >
-              {periodo}
-            </text>
-          ))}
-
-          {series.map((serie) => {
-            const color = CATEGORIA_COLORES[serie.categoria] ?? "#94a3b8";
-            const path = serie.puntos.map((punto, index) => `${index === 0 ? "M" : "L"}${xFor(index)},${yFor(punto.percent)}`).join(" ");
-            return (
-              <g key={serie.categoria}>
-                <path d={path} fill="none" stroke={color} strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} />
-                {serie.puntos.map((punto, index) => (
-                  <circle key={index} cx={xFor(index)} cy={yFor(punto.percent)} fill={color} r={3}>
-                    <title>
-                      {serie.categoria} · {punto.periodo}: {punto.percent}%
-                    </title>
-                  </circle>
-                ))}
+      {/* La grafica necesita un ancho minimo para que las lineas no se
+          aplasten, asi que en movil se desplaza: se avisa para que nadie crea
+          que la informacion esta cortada. */}
+      <div className="grid gap-1.5">
+        <p className="text-[11px] text-slate-500 sm:hidden">Desliza la gráfica para ver todos los periodos.</p>
+        <div className="overflow-x-auto">
+          <svg
+            className="min-w-[520px]"
+            height={HEIGHT}
+            role="img"
+            viewBox={`0 0 ${WIDTH} ${HEIGHT}`}
+            aria-label="Tendencia de cada area evaluada a traves de los periodos"
+          >
+            {[0, 25, 50, 75, 100].map((tick) => (
+              <g key={tick}>
+                <line
+                  stroke="#2c2c2a"
+                  strokeWidth={1}
+                  x1={PAD_LEFT}
+                  x2={WIDTH - PAD_RIGHT}
+                  y1={yFor(tick)}
+                  y2={yFor(tick)}
+                />
+                <text fill="#898781" fontSize={9} textAnchor="end" x={PAD_LEFT - 6} y={yFor(tick) + 3}>
+                  {tick}
+                </text>
               </g>
-            );
-          })}
-        </svg>
+            ))}
+
+            {periodos.map((periodo, index) => (
+              <text
+                key={periodo}
+                fill="#898781"
+                fontSize={9}
+                textAnchor="middle"
+                x={xFor(index)}
+                y={HEIGHT - PAD_BOTTOM + 14}
+              >
+                {periodo}
+              </text>
+            ))}
+
+            {series.map((serie) => {
+              const color = CATEGORIA_COLORES[serie.categoria] ?? "#94a3b8";
+              const path = serie.puntos.map((punto, index) => `${index === 0 ? "M" : "L"}${xFor(index)},${yFor(punto.percent)}`).join(" ");
+              return (
+                <g key={serie.categoria}>
+                  <path d={path} fill="none" stroke={color} strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} />
+                  {serie.puntos.map((punto, index) => (
+                    <circle key={index} cx={xFor(index)} cy={yFor(punto.percent)} fill={color} r={3}>
+                      <title>
+                        {serie.categoria} · {punto.periodo}: {punto.percent}%
+                      </title>
+                    </circle>
+                  ))}
+                </g>
+              );
+            })}
+          </svg>
+        </div>
       </div>
 
       <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
