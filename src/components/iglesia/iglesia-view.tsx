@@ -1,13 +1,14 @@
 "use client";
 
-import { CalendarHeart, CalendarRange, ChevronLeft, ChevronRight, Church, Plus } from "lucide-react";
+import { CalendarHeart, CalendarRange, ChevronLeft, ChevronRight, Church, ClipboardList, Plus } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { fetchEventos } from "@/lib/iglesia/eventos";
 import { hoyISO } from "@/lib/fechas";
 import { EventosView } from "./eventos/eventos-view";
 import { PredicasView } from "./predicas/predicas-view";
+import { ProtocolosView } from "./protocolos/protocolos-view";
 
-type Recurso = "predicas" | "eventos";
+type Recurso = "predicas" | "eventos" | "protocolos";
 
 const RECURSOS: Array<{
   clave: Recurso;
@@ -23,6 +24,14 @@ const RECURSOS: Array<{
       "Calendario mensual de predicadores: las tres celebraciones de cada domingo y la del martes, con catálogo de predicadores, aviso de repeticiones y exportación a Excel.",
     icono: CalendarRange,
     color: "#6d5bd0",
+  },
+  {
+    clave: "protocolos",
+    titulo: "Protocolos para actividades",
+    descripcion:
+      "El paso a paso de cada actividad, con formato y listas. Se abre a pantalla completa y con el texto tan grande como haga falta para seguirlo en vivo.",
+    icono: ClipboardList,
+    color: "#0086c0",
   },
   {
     clave: "eventos",
@@ -78,7 +87,7 @@ export function IglesiaView() {
           <span className="font-semibold text-white">{RECURSOS.find((item) => item.clave === recurso)?.titulo}</span>
         </nav>
 
-        {recurso === "predicas" ? <PredicasView /> : <EventosView />}
+        {recurso === "predicas" ? <PredicasView /> : recurso === "protocolos" ? <ProtocolosView /> : <EventosView />}
       </div>
     );
   }

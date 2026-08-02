@@ -290,3 +290,64 @@ body {
     min-width: 0;
   }
 }
+
+/* Contenido de los protocolos de actividades. El texto lo escribe el editor
+   rico (negrita, tamano, color, vinetas y numeracion), y Tailwind quita por
+   defecto los marcadores de lista y los tamanos de encabezado, asi que aqui se
+   devuelven. Los tamanos van en em para que el zoom de la pantalla completa
+   escale el documento entero desde el contenedor. */
+.contenido-protocolo :where(ul) {
+  list-style: disc;
+  padding-left: 1.5em;
+  margin: 0.4em 0;
+}
+
+.contenido-protocolo :where(ol) {
+  list-style: decimal;
+  padding-left: 1.6em;
+  margin: 0.4em 0;
+}
+
+.contenido-protocolo :where(li) {
+  margin: 0.15em 0;
+}
+
+.contenido-protocolo :where(h1) {
+  font-size: 1.7em;
+  font-weight: 700;
+  margin: 0.6em 0 0.3em;
+}
+
+.contenido-protocolo :where(h2) {
+  font-size: 1.4em;
+  font-weight: 700;
+  margin: 0.6em 0 0.3em;
+}
+
+.contenido-protocolo :where(h3, h4) {
+  font-size: 1.15em;
+  font-weight: 600;
+  margin: 0.5em 0 0.25em;
+}
+
+.contenido-protocolo :where(p, div) {
+  margin: 0.25em 0;
+}
+
+.contenido-protocolo :where(blockquote) {
+  border-left: 3px solid rgb(255 255 255 / 0.2);
+  padding-left: 0.8em;
+  margin: 0.5em 0;
+  opacity: 0.85;
+}
+
+.contenido-protocolo :where(a) {
+  color: #6ee7b7;
+  text-decoration: underline;
+}
+
+/* Ninguna palabra larga (un enlace pegado, por ejemplo) debe empujar el ancho
+   de la pantalla completa. */
+.contenido-protocolo {
+  overflow-wrap: anywhere;
+}
