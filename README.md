@@ -93,6 +93,18 @@ Arma el calendario mensual de predicadores. Cada domingo tiene tres celebracione
 - **Autoguardado**: cada cambio se guarda solo y todo sigue editable.
 - **Exportar a Excel**: el calendario con el mes y el tema en el encabezado, una fila por celebracion agrupada por fecha, las instrucciones extra al pie y una hoja de resumen con cuantas predicas y cierres lleva cada persona (los invitados aparecen marcados como tales).
 
+### Protocolos para actividades
+
+El paso a paso de cada actividad del ministerio (la santa cena, un bautizo, una vigilia...), pensado para seguirse en vivo desde el telefono o proyectado.
+
+- **Portada con los ya creados**: tarjetas con el titulo y las primeras lineas; se toca una para abrirla. Boton de crear arriba y buscador cuando hay muchos.
+- **Editor sencillo**: titulo (el que se ve en la lista) y el texto del protocolo con negrita, cursiva, subrayado, cuatro tamanos, color, vinetas y numeracion. Guarda solo mientras se escribe.
+- **Lectura con zoom**: botones de mas y menos que agrandan todo el documento; el tamano elegido se recuerda en el dispositivo. Los tamanos del editor se guardan en `em` justamente para que el zoom escale el documento completo sin romper las proporciones.
+- **Pantalla completa propia**: una capa `position: fixed`, no la API de pantalla completa del navegador — esa se sale sola al cambiar de app o girar el telefono. Aqui solo se sale con la X de la esquina, que queda fija arriba y siempre visible, o con Escape.
+- **Duplicar** un protocolo para partir de el sin tocar el original.
+
+El HTML que produce el editor pasa siempre por `src/lib/iglesia/html-seguro.ts`, que deja unicamente las etiquetas y estilos de formato permitidos (nada de scripts, iframes ni manejadores de eventos), tanto al guardar como al mostrar. Al pegar texto se pega en plano, para no arrastrar los estilos de Word o del navegador.
+
 ### Bodas, cumpleanos y eventos
 
 - **Doce tipos de evento** con su propio documento y sus roles: boda religiosa, matrimonio civil, aniversario de bodas, cumpleanos, quince anos, bautizo, presentacion de ninos, dedicacion, funeral, culto de accion de gracias, graduacion y otro.
@@ -101,7 +113,7 @@ Arma el calendario mensual de predicadores. Cada domingo tiene tres celebracione
 - **Descarga en Word (.docx real)**: constancia o programa con el encabezado de la iglesia, los datos generales, la tabla de participantes, el programa y las lineas de firma de quienes corresponde segun el tipo de evento. El nombre de la iglesia se configura desde el boton "Encabezado" y se guarda en el dispositivo.
 - **Generar pendientes**: vuelca los preparativos tipicos del tipo de evento (consejeria prematrimonial, reservar el templo, ensayo...) como pendientes reales en el tablero que elijas, enlazados al evento. Es el puente entre esta area y el modulo Pendientes.
 
-Las migraciones de estos modulos son `017_gestionesjj_iglesia_predicas.sql` y `018_gestionesjj_iglesia_predicas_cierres_temas.sql` (predicas del mes), `014_gestionesjj_iglesia.sql` (tablas, RLS y disparadores), `015_gestionesjj_iglesia_indices_fk.sql` (indices de llave foranea) y `016_gestionesjj_pendientes_renombrar.sql` (renombra las tablas de pendientes al salir del area). Siguen el mismo patron de seguridad del resto: RLS owner-lock, sin acceso anonimo. Las tres estan aplicadas en el proyecto de Supabase.
+Las migraciones de estos modulos son `017_gestionesjj_iglesia_predicas.sql` y `018_gestionesjj_iglesia_predicas_cierres_temas.sql` (predicas del mes), `019_gestionesjj_iglesia_protocolos.sql` (protocolos), `014_gestionesjj_iglesia.sql` (tablas, RLS y disparadores), `015_gestionesjj_iglesia_indices_fk.sql` (indices de llave foranea) y `016_gestionesjj_pendientes_renombrar.sql` (renombra las tablas de pendientes al salir del area). Siguen el mismo patron de seguridad del resto: RLS owner-lock, sin acceso anonimo. Las tres estan aplicadas en el proyecto de Supabase.
 
 ## Modulo Recursos
 
