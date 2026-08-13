@@ -119,54 +119,90 @@ export function PredicasView() {
     })();
   }, [cargarCatalogos, cargarMeses]);
 
-  const cargarMesActivo = useCallback(async () => {
-    if (!mesActivo) {
+  /** Refresca el calendario del mes sin tocar lo que se este escribiendo arriba. */
+  const recargarAsignaciones = useCallback(async (mesId: string) => {
+    const { data, error: fetchError } = await fetchAsignaciones(mesId);
+    setAsignaciones(data);
+    if (fetchError) setError(fetchError);
+  }, []);
+
+  // Mes cuyo contenido ya esta puesto en pantalla. El autoguardado reescribe la
+  // fila dentro de `meses`, y sin esta marca el efecto volvia a entrar y pisaba
+  // el tema y las instrucciones a medio escribir: el cursor saltaba al final y
+  // se perdia lo ultimo tecleado.
+  const mesCargado = useRef<string | null>(null);
+
+  // Lo ultimo que quedo guardado en el servidor, ya recortado. El autoguardado
+  // compara contra esto en vez de contra la fila de `meses` para no volver a
+  // guardar cuando lo unico que cambia son los espacios que igual se recortan.
+  const persistido = useRef<{ instrucciones: string; mesId: string | null; tema: string }>({
+    instrucciones: "",
+    mesId: null,
+    tema: "",
+  });
+
+  useEffect(() => {
+    if (!mesActivoId) {
+      mesCargado.current = null;
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- sin mes activo no hay calendario que mostrar
       setAsignaciones([]);
       return;
     }
-    // Completa las celebraciones que falten (por si el mes quedo a medias por
-    // un error de red).
-    await generarCelebraciones(mesActivo);
-    const { data, error: fetchError } = await fetchAsignaciones(mesActivo.id);
-    setAsignaciones(data);
-    setTema(mesActivo.tema ?? "");
-    setInstrucciones(mesActivo.instrucciones ?? "");
-    setCierresAbiertos(new Set());
-    if (fetchError) setError(fetchError);
-  }, [mesActivo]);
 
-  useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- recarga el calendario al cambiar de mes
-    void cargarMesActivo();
-  }, [cargarMesActivo]);
+    const mes = meses.find((fila) => fila.id === mesActivoId);
+    if (!mes || mesCargado.current === mes.id) return;
+    mesCargado.current = mes.id;
+
+    setTema(mes.tema ?? "");
+    setInstrucciones(mes.instrucciones ?? "");
+    setCierresAbiertos(new Set());
+    persistido.current = {
+      instrucciones: (mes.instrucciones ?? "").trim(),
+      mesId: mes.id,
+      tema: (mes.tema ?? "").trim(),
+    };
+
+    void (async () => {
+      // Completa las celebraciones que falten (por si el mes quedo a medias por
+      // un error de red).
+      await generarCelebraciones(mes);
+      await recargarAsignaciones(mes.id);
+    })();
+  }, [meses, mesActivoId, recargarAsignaciones]);
 
   // ----------------------------------------------------------------
   // Autoguardado del tema y las instrucciones
   // ----------------------------------------------------------------
 
-  const primerRender = useRef(true);
   useEffect(() => {
-    if (!mesActivo) return;
-    if (primerRender.current) {
-      primerRender.current = false;
+    const mesId = mesActivoId;
+    if (!mesId) return;
+
+    const temaLimpio = tema.trim();
+    const instruccionesLimpias = instrucciones.trim();
+    if (
+      persistido.current.mesId === mesId &&
+      persistido.current.tema === temaLimpio &&
+      persistido.current.instrucciones === instruccionesLimpias
+    ) {
       return;
     }
-    if ((mesActivo.tema ?? "") === tema && (mesActivo.instrucciones ?? "") === instrucciones) return;
 
     const temporizador = setTimeout(async () => {
-      const { error: updateError } = await updateMes(mesActivo.id, {
-        tema: tema.trim() || null,
-        instrucciones: instrucciones.trim() || null,
+      const { error: updateError } = await updateMes(mesId, {
+        instrucciones: instruccionesLimpias || null,
+        tema: temaLimpio || null,
       });
       if (updateError) {
         setError(updateError);
         setGuardado("limpio");
         return;
       }
+      persistido.current = { instrucciones: instruccionesLimpias, mesId, tema: temaLimpio };
       setMeses((previos) =>
         previos.map((mes) =>
-          mes.id === mesActivo.id
-            ? { ...mes, tema: tema.trim() || null, instrucciones: instrucciones.trim() || null }
+          mes.id === mesId
+            ? { ...mes, instrucciones: instruccionesLimpias || null, tema: temaLimpio || null }
             : mes,
         ),
       );
@@ -174,7 +210,7 @@ export function PredicasView() {
     }, 700);
 
     return () => clearTimeout(temporizador);
-  }, [instrucciones, mesActivo, tema]);
+  }, [instrucciones, mesActivoId, tema]);
 
   // ----------------------------------------------------------------
   // Conteos y advertencias
@@ -241,7 +277,7 @@ export function PredicasView() {
     if (updateError) {
       setError(updateError);
       setGuardado("limpio");
-      await cargarMesActivo();
+      if (mesActivoId) await recargarAsignaciones(mesActivoId);
       return;
     }
     setGuardado("guardado");
