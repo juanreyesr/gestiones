@@ -49,6 +49,18 @@ Centro de gestion de los cursos que se imparten en distintas universidades:
 
 La migracion de este modulo esta en `supabase/migrations/008_gestionesjj_area_cursos.sql`, que ademas crea el bucket privado de storage `gestionesjj-cursos` (con politicas RLS equivalentes a las del resto de tablas del modulo) para logos de universidades y archivos de curso.
 
+## Enlace del resumen general para jefatura (dentro de Coordinacion)
+
+El "Resumen general" de Coordinacion se puede compartir con jefatura en un enlace de **solo lectura**, sin cuenta y sin poder tocar nada:
+
+- **Crear el enlace**: en Coordinacion → Resumen general, boton "Compartir con jefatura". Se le pone una etiqueta ("Decanatura", "Rectoria"...) para saber a quien se le dio cada enlace.
+- **Lo que ve quien lo abre** (`/resumen/[token]`): exactamente los mismos bloques que ve la coordinacion — promedios, areas sobresalientes y de oportunidad, lo mas valorado y lo que hay que reforzar segun los estudiantes, comparativo por curso, tendencia por area y el listado de evaluaciones — con filtro de **trimestre (1, 2, 3 o todo el ano) y de ano, incluyendo "todos los anos"**. Tambien puede descargar el informe completo en PDF.
+- **Solo lectura de verdad**: la pagina publica no expone ninguna escritura y la unica funcion que consulta (`gestionesjj_public_resumen_coordinacion`) solo lee. No hay botones de ver detalle, editar ni borrar.
+- **Privacidad por defecto**: el enlace no comparte el nombre del docente (igual que el comparativo por curso, que se diseno sin nombres justamente para poder mostrarse), ni su correo, ni las observaciones escritas de cada observacion de clase. Al crear el enlace se puede marcar "Incluir nombres de docentes" si la jefatura si debe verlos; en ese caso el PDF tambien incluye el comparativo por docente.
+- **Control del enlace**: se puede desactivar (deja de abrir, sin borrarlo), reactivar o borrar, y cada uno lleva la cuenta de cuantas veces se ha abierto y cuando fue la ultima vez.
+
+La migracion es `020_gestionesjj_coordinacion_resumen_publico.sql` (tabla `gestionesjj_coordinacion_resumen_enlaces` con RLS owner-lock, sin grants para `anon`, y la RPC publica `SECURITY DEFINER` que entrega los datos ya despersonalizados). Esta aplicada en el proyecto de Supabase.
+
 ## Encuesta estudiantil (dentro de Coordinacion)
 
 Mide, año contra año, por que los estudiantes de primer ingreso eligieron la universidad y la carrera, y que esperan de ambas — pensada para detectar el cambio de paradigma con el tiempo:
