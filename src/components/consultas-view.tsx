@@ -1,7 +1,7 @@
 "use client";
 
-import { BarChart3, Printer, Star, Trash2, TrendingUp, Users } from "lucide-react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { BarChart3, Link2, Printer, Trash2 } from "lucide-react";
+import { useCallback, useEffect, useState } from "react";
 import type { Trimestre } from "@/data/evaluacion";
 import {
   aggregateCategoryAnalytics,
@@ -22,9 +22,10 @@ import {
   rowToReporteData,
 } from "@/lib/evaluacion-helpers";
 import { exportReporteToPdf, exportResumenGeneralToPdf } from "@/lib/pdf";
+import { CompartirResumenModal } from "./compartir-resumen-modal";
 import { ConfirmDialog } from "./confirm-dialog";
 import { EvaluacionDetalleModal } from "./evaluacion-detalle-modal";
-import { TendenciaCategoriasChart } from "./tendencia-categorias-chart";
+import { ResumenGeneralPanel } from "./resumen-general-panel";
 
 type PeriodoValor = Trimestre | "todos" | "historico";
 
@@ -48,6 +49,7 @@ export function ConsultasView() {
   const [exportingPdf, setExportingPdf] = useState(false);
   const [historicoRows, setHistoricoRows] = useState<EvaluacionRow[]>([]);
   const [exportingResumenCompleto, setExportingResumenCompleto] = useState(false);
+  const [compartirOpen, setCompartirOpen] = useState(false);
 
   const esHistorico = periodo === "historico";
 
@@ -81,26 +83,6 @@ export function ConsultasView() {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- loads the full historial once, independent of the period filter, for the trend chart and the full PDF report
     loadHistorico();
   }, [loadHistorico]);
-
-  const docentesUnicos = useMemo(() => agruparPorDocente(rows).length, [rows]);
-  const porCurso = useMemo(() => agruparPorCurso(rows), [rows]);
-
-  const categoriaAgg = useMemo(() => aggregateCategoryAnalytics(rows), [rows]);
-  const fortalezaAgg = useMemo(() => aggregateFortalezas(rows), [rows]);
-  const sobresalientes = useMemo(
-    () => combinarSobresalientes(categoriaAgg, fortalezaAgg),
-    [categoriaAgg, fortalezaAgg],
-  );
-  const categoriasOportunidad = useMemo(() => categoriasConOportunidad(categoriaAgg), [categoriaAgg]);
-
-  const preguntasAgg = useMemo(() => aggregateEntrevistaPreguntas(rows), [rows]);
-  const preguntasDestacadas = useMemo(
-    () => [...preguntasAgg].sort((a, b) => (b.promedio ?? 0) - (a.promedio ?? 0)).slice(0, 2),
-    [preguntasAgg],
-  );
-  const preguntasOportunidad = useMemo(() => preguntasConOportunidadReal(preguntasAgg), [preguntasAgg]);
-
-  const tendenciaCategorias = useMemo(() => aggregateTendenciaCategorias(historicoRows), [historicoRows]);
 
   const handleImprimirResumenCompleto = async () => {
     if (!historicoRows.length || exportingResumenCompleto) return;
@@ -150,6 +132,28 @@ export function ConsultasView() {
     setDeleteTarget(null);
   };
 
+  /* Los botones por fila viven aqui (y no en el panel) porque el mismo panel lo
+     reusa el enlace publico, que es de solo lectura. */
+  const acciones = (row: EvaluacionRow) => (
+    <div className="flex gap-2">
+      <button
+        className="border border-white/10 bg-white/8 px-2 py-1 text-xs font-semibold text-slate-100 transition hover:border-white/30"
+        onClick={() => setViewRow(row)}
+        type="button"
+      >
+        Ver
+      </button>
+      <button
+        className="flex items-center justify-center border border-red-400/30 bg-red-400/10 px-2 py-1 text-xs font-semibold text-red-200 transition hover:border-red-400/60"
+        onClick={() => setDeleteTarget(row)}
+        title="Borrar registro"
+        type="button"
+      >
+        <Trash2 className="h-3.5 w-3.5" />
+      </button>
+    </div>
+  );
+
   return (
     <div className="grid gap-5">
       <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
@@ -163,16 +167,27 @@ export function ConsultasView() {
             Analisis de las evaluaciones ya guardadas. Filtra por trimestre, revisa el año completo o todo el historial.
           </p>
         </div>
-        <button
-          className="inline-flex h-11 w-fit items-center justify-center gap-2 border border-white/10 bg-white/8 px-6 text-sm font-bold text-slate-100 transition hover:border-white/30 disabled:opacity-40"
-          disabled={!historicoRows.length || exportingResumenCompleto}
-          onClick={handleImprimirResumenCompleto}
-          title="Incluye todo el historial, sin importar el filtro de periodo seleccionado arriba"
-          type="button"
-        >
-          <Printer className="h-4 w-4" />
-          {exportingResumenCompleto ? "Generando PDF..." : "Descargar informe completo en PDF"}
-        </button>
+        <div className="flex flex-wrap gap-2">
+          <button
+            className="inline-flex h-11 w-fit items-center justify-center gap-2 border border-white/10 bg-white/8 px-6 text-sm font-bold text-slate-100 transition hover:border-white/30"
+            onClick={() => setCompartirOpen(true)}
+            title="Genera un enlace de solo lectura para jefatura, con todos los trimestres y años"
+            type="button"
+          >
+            <Link2 className="h-4 w-4" />
+            Compartir con jefatura
+          </button>
+          <button
+            className="inline-flex h-11 w-fit items-center justify-center gap-2 border border-white/10 bg-white/8 px-6 text-sm font-bold text-slate-100 transition hover:border-white/30 disabled:opacity-40"
+            disabled={!historicoRows.length || exportingResumenCompleto}
+            onClick={handleImprimirResumenCompleto}
+            title="Incluye todo el historial, sin importar el filtro de periodo seleccionado arriba"
+            type="button"
+          >
+            <Printer className="h-4 w-4" />
+            {exportingResumenCompleto ? "Generando PDF..." : "Descargar informe completo en PDF"}
+          </button>
+        </div>
       </div>
 
       <div className="flex flex-wrap items-center gap-2">
@@ -202,194 +217,7 @@ export function ConsultasView() {
       {error ? <p className="border border-red-400/30 bg-red-400/10 p-3 text-sm text-red-200">{error}</p> : null}
       {loading ? <p className="text-sm text-slate-300">Cargando evaluaciones...</p> : null}
 
-      {!loading && !error ? (
-        <>
-          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-            <SummaryCard title="Promedio general" value={`${promedioGeneral(rows)}%`} detail="Observacion de clase" />
-            <SummaryCard title="Promedio entrevistas" value={`${promedioEntrevistas(rows)}%`} detail="Percepcion estudiantil" />
-            <SummaryCard title="Evaluaciones registradas" value={`${rows.length}`} detail="En este periodo" />
-            <SummaryCard title="Docentes evaluados" value={`${docentesUnicos}`} detail="En este periodo" />
-          </div>
-
-          <div className="grid gap-4 md:grid-cols-2">
-            <div className="border border-white/10 bg-white/6 p-4">
-              <div className="mb-3 flex items-center gap-2 text-sm font-semibold">
-                <Star className="h-4 w-4 text-emerald-300" />
-                Areas mas sobresalientes (general)
-              </div>
-              {rows.length ? (
-                <div className="grid gap-2">
-                  {sobresalientes.map((item, index) => (
-                    <div
-                      key={`${item.label}-${index}`}
-                      className="flex items-center justify-between gap-3 text-sm text-slate-200"
-                    >
-                      <span className="min-w-0">{item.label}</span>
-                      <span className="shrink-0 font-semibold text-emerald-200">{item.percent}%</span>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-sm text-slate-400">Sin datos para este periodo.</p>
-              )}
-            </div>
-
-            <div className="border border-white/10 bg-white/6 p-4">
-              <div className="mb-3 flex items-center gap-2 text-sm font-semibold">
-                <Star className="h-4 w-4 text-amber-300" />
-                Areas de oportunidad (general)
-              </div>
-              <p className="mb-2 text-xs text-slate-400">Porcentaje que aun falta por mejorar en cada area.</p>
-              {categoriasOportunidad.length ? (
-                <div className="grid gap-2">
-                  {categoriasOportunidad.map((item) => (
-                    <div key={item.categoria} className="flex items-center justify-between gap-3 text-sm text-slate-200">
-                      <span className="min-w-0">{item.categoria}</span>
-                      <span className="shrink-0 font-semibold text-amber-200">{100 - item.percent}%</span>
-                    </div>
-                  ))}
-                </div>
-              ) : rows.length ? (
-                <p className="text-sm text-emerald-200">Todas las areas evaluadas estan al 100% en este periodo.</p>
-              ) : (
-                <p className="text-sm text-slate-400">Sin datos para este periodo.</p>
-              )}
-            </div>
-
-            <div className="border border-white/10 bg-white/6 p-4">
-              <div className="mb-3 flex items-center gap-2 text-sm font-semibold">
-                <Users className="h-4 w-4 text-emerald-300" />
-                Mas valorado segun estudiantes
-              </div>
-              {preguntasDestacadas.length ? (
-                <div className="grid gap-2">
-                  {preguntasDestacadas.map((item) => (
-                    <div key={item.id} className="flex items-center justify-between gap-3 text-sm text-slate-200">
-                      <span className="min-w-0">{item.texto}</span>
-                      <span className="shrink-0 font-semibold text-emerald-200">{item.promedio}%</span>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-sm text-slate-400">Sin entrevistas registradas en este periodo.</p>
-              )}
-            </div>
-
-            <div className="border border-white/10 bg-white/6 p-4">
-              <div className="mb-3 flex items-center gap-2 text-sm font-semibold">
-                <Users className="h-4 w-4 text-amber-300" />
-                A reforzar segun estudiantes
-              </div>
-              <p className="mb-2 text-xs text-slate-400">Porcentaje que aun falta por mejorar segun los estudiantes.</p>
-              {preguntasOportunidad.length ? (
-                <div className="grid gap-2">
-                  {preguntasOportunidad.map((item) => (
-                    <div key={item.id} className="flex items-center justify-between gap-3 text-sm text-slate-200">
-                      <span className="min-w-0">{item.texto}</span>
-                      <span className="shrink-0 font-semibold text-amber-200">{100 - (item.promedio ?? 0)}%</span>
-                    </div>
-                  ))}
-                </div>
-              ) : preguntasAgg.length ? (
-                <p className="text-sm text-emerald-200">Los estudiantes calificaron todo con el maximo puntaje en este periodo.</p>
-              ) : (
-                <p className="text-sm text-slate-400">Sin entrevistas registradas en este periodo.</p>
-              )}
-            </div>
-          </div>
-
-          <div className="border border-white/10 bg-white/6 p-4">
-            <div className="mb-3 flex items-center gap-2 text-sm font-semibold">
-              <Users className="h-4 w-4 text-sky-300" />
-              Comparativo por curso
-            </div>
-            <p className="mb-3 text-xs text-slate-400">
-              Solo se muestra el curso y la nota, sin el nombre del docente, para poder compartir esta vista con el
-              equipo.
-            </p>
-            {porCurso.length ? (
-              <div className="grid gap-3">
-                {porCurso.map((item) => (
-                  <div key={item.cursoId ?? item.nombre}>
-                    <div className="mb-1 flex justify-between gap-3 text-xs text-slate-300">
-                      <span className="min-w-0">
-                        {item.nombre} <span className="text-slate-500">({item.count})</span>
-                      </span>
-                      <span className="shrink-0">{item.promedio}%</span>
-                    </div>
-                    <div className="h-2 bg-slate-800">
-                      <div className="h-full bg-sky-300" style={{ width: `${item.promedio}%` }} />
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <p className="text-sm text-slate-300">No hay evaluaciones guardadas para este periodo.</p>
-            )}
-          </div>
-
-          <div className="border border-white/10 bg-white/6 p-4">
-            <div className="mb-3 flex items-center gap-2 text-sm font-semibold">
-              <TrendingUp className="h-4 w-4 text-sky-300" />
-              Tendencia por area (todo el historial)
-            </div>
-            <p className="mb-3 text-xs text-slate-400">
-              Avance de cada area evaluada a traves de los periodos, para ver si viene mejorando o empeorando.
-            </p>
-            <TendenciaCategoriasChart series={tendenciaCategorias} />
-          </div>
-
-          <div className="border border-white/10 bg-white/6 p-4">
-            <div className="mb-3 text-sm font-semibold">Evaluaciones registradas</div>
-            {rows.length ? (
-              <div className="overflow-x-auto">
-                <table className="w-full text-left text-sm">
-                  <thead>
-                    <tr className="text-xs uppercase text-slate-400">
-                      <th className="pb-2 pr-3">Curso</th>
-                      <th className="pb-2 pr-3">Trimestre</th>
-                      <th className="pb-2 pr-3">Fecha</th>
-                      <th className="pb-2 pr-3">%</th>
-                      <th className="pb-2" />
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {rows.map((row) => (
-                      <tr key={row.id} className="border-t border-white/8">
-                        <td className="py-2 pr-3">{row.curso_nombre}</td>
-                        <td className="py-2 pr-3">T{row.trimestre}</td>
-                        <td className="py-2 pr-3">{row.fecha_observacion}</td>
-                        <td className="py-2 pr-3">{row.porcentaje}%</td>
-                        <td className="py-2">
-                          <div className="flex gap-2">
-                            <button
-                              className="border border-white/10 bg-white/8 px-2 py-1 text-xs font-semibold text-slate-100 transition hover:border-white/30"
-                              onClick={() => setViewRow(row)}
-                              type="button"
-                            >
-                              Ver
-                            </button>
-                            <button
-                              className="flex items-center justify-center border border-red-400/30 bg-red-400/10 px-2 py-1 text-xs font-semibold text-red-200 transition hover:border-red-400/60"
-                              onClick={() => setDeleteTarget(row)}
-                              title="Borrar registro"
-                              type="button"
-                            >
-                              <Trash2 className="h-3.5 w-3.5" />
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            ) : (
-              <p className="text-sm text-slate-300">No hay evaluaciones guardadas para este periodo.</p>
-            )}
-          </div>
-        </>
-      ) : null}
+      {!loading && !error ? <ResumenGeneralPanel acciones={acciones} historicoRows={historicoRows} rows={rows} /> : null}
 
       <EvaluacionDetalleModal
         data={viewRow ? rowToReporteData(viewRow) : null}
@@ -406,16 +234,8 @@ export function ConsultasView() {
         open={Boolean(deleteTarget)}
         title="Borrar evaluación"
       />
-    </div>
-  );
-}
 
-function SummaryCard({ detail, title, value }: { detail: string; title: string; value: string }) {
-  return (
-    <div className="border border-white/10 bg-white/8 p-4 backdrop-blur-xl">
-      <div className="text-xs font-semibold uppercase text-slate-400">{title}</div>
-      <div className="mt-2 text-3xl font-semibold text-white">{value}</div>
-      <div className="mt-1 text-sm text-slate-300">{detail}</div>
+      {compartirOpen ? <CompartirResumenModal onClose={() => setCompartirOpen(false)} /> : null}
     </div>
   );
 }

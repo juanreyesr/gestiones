@@ -419,12 +419,16 @@ export async function exportResumenGeneralToPdf(
   }
   w.spacer(4);
 
-  w.heading("Comparativo por docente");
-  for (const item of porDocente) {
-    w.text(`${item.nombre}  (${item.count} evaluaciones)   ${item.promedio}%`, { size: 10 });
-    w.bar(item.promedio, 7);
+  /* El enlace publico comparte el resumen sin nombres de docente; en ese caso
+     llega vacio y la seccion simplemente no se imprime. */
+  if (porDocente.length) {
+    w.heading("Comparativo por docente");
+    for (const item of porDocente) {
+      w.text(`${item.nombre}  (${item.count} evaluaciones)   ${item.promedio}%`, { size: 10 });
+      w.bar(item.promedio, 7);
+    }
+    w.spacer(4);
   }
-  w.spacer(4);
 
   w.heading("Tendencia por área");
   w.lineChart(tendenciaCategorias);
