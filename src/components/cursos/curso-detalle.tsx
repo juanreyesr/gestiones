@@ -1,8 +1,9 @@
 "use client";
 
-import { CalendarDays, ChevronLeft, ClipboardList, FileText, Users } from "lucide-react";
+import { CalendarDays, ChevronLeft, ClipboardList, Eye, FileText, Users } from "lucide-react";
 import type React from "react";
 import { useState } from "react";
+import { setAccesoEstudiantes } from "@/lib/cursos/cursos";
 import type { CursoImpartidoRow, SemanaRow, UniversidadRow } from "@/lib/cursos/types";
 import { ESTADO_CURSO_LABELS } from "@/lib/cursos/types";
 import { CursoEstudiantesTab } from "./curso-estudiantes-tab";
@@ -10,6 +11,7 @@ import { CursoPlanificacionTab } from "./curso-planificacion-tab";
 import { CursoReporteTab } from "./curso-reporte-tab";
 import { CursoSemanasTab } from "./curso-semanas-tab";
 import { BTN_GHOST, Chip } from "./ui";
+import { VistaPreviaEstudianteModal } from "./vista-previa-estudiante-modal";
 
 type CursoTab = "semanas" | "estudiantes" | "planificacion" | "reporte";
 
@@ -31,6 +33,17 @@ export function CursoDetalle({
   universidad: UniversidadRow;
 }) {
   const [tab, setTab] = useState<CursoTab>("semanas");
+  const [acceso, setAcceso] = useState(curso.acceso_estudiantes);
+  const [guardandoAcceso, setGuardandoAcceso] = useState(false);
+  const [previaAbierta, setPreviaAbierta] = useState(false);
+
+  const handleToggleAcceso = async () => {
+    const siguiente = !acceso;
+    setGuardandoAcceso(true);
+    const { error } = await setAccesoEstudiantes(curso.id, siguiente);
+    setGuardandoAcceso(false);
+    if (!error) setAcceso(siguiente);
+  };
 
   return (
     <div className="grid gap-5">
@@ -39,22 +52,51 @@ export function CursoDetalle({
         Volver a {universidad.nombre}
       </button>
 
-      <div className="flex flex-wrap items-center gap-3 border-b border-white/10 pb-4">
-        <Chip className={ESTADO_CHIP[curso.estado]}>{ESTADO_CURSO_LABELS[curso.estado]}</Chip>
-        <div>
-          <h2 className="text-xl font-semibold text-white">{curso.nombre}</h2>
-          <p className="text-sm text-slate-400">
-            {[curso.codigo, curso.periodo, curso.horario].filter(Boolean).join(" · ") || "Sin datos adicionales"}
-          </p>
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/10 pb-4">
+        <div className="flex flex-wrap items-center gap-3">
+          <Chip className={ESTADO_CHIP[curso.estado]}>{ESTADO_CURSO_LABELS[curso.estado]}</Chip>
+          <div>
+            <h2 className="text-xl font-semibold text-white">{curso.nombre}</h2>
+            <p className="text-sm text-slate-400">
+              {[curso.codigo, curso.periodo, curso.horario].filter(Boolean).join(" · ") || "Sin datos adicionales"}
+            </p>
+          </div>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-3">
+          <label className="flex items-center gap-2 border border-white/10 bg-white/6 px-3 py-2 text-sm text-slate-200">
+            <input
+              checked={acceso}
+              className="h-4 w-4 accent-emerald-300"
+              disabled={guardandoAcceso}
+              onChange={handleToggleAcceso}
+              type="checkbox"
+            />
+            Dar acceso a estudiantes
+          </label>
+          <button
+            className={BTN_GHOST}
+            disabled={!acceso}
+            onClick={() => setPreviaAbierta(true)}
+            title={acceso ? "Ver el curso como lo vería un estudiante" : "Activa el acceso de estudiantes para poder previsualizar"}
+            type="button"
+          >
+            <Eye className="h-4 w-4" />
+            Ver como estudiante
+          </button>
         </div>
       </div>
 
       <CursoTabs onChange={setTab} value={tab} />
 
       {tab === "semanas" ? <CursoSemanasTab cursoId={curso.id} onOpenSemana={onOpenSemana} /> : null}
-      {tab === "estudiantes" ? <CursoEstudiantesTab cursoId={curso.id} /> : null}
+      {tab === "estudiantes" ? <CursoEstudiantesTab cursoId={curso.id} cursoNombre={curso.nombre} /> : null}
       {tab === "planificacion" ? <CursoPlanificacionTab cursoId={curso.id} /> : null}
       {tab === "reporte" ? <CursoReporteTab curso={curso} universidad={universidad} /> : null}
+
+      {previaAbierta ? (
+        <VistaPreviaEstudianteModal cursoNombre={curso.nombre} onClose={() => setPreviaAbierta(false)} universidadNombre={universidad.nombre} />
+      ) : null}
     </div>
   );
 }

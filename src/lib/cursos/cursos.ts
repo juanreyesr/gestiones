@@ -80,6 +80,18 @@ export async function updateCurso(
   return { error: error?.message ?? null };
 }
 
+/** Activa o desactiva el acceso de estudiantes al curso (checkbox maestro). */
+export async function setAccesoEstudiantes(id: string, acceso: boolean) {
+  const supabase = getSupabaseClient();
+  if (!supabase) return { error: "Faltan las variables de Supabase." };
+
+  const { error } = await supabase
+    .from("gestionesjj_cursos_impartidos")
+    .update({ acceso_estudiantes: acceso, updated_at: new Date().toISOString() })
+    .eq("id", id);
+  return { error: error?.message ?? null };
+}
+
 /** Archiva o reactiva un curso sin perder ningun dato (contenidos, semanas, etc.). */
 export async function setEstadoCurso(id: string, estado: EstadoCurso) {
   const supabase = getSupabaseClient();
@@ -137,6 +149,8 @@ export async function clonarCurso(
     .select("id")
     .single();
 
+  // acceso_estudiantes no se copia: el curso clonado siempre nace sin acceso
+  // de estudiantes (se activa a mano cuando el nuevo ciclo esté listo).
   if (errorCurso || !cursoNuevo?.id) return { id: null as string | null, error: errorCurso?.message ?? "No se pudo crear el curso." };
   const nuevoCursoId = cursoNuevo.id as string;
   const archivosCopiados: string[] = [];

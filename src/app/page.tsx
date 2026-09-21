@@ -1,5 +1,5 @@
-import { GestionesApp } from "@/components/gestiones-app";
+import { PortadaView } from "@/components/portada/portada-view";
 
 export default function Home() {
-  return <GestionesApp />;
+  return <PortadaView />;
 }

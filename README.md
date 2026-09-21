@@ -49,6 +49,18 @@ Centro de gestion de los cursos que se imparten en distintas universidades:
 
 La migracion de este modulo esta en `supabase/migrations/008_gestionesjj_area_cursos.sql`, que ademas crea el bucket privado de storage `gestionesjj-cursos` (con politicas RLS equivalentes a las del resto de tablas del modulo) para logos de universidades y archivos de curso.
 
+### Area de estudiantes (Fase 0)
+
+Acceso real de estudiantes al curso, con cuenta propia (correo + contrasena, ambos asignados por el owner desde el panel, sin auto-registro):
+
+- **Checkbox "Dar acceso a estudiantes"** en cada curso (pestaña Semanas del curso): controla si ese curso es visible en `/estudiante`.
+- **Boton "Ver como estudiante"** en el curso: previsualiza exactamente lo que vera un estudiante (por ahora, en esta fase, solo el estado vacio; las semanas y contenidos habilitados llegan en la siguiente fase).
+- **Pestaña Estudiantes**: por cada estudiante se puede "Dar acceso" (crea su cuenta real de Supabase Auth y la identidad global en `gestionesjj_estudiantes`, o la reutiliza si el mismo correo ya tiene acceso en otro curso), regenerar su contraseña, reimprimir su ficha o desactivar/reactivar su cuenta. Un boton aparte imprime en PDF las fichas de credenciales de todo el curso (una tarjeta recortable por estudiante, nunca una sola hoja con todos los usuarios y contraseñas juntos).
+- **Portada** (`/`): dos accesos igual de visibles, "Acceso a estudiantes" (`/estudiante`) y "Acceso administrativo" (`/admin`, el panel de siempre, sin cambios).
+- **Panel del estudiante** (`/estudiante`): login, bienvenida con su nombre, cambio de contraseña opcional, y la lista de cursos donde tiene acceso activo.
+
+Decisiones de seguridad relevantes: la contraseña que asigna el owner se guarda cifrada (AES-256-GCM, llave en `ESTUDIANTES_ENC_KEY`, nunca en texto plano) para poder reimprimir la ficha cuando haga falta; los estudiantes nunca leen las tablas del modulo Cursos directo, solo a traves de RPCs `SECURITY DEFINER` (`gestionesjj_estudiante_mi_perfil`, `gestionesjj_estudiante_mis_cursos`) que exponen unicamente lo suyo. La migracion es `supabase/migrations/021_gestionesjj_area_estudiantes.sql`. Requiere `SUPABASE_SECRET_KEY` y `ESTUDIANTES_ENC_KEY` configuradas (ver `.env.example`).
+
 ## Enlace del resumen general para jefatura (dentro de Coordinacion)
 
 El "Resumen general" de Coordinacion se puede compartir con jefatura en un enlace de **solo lectura**, sin cuenta y sin poder tocar nada:

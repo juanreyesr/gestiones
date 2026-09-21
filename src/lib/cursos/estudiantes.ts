@@ -93,6 +93,22 @@ export async function deleteEstudiante(id: string) {
   return { error: error?.message ?? null };
 }
 
+/** Estado activo/inactivo de la cuenta global de cada estudiante enlazado. */
+export async function fetchEstadosAccesoGlobal(estudianteIds: string[]) {
+  const supabase = getSupabaseClient();
+  if (!supabase) return { data: {} as Record<string, boolean>, error: "Faltan las variables de Supabase." };
+  if (!estudianteIds.length) return { data: {} as Record<string, boolean>, error: null };
+
+  const { data, error } = await supabase.from("gestionesjj_estudiantes").select("id, activo").in("id", estudianteIds);
+  if (error) return { data: {} as Record<string, boolean>, error: error.message };
+
+  const mapa: Record<string, boolean> = {};
+  for (const fila of (data ?? []) as Array<{ id: string; activo: boolean }>) {
+    mapa[fila.id] = fila.activo;
+  }
+  return { data: mapa, error: null };
+}
+
 export async function fetchEventos(cursoId: string) {
   const supabase = getSupabaseClient();
   if (!supabase) return { data: [] as EstudianteEventoRow[], error: "Faltan las variables de Supabase." };
