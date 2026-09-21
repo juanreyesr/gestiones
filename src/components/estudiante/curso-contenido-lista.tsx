@@ -1,11 +1,9 @@
 "use client";
 
-import { ChevronDown, ChevronRight, ClipboardList, Download, FileText, Link2, Presentation, Upload } from "lucide-react";
+import { ChevronDown, ChevronRight, ClipboardList, Download, FileText, Link2, Upload } from "lucide-react";
 import type React from "react";
 import { useState } from "react";
-import { EmbedViewerModal } from "@/components/shared/embed-viewer-modal";
 import { formatearFecha, formatearFechaHora, formatearFechaLimite } from "@/lib/cursos/types";
-import { getEmbedInfo, type EmbedInfo } from "@/lib/estudiante/embed-links";
 
 export type ContenidoEstudianteVista = {
   id: string;
@@ -70,7 +68,6 @@ export function CursoContenidoLista({
   tareas?: TareasConfig;
 }) {
   const [abierta, setAbierta] = useState<string | null>(null);
-  const [embed, setEmbed] = useState<{ info: EmbedInfo; titulo: string } | null>(null);
 
   const toggle = (semanaId: string) => {
     const siguiente = abierta === semanaId ? null : semanaId;
@@ -116,7 +113,6 @@ export function CursoContenidoLista({
                   ) : (
                     <div className="grid gap-2">
                       {contenidos.map((contenido) => {
-                        const info = contenido.urlExterna ? getEmbedInfo(contenido.urlExterna) : null;
                         return (
                           <div
                             className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-slate-100 bg-slate-50 px-3 py-2"
@@ -134,16 +130,6 @@ export function CursoContenidoLista({
                               </div>
                             </div>
                             <div className="flex items-center gap-2">
-                              {info ? (
-                                <button
-                                  className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs font-semibold text-slate-600 hover:border-slate-400"
-                                  onClick={() => setEmbed({ info, titulo: contenido.titulo })}
-                                  type="button"
-                                >
-                                  <Presentation className="h-3.5 w-3.5" />
-                                  Ver aquí
-                                </button>
-                              ) : null}
                               {contenido.tieneArchivo ? (
                                 <button
                                   className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs font-semibold text-slate-600 hover:border-slate-400"
@@ -153,7 +139,7 @@ export function CursoContenidoLista({
                                   <Download className="h-3.5 w-3.5" />
                                   Ver / descargar
                                 </button>
-                              ) : contenido.urlExterna && !info ? (
+                              ) : contenido.urlExterna ? (
                                 <button
                                   className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs font-semibold text-slate-600 hover:border-slate-400"
                                   onClick={() => window.open(contenido.urlExterna as string, "_blank", "noopener,noreferrer")}
@@ -200,8 +186,6 @@ export function CursoContenidoLista({
           </div>
         );
       })}
-
-      {embed ? <EmbedViewerModal embed={embed.info} onClose={() => setEmbed(null)} titulo={embed.titulo} /> : null}
     </div>
   );
 }
