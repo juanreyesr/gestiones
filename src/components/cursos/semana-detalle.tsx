@@ -6,7 +6,7 @@ import { fetchActividades } from "@/lib/cursos/actividades";
 import { fetchAsistencias } from "@/lib/cursos/asistencias";
 import { fetchContenidos } from "@/lib/cursos/contenidos";
 import { fetchEstudiantes } from "@/lib/cursos/estudiantes";
-import { fetchSemanas } from "@/lib/cursos/semanas";
+import { fetchSemanas, setHabilitadoEstudiantes } from "@/lib/cursos/semanas";
 import {
   ESTADO_ASISTENCIA_LABELS,
   TIPO_SESION_LABELS,
@@ -50,6 +50,16 @@ export function SemanaDetalle({
   const [error, setError] = useState("");
   const [asistenciaAbierta, setAsistenciaAbierta] = useState(false);
   const [calificandoBanner, setCalificandoBanner] = useState<ActividadRow | null>(null);
+  const [habilitado, setHabilitado] = useState(semana.habilitado_estudiantes);
+  const [guardandoHabilitado, setGuardandoHabilitado] = useState(false);
+
+  const handleToggleHabilitado = async () => {
+    const siguiente = !habilitado;
+    setGuardandoHabilitado(true);
+    const { error: toggleError } = await setHabilitadoEstudiantes(semana.id, siguiente);
+    setGuardandoHabilitado(false);
+    if (!toggleError) setHabilitado(siguiente);
+  };
 
   const cargar = useCallback(async () => {
     setLoading(true);
@@ -122,6 +132,16 @@ export function SemanaDetalle({
         {semana.tipo_sesion !== "normal" ? (
           <Chip className={TIPO_SESION_CHIP[semana.tipo_sesion]}>{TIPO_SESION_LABELS[semana.tipo_sesion]}</Chip>
         ) : null}
+        <label className="ml-auto flex items-center gap-2 border border-white/10 bg-white/6 px-3 py-2 text-sm text-slate-200">
+          <input
+            checked={habilitado}
+            className="h-4 w-4 accent-emerald-300"
+            disabled={guardandoHabilitado}
+            onChange={handleToggleHabilitado}
+            type="checkbox"
+          />
+          Habilitar para estudiantes
+        </label>
       </div>
 
       <ErrorBanner message={error} />

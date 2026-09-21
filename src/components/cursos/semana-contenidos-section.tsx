@@ -1,14 +1,28 @@
 "use client";
 
-import { Download, FileText, Link2, Plus, Presentation, Trash2, Upload } from "lucide-react";
+import { Download, Eye, EyeOff, FileText, Link2, Plus, Presentation, Trash2, Upload } from "lucide-react";
 import { useState } from "react";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { ModalPortal } from "@/components/modal-portal";
+import { EmbedViewerModal } from "@/components/shared/embed-viewer-modal";
 import { borrarArchivos, esImagen, esPdf, esPresentacionOffice, rutaArchivoCurso, subirArchivo, urlFirmada } from "@/lib/cursos/archivos";
-import { deleteContenido, insertContenido } from "@/lib/cursos/contenidos";
-import type { CategoriaContenido, ContenidoRow } from "@/lib/cursos/types";
+import { deleteContenido, insertContenido, setVisibilidadContenido } from "@/lib/cursos/contenidos";
+import type { CategoriaContenido, ContenidoRow, VisibilidadEstudiantes } from "@/lib/cursos/types";
+import { getEmbedInfo } from "@/lib/estudiante/embed-links";
 import { PresentacionArchivo } from "./presentacion-archivo";
 import { BTN_GHOST, BTN_PRIMARY, EmptyState, ErrorBanner, Field } from "./ui";
+
+const VISIBILIDAD_SIGUIENTE: Record<VisibilidadEstudiantes, VisibilidadEstudiantes> = {
+  hereda: "visible",
+  visible: "oculto",
+  oculto: "hereda",
+};
+
+const VISIBILIDAD_LABEL: Record<VisibilidadEstudiantes, string> = {
+  hereda: "Según la semana",
+  visible: "Forzado visible",
+  oculto: "Forzado oculto",
+};
 
 export function SemanaContenidosSection({
   categoria,
@@ -30,6 +44,20 @@ export function SemanaContenidosSection({
   const [eliminando, setEliminando] = useState(false);
   const [error, setError] = useState("");
   const [visor, setVisor] = useState<ContenidoRow | null>(null);
+  const [embebido, setEmbebido] = useState<ContenidoRow | null>(null);
+  const [cambiandoVisibilidad, setCambiandoVisibilidad] = useState<string | null>(null);
+
+  const handleCambiarVisibilidad = async (contenido: ContenidoRow) => {
+    const siguiente = VISIBILIDAD_SIGUIENTE[contenido.visible_estudiantes];
+    setCambiandoVisibilidad(contenido.id);
+    const { error: visibilidadError } = await setVisibilidadContenido(contenido.id, siguiente);
+    setCambiandoVisibilidad(null);
+    if (visibilidadError) {
+      setError(visibilidadError);
+      return;
+    }
+    await onReload();
+  };
 
   const handleEliminar = async () => {
     if (!eliminar) return;
@@ -72,6 +100,7 @@ export function SemanaContenidosSection({
               esPdf(contenido.archivo_mime, contenido.archivo_nombre) ||
               esPresentacionOffice(contenido.archivo_mime, contenido.archivo_nombre) ||
               esImagen(contenido.archivo_mime, contenido.archivo_nombre);
+            const embedInfo = contenido.url_externa ? getEmbedInfo(contenido.url_externa) : null;
             return (
               <div className="flex flex-wrap items-center justify-between gap-3 border border-white/10 bg-white/6 p-3" key={contenido.id}>
                 <div className="flex items-start gap-3">
@@ -98,6 +127,12 @@ export function SemanaContenidosSection({
                       Descargar
                     </button>
                   ) : null}
+                  {embedInfo ? (
+                    <button className={BTN_GHOST} onClick={() => setEmbebido(contenido)} type="button">
+                      <Presentation className="h-4 w-4" />
+                      Ver aquí
+                    </button>
+                  ) : null}
                   {contenido.url_externa ? (
                     <button
                       className={BTN_GHOST}
@@ -108,6 +143,16 @@ export function SemanaContenidosSection({
                       Abrir enlace
                     </button>
                   ) : null}
+                  <button
+                    className={BTN_GHOST}
+                    disabled={cambiandoVisibilidad === contenido.id}
+                    onClick={() => handleCambiarVisibilidad(contenido)}
+                    title="Clic para cambiar: según la semana → visible siempre → oculto siempre"
+                    type="button"
+                  >
+                    {contenido.visible_estudiantes === "oculto" ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    {VISIBILIDAD_LABEL[contenido.visible_estudiantes]}
+                  </button>
                   <button
                     className="flex h-9 w-9 items-center justify-center border border-red-400/30 bg-red-400/10 text-red-200 hover:border-red-300"
                     onClick={() => setEliminar(contenido)}
@@ -144,6 +189,13 @@ export function SemanaContenidosSection({
           onClose={() => setVisor(null)}
           titulo={visor.titulo}
         />
+      ) : null}
+
+      {embebido && embebido.url_externa ? (
+        (() => {
+          const info = getEmbedInfo(embebido.url_externa);
+          return info ? <EmbedViewerModal embed={info} onClose={() => setEmbebido(null)} titulo={embebido.titulo} /> : null;
+        })()
       ) : null}
 
       <ConfirmDialog

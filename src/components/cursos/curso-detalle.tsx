@@ -95,7 +95,12 @@ export function CursoDetalle({
       {tab === "reporte" ? <CursoReporteTab curso={curso} universidad={universidad} /> : null}
 
       {previaAbierta ? (
-        <VistaPreviaEstudianteModal cursoNombre={curso.nombre} onClose={() => setPreviaAbierta(false)} universidadNombre={universidad.nombre} />
+        <VistaPreviaEstudianteModal
+          cursoId={curso.id}
+          cursoNombre={curso.nombre}
+          onClose={() => setPreviaAbierta(false)}
+          universidadNombre={universidad.nombre}
+        />
       ) : null}
     </div>
   );
