@@ -1,12 +1,20 @@
 "use client";
 
-import { GraduationCap, KeyRound, LogOut, MessageCircle } from "lucide-react";
+import { Bell, GraduationCap, KeyRound, LogOut, MessageCircle } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
-import { fetchMisMensajesNoLeidos, guardarIdioma, logoutEstudiante, type MiCurso, type MiPerfil } from "@/lib/estudiante/estudiante-client";
+import {
+  fetchMisMensajesNoLeidos,
+  fetchMisNotificacionesNoLeidas,
+  guardarIdioma,
+  logoutEstudiante,
+  type MiCurso,
+  type MiPerfil,
+} from "@/lib/estudiante/estudiante-client";
 import { CambiarContrasenaModal } from "./cambiar-contrasena-modal";
 import { ChatModal } from "./chat-modal";
 import { CursoEstudianteDetalle } from "./curso-estudiante-detalle";
 import { useIdioma } from "./idioma-context";
+import { NotificacionesModal } from "./notificaciones-modal";
 import { SelectorIdioma } from "./selector-idioma";
 
 export function PanelEstudiante({
@@ -21,7 +29,9 @@ export function PanelEstudiante({
   const [modalContrasenaAbierto, setModalContrasenaAbierto] = useState(perfil.debeCambiarContrasena);
   const [cursoAbierto, setCursoAbierto] = useState<MiCurso | null>(null);
   const [chatAbierto, setChatAbierto] = useState(false);
+  const [notificacionesAbiertas, setNotificacionesAbiertas] = useState(false);
   const [mensajesNoLeidos, setMensajesNoLeidos] = useState(0);
+  const [notificacionesNoLeidas, setNotificacionesNoLeidas] = useState(0);
   const { t } = useIdioma();
 
   const ESTADO_LABEL: Record<string, string> = {
@@ -35,12 +45,21 @@ export function PanelEstudiante({
     setMensajesNoLeidos(data);
   }, []);
 
+  const cargarNotificacionesNoLeidas = useCallback(async () => {
+    const { data } = await fetchMisNotificacionesNoLeidas();
+    setNotificacionesNoLeidas(data);
+  }, []);
+
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- consulta inicial de mensajes sin leer al montar el panel
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- consulta inicial de mensajes/notificaciones sin leer al montar el panel
     void cargarNoLeidos();
-    const interval = setInterval(cargarNoLeidos, 15000);
+    void cargarNotificacionesNoLeidas();
+    const interval = setInterval(() => {
+      void cargarNoLeidos();
+      void cargarNotificacionesNoLeidas();
+    }, 15000);
     return () => clearInterval(interval);
-  }, [cargarNoLeidos]);
+  }, [cargarNoLeidos, cargarNotificacionesNoLeidas]);
 
   return (
     <div className="min-h-screen bg-white text-slate-900">
@@ -57,6 +76,19 @@ export function PanelEstudiante({
             <p className="text-xs text-slate-400">{perfil.correo}</p>
           </div>
           <SelectorIdioma onChange={(nuevo) => void guardarIdioma(nuevo)} />
+          <button
+            className="relative flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 text-slate-500 transition hover:border-slate-400 hover:text-slate-800"
+            onClick={() => setNotificacionesAbiertas(true)}
+            title={t("notif_titulo")}
+            type="button"
+          >
+            <Bell className="h-4 w-4" />
+            {notificacionesNoLeidas > 0 ? (
+              <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-emerald-500 px-1 text-[10px] font-bold text-white">
+                {notificacionesNoLeidas}
+              </span>
+            ) : null}
+          </button>
           <button
             className="relative flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 text-slate-500 transition hover:border-slate-400 hover:text-slate-800"
             onClick={() => setChatAbierto(true)}
@@ -141,6 +173,22 @@ export function PanelEstudiante({
       ) : null}
 
       {chatAbierto ? <ChatModal onClose={() => setChatAbierto(false)} onLeido={cargarNoLeidos} /> : null}
+
+      {notificacionesAbiertas ? (
+        <NotificacionesModal
+          cursos={cursos}
+          onAbrirChat={() => {
+            setNotificacionesAbiertas(false);
+            setChatAbierto(true);
+          }}
+          onAbrirCurso={(curso) => {
+            setNotificacionesAbiertas(false);
+            setCursoAbierto(curso);
+          }}
+          onClose={() => setNotificacionesAbiertas(false)}
+          onLeido={cargarNotificacionesNoLeidas}
+        />
+      ) : null}
     </div>
   );
 }

@@ -364,6 +364,90 @@ export async function marcarMensajesLeidos(): Promise<{ error: string | null }> 
   }
 }
 
+export type TipoNotificacion = "contenido" | "tarea" | "calificacion" | "mensaje";
+
+export type MiNotificacion = {
+  id: string;
+  tipo: TipoNotificacion;
+  cursoId: string | null;
+  cursoNombre: string | null;
+  meta: Record<string, unknown>;
+  leida: boolean;
+  creadoEn: string;
+};
+
+function tipoNotificacionValido(valor: unknown): valor is TipoNotificacion {
+  return valor === "contenido" || valor === "tarea" || valor === "calificacion" || valor === "mensaje";
+}
+
+export async function fetchMisNotificaciones(): Promise<{ data: MiNotificacion[]; error: string | null }> {
+  const supabase = getSupabaseClient();
+  if (!supabase) return { data: [], error: "Faltan las variables de Supabase." };
+
+  const { data, error } = await supabase.rpc("gestionesjj_estudiante_mis_notificaciones");
+  if (error) return { data: [], error: error.message };
+
+  const filas = (data ?? []) as Array<{
+    id: string;
+    tipo: string;
+    curso_id: string | null;
+    curso_nombre: string | null;
+    meta: Record<string, unknown> | null;
+    leida: boolean;
+    created_at: string;
+  }>;
+
+  return {
+    data: filas
+      .filter((fila) => tipoNotificacionValido(fila.tipo))
+      .map((fila) => ({
+        id: fila.id,
+        tipo: fila.tipo as TipoNotificacion,
+        cursoId: fila.curso_id,
+        cursoNombre: fila.curso_nombre,
+        meta: fila.meta ?? {},
+        leida: fila.leida,
+        creadoEn: fila.created_at,
+      })),
+    error: null,
+  };
+}
+
+export async function fetchMisNotificacionesNoLeidas(): Promise<{ data: number; error: string | null }> {
+  const supabase = getSupabaseClient();
+  if (!supabase) return { data: 0, error: "Faltan las variables de Supabase." };
+
+  const { data, error } = await supabase.rpc("gestionesjj_estudiante_notificaciones_no_leidas");
+  if (error) return { data: 0, error: error.message };
+  return { data: typeof data === "number" ? data : 0, error: null };
+}
+
+async function marcarNotificaciones(body: { id?: string; todas?: boolean }): Promise<{ error: string | null }> {
+  const token = await getAuthToken();
+  if (!token) return { error: "Sesión no válida. Vuelve a iniciar." };
+
+  try {
+    const response = await fetch("/api/estudiante/notificaciones/marcar-leida", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify(body),
+    });
+    const json = (await response.json().catch(() => null)) as { error?: string } | null;
+    if (!response.ok) return { error: json?.error ?? "No se pudo actualizar." };
+    return { error: null };
+  } catch {
+    return { error: "Error de conexión." };
+  }
+}
+
+export function marcarNotificacionLeida(id: string) {
+  return marcarNotificaciones({ id });
+}
+
+export function marcarTodasNotificacionesLeidas() {
+  return marcarNotificaciones({ todas: true });
+}
+
 export async function cambiarMiContrasena(nuevaContrasena: string) {
   const supabase = getSupabaseClient();
   if (!supabase) return { error: "Faltan las variables de Supabase." };
