@@ -3,20 +3,22 @@
 import { useState } from "react";
 import { ModalPortal } from "@/components/modal-portal";
 import { cambiarMiContrasena } from "@/lib/estudiante/estudiante-client";
+import { useIdioma } from "./idioma-context";
 
 export function CambiarContrasenaModal({ onCambiada, onClose }: { onCambiada: () => void; onClose: () => void }) {
   const [nueva, setNueva] = useState("");
   const [confirmar, setConfirmar] = useState("");
   const [guardando, setGuardando] = useState(false);
   const [error, setError] = useState("");
+  const { t } = useIdioma();
 
   const handleGuardar = async () => {
     if (nueva.length < 8) {
-      setError("Usa al menos 8 caracteres.");
+      setError(t("contrasena_error_longitud"));
       return;
     }
     if (nueva !== confirmar) {
-      setError("Las contraseñas no coinciden.");
+      setError(t("contrasena_error_coincide"));
       return;
     }
     setGuardando(true);
@@ -36,12 +38,12 @@ export function CambiarContrasenaModal({ onCambiada, onClose }: { onCambiada: ()
           className="w-full max-w-sm rounded-2xl border border-slate-200 bg-white p-6 text-slate-900 shadow-xl"
           onClick={(event) => event.stopPropagation()}
         >
-          <h3 className="mb-1 text-lg font-semibold">Cambia tu contraseña</h3>
-          <p className="mb-5 text-sm text-slate-500">Elige una contraseña que solo tú conozcas.</p>
+          <h3 className="mb-1 text-lg font-semibold">{t("contrasena_titulo")}</h3>
+          <p className="mb-5 text-sm text-slate-500">{t("contrasena_sub")}</p>
 
           <div className="grid gap-3">
             <label className="grid gap-1.5">
-              <span className="text-xs font-medium uppercase tracking-wide text-slate-500">Contraseña nueva</span>
+              <span className="text-xs font-medium uppercase tracking-wide text-slate-500">{t("contrasena_nueva")}</span>
               <input
                 className="rounded-lg border border-slate-200 px-3 py-2 outline-none focus:border-slate-400"
                 onChange={(event) => setNueva(event.target.value)}
@@ -50,7 +52,7 @@ export function CambiarContrasenaModal({ onCambiada, onClose }: { onCambiada: ()
               />
             </label>
             <label className="grid gap-1.5">
-              <span className="text-xs font-medium uppercase tracking-wide text-slate-500">Confírmala</span>
+              <span className="text-xs font-medium uppercase tracking-wide text-slate-500">{t("contrasena_confirmar")}</span>
               <input
                 className="rounded-lg border border-slate-200 px-3 py-2 outline-none focus:border-slate-400"
                 onChange={(event) => setConfirmar(event.target.value)}
@@ -64,7 +66,7 @@ export function CambiarContrasenaModal({ onCambiada, onClose }: { onCambiada: ()
 
           <div className="mt-5 flex justify-end gap-3">
             <button className="rounded-lg px-4 py-2 text-sm font-semibold text-slate-500 hover:text-slate-800" onClick={onClose} type="button">
-              Ahora no
+              {t("contrasena_ahora_no")}
             </button>
             <button
               className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-700 disabled:opacity-60"
@@ -72,7 +74,7 @@ export function CambiarContrasenaModal({ onCambiada, onClose }: { onCambiada: ()
               onClick={handleGuardar}
               type="button"
             >
-              {guardando ? "Guardando..." : "Guardar"}
+              {guardando ? t("contrasena_guardando") : t("contrasena_guardar")}
             </button>
           </div>
         </div>

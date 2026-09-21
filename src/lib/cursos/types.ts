@@ -177,6 +177,9 @@ export type EntregaRow = {
   updated_at: string;
 };
 
+/** Idioma de la plataforma para el lado del estudiante (el panel del docente siempre es en español). */
+export type Idioma = "es" | "en" | "pt";
+
 export type TipoRemitenteMensaje = "docente" | "estudiante";
 
 export type MensajeRow = {
@@ -264,17 +267,37 @@ export function formatearFecha(iso: string | null | undefined): string {
   return `${dia}/${mes}/${anio}`;
 }
 
+const SIN_FECHA_LIMITE_LABEL: Record<Idioma, string> = {
+  es: "Sin fecha límite",
+  en: "No due date",
+  pt: "Sem prazo",
+};
+
+const HORA_GUATEMALA_LABEL: Record<Idioma, string> = {
+  es: "(hora de Guatemala)",
+  en: "(Guatemala time)",
+  pt: "(horário da Guatemala)",
+};
+
+const LOCALE_INTL: Record<Idioma, string> = {
+  es: "es-GT",
+  en: "en-US",
+  pt: "pt-BR",
+};
+
 /**
  * Fechas límite se guardan como timestamptz (instante absoluto) y siempre
  * se muestran en hora de Guatemala, sin importar la zona del navegador de
  * quien las vea (evita que "23:59" signifique algo distinto para el
- * estudiante que para el docente).
+ * estudiante que para el docente). El panel del docente siempre llama esta
+ * función sin `idioma` (queda en español); el panel del estudiante pasa su
+ * idioma preferido.
  */
-export function formatearFechaLimite(iso: string | null | undefined): string {
-  if (!iso) return "Sin fecha límite";
+export function formatearFechaLimite(iso: string | null | undefined, idioma: Idioma = "es"): string {
+  if (!iso) return SIN_FECHA_LIMITE_LABEL[idioma];
   const fecha = new Date(iso);
-  if (Number.isNaN(fecha.getTime())) return "Sin fecha límite";
-  const formateado = new Intl.DateTimeFormat("es-GT", {
+  if (Number.isNaN(fecha.getTime())) return SIN_FECHA_LIMITE_LABEL[idioma];
+  const formateado = new Intl.DateTimeFormat(LOCALE_INTL[idioma], {
     timeZone: "America/Guatemala",
     day: "2-digit",
     month: "2-digit",
@@ -282,7 +305,7 @@ export function formatearFechaLimite(iso: string | null | undefined): string {
     hour: "2-digit",
     minute: "2-digit",
   }).format(fecha);
-  return `${formateado} (hora de Guatemala)`;
+  return `${formateado} ${HORA_GUATEMALA_LABEL[idioma]}`;
 }
 
 export function formatearFechaHora(iso: string | null | undefined): string {

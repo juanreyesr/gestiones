@@ -1,0 +1,252 @@
+import type { Idioma } from "@/lib/cursos/types";
+
+export const IDIOMA_LABELS: Record<Idioma, string> = {
+  es: "Español",
+  en: "English",
+  pt: "Português",
+};
+
+export const IDIOMAS: Idioma[] = ["es", "en", "pt"];
+
+/**
+ * Textos de la interfaz del área de estudiante (menús, botones, instrucciones).
+ * El contenido que carga el docente (nombres de cursos, títulos, descripciones)
+ * nunca se traduce aquí: solo la interfaz de la aplicación.
+ */
+const DICCIONARIO: Record<Idioma, Record<string, string>> = {
+  es: {
+    // Login
+    login_titulo: "Acceso a estudiantes",
+    login_subtitulo: "Ingresa con el correo y la contraseña que te dio tu docente.",
+    login_correo: "Correo",
+    login_contrasena: "Contraseña",
+    login_error_vacio: "Ingresa tu correo y tu contraseña.",
+    login_error_credenciales: "Correo o contraseña incorrectos.",
+    login_entrando: "Entrando...",
+    login_entrar: "Entrar",
+    login_volver: "Volver",
+
+    // Mensajes centrales (carga, errores generales)
+    central_no_disponible: "El servicio no está disponible en este momento.",
+    central_cargando: "Cargando...",
+    central_cargando_cuenta: "Cargando tu cuenta...",
+    central_cuenta_no_habilitada: "Esta cuenta no está habilitada como estudiante.",
+    central_salir_otra_cuenta: "Salir e intentar con otra cuenta",
+    central_volver: "Volver",
+
+    // Panel principal
+    panel_saludo: "Hola",
+    panel_cambiar_contrasena: "Cambiar mi contraseña",
+    panel_salir: "Salir",
+    panel_chat_titulo: "Chatear con tu docente",
+    panel_idioma: "Idioma",
+    panel_mis_cursos: "Tus cursos",
+    panel_mis_cursos_sub: "Entra a un curso para ver sus semanas, tareas y calificaciones.",
+    panel_sin_cursos_1: "Todavía no tienes ningún curso visible.",
+    panel_sin_cursos_2: "En cuanto tu docente active el acceso, aparecerá aquí.",
+    panel_sin_datos: "Sin datos adicionales",
+    estado_en_curso: "En curso",
+    estado_finalizado: "Finalizado",
+    estado_archivado: "Archivado",
+
+    // Detalle de curso
+    curso_volver: "Volver a mis cursos",
+    curso_aprobado: "Aprobado",
+    curso_reprobado: "Reprobado",
+    curso_error_semana: "No se pudo cargar la semana.",
+    curso_error_archivo: "No se pudo abrir el archivo.",
+
+    // Lista de contenidos/tareas
+    lista_sin_semanas: "Aún no hay semanas habilitadas para este curso.",
+    lista_semana: "Semana",
+    lista_contenidos: "Contenidos",
+    lista_sin_contenido: "Aún no hay contenido publicado en esta semana.",
+    lista_ver_descargar: "Ver / descargar",
+    lista_abrir_enlace: "Abrir enlace",
+    lista_tareas: "Tareas",
+    lista_sin_tareas: "Aún no hay tareas publicadas en esta semana.",
+    tarea_fecha_limite: "Fecha límite",
+    tarea_entregaste: "Entregaste el",
+    tarea_tardia: "(tardía)",
+    tarea_no_entregado: "Aún no has entregado.",
+    tarea_nota: "Nota",
+    tarea_subiendo: "Subiendo...",
+    tarea_entregar_otro: "Entregar otro archivo",
+    tarea_subir_archivo: "Subir archivo",
+    tarea_ver_archivos: "Ver mis archivos",
+    tarea_ocultar_archivos: "Ocultar mis archivos",
+    tarea_sin_archivos: "Sin archivos.",
+    tarea_archivo_generico: "Archivo",
+
+    // Cambiar contraseña
+    contrasena_titulo: "Cambia tu contraseña",
+    contrasena_sub: "Elige una contraseña que solo tú conozcas.",
+    contrasena_nueva: "Contraseña nueva",
+    contrasena_confirmar: "Confírmala",
+    contrasena_error_longitud: "Usa al menos 8 caracteres.",
+    contrasena_error_coincide: "Las contraseñas no coinciden.",
+    contrasena_ahora_no: "Ahora no",
+    contrasena_guardando: "Guardando...",
+    contrasena_guardar: "Guardar",
+
+    // Chat
+    chat_titulo: "Chat con tu docente",
+    chat_sin_mensajes: "Aún no hay mensajes. Escribe el primero.",
+    chat_placeholder: "Escribe un mensaje...",
+  },
+  en: {
+    login_titulo: "Student access",
+    login_subtitulo: "Sign in with the email and password your teacher gave you.",
+    login_correo: "Email",
+    login_contrasena: "Password",
+    login_error_vacio: "Enter your email and password.",
+    login_error_credenciales: "Incorrect email or password.",
+    login_entrando: "Signing in...",
+    login_entrar: "Sign in",
+    login_volver: "Back",
+
+    central_no_disponible: "The service is not available right now.",
+    central_cargando: "Loading...",
+    central_cargando_cuenta: "Loading your account...",
+    central_cuenta_no_habilitada: "This account is not enabled as a student.",
+    central_salir_otra_cuenta: "Sign out and try another account",
+    central_volver: "Back",
+
+    panel_saludo: "Hi",
+    panel_cambiar_contrasena: "Change my password",
+    panel_salir: "Sign out",
+    panel_chat_titulo: "Chat with your teacher",
+    panel_idioma: "Language",
+    panel_mis_cursos: "Your courses",
+    panel_mis_cursos_sub: "Open a course to see its weeks, assignments and grades.",
+    panel_sin_cursos_1: "You don't have any visible courses yet.",
+    panel_sin_cursos_2: "As soon as your teacher grants access, it will show up here.",
+    panel_sin_datos: "No additional details",
+    estado_en_curso: "In progress",
+    estado_finalizado: "Finished",
+    estado_archivado: "Archived",
+
+    curso_volver: "Back to your courses",
+    curso_aprobado: "Passed",
+    curso_reprobado: "Failed",
+    curso_error_semana: "The week could not be loaded.",
+    curso_error_archivo: "The file could not be opened.",
+
+    lista_sin_semanas: "There are no weeks enabled for this course yet.",
+    lista_semana: "Week",
+    lista_contenidos: "Content",
+    lista_sin_contenido: "No content has been published for this week yet.",
+    lista_ver_descargar: "View / download",
+    lista_abrir_enlace: "Open link",
+    lista_tareas: "Assignments",
+    lista_sin_tareas: "No assignments have been published for this week yet.",
+    tarea_fecha_limite: "Due date",
+    tarea_entregaste: "You submitted it on",
+    tarea_tardia: "(late)",
+    tarea_no_entregado: "You haven't submitted it yet.",
+    tarea_nota: "Grade",
+    tarea_subiendo: "Uploading...",
+    tarea_entregar_otro: "Submit another file",
+    tarea_subir_archivo: "Upload file",
+    tarea_ver_archivos: "View my files",
+    tarea_ocultar_archivos: "Hide my files",
+    tarea_sin_archivos: "No files.",
+    tarea_archivo_generico: "File",
+
+    contrasena_titulo: "Change your password",
+    contrasena_sub: "Choose a password only you know.",
+    contrasena_nueva: "New password",
+    contrasena_confirmar: "Confirm it",
+    contrasena_error_longitud: "Use at least 8 characters.",
+    contrasena_error_coincide: "The passwords don't match.",
+    contrasena_ahora_no: "Not now",
+    contrasena_guardando: "Saving...",
+    contrasena_guardar: "Save",
+
+    chat_titulo: "Chat with your teacher",
+    chat_sin_mensajes: "No messages yet. Write the first one.",
+    chat_placeholder: "Type a message...",
+  },
+  pt: {
+    login_titulo: "Acesso para estudantes",
+    login_subtitulo: "Entre com o e-mail e a senha que seu professor te deu.",
+    login_correo: "E-mail",
+    login_contrasena: "Senha",
+    login_error_vacio: "Digite seu e-mail e sua senha.",
+    login_error_credenciales: "E-mail ou senha incorretos.",
+    login_entrando: "Entrando...",
+    login_entrar: "Entrar",
+    login_volver: "Voltar",
+
+    central_no_disponible: "O serviço não está disponível no momento.",
+    central_cargando: "Carregando...",
+    central_cargando_cuenta: "Carregando sua conta...",
+    central_cuenta_no_habilitada: "Esta conta não está habilitada como estudante.",
+    central_salir_otra_cuenta: "Sair e tentar com outra conta",
+    central_volver: "Voltar",
+
+    panel_saludo: "Olá",
+    panel_cambiar_contrasena: "Alterar minha senha",
+    panel_salir: "Sair",
+    panel_chat_titulo: "Conversar com seu professor",
+    panel_idioma: "Idioma",
+    panel_mis_cursos: "Seus cursos",
+    panel_mis_cursos_sub: "Abra um curso para ver suas semanas, tarefas e notas.",
+    panel_sin_cursos_1: "Você ainda não tem nenhum curso visível.",
+    panel_sin_cursos_2: "Assim que seu professor liberar o acesso, ele aparecerá aqui.",
+    panel_sin_datos: "Sem dados adicionais",
+    estado_en_curso: "Em andamento",
+    estado_finalizado: "Finalizado",
+    estado_archivado: "Arquivado",
+
+    curso_volver: "Voltar para seus cursos",
+    curso_aprobado: "Aprovado",
+    curso_reprobado: "Reprovado",
+    curso_error_semana: "Não foi possível carregar a semana.",
+    curso_error_archivo: "Não foi possível abrir o arquivo.",
+
+    lista_sin_semanas: "Ainda não há semanas habilitadas para este curso.",
+    lista_semana: "Semana",
+    lista_contenidos: "Conteúdos",
+    lista_sin_contenido: "Ainda não há conteúdo publicado nesta semana.",
+    lista_ver_descargar: "Ver / baixar",
+    lista_abrir_enlace: "Abrir link",
+    lista_tareas: "Tarefas",
+    lista_sin_tareas: "Ainda não há tarefas publicadas nesta semana.",
+    tarea_fecha_limite: "Prazo",
+    tarea_entregaste: "Você entregou em",
+    tarea_tardia: "(atrasada)",
+    tarea_no_entregado: "Você ainda não entregou.",
+    tarea_nota: "Nota",
+    tarea_subiendo: "Enviando...",
+    tarea_entregar_otro: "Enviar outro arquivo",
+    tarea_subir_archivo: "Enviar arquivo",
+    tarea_ver_archivos: "Ver meus arquivos",
+    tarea_ocultar_archivos: "Ocultar meus arquivos",
+    tarea_sin_archivos: "Sem arquivos.",
+    tarea_archivo_generico: "Arquivo",
+
+    contrasena_titulo: "Altere sua senha",
+    contrasena_sub: "Escolha uma senha que só você conheça.",
+    contrasena_nueva: "Nova senha",
+    contrasena_confirmar: "Confirme-a",
+    contrasena_error_longitud: "Use pelo menos 8 caracteres.",
+    contrasena_error_coincide: "As senhas não coincidem.",
+    contrasena_ahora_no: "Agora não",
+    contrasena_guardando: "Salvando...",
+    contrasena_guardar: "Salvar",
+
+    chat_titulo: "Conversa com seu professor",
+    chat_sin_mensajes: "Ainda não há mensagens. Escreva a primeira.",
+    chat_placeholder: "Digite uma mensagem...",
+  },
+};
+
+/**
+ * Traduce una clave al idioma dado. Se usa como función pura (sin contexto de
+ * React) en componentes compartidos con el panel del docente, como
+ * `CursoContenidoLista`, para no forzarlos a depender de `IdiomaProvider`.
+ */
+export function traducir(idioma: Idioma, clave: string): string {
+  return DICCIONARIO[idioma][clave] ?? DICCIONARIO.es[clave] ?? clave;
+}

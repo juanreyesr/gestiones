@@ -2,16 +2,12 @@
 
 import { GraduationCap, KeyRound, LogOut, MessageCircle } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
-import { fetchMisMensajesNoLeidos, logoutEstudiante, type MiCurso, type MiPerfil } from "@/lib/estudiante/estudiante-client";
+import { fetchMisMensajesNoLeidos, guardarIdioma, logoutEstudiante, type MiCurso, type MiPerfil } from "@/lib/estudiante/estudiante-client";
 import { CambiarContrasenaModal } from "./cambiar-contrasena-modal";
 import { ChatModal } from "./chat-modal";
 import { CursoEstudianteDetalle } from "./curso-estudiante-detalle";
-
-const ESTADO_LABEL: Record<string, string> = {
-  activo: "En curso",
-  finalizado: "Finalizado",
-  archivado: "Archivado",
-};
+import { useIdioma } from "./idioma-context";
+import { SelectorIdioma } from "./selector-idioma";
 
 export function PanelEstudiante({
   cursos,
@@ -26,6 +22,13 @@ export function PanelEstudiante({
   const [cursoAbierto, setCursoAbierto] = useState<MiCurso | null>(null);
   const [chatAbierto, setChatAbierto] = useState(false);
   const [mensajesNoLeidos, setMensajesNoLeidos] = useState(0);
+  const { t } = useIdioma();
+
+  const ESTADO_LABEL: Record<string, string> = {
+    activo: t("estado_en_curso"),
+    finalizado: t("estado_finalizado"),
+    archivado: t("estado_archivado"),
+  };
 
   const cargarNoLeidos = useCallback(async () => {
     const { data } = await fetchMisMensajesNoLeidos();
@@ -41,20 +44,23 @@ export function PanelEstudiante({
 
   return (
     <div className="min-h-screen bg-white text-slate-900">
-      <header className="flex items-center justify-between border-b border-slate-100 px-6 py-4 sm:px-10">
+      <header className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 px-6 py-4 sm:px-10">
         <div className="flex items-center gap-2 text-slate-500">
           <GraduationCap className="h-5 w-5" />
           <span className="text-sm font-medium">GestionesJJ</span>
         </div>
         <div className="flex items-center gap-4">
           <div className="text-right">
-            <p className="text-sm font-semibold text-slate-900">Hola, {perfil.nombre.split(" ")[0]}</p>
+            <p className="text-sm font-semibold text-slate-900">
+              {t("panel_saludo")}, {perfil.nombre.split(" ")[0]}
+            </p>
             <p className="text-xs text-slate-400">{perfil.correo}</p>
           </div>
+          <SelectorIdioma onChange={(nuevo) => void guardarIdioma(nuevo)} />
           <button
             className="relative flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 text-slate-500 transition hover:border-slate-400 hover:text-slate-800"
             onClick={() => setChatAbierto(true)}
-            title="Chatear con tu docente"
+            title={t("panel_chat_titulo")}
             type="button"
           >
             <MessageCircle className="h-4 w-4" />
@@ -67,7 +73,7 @@ export function PanelEstudiante({
           <button
             className="flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 text-slate-500 transition hover:border-slate-400 hover:text-slate-800"
             onClick={() => setModalContrasenaAbierto(true)}
-            title="Cambiar mi contraseña"
+            title={t("panel_cambiar_contrasena")}
             type="button"
           >
             <KeyRound className="h-4 w-4" />
@@ -75,7 +81,7 @@ export function PanelEstudiante({
           <button
             className="flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 text-slate-500 transition hover:border-slate-400 hover:text-slate-800"
             onClick={() => logoutEstudiante()}
-            title="Salir"
+            title={t("panel_salir")}
             type="button"
           >
             <LogOut className="h-4 w-4" />
@@ -88,15 +94,15 @@ export function PanelEstudiante({
           <CursoEstudianteDetalle curso={cursoAbierto} onVolver={() => setCursoAbierto(null)} />
         ) : (
           <>
-            <h1 className="text-2xl font-semibold text-slate-900">Tus cursos</h1>
-            <p className="mt-1 text-sm text-slate-500">Entra a un curso para ver sus semanas, tareas y calificaciones.</p>
+            <h1 className="text-2xl font-semibold text-slate-900">{t("panel_mis_cursos")}</h1>
+            <p className="mt-1 text-sm text-slate-500">{t("panel_mis_cursos_sub")}</p>
 
             {cursos.length === 0 ? (
               <div className="mt-10 rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-10 text-center">
                 <p className="text-sm text-slate-500">
-                  Todavía no tienes ningún curso visible.
+                  {t("panel_sin_cursos_1")}
                   <br />
-                  En cuanto tu docente active el acceso, aparecerá aquí.
+                  {t("panel_sin_cursos_2")}
                 </p>
               </div>
             ) : (
@@ -111,7 +117,7 @@ export function PanelEstudiante({
                     <p className="text-xs font-medium uppercase tracking-wide text-slate-400">{curso.universidadNombre}</p>
                     <h2 className="mt-1 text-lg font-semibold text-slate-900">{curso.cursoNombre}</h2>
                     <p className="mt-1 text-sm text-slate-500">
-                      {[curso.cursoCodigo, curso.periodo].filter(Boolean).join(" · ") || "Sin datos adicionales"}
+                      {[curso.cursoCodigo, curso.periodo].filter(Boolean).join(" · ") || t("panel_sin_datos")}
                     </p>
                     <span className="mt-4 inline-flex items-center rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600">
                       {ESTADO_LABEL[curso.estado] ?? curso.estado}

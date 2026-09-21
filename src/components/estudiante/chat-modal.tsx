@@ -5,6 +5,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { ModalPortal } from "@/components/modal-portal";
 import { formatearFechaHora } from "@/lib/cursos/types";
 import { enviarMensaje, fetchMisMensajes, marcarMensajesLeidos, type MiMensaje } from "@/lib/estudiante/estudiante-client";
+import { useIdioma } from "./idioma-context";
 
 const INTERVALO_MS = 4000;
 
@@ -15,6 +16,7 @@ export function ChatModal({ onClose, onLeido }: { onClose: () => void; onLeido: 
   const [enviando, setEnviando] = useState(false);
   const [error, setError] = useState("");
   const finRef = useRef<HTMLDivElement>(null);
+  const { t } = useIdioma();
 
   const cargar = useCallback(async () => {
     const { data, error: fetchError } = await fetchMisMensajes();
@@ -63,7 +65,7 @@ export function ChatModal({ onClose, onLeido }: { onClose: () => void; onLeido: 
         <div className="mb-3 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <MessageCircle className="h-5 w-5 text-slate-500" />
-            <h3 className="text-lg font-semibold text-slate-900">Chat con tu docente</h3>
+            <h3 className="text-lg font-semibold text-slate-900">{t("chat_titulo")}</h3>
           </div>
           <button
             className="flex h-8 w-8 items-center justify-center rounded-full text-slate-400 hover:bg-slate-100 hover:text-slate-700"
@@ -76,9 +78,9 @@ export function ChatModal({ onClose, onLeido }: { onClose: () => void; onLeido: 
 
         <div className="flex-1 overflow-y-auto rounded-xl border border-slate-200 bg-slate-50 p-3">
           {cargando ? (
-            <p className="py-6 text-center text-sm text-slate-400">Cargando...</p>
+            <p className="py-6 text-center text-sm text-slate-400">{t("central_cargando")}</p>
           ) : mensajes.length === 0 ? (
-            <p className="py-6 text-center text-sm text-slate-400">Aún no hay mensajes. Escribe el primero.</p>
+            <p className="py-6 text-center text-sm text-slate-400">{t("chat_sin_mensajes")}</p>
           ) : (
             <div className="grid gap-2">
               {mensajes.map((mensaje) => (
@@ -113,7 +115,7 @@ export function ChatModal({ onClose, onLeido }: { onClose: () => void; onLeido: 
                 void handleEnviar();
               }
             }}
-            placeholder="Escribe un mensaje..."
+            placeholder={t("chat_placeholder")}
             rows={2}
             value={texto}
           />

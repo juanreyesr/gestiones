@@ -1,4 +1,9 @@
+import type { Idioma } from "@/lib/cursos/types";
 import { getSupabaseClient } from "@/lib/supabase";
+
+function idiomaValido(valor: unknown): valor is Idioma {
+  return valor === "es" || valor === "en" || valor === "pt";
+}
 
 export async function loginEstudiante(correo: string, contrasena: string) {
   const supabase = getSupabaseClient();
@@ -14,7 +19,7 @@ export async function logoutEstudiante() {
   await supabase.auth.signOut();
 }
 
-export type MiPerfil = { nombre: string; correo: string; debeCambiarContrasena: boolean };
+export type MiPerfil = { nombre: string; correo: string; debeCambiarContrasena: boolean; idioma: Idioma };
 
 export async function fetchMiPerfil(): Promise<{ data: MiPerfil | null; error: string | null }> {
   const supabase = getSupabaseClient();
@@ -24,14 +29,37 @@ export async function fetchMiPerfil(): Promise<{ data: MiPerfil | null; error: s
   if (error) return { data: null, error: error.message };
 
   const fila = (Array.isArray(data) ? data[0] : data) as
-    | { nombre: string; correo: string; debe_cambiar_contrasena: boolean }
+    | { nombre: string; correo: string; debe_cambiar_contrasena: boolean; idioma: string | null }
     | null;
   if (!fila) return { data: null, error: null };
 
   return {
-    data: { nombre: fila.nombre, correo: fila.correo, debeCambiarContrasena: Boolean(fila.debe_cambiar_contrasena) },
+    data: {
+      nombre: fila.nombre,
+      correo: fila.correo,
+      debeCambiarContrasena: Boolean(fila.debe_cambiar_contrasena),
+      idioma: idiomaValido(fila.idioma) ? fila.idioma : "es",
+    },
     error: null,
   };
+}
+
+export async function guardarIdioma(idioma: Idioma): Promise<{ error: string | null }> {
+  const token = await getAuthToken();
+  if (!token) return { error: "Sesión no válida. Vuelve a iniciar." };
+
+  try {
+    const response = await fetch("/api/estudiante/idioma", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ idioma }),
+    });
+    const json = (await response.json().catch(() => null)) as { error?: string } | null;
+    if (!response.ok) return { error: json?.error ?? "No se pudo guardar el idioma." };
+    return { error: null };
+  } catch {
+    return { error: "Error de conexión." };
+  }
 }
 
 export type MiCurso = {
