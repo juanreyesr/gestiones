@@ -14,10 +14,14 @@ const PAD_BOTTOM = 28;
 const GOOD = "#0ca30c";
 const CRITICAL = "#d03b3b";
 
-export function TendenciaCategoriasChart({ series }: { series: TendenciaCategoria[] }) {
+export function TendenciaCategoriasChart({ light = false, series }: { light?: boolean; series: TendenciaCategoria[] }) {
   if (!series.length) {
     return <p className="text-sm text-slate-400">Aun no hay suficiente historial para mostrar una tendencia.</p>;
   }
+
+  const gridColor = light ? "#e2e8f0" : "#2c2c2a";
+  const axisTextColor = light ? "#94a3b8" : "#898781";
+  const rowBorderClass = light ? "border-slate-100" : "border-white/8";
 
   const periodos = series[0].puntos.map((punto) => punto.periodo);
   const innerWidth = WIDTH - PAD_LEFT - PAD_RIGHT;
@@ -45,14 +49,14 @@ export function TendenciaCategoriasChart({ series }: { series: TendenciaCategori
             {[0, 25, 50, 75, 100].map((tick) => (
               <g key={tick}>
                 <line
-                  stroke="#2c2c2a"
+                  stroke={gridColor}
                   strokeWidth={1}
                   x1={PAD_LEFT}
                   x2={WIDTH - PAD_RIGHT}
                   y1={yFor(tick)}
                   y2={yFor(tick)}
                 />
-                <text fill="#898781" fontSize={9} textAnchor="end" x={PAD_LEFT - 6} y={yFor(tick) + 3}>
+                <text fill={axisTextColor} fontSize={9} textAnchor="end" x={PAD_LEFT - 6} y={yFor(tick) + 3}>
                   {tick}
                 </text>
               </g>
@@ -61,7 +65,7 @@ export function TendenciaCategoriasChart({ series }: { series: TendenciaCategori
             {periodos.map((periodo, index) => (
               <text
                 key={periodo}
-                fill="#898781"
+                fill={axisTextColor}
                 fontSize={9}
                 textAnchor="middle"
                 x={xFor(index)}
@@ -100,10 +104,10 @@ export function TendenciaCategoriasChart({ series }: { series: TendenciaCategori
           const mejorando = delta > 0;
           const empeorando = delta < 0;
           return (
-            <div key={serie.categoria} className="flex items-center gap-2 text-xs text-slate-300">
+            <div key={serie.categoria} className={`flex items-center gap-2 text-xs ${light ? "text-slate-500" : "text-slate-300"}`}>
               <span aria-hidden className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: color }} />
               <span className="min-w-0 flex-1 truncate">{serie.categoria}</span>
-              <span className="shrink-0 font-semibold text-slate-100">{ultimo}%</span>
+              <span className={`shrink-0 font-semibold ${light ? "text-slate-900" : "text-slate-100"}`}>{ultimo}%</span>
               {mejorando ? (
                 <span className="flex shrink-0 items-center gap-0.5 font-semibold" style={{ color: GOOD }}>
                   <TrendingUp className="h-3.5 w-3.5" />+{delta}
@@ -122,7 +126,7 @@ export function TendenciaCategoriasChart({ series }: { series: TendenciaCategori
       </div>
 
       <details className="text-xs text-slate-400">
-        <summary className="cursor-pointer select-none font-semibold text-slate-300">Ver tabla de datos</summary>
+        <summary className={`cursor-pointer select-none font-semibold ${light ? "text-slate-500" : "text-slate-300"}`}>Ver tabla de datos</summary>
         <div className="mt-2 overflow-x-auto">
           <table className="w-full min-w-[480px] text-left text-xs">
             <thead>
@@ -137,10 +141,10 @@ export function TendenciaCategoriasChart({ series }: { series: TendenciaCategori
             </thead>
             <tbody>
               {series.map((serie) => (
-                <tr key={serie.categoria} className="border-t border-white/8">
-                  <td className="py-1 pr-3 text-slate-200">{serie.categoria}</td>
+                <tr key={serie.categoria} className={`border-t ${rowBorderClass}`}>
+                  <td className={`py-1 pr-3 ${light ? "text-slate-600" : "text-slate-200"}`}>{serie.categoria}</td>
                   {serie.puntos.map((punto, index) => (
-                    <td key={index} className="py-1 pr-3 text-slate-300">
+                    <td key={index} className={`py-1 pr-3 ${light ? "text-slate-500" : "text-slate-300"}`}>
                       {punto.percent}%
                     </td>
                   ))}

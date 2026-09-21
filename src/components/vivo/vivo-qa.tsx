@@ -97,13 +97,13 @@ export function VivoQa({ participanteId, recursoTitulo }: { participanteId: stri
   return (
     <div className="grid gap-4 text-left">
       <div className="text-center">
-        <h1 className="text-xl font-semibold text-white">{recursoTitulo || "Preguntas del público"}</h1>
+        <h1 className="text-xl font-semibold text-slate-900">{recursoTitulo || "Preguntas del público"}</h1>
         <p className="mt-1 text-sm text-slate-400">Envía tu pregunta y vota las que más te interesen.</p>
       </div>
 
       <div className="grid gap-2">
         <textarea
-          className="field resize-none"
+          className="field-light resize-none"
           maxLength={280}
           onChange={(event) => setTexto(event.target.value)}
           placeholder="Escribe tu pregunta..."
@@ -111,7 +111,7 @@ export function VivoQa({ participanteId, recursoTitulo }: { participanteId: stri
           value={texto}
         />
         <button
-          className="inline-flex h-11 items-center justify-center gap-2 bg-emerald-300 px-4 text-sm font-bold text-slate-950 transition hover:bg-emerald-200 disabled:opacity-50"
+          className="inline-flex h-11 items-center justify-center gap-2 rounded-lg bg-slate-900 px-4 text-sm font-bold text-white transition hover:bg-slate-700 disabled:opacity-50"
           disabled={!texto.trim() || enviando}
           onClick={() => void handleEnviar()}
           type="button"
@@ -119,7 +119,7 @@ export function VivoQa({ participanteId, recursoTitulo }: { participanteId: stri
           <Send className="h-4 w-4" />
           {enviando ? "Enviando..." : "Enviar pregunta"}
         </button>
-        {error ? <p className="text-center text-sm font-semibold text-red-300">{error}</p> : null}
+        {error ? <p className="text-center text-sm font-semibold text-red-600">{error}</p> : null}
       </div>
 
       <div className="grid max-h-[45vh] gap-2 overflow-y-auto">
@@ -128,16 +128,16 @@ export function VivoQa({ participanteId, recursoTitulo }: { participanteId: stri
         ) : (
           preguntas.map((pregunta) => (
             <div
-              className={`flex items-start gap-3 border p-3 ${
-                pregunta.destacada ? "border-amber-300/60 bg-amber-300/10" : "border-white/10 bg-white/4"
+              className={`flex items-start gap-3 rounded-xl border p-3 ${
+                pregunta.destacada ? "border-amber-200 bg-amber-50" : "border-slate-200 bg-slate-50"
               } ${pregunta.estado === "respondida" ? "opacity-60" : ""}`}
               key={pregunta.id}
             >
               <button
-                className={`flex shrink-0 flex-col items-center justify-center gap-0.5 border px-2.5 py-1.5 text-xs font-bold transition ${
+                className={`flex shrink-0 flex-col items-center justify-center gap-0.5 rounded-lg border px-2.5 py-1.5 text-xs font-bold transition ${
                   pregunta.yoVote
-                    ? "border-emerald-300 bg-emerald-300 text-slate-950"
-                    : "border-white/10 bg-white/8 text-slate-300 hover:border-emerald-300/50"
+                    ? "border-slate-900 bg-slate-900 text-white"
+                    : "border-slate-200 bg-white text-slate-500 hover:border-slate-400"
                 }`}
                 onClick={() => void handleVotar(pregunta.id)}
                 type="button"
@@ -146,8 +146,8 @@ export function VivoQa({ participanteId, recursoTitulo }: { participanteId: stri
                 {pregunta.votos}
               </button>
               <div className="min-w-0 flex-1">
-                <p className="text-sm leading-6 text-white">{pregunta.texto}</p>
-                <p className="mt-0.5 text-xs text-slate-500">
+                <p className="text-sm leading-6 text-slate-900">{pregunta.texto}</p>
+                <p className="mt-0.5 text-xs text-slate-400">
                   {pregunta.autorApodo ?? "Anónimo"}
                   {pregunta.estado === "respondida" ? " · Respondida" : ""}
                   {pregunta.esMia ? " · Tu pregunta" : ""}

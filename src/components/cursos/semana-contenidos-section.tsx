@@ -4,11 +4,9 @@ import { Download, Eye, EyeOff, FileText, Link2, Plus, Presentation, Trash2, Upl
 import { useState } from "react";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { ModalPortal } from "@/components/modal-portal";
-import { EmbedViewerModal } from "@/components/shared/embed-viewer-modal";
 import { borrarArchivos, esImagen, esPdf, esPresentacionOffice, rutaArchivoCurso, subirArchivo, urlFirmada } from "@/lib/cursos/archivos";
 import { deleteContenido, insertContenido, setVisibilidadContenido } from "@/lib/cursos/contenidos";
 import type { CategoriaContenido, ContenidoRow, VisibilidadEstudiantes } from "@/lib/cursos/types";
-import { getEmbedInfo } from "@/lib/estudiante/embed-links";
 import { PresentacionArchivo } from "./presentacion-archivo";
 import { BTN_GHOST, BTN_PRIMARY, EmptyState, ErrorBanner, Field } from "./ui";
 
@@ -44,7 +42,6 @@ export function SemanaContenidosSection({
   const [eliminando, setEliminando] = useState(false);
   const [error, setError] = useState("");
   const [visor, setVisor] = useState<ContenidoRow | null>(null);
-  const [embebido, setEmbebido] = useState<ContenidoRow | null>(null);
   const [cambiandoVisibilidad, setCambiandoVisibilidad] = useState<string | null>(null);
 
   const handleCambiarVisibilidad = async (contenido: ContenidoRow) => {
@@ -100,7 +97,6 @@ export function SemanaContenidosSection({
               esPdf(contenido.archivo_mime, contenido.archivo_nombre) ||
               esPresentacionOffice(contenido.archivo_mime, contenido.archivo_nombre) ||
               esImagen(contenido.archivo_mime, contenido.archivo_nombre);
-            const embedInfo = contenido.url_externa ? getEmbedInfo(contenido.url_externa) : null;
             return (
               <div className="flex flex-wrap items-center justify-between gap-3 border border-white/10 bg-white/6 p-3" key={contenido.id}>
                 <div className="flex items-start gap-3">
@@ -125,12 +121,6 @@ export function SemanaContenidosSection({
                     <button className={BTN_GHOST} onClick={() => handleDescargar(contenido)} type="button">
                       <Download className="h-4 w-4" />
                       Descargar
-                    </button>
-                  ) : null}
-                  {embedInfo ? (
-                    <button className={BTN_GHOST} onClick={() => setEmbebido(contenido)} type="button">
-                      <Presentation className="h-4 w-4" />
-                      Ver aquí
                     </button>
                   ) : null}
                   {contenido.url_externa ? (
@@ -189,13 +179,6 @@ export function SemanaContenidosSection({
           onClose={() => setVisor(null)}
           titulo={visor.titulo}
         />
-      ) : null}
-
-      {embebido && embebido.url_externa ? (
-        (() => {
-          const info = getEmbedInfo(embebido.url_externa);
-          return info ? <EmbedViewerModal embed={info} onClose={() => setEmbebido(null)} titulo={embebido.titulo} /> : null;
-        })()
       ) : null}
 
       <ConfirmDialog

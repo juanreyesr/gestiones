@@ -240,19 +240,15 @@ export function VivoPage({ pinInicial }: { pinInicial?: string }) {
   };
 
   return (
-    <main className="relative min-h-screen bg-[#08111f] text-slate-100">
-      <div
-        aria-hidden
-        className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top,rgb(16_185_129/0.12),transparent_55%),linear-gradient(to_bottom,rgb(2_6_23/0.4),rgb(2_6_23/0.9))]"
-      />
-      <div className="relative mx-auto flex min-h-screen w-full max-w-md flex-col justify-center px-4 py-10">
-        <div className="border border-white/10 bg-white/6 p-6 backdrop-blur-xl sm:p-8">
+    <main className="min-h-screen bg-white text-slate-900">
+      <div className="mx-auto flex min-h-screen w-full max-w-md flex-col justify-center px-4 py-10">
+        <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
           {paso === "pin" || paso === "verificando" || paso === "invalido" ? (
             <div className="grid gap-4 text-center">
-              <h1 className="text-2xl font-semibold text-white">Únete a la actividad</h1>
-              <p className="text-sm text-slate-400">Ingresa el PIN de 6 dígitos que se muestra en pantalla.</p>
+              <h1 className="text-2xl font-semibold text-slate-900">Únete a la actividad</h1>
+              <p className="text-sm text-slate-500">Ingresa el PIN de 6 dígitos que se muestra en pantalla.</p>
               <input
-                className="field text-center text-2xl tracking-[0.4em]"
+                className="field-light text-center text-2xl tracking-[0.4em]"
                 inputMode="numeric"
                 maxLength={6}
                 onChange={(event) => setPin(event.target.value.replace(/\D/g, ""))}
@@ -262,9 +258,9 @@ export function VivoPage({ pinInicial }: { pinInicial?: string }) {
                 placeholder="000000"
                 value={pin}
               />
-              {error ? <p className="text-sm font-semibold text-red-300">{error}</p> : null}
+              {error ? <p className="text-sm font-semibold text-red-600">{error}</p> : null}
               <button
-                className="inline-flex h-12 items-center justify-center gap-2 bg-emerald-300 px-6 text-sm font-bold text-slate-950 transition hover:bg-emerald-200 disabled:opacity-50"
+                className="inline-flex h-12 items-center justify-center gap-2 rounded-lg bg-slate-900 px-6 text-sm font-semibold text-white transition hover:bg-slate-700 disabled:opacity-50"
                 disabled={!PIN_RE.test(pin) || paso === "verificando"}
                 onClick={() => void verificarPin(pin)}
                 type="button"
@@ -276,11 +272,11 @@ export function VivoPage({ pinInicial }: { pinInicial?: string }) {
 
           {paso === "apodo" ? (
             <div className="grid gap-4 text-center">
-              <h1 className="text-xl font-semibold text-white">{recursoTitulo || "Actividad en vivo"}</h1>
-              <p className="text-sm text-slate-400">¿Cómo quieres que te vean los demás?</p>
+              <h1 className="text-xl font-semibold text-slate-900">{recursoTitulo || "Actividad en vivo"}</h1>
+              <p className="text-sm text-slate-500">¿Cómo quieres que te vean los demás?</p>
               <input
                 autoFocus
-                className="field text-center"
+                className="field-light text-center"
                 maxLength={40}
                 onChange={(event) => setApodo(event.target.value)}
                 onKeyDown={(event) => {
@@ -289,9 +285,9 @@ export function VivoPage({ pinInicial }: { pinInicial?: string }) {
                 placeholder="Tu apodo"
                 value={apodo}
               />
-              {error ? <p className="text-sm font-semibold text-red-300">{error}</p> : null}
+              {error ? <p className="text-sm font-semibold text-red-600">{error}</p> : null}
               <button
-                className="inline-flex h-12 items-center justify-center gap-2 bg-emerald-300 px-6 text-sm font-bold text-slate-950 transition hover:bg-emerald-200 disabled:opacity-50"
+                className="inline-flex h-12 items-center justify-center gap-2 rounded-lg bg-slate-900 px-6 text-sm font-semibold text-white transition hover:bg-slate-700 disabled:opacity-50"
                 disabled={!apodo.trim() || enviando}
                 onClick={() => void handleUnirse()}
                 type="button"
@@ -307,19 +303,19 @@ export function VivoPage({ pinInicial }: { pinInicial?: string }) {
 
           {paso === "esperando" && !esQa ? (
             <div className="grid gap-3 py-6 text-center">
-              <div className="mx-auto flex h-14 w-14 items-center justify-center border border-emerald-300/40 bg-emerald-300/10">
-                <Users className="h-7 w-7 text-emerald-300" />
+              <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-emerald-50 text-emerald-600">
+                <Users className="h-7 w-7" />
               </div>
-              <p className="text-lg font-semibold text-white">¡Estás dentro!</p>
-              <p className="text-sm leading-6 text-slate-400">Esperando a que el presentador active una pregunta...</p>
-              <p className="text-xs text-slate-500">{participantesCount} participantes conectados</p>
+              <p className="text-lg font-semibold text-slate-900">¡Estás dentro!</p>
+              <p className="text-sm leading-6 text-slate-500">Esperando a que el presentador active una pregunta...</p>
+              <p className="text-xs text-slate-400">{participantesCount} participantes conectados</p>
               {esQuiz ? (
-                <p className="mt-1 inline-flex items-center justify-center gap-1.5 text-sm font-semibold text-emerald-200">
+                <p className="mt-1 inline-flex items-center justify-center gap-1.5 text-sm font-semibold text-emerald-700">
                   <Trophy className="h-4 w-4" />
                   {miPuntajeTotal} puntos
                 </p>
               ) : null}
-              <button className="mt-2 text-xs text-slate-500 underline underline-offset-2 hover:text-slate-300" onClick={handleSalir} type="button">
+              <button className="mt-2 text-xs text-slate-400 underline underline-offset-2 hover:text-slate-600" onClick={handleSalir} type="button">
                 ¿No eres tú? Entrar con otro apodo
               </button>
             </div>
@@ -328,11 +324,11 @@ export function VivoPage({ pinInicial }: { pinInicial?: string }) {
           {paso === "pregunta" && pregunta ? (
             <div className="grid gap-4">
               <div className="flex items-center justify-between gap-3">
-                <p className="text-lg font-semibold leading-6 text-white">{pregunta.texto}</p>
+                <p className="text-lg font-semibold leading-6 text-slate-900">{pregunta.texto}</p>
                 {restanteSeg !== null ? (
                   <span
-                    className={`inline-flex shrink-0 items-center gap-1.5 border px-2.5 py-1 text-sm font-bold ${
-                      restanteSeg <= 5 ? "border-red-400/50 bg-red-400/10 text-red-200" : "border-white/10 bg-white/8 text-slate-200"
+                    className={`inline-flex shrink-0 items-center gap-1.5 rounded-full px-2.5 py-1 text-sm font-bold ${
+                      restanteSeg <= 5 ? "bg-red-50 text-red-600" : "bg-slate-100 text-slate-600"
                     }`}
                   >
                     <Timer className="h-3.5 w-3.5" />
@@ -342,14 +338,14 @@ export function VivoPage({ pinInicial }: { pinInicial?: string }) {
               </div>
 
               {tiempoAgotado ? (
-                <p className="text-center text-sm font-semibold text-red-300">¡Se acabó el tiempo!</p>
+                <p className="text-center text-sm font-semibold text-red-600">¡Se acabó el tiempo!</p>
               ) : (
                 <>
                   {pregunta.tipo === "opcion_multiple" && pregunta.opciones ? (
                     <div className="grid gap-2">
                       {pregunta.opciones.map((opcion) => (
                         <button
-                          className="border border-white/10 bg-white/4 px-4 py-3 text-left text-sm font-semibold text-white transition hover:border-emerald-300/60 hover:bg-emerald-300/10 disabled:opacity-50"
+                          className="rounded-lg border border-slate-200 bg-white px-4 py-3 text-left text-sm font-semibold text-slate-900 transition hover:border-emerald-300 hover:bg-emerald-50 disabled:opacity-50"
                           disabled={enviando}
                           key={opcion.id}
                           onClick={() => void handleResponder({ opcion_id: opcion.id })}
@@ -368,7 +364,7 @@ export function VivoPage({ pinInicial }: { pinInicial?: string }) {
                         (_, index) => (pregunta.escalaMin ?? 1) + index,
                       ).map((valor) => (
                         <button
-                          className="flex h-14 items-center justify-center border border-white/10 bg-white/4 text-lg font-bold text-white transition hover:border-emerald-300/60 hover:bg-emerald-300/10 disabled:opacity-50"
+                          className="flex h-14 items-center justify-center rounded-lg border border-slate-200 bg-white text-lg font-bold text-slate-900 transition hover:border-emerald-300 hover:bg-emerald-50 disabled:opacity-50"
                           disabled={enviando}
                           key={valor}
                           onClick={() => void handleResponder({ valor })}
@@ -384,7 +380,7 @@ export function VivoPage({ pinInicial }: { pinInicial?: string }) {
                     <div className="grid gap-2">
                       <input
                         autoFocus
-                        className="field"
+                        className="field-light"
                         maxLength={pregunta.tipo === "nube_palabras" ? 40 : 500}
                         onChange={(event) => setRespuestaTexto(event.target.value)}
                         onKeyDown={(event) => {
@@ -394,7 +390,7 @@ export function VivoPage({ pinInicial }: { pinInicial?: string }) {
                         value={respuestaTexto}
                       />
                       <button
-                        className="inline-flex h-11 items-center justify-center gap-2 bg-emerald-300 px-4 text-sm font-bold text-slate-950 transition hover:bg-emerald-200 disabled:opacity-50"
+                        className="inline-flex h-11 items-center justify-center gap-2 rounded-lg bg-slate-900 px-4 text-sm font-semibold text-white transition hover:bg-slate-700 disabled:opacity-50"
                         disabled={!respuestaTexto.trim() || enviando}
                         onClick={() => void handleResponder({ texto: respuestaTexto.trim() })}
                         type="button"
@@ -407,7 +403,7 @@ export function VivoPage({ pinInicial }: { pinInicial?: string }) {
                 </>
               )}
 
-              {error ? <p className="text-center text-sm font-semibold text-red-300">{error}</p> : null}
+              {error ? <p className="text-center text-sm font-semibold text-red-600">{error}</p> : null}
             </div>
           ) : null}
 
@@ -416,27 +412,27 @@ export function VivoPage({ pinInicial }: { pinInicial?: string }) {
               {esQuiz && miEsCorrecta !== null ? (
                 <>
                   <div
-                    className={`mx-auto flex h-14 w-14 items-center justify-center border ${
-                      miEsCorrecta ? "border-emerald-300/40 bg-emerald-300/10" : "border-red-400/40 bg-red-400/10"
+                    className={`mx-auto flex h-14 w-14 items-center justify-center rounded-full ${
+                      miEsCorrecta ? "bg-emerald-50 text-emerald-600" : "bg-red-50 text-red-600"
                     }`}
                   >
-                    {miEsCorrecta ? <CheckCircle2 className="h-7 w-7 text-emerald-300" /> : <XCircle className="h-7 w-7 text-red-300" />}
+                    {miEsCorrecta ? <CheckCircle2 className="h-7 w-7" /> : <XCircle className="h-7 w-7" />}
                   </div>
-                  <p className="text-lg font-semibold text-white">{miEsCorrecta ? "¡Correcto!" : "Incorrecto"}</p>
-                  <p className="text-sm leading-6 text-slate-400">
+                  <p className="text-lg font-semibold text-slate-900">{miEsCorrecta ? "¡Correcto!" : "Incorrecto"}</p>
+                  <p className="text-sm leading-6 text-slate-500">
                     {miPuntosObtenidos ? `+${miPuntosObtenidos} puntos` : "0 puntos"} · {miPuntajeTotal} en total
                   </p>
                 </>
               ) : (
                 <>
-                  <div className="mx-auto flex h-14 w-14 items-center justify-center border border-emerald-300/40 bg-emerald-300/10">
-                    <CheckCircle2 className="h-7 w-7 text-emerald-300" />
+                  <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-emerald-50 text-emerald-600">
+                    <CheckCircle2 className="h-7 w-7" />
                   </div>
-                  <p className="text-lg font-semibold text-white">¡Respuesta enviada!</p>
-                  <p className="text-sm leading-6 text-slate-400">Espera la siguiente pregunta.</p>
+                  <p className="text-lg font-semibold text-slate-900">¡Respuesta enviada!</p>
+                  <p className="text-sm leading-6 text-slate-500">Espera la siguiente pregunta.</p>
                 </>
               )}
-              <button className="mt-2 text-xs text-slate-500 underline underline-offset-2 hover:text-slate-300" onClick={handleSalir} type="button">
+              <button className="mt-2 text-xs text-slate-400 underline underline-offset-2 hover:text-slate-600" onClick={handleSalir} type="button">
                 ¿No eres tú? Entrar con otro apodo
               </button>
             </div>
@@ -444,13 +440,13 @@ export function VivoPage({ pinInicial }: { pinInicial?: string }) {
 
           {paso === "cerrada" ? (
             <div className="grid gap-3 py-6 text-center">
-              <div className="mx-auto flex h-14 w-14 items-center justify-center border border-emerald-300/40 bg-emerald-300/10">
-                <PartyPopper className="h-7 w-7 text-emerald-300" />
+              <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-emerald-50 text-emerald-600">
+                <PartyPopper className="h-7 w-7" />
               </div>
-              <p className="text-lg font-semibold text-white">La actividad ha terminado</p>
-              <p className="text-sm leading-6 text-slate-400">Gracias por participar.</p>
+              <p className="text-lg font-semibold text-slate-900">La actividad ha terminado</p>
+              <p className="text-sm leading-6 text-slate-500">Gracias por participar.</p>
               {esQuiz ? (
-                <p className="mt-1 inline-flex items-center justify-center gap-1.5 text-sm font-semibold text-emerald-200">
+                <p className="mt-1 inline-flex items-center justify-center gap-1.5 text-sm font-semibold text-emerald-700">
                   <Trophy className="h-4 w-4" />
                   Terminaste con {miPuntajeTotal} puntos
                 </p>

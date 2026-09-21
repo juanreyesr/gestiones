@@ -90,18 +90,14 @@ export function EncuestaPublica({ token }: { token: string }) {
   };
 
   return (
-    <main className="relative min-h-screen bg-[#08111f] text-slate-100">
-      <div
-        aria-hidden
-        className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top,rgb(16_185_129/0.12),transparent_55%),linear-gradient(to_bottom,rgb(2_6_23/0.4),rgb(2_6_23/0.9))]"
-      />
-      <div className="relative mx-auto flex min-h-screen w-full max-w-xl flex-col justify-center px-4 py-10">
-        <div className="border border-white/10 bg-white/6 p-6 backdrop-blur-xl sm:p-8">
+    <main className="min-h-screen bg-white text-slate-900">
+      <div className="mx-auto flex min-h-screen w-full max-w-xl flex-col justify-center px-4 py-10">
+        <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
           {paso === "cargando" ? <p className="py-10 text-center text-sm text-slate-400">Cargando encuesta...</p> : null}
 
           {paso === "invalida" ? (
             <div className="grid gap-3 py-8 text-center">
-              <p className="text-lg font-semibold text-white">No se pudo abrir la encuesta</p>
+              <p className="text-lg font-semibold text-slate-900">No se pudo abrir la encuesta</p>
               <p className="text-sm leading-6 text-slate-400">{error}</p>
             </div>
           ) : null}
@@ -109,30 +105,30 @@ export function EncuestaPublica({ token }: { token: string }) {
           {paso === "encuesta" ? (
             <div className="grid gap-5">
               <div>
-                <p className="text-xs font-semibold uppercase tracking-wide text-emerald-200">{titulo}</p>
-                <p className="mt-1 text-xs text-slate-500">
+                <p className="text-xs font-semibold uppercase tracking-wide text-emerald-600">{titulo}</p>
+                <p className="mt-1 text-xs text-slate-400">
                   Paso {pasoActual + 1} de {TOTAL_PASOS}
                 </p>
-                <div className="mt-2 h-1.5 w-full bg-white/8">
+                <div className="mt-2 h-1.5 w-full rounded-full bg-slate-100">
                   <div
-                    className="h-1.5 bg-emerald-300 transition-all duration-300"
+                    className="h-1.5 rounded-full bg-slate-900 transition-all duration-300"
                     style={{ width: `${((pasoActual + 1) / TOTAL_PASOS) * 100}%` }}
                   />
                 </div>
               </div>
 
-              {pasoActual === 0 ? <SeccionComoLlego onChange={onChange} valor={valor} /> : null}
-              {pasoActual === 1 ? <SeccionUniversidad onChange={onChange} valor={valor} /> : null}
-              {pasoActual === 2 ? <SeccionCarrera onChange={onChange} valor={valor} /> : null}
-              {pasoActual === 3 ? <SeccionExpectativas onChange={onChange} valor={valor} /> : null}
-              {pasoActual === 4 ? <SeccionPerfil onChange={onChange} valor={valor} /> : null}
-              {pasoActual === 5 ? <SeccionCierre onChange={onChange} valor={valor} /> : null}
+              {pasoActual === 0 ? <SeccionComoLlego light onChange={onChange} valor={valor} /> : null}
+              {pasoActual === 1 ? <SeccionUniversidad light onChange={onChange} valor={valor} /> : null}
+              {pasoActual === 2 ? <SeccionCarrera light onChange={onChange} valor={valor} /> : null}
+              {pasoActual === 3 ? <SeccionExpectativas light onChange={onChange} valor={valor} /> : null}
+              {pasoActual === 4 ? <SeccionPerfil light onChange={onChange} valor={valor} /> : null}
+              {pasoActual === 5 ? <SeccionCierre light onChange={onChange} valor={valor} /> : null}
 
-              {error ? <p className="text-sm font-semibold text-red-300">{error}</p> : null}
+              {error ? <p className="text-sm font-semibold text-red-600">{error}</p> : null}
 
-              <div className="flex items-center justify-between border-t border-white/10 pt-4">
+              <div className="flex items-center justify-between border-t border-slate-100 pt-4">
                 <button
-                  className="inline-flex items-center gap-2 border border-white/10 bg-white/8 px-4 py-2 text-sm font-semibold text-slate-200 transition hover:border-white/30 disabled:opacity-30"
+                  className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-600 transition hover:border-slate-400 disabled:opacity-30"
                   disabled={pasoActual === 0}
                   onClick={() => setPasoActual((p) => Math.max(0, p - 1))}
                   type="button"
@@ -143,7 +139,7 @@ export function EncuestaPublica({ token }: { token: string }) {
 
                 {pasoActual < TOTAL_PASOS - 1 ? (
                   <button
-                    className="inline-flex items-center gap-2 bg-emerald-300 px-5 py-2 text-sm font-bold text-slate-950 transition hover:bg-emerald-200 disabled:opacity-40"
+                    className="inline-flex items-center gap-2 rounded-lg bg-slate-900 px-5 py-2 text-sm font-bold text-white transition hover:bg-slate-700 disabled:opacity-40"
                     disabled={!puedeAvanzar}
                     onClick={() => setPasoActual((p) => Math.min(TOTAL_PASOS - 1, p + 1))}
                     type="button"
@@ -153,7 +149,7 @@ export function EncuestaPublica({ token }: { token: string }) {
                   </button>
                 ) : (
                   <button
-                    className="inline-flex items-center gap-2 bg-emerald-300 px-5 py-2 text-sm font-bold text-slate-950 transition hover:bg-emerald-200 disabled:opacity-40"
+                    className="inline-flex items-center gap-2 rounded-lg bg-slate-900 px-5 py-2 text-sm font-bold text-white transition hover:bg-slate-700 disabled:opacity-40"
                     disabled={enviando}
                     onClick={() => void handleEnviar()}
                     type="button"
@@ -168,10 +164,10 @@ export function EncuestaPublica({ token }: { token: string }) {
 
           {paso === "enviada" ? (
             <div className="grid gap-3 py-8 text-center">
-              <div className="mx-auto flex h-14 w-14 items-center justify-center border border-emerald-300/40 bg-emerald-300/10">
-                <CheckCircle2 className="h-7 w-7 text-emerald-300" />
+              <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-emerald-50">
+                <CheckCircle2 className="h-7 w-7 text-emerald-600" />
               </div>
-              <p className="text-lg font-semibold text-white">¡Gracias por responder!</p>
+              <p className="text-lg font-semibold text-slate-900">¡Gracias por responder!</p>
               <p className="text-sm leading-6 text-slate-400">Tu respuesta es anónima y ayuda a mejorar la universidad.</p>
             </div>
           ) : null}

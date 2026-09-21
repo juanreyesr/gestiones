@@ -215,6 +215,34 @@ body {
     color: #0f172a;
   }
 
+  /* Variante clara de .field, para las paginas publicas con tema claro
+     (portada, estudiante, y las demas superficies publicas). */
+  .field-light {
+    width: 100%;
+    border: 1px solid rgb(226 232 240);
+    background: #ffffff;
+    border-radius: var(--radius-control);
+    padding: 0.65rem 0.8rem;
+    color: rgb(15 23 42);
+    outline: none;
+    transition:
+      border-color 160ms ease,
+      box-shadow 160ms ease;
+  }
+
+  .field-light:hover:not(:disabled) {
+    border-color: rgb(203 213 225);
+  }
+
+  .field-light:focus {
+    border-color: rgb(15 23 42 / 0.4);
+    box-shadow: 0 0 0 3px rgb(15 23 42 / 0.08);
+  }
+
+  .field-light::placeholder {
+    color: rgb(148 163 184);
+  }
+
   /* Entrada escalonada para rejillas de tarjetas. El retraso lo pone
      cada elemento con --i, y se mantiene corto (55ms) para que la
      pantalla nunca se sienta lenta. */
