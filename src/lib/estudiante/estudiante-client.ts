@@ -145,6 +145,122 @@ export async function obtenerUrlContenido(contenidoId: string): Promise<{ url: s
   }
 }
 
+export type MiTarea = {
+  id: string;
+  tipo: string;
+  titulo: string;
+  descripcion: string | null;
+  punteo: number | null;
+  entregaHabilitada: boolean;
+  fechaLimite: string | null;
+  miEntregaId: string | null;
+  miEntregadoEn: string | null;
+  miTardia: boolean;
+  miNota: number | null;
+  miComentarioCalificacion: string | null;
+};
+
+export async function fetchMisActividades(semanaId: string): Promise<{ data: MiTarea[]; error: string | null }> {
+  const supabase = getSupabaseClient();
+  if (!supabase) return { data: [], error: "Faltan las variables de Supabase." };
+
+  const { data, error } = await supabase.rpc("gestionesjj_estudiante_actividades_semana", { p_semana_id: semanaId });
+  if (error) return { data: [], error: error.message };
+
+  const filas = (data ?? []) as Array<{
+    id: string;
+    tipo: string;
+    titulo: string;
+    descripcion: string | null;
+    punteo: number | null;
+    entrega_habilitada: boolean;
+    fecha_limite: string | null;
+    mi_entrega_id: string | null;
+    mi_entregado_en: string | null;
+    mi_tardia: boolean | null;
+    mi_nota: number | null;
+    mi_comentario_calificacion: string | null;
+  }>;
+
+  return {
+    data: filas.map((fila) => ({
+      id: fila.id,
+      tipo: fila.tipo,
+      titulo: fila.titulo,
+      descripcion: fila.descripcion,
+      punteo: fila.punteo,
+      entregaHabilitada: fila.entrega_habilitada,
+      fechaLimite: fila.fecha_limite,
+      miEntregaId: fila.mi_entrega_id,
+      miEntregadoEn: fila.mi_entregado_en,
+      miTardia: Boolean(fila.mi_tardia),
+      miNota: fila.mi_nota,
+      miComentarioCalificacion: fila.mi_comentario_calificacion,
+    })),
+    error: null,
+  };
+}
+
+export type MiArchivoEntrega = { id: string; nombre: string | null };
+
+export async function fetchMisArchivosEntrega(actividadId: string): Promise<{ data: MiArchivoEntrega[]; error: string | null }> {
+  const supabase = getSupabaseClient();
+  if (!supabase) return { data: [], error: "Faltan las variables de Supabase." };
+
+  const { data, error } = await supabase.rpc("gestionesjj_estudiante_archivos_entrega", { p_actividad_id: actividadId });
+  if (error) return { data: [], error: error.message };
+
+  const filas = (data ?? []) as Array<{ id: string; archivo_nombre: string | null }>;
+  return { data: filas.map((fila) => ({ id: fila.id, nombre: fila.archivo_nombre })), error: null };
+}
+
+async function getAuthToken() {
+  const supabase = getSupabaseClient();
+  if (!supabase) return null;
+  const { data } = await supabase.auth.getSession();
+  return data.session?.access_token ?? null;
+}
+
+export async function subirEntrega(actividadId: string, archivo: File): Promise<{ tardia: boolean | null; error: string | null }> {
+  const token = await getAuthToken();
+  if (!token) return { tardia: null, error: "Sesión no válida. Vuelve a iniciar." };
+
+  const formData = new FormData();
+  formData.append("actividadId", actividadId);
+  formData.append("archivo", archivo);
+
+  try {
+    const response = await fetch("/api/estudiante/entrega/subir", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}` },
+      body: formData,
+    });
+    const json = (await response.json().catch(() => null)) as { tardia?: boolean; error?: string } | null;
+    if (!response.ok) return { tardia: null, error: json?.error ?? "No se pudo subir el archivo." };
+    return { tardia: json?.tardia ?? false, error: null };
+  } catch {
+    return { tardia: null, error: "Error de conexión." };
+  }
+}
+
+export async function obtenerUrlArchivoPropio(archivoId: string): Promise<{ url: string | null; error: string | null }> {
+  const token = await getAuthToken();
+  if (!token) return { url: null, error: "Sesión no válida. Vuelve a iniciar." };
+
+  try {
+    const response = await fetch("/api/estudiante/entrega/archivo-url", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ archivoId }),
+    });
+    const json = (await response.json().catch(() => null)) as { url?: string; error?: string } | null;
+    if (!response.ok) return { url: null, error: json?.error ?? "No se pudo abrir el archivo." };
+    return { url: json?.url ?? null, error: null };
+  } catch {
+    return { url: null, error: "Error de conexión." };
+  }
+}
+
 export async function cambiarMiContrasena(nuevaContrasena: string) {
   const supabase = getSupabaseClient();
   if (!supabase) return { error: "Faltan las variables de Supabase." };

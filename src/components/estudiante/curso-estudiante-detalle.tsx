@@ -2,11 +2,20 @@
 
 import { ChevronLeft } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
-import { CursoContenidoLista, type ContenidoEstudianteVista } from "@/components/estudiante/curso-contenido-lista";
 import {
+  CursoContenidoLista,
+  type ArchivoPropioVista,
+  type ContenidoEstudianteVista,
+  type TareaEstudianteVista,
+} from "@/components/estudiante/curso-contenido-lista";
+import {
+  fetchMisActividades,
+  fetchMisArchivosEntrega,
   fetchMisContenidos,
   fetchMisSemanas,
+  obtenerUrlArchivoPropio,
   obtenerUrlContenido,
+  subirEntrega,
   type MiCurso,
   type MiSemana,
 } from "@/lib/estudiante/estudiante-client";
@@ -14,8 +23,11 @@ import {
 export function CursoEstudianteDetalle({ curso, onVolver }: { curso: MiCurso; onVolver: () => void }) {
   const [semanas, setSemanas] = useState<MiSemana[]>([]);
   const [contenidosPorSemana, setContenidosPorSemana] = useState<Record<string, ContenidoEstudianteVista[]>>({});
+  const [tareasPorSemana, setTareasPorSemana] = useState<Record<string, TareaEstudianteVista[]>>({});
+  const [archivosPorTarea, setArchivosPorTarea] = useState<Record<string, ArchivoPropioVista[]>>({});
   const [cargando, setCargando] = useState(true);
   const [cargandoSemanaId, setCargandoSemanaId] = useState<string | null>(null);
+  const [subiendoTareaId, setSubiendoTareaId] = useState<string | null>(null);
   const [error, setError] = useState("");
 
   useEffect(() => {
@@ -35,17 +47,57 @@ export function CursoEstudianteDetalle({ curso, onVolver }: { curso: MiCurso; on
 
   const handleExpandirSemana = useCallback(async (semanaId: string) => {
     setCargandoSemanaId(semanaId);
-    const { data, error: fetchError } = await fetchMisContenidos(semanaId);
+    const [{ data: contenidos, error: contenidosError }, { data: tareasData, error: tareasError }] = await Promise.all([
+      fetchMisContenidos(semanaId),
+      fetchMisActividades(semanaId),
+    ]);
     setCargandoSemanaId(null);
-    if (fetchError) {
-      setError(fetchError);
+    if (contenidosError || tareasError) {
+      setError(contenidosError ?? tareasError ?? "No se pudo cargar la semana.");
       return;
     }
-    setContenidosPorSemana((prev) => ({ ...prev, [semanaId]: data }));
+    setContenidosPorSemana((prev) => ({ ...prev, [semanaId]: contenidos }));
+    setTareasPorSemana((prev) => ({ ...prev, [semanaId]: tareasData }));
   }, []);
 
   const handleAbrirArchivo = useCallback(async (contenido: ContenidoEstudianteVista) => {
     const { url, error: fetchError } = await obtenerUrlContenido(contenido.id);
+    if (fetchError || !url) {
+      setError(fetchError ?? "No se pudo abrir el archivo.");
+      return;
+    }
+    window.open(url, "_blank", "noopener,noreferrer");
+  }, []);
+
+  const handleSubirArchivo = useCallback(async (tarea: TareaEstudianteVista, archivo: File) => {
+    setSubiendoTareaId(tarea.id);
+    const { error: subirError } = await subirEntrega(tarea.id, archivo);
+    setSubiendoTareaId(null);
+    if (subirError) {
+      setError(subirError);
+      return;
+    }
+    setError("");
+    // Recarga las tareas de todas las semanas cargadas para reflejar la entrega nueva.
+    const semanaId = Object.keys(tareasPorSemana).find((id) => tareasPorSemana[id]?.some((t) => t.id === tarea.id));
+    if (semanaId) {
+      const { data: tareasData } = await fetchMisActividades(semanaId);
+      setTareasPorSemana((prev) => ({ ...prev, [semanaId]: tareasData }));
+    }
+    setArchivosPorTarea((prev) => Object.fromEntries(Object.entries(prev).filter(([id]) => id !== tarea.id)));
+  }, [tareasPorSemana]);
+
+  const handleVerMisArchivos = useCallback(async (tareaId: string) => {
+    const { data, error: fetchError } = await fetchMisArchivosEntrega(tareaId);
+    if (fetchError) {
+      setError(fetchError);
+      return;
+    }
+    setArchivosPorTarea((prev) => ({ ...prev, [tareaId]: data }));
+  }, []);
+
+  const handleDescargarArchivoPropio = useCallback(async (archivo: ArchivoPropioVista) => {
+    const { url, error: fetchError } = await obtenerUrlArchivoPropio(archivo.id);
     if (fetchError || !url) {
       setError(fetchError ?? "No se pudo abrir el archivo.");
       return;
@@ -76,6 +128,14 @@ export function CursoEstudianteDetalle({ curso, onVolver }: { curso: MiCurso; on
             onAbrirArchivo={handleAbrirArchivo}
             onExpandirSemana={handleExpandirSemana}
             semanas={semanas}
+            tareas={{
+              porSemana: tareasPorSemana,
+              subiendoTareaId,
+              onSubirArchivo: handleSubirArchivo,
+              archivosPorTarea,
+              onVerMisArchivos: handleVerMisArchivos,
+              onDescargarArchivoPropio: handleDescargarArchivoPropio,
+            }}
           />
         )}
       </div>

@@ -3,7 +3,8 @@
 import { GraduationCap, X } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { ModalPortal } from "@/components/modal-portal";
-import { CursoContenidoLista, type ContenidoEstudianteVista } from "@/components/estudiante/curso-contenido-lista";
+import { CursoContenidoLista, type ContenidoEstudianteVista, type TareaEstudianteVista } from "@/components/estudiante/curso-contenido-lista";
+import { fetchActividades } from "@/lib/cursos/actividades";
 import { urlFirmada } from "@/lib/cursos/archivos";
 import { fetchContenidos } from "@/lib/cursos/contenidos";
 import { fetchSemanas } from "@/lib/cursos/semanas";
@@ -27,6 +28,7 @@ export function VistaPreviaEstudianteModal({
 }) {
   const [semanas, setSemanas] = useState<SemanaRow[]>([]);
   const [contenidosPorSemana, setContenidosPorSemana] = useState<Record<string, ContenidoRow[]>>({});
+  const [tareasPorSemana, setTareasPorSemana] = useState<Record<string, TareaEstudianteVista[]>>({});
   const [cargando, setCargando] = useState(true);
   const [cargandoSemanaId, setCargandoSemanaId] = useState<string | null>(null);
 
@@ -46,9 +48,26 @@ export function VistaPreviaEstudianteModal({
 
   const handleExpandirSemana = useCallback(async (semanaId: string) => {
     setCargandoSemanaId(semanaId);
-    const { data } = await fetchContenidos(semanaId);
+    const [{ data: contenidos }, { data: actividades }] = await Promise.all([fetchContenidos(semanaId), fetchActividades(semanaId)]);
     setCargandoSemanaId(null);
-    setContenidosPorSemana((prev) => ({ ...prev, [semanaId]: data.filter((c) => c.visible_estudiantes !== "oculto") }));
+    setContenidosPorSemana((prev) => ({ ...prev, [semanaId]: contenidos.filter((c) => c.visible_estudiantes !== "oculto") }));
+    setTareasPorSemana((prev) => ({
+      ...prev,
+      [semanaId]: actividades
+        .filter((a) => a.visible_estudiantes !== "oculto")
+        .map((a) => ({
+          id: a.id,
+          titulo: a.titulo,
+          descripcion: a.descripcion,
+          punteo: a.punteo,
+          entregaHabilitada: a.entrega_habilitada,
+          fechaLimite: a.fecha_limite,
+          miEntregadoEn: null,
+          miTardia: false,
+          miNota: null,
+          miComentarioCalificacion: null,
+        })),
+    }));
   }, []);
 
   const handleAbrirArchivo = useCallback(
@@ -114,6 +133,7 @@ export function VistaPreviaEstudianteModal({
                 onAbrirArchivo={handleAbrirArchivo}
                 onExpandirSemana={handleExpandirSemana}
                 semanas={semanasVista}
+                tareas={{ porSemana: tareasPorSemana }}
               />
             )}
           </div>

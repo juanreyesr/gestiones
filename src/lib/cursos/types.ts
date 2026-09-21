@@ -133,6 +133,9 @@ export type ActividadRow = {
   descripcion: string | null;
   punteo: number | null;
   entrega_proxima_semana: boolean;
+  visible_estudiantes: VisibilidadEstudiantes;
+  entrega_habilitada: boolean;
+  fecha_limite: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -149,6 +152,27 @@ export type CalificacionRow = {
   entregado: boolean;
   nota: number | null;
   comentario: string | null;
+  publicado_en: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type EntregaArchivoRow = {
+  id: string;
+  entrega_id: string;
+  archivo_path: string;
+  archivo_nombre: string | null;
+  archivo_mime: string | null;
+  created_at: string;
+};
+
+export type EntregaRow = {
+  id: string;
+  actividad_id: string;
+  estudiante_id: string;
+  entregado_en: string;
+  tardia: boolean;
+  comentario_estudiante: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -226,6 +250,27 @@ export function formatearFecha(iso: string | null | undefined): string {
   const mes = String(fecha.getMonth() + 1).padStart(2, "0");
   const anio = fecha.getFullYear();
   return `${dia}/${mes}/${anio}`;
+}
+
+/**
+ * Fechas límite se guardan como timestamptz (instante absoluto) y siempre
+ * se muestran en hora de Guatemala, sin importar la zona del navegador de
+ * quien las vea (evita que "23:59" signifique algo distinto para el
+ * estudiante que para el docente).
+ */
+export function formatearFechaLimite(iso: string | null | undefined): string {
+  if (!iso) return "Sin fecha límite";
+  const fecha = new Date(iso);
+  if (Number.isNaN(fecha.getTime())) return "Sin fecha límite";
+  const formateado = new Intl.DateTimeFormat("es-GT", {
+    timeZone: "America/Guatemala",
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(fecha);
+  return `${formateado} (hora de Guatemala)`;
 }
 
 export function formatearFechaHora(iso: string | null | undefined): string {
