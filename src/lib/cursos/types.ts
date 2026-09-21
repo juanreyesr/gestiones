@@ -35,8 +35,24 @@ export type CursoImpartidoRow = {
   origen_curso_id: string | null;
   acceso_estudiantes: boolean;
   docente_nombre: string | null;
+  autoasignacion_activa: boolean;
+  autoasignacion_token: string;
   created_at: string;
   updated_at: string;
+};
+
+export type EstadoSolicitud = "pendiente" | "aprobada" | "rechazada";
+
+export type SolicitudRow = {
+  id: string;
+  curso_id: string;
+  nombre: string;
+  correo: string;
+  estado: EstadoSolicitud;
+  carne: string | null;
+  curso_estudiante_id: string | null;
+  created_at: string;
+  resuelto_en: string | null;
 };
 
 export type CursoConUniversidadRow = CursoImpartidoRow & {

@@ -94,6 +94,23 @@ export async function setAccesoEstudiantes(id: string, acceso: boolean) {
   return { error: error?.message ?? null };
 }
 
+/**
+ * Activa o desactiva que el enlace/QR de autoasignacion acepte solicitudes
+ * nuevas. El token del curso (parte de ese enlace) nunca cambia aqui: es
+ * fijo desde que se creo el curso, para que el enlace compartido siga
+ * funcionando cada vez que se vuelva a activar.
+ */
+export async function setAutoasignacion(id: string, activa: boolean) {
+  const supabase = getSupabaseClient();
+  if (!supabase) return { error: "Faltan las variables de Supabase." };
+
+  const { error } = await supabase
+    .from("gestionesjj_cursos_impartidos")
+    .update({ autoasignacion_activa: activa, updated_at: new Date().toISOString() })
+    .eq("id", id);
+  return { error: error?.message ?? null };
+}
+
 /** Archiva o reactiva un curso sin perder ningun dato (contenidos, semanas, etc.). */
 export async function setEstadoCurso(id: string, estado: EstadoCurso) {
   const supabase = getSupabaseClient();

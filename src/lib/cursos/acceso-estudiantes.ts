@@ -55,6 +55,11 @@ export function obtenerFichasCurso(cursoId: string) {
   return postOwner<FichaCursoResultado>("/api/estudiantes/fichas-curso", { cursoId });
 }
 
+/** Aprueba una solicitud de autoasignacion: crea la cuenta e inscribe al estudiante con el carné dado. */
+export function aprobarSolicitud(solicitudId: string, carne: string) {
+  return postOwner<{ ok: true }>("/api/estudiantes/aprobar-solicitud", { solicitudId, carne });
+}
+
 /** Activa o desactiva por completo la cuenta de acceso del estudiante (todas sus inscripciones). */
 export async function setActivoEstudiante(estudianteId: string, activo: boolean) {
   const supabase = getSupabaseClient();

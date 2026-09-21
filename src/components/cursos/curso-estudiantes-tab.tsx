@@ -30,6 +30,7 @@ import {
   type EstudianteRow,
 } from "@/lib/cursos/types";
 import { ChatEstudianteModal } from "./chat-estudiante-modal";
+import { SolicitudesPendientesSection } from "./solicitudes-pendientes-section";
 import { BTN_GHOST, BTN_PRIMARY, EmptyState, ErrorBanner, Field } from "./ui";
 
 export function CursoEstudiantesTab({ cursoId, cursoNombre }: { cursoId: string; cursoNombre: string }) {
@@ -175,6 +176,8 @@ export function CursoEstudiantesTab({ cursoId, cursoNombre }: { cursoId: string;
   return (
     <div className="grid gap-4">
       <ErrorBanner message={error} />
+
+      <SolicitudesPendientesSection cursoId={cursoId} onResuelto={cargar} />
 
       <div className="flex flex-wrap items-center justify-between gap-3 border border-white/10 bg-white/6 p-4">
         <div>
