@@ -1,6 +1,6 @@
 "use client";
 
-import { ChevronLeft } from "lucide-react";
+import { CheckCircle2, ChevronLeft, XCircle } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import {
   CursoContenidoLista,
@@ -9,6 +9,7 @@ import {
   type TareaEstudianteVista,
 } from "@/components/estudiante/curso-contenido-lista";
 import {
+  fetchMiEstadoCurso,
   fetchMisActividades,
   fetchMisArchivosEntrega,
   fetchMisContenidos,
@@ -17,6 +18,7 @@ import {
   obtenerUrlContenido,
   subirEntrega,
   type MiCurso,
+  type MiEstadoCurso,
   type MiSemana,
 } from "@/lib/estudiante/estudiante-client";
 
@@ -25,6 +27,7 @@ export function CursoEstudianteDetalle({ curso, onVolver }: { curso: MiCurso; on
   const [contenidosPorSemana, setContenidosPorSemana] = useState<Record<string, ContenidoEstudianteVista[]>>({});
   const [tareasPorSemana, setTareasPorSemana] = useState<Record<string, TareaEstudianteVista[]>>({});
   const [archivosPorTarea, setArchivosPorTarea] = useState<Record<string, ArchivoPropioVista[]>>({});
+  const [estadoCurso, setEstadoCurso] = useState<MiEstadoCurso | null>(null);
   const [cargando, setCargando] = useState(true);
   const [cargandoSemanaId, setCargandoSemanaId] = useState<string | null>(null);
   const [subiendoTareaId, setSubiendoTareaId] = useState<string | null>(null);
@@ -34,12 +37,15 @@ export function CursoEstudianteDetalle({ curso, onVolver }: { curso: MiCurso; on
     let cancelado = false;
     // eslint-disable-next-line react-hooks/set-state-in-effect -- carga inicial de semanas al abrir el curso
     setCargando(true);
-    fetchMisSemanas(curso.cursoId).then(({ data, error: fetchError }) => {
-      if (cancelado) return;
-      setSemanas(data);
-      setError(fetchError ?? "");
-      setCargando(false);
-    });
+    Promise.all([fetchMisSemanas(curso.cursoId), fetchMiEstadoCurso(curso.cursoId)]).then(
+      ([{ data, error: fetchError }, { data: estado }]) => {
+        if (cancelado) return;
+        setSemanas(data);
+        setEstadoCurso(estado);
+        setError(fetchError ?? "");
+        setCargando(false);
+      },
+    );
     return () => {
       cancelado = true;
     };
@@ -112,9 +118,23 @@ export function CursoEstudianteDetalle({ curso, onVolver }: { curso: MiCurso; on
         Volver a mis cursos
       </button>
 
-      <p className="text-xs font-medium uppercase tracking-wide text-slate-400">{curso.universidadNombre}</p>
-      <h1 className="mt-1 text-2xl font-semibold text-slate-900">{curso.cursoNombre}</h1>
-      <p className="mt-1 text-sm text-slate-500">{[curso.cursoCodigo, curso.periodo].filter(Boolean).join(" · ") || "Sin datos adicionales"}</p>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <p className="text-xs font-medium uppercase tracking-wide text-slate-400">{curso.universidadNombre}</p>
+          <h1 className="mt-1 text-2xl font-semibold text-slate-900">{curso.cursoNombre}</h1>
+          <p className="mt-1 text-sm text-slate-500">{[curso.cursoCodigo, curso.periodo].filter(Boolean).join(" · ") || "Sin datos adicionales"}</p>
+        </div>
+        {estadoCurso?.aprobado !== null && estadoCurso?.aprobado !== undefined ? (
+          <span
+            className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-semibold ${
+              estadoCurso.aprobado ? "bg-emerald-50 text-emerald-700" : "bg-red-50 text-red-700"
+            }`}
+          >
+            {estadoCurso.aprobado ? <CheckCircle2 className="h-4 w-4" /> : <XCircle className="h-4 w-4" />}
+            {estadoCurso.aprobado ? "Aprobado" : "Reprobado"}
+          </span>
+        ) : null}
+      </div>
 
       {error ? <p className="mt-4 rounded-lg bg-red-50 px-4 py-2.5 text-sm text-red-600">{error}</p> : null}
 

@@ -261,6 +261,21 @@ export async function obtenerUrlArchivoPropio(archivoId: string): Promise<{ url:
   }
 }
 
+export type MiEstadoCurso = { aprobado: boolean | null; actividadesCalificadas: number };
+
+export async function fetchMiEstadoCurso(cursoId: string): Promise<{ data: MiEstadoCurso | null; error: string | null }> {
+  const supabase = getSupabaseClient();
+  if (!supabase) return { data: null, error: "Faltan las variables de Supabase." };
+
+  const { data, error } = await supabase.rpc("gestionesjj_estudiante_estado_curso", { p_curso_id: cursoId });
+  if (error) return { data: null, error: error.message };
+
+  const fila = (Array.isArray(data) ? data[0] : data) as { aprobado: boolean | null; actividades_calificadas: number } | null;
+  if (!fila) return { data: null, error: null };
+
+  return { data: { aprobado: fila.aprobado, actividadesCalificadas: fila.actividades_calificadas }, error: null };
+}
+
 export async function cambiarMiContrasena(nuevaContrasena: string) {
   const supabase = getSupabaseClient();
   if (!supabase) return { error: "Faltan las variables de Supabase." };
