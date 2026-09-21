@@ -51,6 +51,7 @@ export async function insertCurso(payload: {
   periodo?: string | null;
   horario?: string | null;
   estado?: EstadoCurso;
+  docente_nombre?: string | null;
 }) {
   const supabase = getSupabaseClient();
   if (!supabase) return { id: null as string | null, error: "Faltan las variables de Supabase." };
@@ -68,6 +69,7 @@ export async function updateCurso(
     periodo?: string | null;
     horario?: string | null;
     estado?: EstadoCurso;
+    docente_nombre?: string | null;
   },
 ) {
   const supabase = getSupabaseClient();
@@ -88,6 +90,23 @@ export async function setAccesoEstudiantes(id: string, acceso: boolean) {
   const { error } = await supabase
     .from("gestionesjj_cursos_impartidos")
     .update({ acceso_estudiantes: acceso, updated_at: new Date().toISOString() })
+    .eq("id", id);
+  return { error: error?.message ?? null };
+}
+
+/**
+ * Activa o desactiva que el enlace/QR de autoasignacion acepte solicitudes
+ * nuevas. El token del curso (parte de ese enlace) nunca cambia aqui: es
+ * fijo desde que se creo el curso, para que el enlace compartido siga
+ * funcionando cada vez que se vuelva a activar.
+ */
+export async function setAutoasignacion(id: string, activa: boolean) {
+  const supabase = getSupabaseClient();
+  if (!supabase) return { error: "Faltan las variables de Supabase." };
+
+  const { error } = await supabase
+    .from("gestionesjj_cursos_impartidos")
+    .update({ autoasignacion_activa: activa, updated_at: new Date().toISOString() })
     .eq("id", id);
   return { error: error?.message ?? null };
 }
@@ -130,6 +149,7 @@ export async function clonarCurso(
     periodo?: string | null;
     horario?: string | null;
     descripcion?: string | null;
+    docente_nombre?: string | null;
   },
 ) {
   const supabase = getSupabaseClient();
@@ -144,6 +164,7 @@ export async function clonarCurso(
       periodo: destino.periodo ?? null,
       horario: destino.horario ?? null,
       descripcion: destino.descripcion ?? null,
+      docente_nombre: destino.docente_nombre ?? null,
       origen_curso_id: origenId,
     })
     .select("id")

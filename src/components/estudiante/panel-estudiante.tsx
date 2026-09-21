@@ -1,6 +1,6 @@
 "use client";
 
-import { Bell, GraduationCap, KeyRound, LogOut, MessageCircle } from "lucide-react";
+import { Bell, GraduationCap, KeyRound, LogOut, MessageCircle, UserCircle2 } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import {
   fetchMisMensajesNoLeidos,
@@ -15,6 +15,7 @@ import { ChatModal } from "./chat-modal";
 import { CursoEstudianteDetalle } from "./curso-estudiante-detalle";
 import { useIdioma } from "./idioma-context";
 import { NotificacionesModal } from "./notificaciones-modal";
+import { PerfilModal } from "./perfil-modal";
 import { SelectorIdioma } from "./selector-idioma";
 
 export function PanelEstudiante({
@@ -29,6 +30,7 @@ export function PanelEstudiante({
   const [modalContrasenaAbierto, setModalContrasenaAbierto] = useState(perfil.debeCambiarContrasena);
   const [cursoAbierto, setCursoAbierto] = useState<MiCurso | null>(null);
   const [chatAbierto, setChatAbierto] = useState(false);
+  const [perfilAbierto, setPerfilAbierto] = useState(false);
   const [notificacionesAbiertas, setNotificacionesAbiertas] = useState(false);
   const [mensajesNoLeidos, setMensajesNoLeidos] = useState(0);
   const [notificacionesNoLeidas, setNotificacionesNoLeidas] = useState(0);
@@ -104,6 +106,14 @@ export function PanelEstudiante({
           </button>
           <button
             className="flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 text-slate-500 transition hover:border-slate-400 hover:text-slate-800"
+            onClick={() => setPerfilAbierto(true)}
+            title={t("perfil_titulo")}
+            type="button"
+          >
+            <UserCircle2 className="h-4 w-4" />
+          </button>
+          <button
+            className="flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 text-slate-500 transition hover:border-slate-400 hover:text-slate-800"
             onClick={() => setModalContrasenaAbierto(true)}
             title={t("panel_cambiar_contrasena")}
             type="button"
@@ -151,6 +161,11 @@ export function PanelEstudiante({
                     <p className="mt-1 text-sm text-slate-500">
                       {[curso.cursoCodigo, curso.periodo].filter(Boolean).join(" · ") || t("panel_sin_datos")}
                     </p>
+                    {curso.docenteNombre ? (
+                      <p className="mt-0.5 text-xs text-slate-400">
+                        {t("panel_docente")}: {curso.docenteNombre}
+                      </p>
+                    ) : null}
                     <span className="mt-4 inline-flex items-center rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600">
                       {ESTADO_LABEL[curso.estado] ?? curso.estado}
                     </span>
@@ -173,6 +188,8 @@ export function PanelEstudiante({
       ) : null}
 
       {chatAbierto ? <ChatModal onClose={() => setChatAbierto(false)} onLeido={cargarNoLeidos} /> : null}
+
+      {perfilAbierto ? <PerfilModal onClose={() => setPerfilAbierto(false)} /> : null}
 
       {notificacionesAbiertas ? (
         <NotificacionesModal

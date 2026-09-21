@@ -34,7 +34,6 @@ import {
   Users,
   X,
 } from "lucide-react";
-import dynamic from "next/dynamic";
 import type React from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
@@ -81,11 +80,6 @@ import { PresentacionView } from "./presentacion-view";
 import { RecursosView } from "./recursos/recursos-view";
 import type { ReporteData } from "./reporte-printable";
 import { ReunionesView } from "./reuniones-view";
-
-// three.js/@react-three pesan varios cientos de KB: el fondo 3D se carga solo
-// en el navegador y despues de la hidratacion, en vez de ir en el paquete
-// inicial de la app.
-const OrbitScene = dynamic(() => import("./orbit-scene").then((mod) => mod.OrbitScene), { ssr: false });
 
 const ALLOWED_EMAIL = "lic.juanreyesr@gmail.com";
 
@@ -790,9 +784,6 @@ export function GestionesApp() {
     <>
       <main className="min-h-screen bg-[#060c17] text-slate-50 print-hidden">
         <section className="relative min-h-screen overflow-x-clip">
-          <OrbitScene />
-          <div className="absolute inset-0 bg-[radial-gradient(ellipse_75%_45%_at_18%_-5%,rgba(52,211,153,0.20),transparent_62%),radial-gradient(ellipse_55%_45%_at_88%_8%,rgba(56,189,248,0.13),transparent_58%),radial-gradient(ellipse_70%_55%_at_55%_108%,rgba(139,92,246,0.12),transparent_62%),linear-gradient(180deg,rgba(6,12,23,0.82),rgba(6,12,23,0.95)_55%,rgba(9,15,28,0.99))]" />
-
           <div className="relative z-10 mx-auto flex min-h-screen w-full max-w-7xl flex-col gap-6 px-4 py-5 sm:px-6 lg:px-8">
             <header className="flex flex-col gap-5 border-b border-white/10 pb-5 lg:flex-row lg:items-end lg:justify-between">
               <div className="min-w-0">
@@ -1147,9 +1138,6 @@ function LoginGate(props: {
   return (
     <main className="min-h-screen bg-[#060c17] text-slate-50">
       <section className="relative flex min-h-screen items-center justify-center overflow-x-hidden">
-        <OrbitScene />
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_75%_45%_at_18%_-5%,rgba(52,211,153,0.20),transparent_62%),radial-gradient(ellipse_55%_45%_at_88%_8%,rgba(56,189,248,0.13),transparent_58%),radial-gradient(ellipse_70%_55%_at_55%_108%,rgba(139,92,246,0.12),transparent_62%),linear-gradient(180deg,rgba(6,12,23,0.82),rgba(6,12,23,0.95)_55%,rgba(9,15,28,0.99))]" />
-
         <div className="relative z-10 w-full max-w-md border border-white/12 bg-white/8 p-6 shadow-2xl shadow-black/20 backdrop-blur-xl sm:p-8">
           <div className="mb-2 inline-flex items-center gap-2 rounded-full border border-emerald-300/30 bg-emerald-300/10 px-3 py-1 text-xs font-semibold text-emerald-100">
             <Sparkles className="h-3.5 w-3.5" />

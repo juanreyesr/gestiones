@@ -128,6 +128,11 @@ export function CursoEstudianteDetalle({ curso, onVolver }: { curso: MiCurso; on
           <p className="text-xs font-medium uppercase tracking-wide text-slate-400">{curso.universidadNombre}</p>
           <h1 className="mt-1 text-2xl font-semibold text-slate-900">{curso.cursoNombre}</h1>
           <p className="mt-1 text-sm text-slate-500">{[curso.cursoCodigo, curso.periodo].filter(Boolean).join(" · ") || t("panel_sin_datos")}</p>
+          {curso.docenteNombre ? (
+            <p className="mt-0.5 text-xs text-slate-400">
+              {t("panel_docente")}: {curso.docenteNombre}
+            </p>
+          ) : null}
         </div>
         {estadoCurso?.aprobado !== null && estadoCurso?.aprobado !== undefined ? (
           <span

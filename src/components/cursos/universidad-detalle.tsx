@@ -277,6 +277,7 @@ function EditarCursoModal({
   const [periodo, setPeriodo] = useState(curso.periodo ?? "");
   const [horario, setHorario] = useState(curso.horario ?? "");
   const [descripcion, setDescripcion] = useState(curso.descripcion ?? "");
+  const [docenteNombre, setDocenteNombre] = useState(curso.docente_nombre ?? "");
   const [guardando, setGuardando] = useState(false);
   const [error, setError] = useState("");
 
@@ -292,6 +293,7 @@ function EditarCursoModal({
       periodo: periodo.trim() || null,
       horario: horario.trim() || null,
       descripcion: descripcion.trim() || null,
+      docente_nombre: docenteNombre.trim() || null,
     });
     setGuardando(false);
     if (updateError) {
@@ -321,6 +323,14 @@ function EditarCursoModal({
             </Field>
             <Field label="Horario">
               <input className="field" onChange={(event) => setHorario(event.target.value)} value={horario} />
+            </Field>
+            <Field label="Docente">
+              <input
+                className="field"
+                onChange={(event) => setDocenteNombre(event.target.value)}
+                placeholder="Nombre del docente (visible para los estudiantes)"
+                value={docenteNombre}
+              />
             </Field>
             <Field label="Descripción">
               <textarea
@@ -366,6 +376,7 @@ function CrearCursoWizard({
   const [periodo, setPeriodo] = useState("");
   const [horario, setHorario] = useState("");
   const [descripcion, setDescripcion] = useState("");
+  const [docenteNombre, setDocenteNombre] = useState("");
   const [clonando, setClonando] = useState(false);
   const [error, setError] = useState("");
 
@@ -383,6 +394,7 @@ function CrearCursoWizard({
     setPeriodo(curso?.periodo ?? "");
     setHorario(curso?.horario ?? "");
     setDescripcion(curso?.descripcion ?? "");
+    setDocenteNombre(curso?.docente_nombre ?? "");
     setPaso("formulario");
   };
 
@@ -402,6 +414,7 @@ function CrearCursoWizard({
         periodo: periodo.trim() || null,
         horario: horario.trim() || null,
         descripcion: descripcion.trim() || null,
+        docente_nombre: docenteNombre.trim() || null,
       });
       setClonando(false);
       if (cloneError) {
@@ -416,6 +429,7 @@ function CrearCursoWizard({
         periodo: periodo.trim() || null,
         horario: horario.trim() || null,
         descripcion: descripcion.trim() || null,
+        docente_nombre: docenteNombre.trim() || null,
       });
       setClonando(false);
       if (insertError) {
@@ -495,6 +509,14 @@ function CrearCursoWizard({
               </Field>
               <Field label="Horario">
                 <input className="field" onChange={(event) => setHorario(event.target.value)} value={horario} />
+              </Field>
+              <Field label="Docente">
+                <input
+                  className="field"
+                  onChange={(event) => setDocenteNombre(event.target.value)}
+                  placeholder="Nombre del docente (visible para los estudiantes)"
+                  value={docenteNombre}
+                />
               </Field>
               <Field label="Descripción">
                 <textarea

@@ -1,6 +1,20 @@
 "use client";
 
-import { ChevronDown, ChevronUp, KeyRound, MessageCircle, Pencil, Printer, ShieldCheck, ShieldOff, Trash2, UserMinus, UserPlus } from "lucide-react";
+import {
+  Cake,
+  ChevronDown,
+  ChevronUp,
+  KeyRound,
+  MessageCircle,
+  Pencil,
+  Printer,
+  ShieldCheck,
+  ShieldOff,
+  Trash2,
+  UserCircle2,
+  UserMinus,
+  UserPlus,
+} from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { ModalPortal } from "@/components/modal-portal";
@@ -21,15 +35,20 @@ import {
   retirarEstudiante,
   updateEstudiante,
 } from "@/lib/cursos/estudiantes";
+import { estudiantesConCumpleanosEstaSemana, type EstudianteCumpleanos } from "@/lib/cursos/cumpleanos";
 import { exportFichasCredencialesPdf } from "@/lib/cursos/fichas-pdf";
 import { fetchMensajesNoLeidosPorEstudiante } from "@/lib/cursos/mensajes";
+import { fetchPerfilesGlobalesPorIds } from "@/lib/cursos/perfil-estudiante";
 import {
   TIPO_EVENTO_LABELS,
+  formatearFecha,
   formatearFechaHora,
   type EstudianteEventoRow,
   type EstudianteRow,
 } from "@/lib/cursos/types";
 import { ChatEstudianteModal } from "./chat-estudiante-modal";
+import { PerfilEstudianteModal } from "./perfil-estudiante-modal";
+import { SolicitudesPendientesSection } from "./solicitudes-pendientes-section";
 import { BTN_GHOST, BTN_PRIMARY, EmptyState, ErrorBanner, Field } from "./ui";
 
 export function CursoEstudiantesTab({ cursoId, cursoNombre }: { cursoId: string; cursoNombre: string }) {
@@ -53,6 +72,8 @@ export function CursoEstudiantesTab({ cursoId, cursoNombre }: { cursoId: string;
   const [estadosAcceso, setEstadosAcceso] = useState<Record<string, boolean>>({});
   const [mensajesNoLeidos, setMensajesNoLeidos] = useState<Record<string, number>>({});
   const [chatObjetivo, setChatObjetivo] = useState<EstudianteRow | null>(null);
+  const [perfilObjetivo, setPerfilObjetivo] = useState<EstudianteRow | null>(null);
+  const [cumpleanos, setCumpleanos] = useState<EstudianteCumpleanos[]>([]);
 
   const cargar = useCallback(async () => {
     setLoading(true);
@@ -66,12 +87,19 @@ export function CursoEstudiantesTab({ cursoId, cursoNombre }: { cursoId: string;
     setLoading(false);
 
     const idsConAcceso = estudiantesData.map((e) => e.estudiante_id).filter((id): id is string => Boolean(id));
-    const [{ data: estados }, { data: noLeidos }] = await Promise.all([
+    const [{ data: estados }, { data: noLeidos }, { data: perfiles }] = await Promise.all([
       fetchEstadosAccesoGlobal(idsConAcceso),
       fetchMensajesNoLeidosPorEstudiante(idsConAcceso),
+      fetchPerfilesGlobalesPorIds(idsConAcceso),
     ]);
     setEstadosAcceso(estados);
     setMensajesNoLeidos(noLeidos);
+
+    const fechasNacimiento = new Map(idsConAcceso.map((id) => [id, perfiles.get(id)?.fecha_nacimiento ?? null]));
+    const activosConAcceso = estudiantesData
+      .filter((e) => e.estado === "activo" && e.estudiante_id)
+      .map((e) => ({ estudianteId: e.estudiante_id as string, nombre: e.nombre }));
+    setCumpleanos(estudiantesConCumpleanosEstaSemana(activosConAcceso, fechasNacimiento));
   }, [cursoId]);
 
   useEffect(() => {
@@ -176,6 +204,20 @@ export function CursoEstudiantesTab({ cursoId, cursoNombre }: { cursoId: string;
     <div className="grid gap-4">
       <ErrorBanner message={error} />
 
+      {cumpleanos.length > 0 ? (
+        <div className="flex items-center gap-2 border border-sky-300/30 bg-sky-300/10 p-4">
+          <Cake className="h-4 w-4 shrink-0 text-sky-200" />
+          <p className="text-sm text-sky-100">
+            {cumpleanos.length === 1 ? "Cumple años esta semana: " : "Cumplen años esta semana: "}
+            <span className="font-semibold">
+              {cumpleanos.map((c) => `${c.nombre} (${formatearFecha(c.fecha)})`).join(", ")}
+            </span>
+          </p>
+        </div>
+      ) : null}
+
+      <SolicitudesPendientesSection cursoId={cursoId} onResuelto={cargar} />
+
       <div className="flex flex-wrap items-center justify-between gap-3 border border-white/10 bg-white/6 p-4">
         <div>
           <p className="text-sm font-semibold text-white">Acceso de estudiantes al curso</p>
@@ -248,6 +290,16 @@ export function CursoEstudiantesTab({ cursoId, cursoNombre }: { cursoId: string;
                         {mensajesNoLeidos[estudiante.estudiante_id]}
                       </span>
                     ) : null}
+                  </button>
+                ) : null}
+                {estudiante.estado === "activo" && estudiante.estudiante_id ? (
+                  <button
+                    className="flex h-9 w-9 items-center justify-center border border-white/10 bg-white/8 text-slate-200 hover:border-emerald-300/50"
+                    onClick={() => setPerfilObjetivo(estudiante)}
+                    title="Ver ficha de perfil"
+                    type="button"
+                  >
+                    <UserCircle2 className="h-4 w-4" />
                   </button>
                 ) : null}
                 <button
@@ -388,6 +440,14 @@ export function CursoEstudiantesTab({ cursoId, cursoNombre }: { cursoId: string;
             const { data: noLeidos } = await fetchMensajesNoLeidosPorEstudiante(idsConAcceso);
             setMensajesNoLeidos(noLeidos);
           }}
+        />
+      ) : null}
+
+      {perfilObjetivo?.estudiante_id ? (
+        <PerfilEstudianteModal
+          estudianteId={perfilObjetivo.estudiante_id}
+          estudianteNombre={perfilObjetivo.nombre}
+          onClose={() => setPerfilObjetivo(null)}
         />
       ) : null}
     </div>

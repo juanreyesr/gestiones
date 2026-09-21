@@ -1,11 +1,12 @@
 "use client";
 
-import { CalendarDays, ChevronLeft, ClipboardList, Eye, FileText, Users } from "lucide-react";
+import { CalendarDays, ChevronLeft, ClipboardList, Eye, FileText, QrCode, Users } from "lucide-react";
 import type React from "react";
 import { useState } from "react";
-import { setAccesoEstudiantes } from "@/lib/cursos/cursos";
+import { setAccesoEstudiantes, setAutoasignacion } from "@/lib/cursos/cursos";
 import type { CursoImpartidoRow, SemanaRow, UniversidadRow } from "@/lib/cursos/types";
 import { ESTADO_CURSO_LABELS } from "@/lib/cursos/types";
+import { CompartirAsignacionModal } from "./compartir-asignacion-modal";
 import { CursoEstudiantesTab } from "./curso-estudiantes-tab";
 import { CursoPlanificacionTab } from "./curso-planificacion-tab";
 import { CursoReporteTab } from "./curso-reporte-tab";
@@ -36,6 +37,9 @@ export function CursoDetalle({
   const [acceso, setAcceso] = useState(curso.acceso_estudiantes);
   const [guardandoAcceso, setGuardandoAcceso] = useState(false);
   const [previaAbierta, setPreviaAbierta] = useState(false);
+  const [autoasignacion, setAutoasignacionState] = useState(curso.autoasignacion_activa);
+  const [guardandoAutoasignacion, setGuardandoAutoasignacion] = useState(false);
+  const [compartirAbierto, setCompartirAbierto] = useState(false);
 
   const handleToggleAcceso = async () => {
     const siguiente = !acceso;
@@ -43,6 +47,14 @@ export function CursoDetalle({
     const { error } = await setAccesoEstudiantes(curso.id, siguiente);
     setGuardandoAcceso(false);
     if (!error) setAcceso(siguiente);
+  };
+
+  const handleToggleAutoasignacion = async () => {
+    const siguiente = !autoasignacion;
+    setGuardandoAutoasignacion(true);
+    const { error } = await setAutoasignacion(curso.id, siguiente);
+    setGuardandoAutoasignacion(false);
+    if (!error) setAutoasignacionState(siguiente);
   };
 
   return (
@@ -60,6 +72,7 @@ export function CursoDetalle({
             <p className="text-sm text-slate-400">
               {[curso.codigo, curso.periodo, curso.horario].filter(Boolean).join(" · ") || "Sin datos adicionales"}
             </p>
+            {curso.docente_nombre ? <p className="text-xs text-slate-500">Docente: {curso.docente_nombre}</p> : null}
           </div>
         </div>
 
@@ -84,6 +97,20 @@ export function CursoDetalle({
             <Eye className="h-4 w-4" />
             Ver como estudiante
           </button>
+          <label className="flex items-center gap-2 border border-white/10 bg-white/6 px-3 py-2 text-sm text-slate-200">
+            <input
+              checked={autoasignacion}
+              className="h-4 w-4 accent-emerald-300"
+              disabled={guardandoAutoasignacion}
+              onChange={handleToggleAutoasignacion}
+              type="checkbox"
+            />
+            Habilitar asignaciones
+          </label>
+          <button className={BTN_GHOST} onClick={() => setCompartirAbierto(true)} title="Compartir enlace o QR de asignación" type="button">
+            <QrCode className="h-4 w-4" />
+            Compartir
+          </button>
         </div>
       </div>
 
@@ -93,6 +120,10 @@ export function CursoDetalle({
       {tab === "estudiantes" ? <CursoEstudiantesTab cursoId={curso.id} cursoNombre={curso.nombre} /> : null}
       {tab === "planificacion" ? <CursoPlanificacionTab cursoId={curso.id} /> : null}
       {tab === "reporte" ? <CursoReporteTab curso={curso} universidad={universidad} /> : null}
+
+      {compartirAbierto ? (
+        <CompartirAsignacionModal cursoNombre={curso.nombre} onClose={() => setCompartirAbierto(false)} token={curso.autoasignacion_token} />
+      ) : null}
 
       {previaAbierta ? (
         <VistaPreviaEstudianteModal
