@@ -1,6 +1,6 @@
 "use client";
 
-import { Bell, GraduationCap, KeyRound, LogOut, MessageCircle } from "lucide-react";
+import { Bell, GraduationCap, KeyRound, LogOut, MessageCircle, UserCircle2 } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import {
   fetchMisMensajesNoLeidos,
@@ -15,6 +15,7 @@ import { ChatModal } from "./chat-modal";
 import { CursoEstudianteDetalle } from "./curso-estudiante-detalle";
 import { useIdioma } from "./idioma-context";
 import { NotificacionesModal } from "./notificaciones-modal";
+import { PerfilModal } from "./perfil-modal";
 import { SelectorIdioma } from "./selector-idioma";
 
 export function PanelEstudiante({
@@ -29,6 +30,7 @@ export function PanelEstudiante({
   const [modalContrasenaAbierto, setModalContrasenaAbierto] = useState(perfil.debeCambiarContrasena);
   const [cursoAbierto, setCursoAbierto] = useState<MiCurso | null>(null);
   const [chatAbierto, setChatAbierto] = useState(false);
+  const [perfilAbierto, setPerfilAbierto] = useState(false);
   const [notificacionesAbiertas, setNotificacionesAbiertas] = useState(false);
   const [mensajesNoLeidos, setMensajesNoLeidos] = useState(0);
   const [notificacionesNoLeidas, setNotificacionesNoLeidas] = useState(0);
@@ -101,6 +103,14 @@ export function PanelEstudiante({
                 {mensajesNoLeidos}
               </span>
             ) : null}
+          </button>
+          <button
+            className="flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 text-slate-500 transition hover:border-slate-400 hover:text-slate-800"
+            onClick={() => setPerfilAbierto(true)}
+            title={t("perfil_titulo")}
+            type="button"
+          >
+            <UserCircle2 className="h-4 w-4" />
           </button>
           <button
             className="flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 text-slate-500 transition hover:border-slate-400 hover:text-slate-800"
@@ -178,6 +188,8 @@ export function PanelEstudiante({
       ) : null}
 
       {chatAbierto ? <ChatModal onClose={() => setChatAbierto(false)} onLeido={cargarNoLeidos} /> : null}
+
+      {perfilAbierto ? <PerfilModal onClose={() => setPerfilAbierto(false)} /> : null}
 
       {notificacionesAbiertas ? (
         <NotificacionesModal

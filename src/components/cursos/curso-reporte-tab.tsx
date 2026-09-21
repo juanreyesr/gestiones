@@ -7,7 +7,8 @@ import { fetchActividadesDeCurso, fetchCalificacionesDeCurso } from "@/lib/curso
 import { fetchAsistenciasDeCurso } from "@/lib/cursos/asistencias";
 import { AVANCE_VACIO, calcularAvancePorEstudiante, type AvanceEstudiante } from "@/lib/cursos/avance";
 import { fetchEventos, fetchEstudiantes } from "@/lib/cursos/estudiantes";
-import { exportReporteCursoPdf } from "@/lib/cursos/reporte-pdf";
+import { fetchPerfilesGlobalesPorIds, fotoPerfilComoDataUrl } from "@/lib/cursos/perfil-estudiante";
+import { exportReporteCursoPdf, type FichaPerfilReporte } from "@/lib/cursos/reporte-pdf";
 import { fetchSemanas } from "@/lib/cursos/semanas";
 import type { CursoImpartidoRow, EstudianteRow, UniversidadRow } from "@/lib/cursos/types";
 import { BTN_PRIMARY, ErrorBanner } from "./ui";
@@ -75,6 +76,26 @@ export function CursoReporteTab({ curso, universidad }: { curso: CursoImpartidoR
       fetchCalificacionesDeCurso(curso.id),
     ]);
 
+    const idsGlobales = estudiantes
+      .filter((e) => e.estado === "activo")
+      .map((e) => e.estudiante_id)
+      .filter((id): id is string => Boolean(id));
+    const { data: perfiles } = await fetchPerfilesGlobalesPorIds(idsGlobales);
+    const fichasPerfil: FichaPerfilReporte[] = [];
+    for (const estudiante of estudiantes) {
+      if (estudiante.estado !== "activo" || !estudiante.estudiante_id) continue;
+      const perfil = perfiles.get(estudiante.estudiante_id);
+      if (!perfil) continue;
+      if (!perfil.foto_path && !perfil.fecha_nacimiento && !perfil.pais) continue;
+      const fotoDataUrl = perfil.foto_path ? await fotoPerfilComoDataUrl(perfil.foto_path) : null;
+      fichasPerfil.push({
+        estudianteNombre: estudiante.nombre,
+        fotoDataUrl,
+        fechaNacimiento: perfil.fecha_nacimiento,
+        pais: perfil.pais,
+      });
+    }
+
     try {
       await exportReporteCursoPdf({
         universidadNombre: universidad.nombre,
@@ -86,6 +107,7 @@ export function CursoReporteTab({ curso, universidad }: { curso: CursoImpartidoR
         asistencias,
         actividades,
         calificaciones,
+        fichasPerfil,
       });
     } catch {
       setError("No se pudo generar el reporte PDF.");

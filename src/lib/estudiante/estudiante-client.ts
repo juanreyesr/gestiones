@@ -367,6 +367,109 @@ export async function marcarMensajesLeidos(): Promise<{ error: string | null }> 
   }
 }
 
+export type MiFicha = {
+  tieneFoto: boolean;
+  fechaNacimiento: string | null;
+  pais: string | null;
+  reflexionQuienSoy: string | null;
+  reflexionProposito: string | null;
+  reflexionRecuerdo: string | null;
+};
+
+export async function fetchMiFicha(): Promise<{ data: MiFicha | null; error: string | null }> {
+  const supabase = getSupabaseClient();
+  if (!supabase) return { data: null, error: "Faltan las variables de Supabase." };
+
+  const { data, error } = await supabase.rpc("gestionesjj_estudiante_mi_ficha");
+  if (error) return { data: null, error: error.message };
+
+  const fila = (Array.isArray(data) ? data[0] : data) as
+    | {
+        foto_path: string | null;
+        fecha_nacimiento: string | null;
+        pais: string | null;
+        reflexion_quien_soy: string | null;
+        reflexion_proposito: string | null;
+        reflexion_recuerdo: string | null;
+      }
+    | null;
+  if (!fila) return { data: null, error: null };
+
+  return {
+    data: {
+      tieneFoto: Boolean(fila.foto_path),
+      fechaNacimiento: fila.fecha_nacimiento,
+      pais: fila.pais,
+      reflexionQuienSoy: fila.reflexion_quien_soy,
+      reflexionProposito: fila.reflexion_proposito,
+      reflexionRecuerdo: fila.reflexion_recuerdo,
+    },
+    error: null,
+  };
+}
+
+export async function guardarMiFicha(payload: {
+  fechaNacimiento: string | null;
+  pais: string | null;
+  reflexionQuienSoy: string | null;
+  reflexionProposito: string | null;
+  reflexionRecuerdo: string | null;
+}): Promise<{ error: string | null }> {
+  const token = await getAuthToken();
+  if (!token) return { error: "Sesión no válida. Vuelve a iniciar." };
+
+  try {
+    const response = await fetch("/api/estudiante/perfil/guardar", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify(payload),
+    });
+    const json = (await response.json().catch(() => null)) as { error?: string } | null;
+    if (!response.ok) return { error: json?.error ?? "No se pudo guardar tu perfil." };
+    return { error: null };
+  } catch {
+    return { error: "Error de conexión." };
+  }
+}
+
+export async function subirMiFoto(archivo: File): Promise<{ error: string | null }> {
+  const token = await getAuthToken();
+  if (!token) return { error: "Sesión no válida. Vuelve a iniciar." };
+
+  const formData = new FormData();
+  formData.append("foto", archivo);
+
+  try {
+    const response = await fetch("/api/estudiante/perfil/foto-subir", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}` },
+      body: formData,
+    });
+    const json = (await response.json().catch(() => null)) as { error?: string } | null;
+    if (!response.ok) return { error: json?.error ?? "No se pudo subir la foto." };
+    return { error: null };
+  } catch {
+    return { error: "Error de conexión." };
+  }
+}
+
+export async function obtenerUrlMiFoto(): Promise<{ url: string | null; error: string | null }> {
+  const token = await getAuthToken();
+  if (!token) return { url: null, error: "Sesión no válida. Vuelve a iniciar." };
+
+  try {
+    const response = await fetch("/api/estudiante/perfil/foto-url", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    const json = (await response.json().catch(() => null)) as { url?: string; error?: string } | null;
+    if (!response.ok) return { url: null, error: json?.error ?? "No se pudo abrir la foto." };
+    return { url: json?.url ?? null, error: null };
+  } catch {
+    return { url: null, error: "Error de conexión." };
+  }
+}
+
 export type TipoNotificacion = "contenido" | "tarea" | "calificacion" | "mensaje";
 
 export type MiNotificacion = {

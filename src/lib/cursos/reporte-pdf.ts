@@ -3,7 +3,7 @@ import type { CalificacionDeCursoRow } from "./actividades";
 import { calcularAvancePorEstudiante } from "./avance";
 import type { ActividadConSemanaRow, AsistenciaConSemanaRow } from "./types";
 import type { EstudianteEventoRow, EstudianteRow, SemanaRow } from "./types";
-import { TIPO_ACTIVIDAD_LABELS, TIPO_EVENTO_LABELS, formatearFechaHora } from "./types";
+import { TIPO_ACTIVIDAD_LABELS, TIPO_EVENTO_LABELS, formatearFecha, formatearFechaHora } from "./types";
 
 const PAGE_HEIGHT = 841.89;
 const MARGIN = 40;
@@ -21,6 +21,13 @@ const ASISTENCIA_CODIGO: Record<string, string> = {
   tarde: "T",
 };
 
+export type FichaPerfilReporte = {
+  estudianteNombre: string;
+  fotoDataUrl: string | null;
+  fechaNacimiento: string | null;
+  pais: string | null;
+};
+
 export type ReporteCursoData = {
   universidadNombre: string;
   cursoNombre: string;
@@ -31,6 +38,8 @@ export type ReporteCursoData = {
   asistencias: AsistenciaConSemanaRow[];
   actividades: ActividadConSemanaRow[];
   calificaciones: CalificacionDeCursoRow[];
+  /** Ficha de perfil (foto, fecha de nacimiento, país) de cada estudiante activo que la haya llenado. Opcional: se omite si no se pudo cargar. */
+  fichasPerfil?: FichaPerfilReporte[];
 };
 
 class PdfWriter {
@@ -103,6 +112,13 @@ class PdfWriter {
   save(filename: string) {
     this.doc.save(filename);
   }
+}
+
+function formatoImagenDesdeDataUrl(dataUrl: string): "JPEG" | "PNG" | "WEBP" | null {
+  if (dataUrl.startsWith("data:image/png")) return "PNG";
+  if (dataUrl.startsWith("data:image/webp")) return "WEBP";
+  if (dataUrl.startsWith("data:image/jpeg") || dataUrl.startsWith("data:image/jpg")) return "JPEG";
+  return null;
 }
 
 function calcularPorcentajeAsistencia(estado: string | undefined): number | null {
@@ -318,6 +334,41 @@ export async function exportReporteCursoPdf(data: ReporteCursoData) {
         }
       }
       w.spacer(6);
+    }
+  }
+
+  // ---------- Fichas de perfil (foto, fecha de nacimiento, país) ----------
+  if (data.fichasPerfil?.length) {
+    w.spacer(10);
+    w.heading("Fichas de estudiantes");
+    const FOTO_TAM = 46;
+    for (const ficha of data.fichasPerfil) {
+      w.ensureSpace(FOTO_TAM + 10);
+      const yInicio = w.y;
+      const formato = ficha.fotoDataUrl ? formatoImagenDesdeDataUrl(ficha.fotoDataUrl) : null;
+      if (ficha.fotoDataUrl && formato) {
+        try {
+          w.doc.addImage(ficha.fotoDataUrl, formato, MARGIN, yInicio, FOTO_TAM, FOTO_TAM);
+        } catch {
+          // Imagen invalida o corrupta: se omite, no se interrumpe el reporte.
+        }
+      }
+      const textoX = MARGIN + FOTO_TAM + 12;
+      w.doc.setFont("helvetica", "bold");
+      w.doc.setFontSize(10);
+      w.doc.setTextColor(...INK);
+      w.doc.text(ficha.estudianteNombre, textoX, yInicio + 14);
+      w.doc.setFont("helvetica", "normal");
+      w.doc.setFontSize(9);
+      w.doc.setTextColor(...MUTED);
+      const detalle = [
+        ficha.fechaNacimiento ? `Nace: ${formatearFecha(ficha.fechaNacimiento)}` : null,
+        ficha.pais ? `País: ${ficha.pais}` : null,
+      ]
+        .filter(Boolean)
+        .join("  ·  ");
+      if (detalle) w.doc.text(detalle, textoX, yInicio + 30);
+      w.y = yInicio + FOTO_TAM + 10;
     }
   }
 
