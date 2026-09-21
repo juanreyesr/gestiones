@@ -1,11 +1,11 @@
 "use client";
 
-import { Download, Eye, EyeOff, FileText, Link2, Plus, Presentation, Trash2, Upload } from "lucide-react";
+import { Download, Eye, EyeOff, FileText, Link2, Pencil, Plus, Presentation, Trash2, Upload } from "lucide-react";
 import { useState } from "react";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { ModalPortal } from "@/components/modal-portal";
 import { borrarArchivos, esImagen, esPdf, esPresentacionOffice, rutaArchivoCurso, subirArchivo, urlFirmada } from "@/lib/cursos/archivos";
-import { deleteContenido, insertContenido, setVisibilidadContenido } from "@/lib/cursos/contenidos";
+import { deleteContenido, insertContenido, setVisibilidadContenido, updateContenido } from "@/lib/cursos/contenidos";
 import type { CategoriaContenido, ContenidoRow, VisibilidadEstudiantes } from "@/lib/cursos/types";
 import { PresentacionArchivo } from "./presentacion-archivo";
 import { BTN_GHOST, BTN_PRIMARY, EmptyState, ErrorBanner, Field } from "./ui";
@@ -37,7 +37,7 @@ export function SemanaContenidosSection({
   semanaId: string;
   titulo: string;
 }) {
-  const [modalAbierto, setModalAbierto] = useState(false);
+  const [modal, setModal] = useState<{ open: false } | { open: true; contenido: ContenidoRow | null }>({ open: false });
   const [eliminar, setEliminar] = useState<ContenidoRow | null>(null);
   const [eliminando, setEliminando] = useState(false);
   const [error, setError] = useState("");
@@ -80,7 +80,7 @@ export function SemanaContenidosSection({
     <section className="border border-white/10 bg-white/6 p-4">
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
         <h3 className="text-sm font-semibold uppercase tracking-wide text-slate-300">{titulo}</h3>
-        <button className={BTN_GHOST} onClick={() => setModalAbierto(true)} type="button">
+        <button className={BTN_GHOST} onClick={() => setModal({ open: true, contenido: null })} type="button">
           <Plus className="h-4 w-4" />
           Agregar {titulo.toLowerCase()}
         </button>
@@ -144,6 +144,14 @@ export function SemanaContenidosSection({
                     {VISIBILIDAD_LABEL[contenido.visible_estudiantes]}
                   </button>
                   <button
+                    className="flex h-9 w-9 items-center justify-center border border-white/10 bg-white/8 text-slate-200 hover:border-emerald-300/50"
+                    onClick={() => setModal({ open: true, contenido })}
+                    title="Editar"
+                    type="button"
+                  >
+                    <Pencil className="h-4 w-4" />
+                  </button>
+                  <button
                     className="flex h-9 w-9 items-center justify-center border border-red-400/30 bg-red-400/10 text-red-200 hover:border-red-300"
                     onClick={() => setEliminar(contenido)}
                     title="Eliminar"
@@ -158,13 +166,14 @@ export function SemanaContenidosSection({
         </div>
       )}
 
-      {modalAbierto ? (
-        <AgregarContenidoModal
+      {modal.open ? (
+        <ContenidoModal
           categoria={categoria}
+          contenido={modal.contenido}
           cursoId={cursoId}
-          onClose={() => setModalAbierto(false)}
+          onClose={() => setModal({ open: false })}
           onGuardado={async () => {
-            setModalAbierto(false);
+            setModal({ open: false });
             await onReload();
           }}
           semanaId={semanaId}
@@ -193,23 +202,25 @@ export function SemanaContenidosSection({
   );
 }
 
-function AgregarContenidoModal({
+function ContenidoModal({
   categoria,
+  contenido,
   cursoId,
   onClose,
   onGuardado,
   semanaId,
 }: {
   categoria: CategoriaContenido;
+  contenido: ContenidoRow | null;
   cursoId: string;
   onClose: () => void;
   onGuardado: () => void | Promise<void>;
   semanaId: string;
 }) {
-  const [tituloValor, setTituloValor] = useState("");
-  const [descripcion, setDescripcion] = useState("");
+  const [tituloValor, setTituloValor] = useState(contenido?.titulo ?? "");
+  const [descripcion, setDescripcion] = useState(contenido?.descripcion ?? "");
   const [archivo, setArchivo] = useState<File | null>(null);
-  const [urlExterna, setUrlExterna] = useState("");
+  const [urlExterna, setUrlExterna] = useState(contenido?.url_externa ?? "");
   const [guardando, setGuardando] = useState(false);
   const [error, setError] = useState("");
 
@@ -219,7 +230,13 @@ function AgregarContenidoModal({
       return;
     }
     setGuardando(true);
-    let archivoPath: string | null = null;
+
+    // Si se elige un archivo nuevo, se sube y reemplaza al que ya hubiera;
+    // si no, se conserva el archivo existente (editar no lo borra).
+    let archivoPath = contenido?.archivo_path ?? null;
+    let archivoNombre = contenido?.archivo_nombre ?? null;
+    let archivoMime = contenido?.archivo_mime ?? null;
+    const archivoAnterior = contenido?.archivo_path ?? null;
     if (archivo) {
       archivoPath = rutaArchivoCurso(cursoId, `semanas/${semanaId}/${categoria}`, archivo.name);
       const { error: uploadError } = await subirArchivo(archivoPath, archivo);
@@ -228,25 +245,30 @@ function AgregarContenidoModal({
         setGuardando(false);
         return;
       }
+      archivoNombre = archivo.name;
+      archivoMime = archivo.type;
     }
 
-    const { error: insertError } = await insertContenido({
-      semana_id: semanaId,
-      categoria,
+    const payload = {
       titulo: tituloValor.trim(),
       descripcion: descripcion.trim() || null,
       archivo_path: archivoPath,
-      archivo_nombre: archivo?.name ?? null,
-      archivo_mime: archivo?.type ?? null,
+      archivo_nombre: archivoNombre,
+      archivo_mime: archivoMime,
       url_externa: urlExterna.trim() || null,
-    });
+    };
+    const { error: saveError } = contenido
+      ? await updateContenido(contenido.id, payload)
+      : await insertContenido({ semana_id: semanaId, categoria, ...payload });
     setGuardando(false);
-    if (insertError) {
-      // Evita dejar el archivo huerfano en storage si el registro no se guardo.
-      if (archivoPath) await borrarArchivos([archivoPath]);
-      setError(insertError);
+    if (saveError) {
+      // Evita dejar el archivo nuevo huerfano en storage si el registro no se guardo.
+      if (archivo && archivoPath) await borrarArchivos([archivoPath]);
+      setError(saveError);
       return;
     }
+    // Si se reemplazo el archivo de un contenido existente, se borra el anterior.
+    if (archivo && archivoAnterior && archivoAnterior !== archivoPath) await borrarArchivos([archivoAnterior]);
     await onGuardado();
   };
 
@@ -257,7 +279,7 @@ function AgregarContenidoModal({
           className="w-full max-w-md border border-white/10 bg-slate-950 p-5"
           onClick={(event) => event.stopPropagation()}
         >
-          <h3 className="mb-4 text-lg font-semibold text-white">Agregar contenido</h3>
+          <h3 className="mb-4 text-lg font-semibold text-white">{contenido ? "Editar contenido" : "Agregar contenido"}</h3>
           <div className="grid gap-3">
             <Field label="Título">
               <input className="field" onChange={(event) => setTituloValor(event.target.value)} value={tituloValor} />
@@ -268,7 +290,7 @@ function AgregarContenidoModal({
             <Field label="Archivo">
               <label className="flex cursor-pointer items-center gap-2 border border-white/10 bg-white/8 px-3 py-2 text-sm text-slate-300 hover:border-white/30">
                 <Upload className="h-4 w-4" />
-                {archivo ? archivo.name : "Seleccionar archivo"}
+                {archivo ? archivo.name : contenido?.archivo_nombre ? `Reemplazar: ${contenido.archivo_nombre}` : "Seleccionar archivo"}
                 <input className="hidden" onChange={(event) => setArchivo(event.target.files?.[0] ?? null)} type="file" />
               </label>
             </Field>

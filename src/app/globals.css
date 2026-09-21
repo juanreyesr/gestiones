@@ -61,6 +61,12 @@ body {
      de producto moderna de la configuracion por defecto. */
   letter-spacing: -0.011em;
   font-synthesis-weight: none;
+  /* Si algun elemento se desborda horizontalmente en movil, esto evita
+     que la pagina entera gane scroll horizontal: en mobile Safari/Chrome
+     eso desalinea cualquier elemento "position: fixed" (modales, menus)
+     porque quedan posicionados respecto al viewport de layout ensanchado,
+     no al viewport visual real. */
+  overflow-x: hidden;
 }
 
 @layer base {
