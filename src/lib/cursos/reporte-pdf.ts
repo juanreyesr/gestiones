@@ -1,5 +1,6 @@
 import type { jsPDF } from "jspdf";
 import type { CalificacionDeCursoRow } from "./actividades";
+import { calcularAvancePorEstudiante } from "./avance";
 import type { ActividadConSemanaRow, AsistenciaConSemanaRow } from "./types";
 import type { EstudianteEventoRow, EstudianteRow, SemanaRow } from "./types";
 import { TIPO_ACTIVIDAD_LABELS, TIPO_EVENTO_LABELS, formatearFechaHora } from "./types";
@@ -240,6 +241,31 @@ export async function exportReporteCursoPdf(data: ReporteCursoData) {
         const semanaNumero = semanasPorId.get(nota.semana_id) ?? "?";
         const nombre = estudiantesPorId.get(nota.estudiante_id) ?? "Estudiante";
         w.text(`•  Semana ${semanaNumero} · ${nombre}: ${nota.nota}`, { size: 8.5, color: MUTED });
+      }
+    }
+  }
+  w.spacer(10);
+
+  // ---------- Avance y estado por estudiante ----------
+  w.heading("Avance y estado (aprobado/reprobado)");
+  w.text("Promedio de actividades ya calificadas con punteo asignado (cada una pesa igual). Aprueba con 60% o más.", {
+    size: 8,
+    color: MUTED,
+  });
+  w.spacer(4);
+  if (!activos.length) {
+    w.text("Sin estudiantes activos.", { size: 9, color: MUTED });
+  } else {
+    const avancePorEstudiante = calcularAvancePorEstudiante(data.actividades, data.calificaciones);
+    for (const estudiante of activos) {
+      const avance = avancePorEstudiante.get(estudiante.id);
+      if (!avance || avance.aprobado === null) {
+        w.text(`•  ${estudiante.nombre}: sin calificaciones con punteo aún`, { size: 8.5, color: MUTED });
+      } else {
+        w.text(
+          `•  ${estudiante.nombre}: ${Math.round(avance.porcentaje ?? 0)}% (${avance.actividadesCalificadas} calificada${avance.actividadesCalificadas === 1 ? "" : "s"}) — ${avance.aprobado ? "Aprobado" : "Reprobado"}`,
+          { size: 8.5, color: avance.aprobado ? ACCENT : [185, 28, 28] },
+        );
       }
     }
   }

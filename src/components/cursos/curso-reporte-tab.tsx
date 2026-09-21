@@ -5,10 +5,11 @@ import type React from "react";
 import { useCallback, useEffect, useState } from "react";
 import { fetchActividadesDeCurso, fetchCalificacionesDeCurso } from "@/lib/cursos/actividades";
 import { fetchAsistenciasDeCurso } from "@/lib/cursos/asistencias";
+import { AVANCE_VACIO, calcularAvancePorEstudiante, type AvanceEstudiante } from "@/lib/cursos/avance";
 import { fetchEventos, fetchEstudiantes } from "@/lib/cursos/estudiantes";
 import { exportReporteCursoPdf } from "@/lib/cursos/reporte-pdf";
 import { fetchSemanas } from "@/lib/cursos/semanas";
-import type { CursoImpartidoRow, UniversidadRow } from "@/lib/cursos/types";
+import type { CursoImpartidoRow, EstudianteRow, UniversidadRow } from "@/lib/cursos/types";
 import { BTN_PRIMARY, ErrorBanner } from "./ui";
 
 export function CursoReporteTab({ curso, universidad }: { curso: CursoImpartidoRow; universidad: UniversidadRow }) {
@@ -16,6 +17,8 @@ export function CursoReporteTab({ curso, universidad }: { curso: CursoImpartidoR
   const [error, setError] = useState("");
   const [exportando, setExportando] = useState(false);
   const [metricas, setMetricas] = useState({ semanas: 0, activos: 0, retirados: 0, asistenciaGlobal: 0 });
+  const [estudiantesActivos, setEstudiantesActivos] = useState<EstudianteRow[]>([]);
+  const [avancePorEstudiante, setAvancePorEstudiante] = useState<Map<string, AvanceEstudiante>>(new Map());
 
   const cargarResumen = useCallback(async () => {
     setLoading(true);
@@ -23,13 +26,17 @@ export function CursoReporteTab({ curso, universidad }: { curso: CursoImpartidoR
       { data: semanas, error: errorSemanas },
       { data: estudiantes, error: errorEstudiantes },
       { data: asistencias, error: errorAsistencias },
+      { data: actividades, error: errorActividades },
+      { data: calificaciones, error: errorCalificaciones },
     ] = await Promise.all([
       fetchSemanas(curso.id),
       fetchEstudiantes(curso.id),
       fetchAsistenciasDeCurso(curso.id),
+      fetchActividadesDeCurso(curso.id),
+      fetchCalificacionesDeCurso(curso.id),
     ]);
-    setError(errorSemanas ?? errorEstudiantes ?? errorAsistencias ?? "");
-    const activos = estudiantes.filter((e) => e.estado === "activo").length;
+    setError(errorSemanas ?? errorEstudiantes ?? errorAsistencias ?? errorActividades ?? errorCalificaciones ?? "");
+    const activos = estudiantes.filter((e) => e.estado === "activo");
     const retirados = estudiantes.filter((e) => e.estado === "retirado").length;
     const validos = asistencias
       .map((a) => (a.estado === "sin_marcar" ? null : a.estado === "presente" || a.estado === "tarde" ? 1 : 0))
@@ -38,7 +45,9 @@ export function CursoReporteTab({ curso, universidad }: { curso: CursoImpartidoR
       ? Math.round((validos.reduce<number>((a, b) => a + b, 0) / validos.length) * 100)
       : 0;
 
-    setMetricas({ semanas: semanas.length, activos, retirados, asistenciaGlobal });
+    setMetricas({ semanas: semanas.length, activos: activos.length, retirados, asistenciaGlobal });
+    setEstudiantesActivos(activos);
+    setAvancePorEstudiante(calcularAvancePorEstudiante(actividades, calificaciones));
     setLoading(false);
   }, [curso.id]);
 
@@ -98,6 +107,47 @@ export function CursoReporteTab({ curso, universidad }: { curso: CursoImpartidoR
           <Metric icon={ClipboardCheck} title="Asistencia global" value={`${metricas.asistenciaGlobal}%`} />
         </div>
       )}
+
+      {!loading ? (
+        <div className="border border-white/10 bg-white/6 p-4">
+          <h3 className="mb-1 text-sm font-semibold uppercase tracking-wide text-slate-300">Avance por estudiante</h3>
+          <p className="mb-3 text-xs text-slate-500">
+            Promedio de las actividades ya calificadas con punteo asignado (cada una pesa igual, sin importar cuántas haya). Aprueba con 60% o
+            más. Es el estado en este momento, no el final del curso.
+          </p>
+          {estudiantesActivos.length === 0 ? (
+            <p className="text-sm text-slate-400">No hay estudiantes activos en este curso.</p>
+          ) : (
+            <div className="grid gap-2">
+              {estudiantesActivos.map((estudiante) => {
+                const avance = avancePorEstudiante.get(estudiante.id) ?? AVANCE_VACIO;
+                return (
+                  <div className="flex flex-wrap items-center justify-between gap-2 border border-white/10 bg-white/6 px-3 py-2" key={estudiante.id}>
+                    <span className="text-sm text-slate-200">{estudiante.nombre}</span>
+                    {avance.aprobado === null ? (
+                      <span className="text-xs text-slate-500">Sin calificaciones con punteo aún</span>
+                    ) : (
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs text-slate-400">{avance.actividadesCalificadas} calificada{avance.actividadesCalificadas === 1 ? "" : "s"}</span>
+                        <span className="text-sm font-semibold text-white">{Math.round(avance.porcentaje ?? 0)}%</span>
+                        <span
+                          className={`border px-2 py-0.5 text-[11px] font-semibold ${
+                            avance.aprobado
+                              ? "border-emerald-300/40 bg-emerald-300/10 text-emerald-200"
+                              : "border-red-400/40 bg-red-400/10 text-red-200"
+                          }`}
+                        >
+                          {avance.aprobado ? "Aprobado" : "Reprobado"}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      ) : null}
 
       <div>
         <button className={BTN_PRIMARY} disabled={exportando} onClick={handleDescargar} type="button">
