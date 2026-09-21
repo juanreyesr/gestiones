@@ -32,6 +32,7 @@ export type CursoImpartidoRow = {
   horario: string | null;
   estado: EstadoCurso;
   origen_curso_id: string | null;
+  acceso_estudiantes: boolean;
   created_at: string;
   updated_at: string;
 };
@@ -75,8 +76,21 @@ export type EstudianteRow = {
   correo: string | null;
   carne: string | null;
   estado: EstadoEstudiante;
+  estudiante_id: string | null;
   asignado_en: string;
   retirado_en: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+/** Identidad global del estudiante (cuenta de acceso), independiente del curso. */
+export type EstudianteGlobalRow = {
+  id: string;
+  auth_user_id: string | null;
+  nombre: string;
+  correo: string;
+  debe_cambiar_contrasena: boolean;
+  activo: boolean;
   created_at: string;
   updated_at: string;
 };

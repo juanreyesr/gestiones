@@ -1,4 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
+import { getSupabaseAdmin } from "./supabase-admin";
 
 const OWNER_EMAIL = "lic.juanreyesr@gmail.com";
 
@@ -26,4 +27,49 @@ export async function requireOwner(request: Request): Promise<{ ok: true } | { o
   }
 
   return { ok: true };
+}
+
+/**
+ * Verifica que la petición venga de una cuenta de estudiante activa (no del
+ * owner, no de una cuenta de Supabase Auth cualquiera): el navegador envía
+ * el access token de Supabase en Authorization: Bearer, y se confirma que
+ * existe una fila activa en gestionesjj_estudiantes enlazada a esa cuenta.
+ */
+export async function requireEstudiante(
+  request: Request,
+): Promise<{ ok: true; authUserId: string; estudianteId: string } | { ok: false; status: number; error: string }> {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const key = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
+  if (!url || !key) {
+    return { ok: false, status: 500, error: "Faltan las variables de Supabase." };
+  }
+
+  const header = request.headers.get("authorization") ?? "";
+  const token = header.startsWith("Bearer ") ? header.slice(7) : null;
+  if (!token) {
+    return { ok: false, status: 401, error: "No autorizado." };
+  }
+
+  const supabase = createClient(url, key, { auth: { persistSession: false } });
+  const { data, error } = await supabase.auth.getUser(token);
+  if (error || !data.user) {
+    return { ok: false, status: 401, error: "No autorizado." };
+  }
+
+  const admin = getSupabaseAdmin();
+  if (!admin) {
+    return { ok: false, status: 500, error: "El servicio no está disponible." };
+  }
+
+  const { data: estudiante, error: estudianteError } = await admin
+    .from("gestionesjj_estudiantes")
+    .select("id, activo")
+    .eq("auth_user_id", data.user.id)
+    .maybeSingle();
+
+  if (estudianteError || !estudiante || !(estudiante as { activo: boolean }).activo) {
+    return { ok: false, status: 401, error: "No autorizado." };
+  }
+
+  return { ok: true, authUserId: data.user.id, estudianteId: (estudiante as { id: string }).id };
 }
