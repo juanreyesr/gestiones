@@ -1,6 +1,6 @@
 "use client";
 
-import { ChevronDown, ChevronUp, KeyRound, Pencil, Printer, ShieldCheck, ShieldOff, Trash2, UserMinus, UserPlus } from "lucide-react";
+import { ChevronDown, ChevronUp, KeyRound, MessageCircle, Pencil, Printer, ShieldCheck, ShieldOff, Trash2, UserMinus, UserPlus } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { ModalPortal } from "@/components/modal-portal";
@@ -22,12 +22,14 @@ import {
   updateEstudiante,
 } from "@/lib/cursos/estudiantes";
 import { exportFichasCredencialesPdf } from "@/lib/cursos/fichas-pdf";
+import { fetchMensajesNoLeidosPorEstudiante } from "@/lib/cursos/mensajes";
 import {
   TIPO_EVENTO_LABELS,
   formatearFechaHora,
   type EstudianteEventoRow,
   type EstudianteRow,
 } from "@/lib/cursos/types";
+import { ChatEstudianteModal } from "./chat-estudiante-modal";
 import { BTN_GHOST, BTN_PRIMARY, EmptyState, ErrorBanner, Field } from "./ui";
 
 export function CursoEstudiantesTab({ cursoId, cursoNombre }: { cursoId: string; cursoNombre: string }) {
@@ -49,6 +51,8 @@ export function CursoEstudiantesTab({ cursoId, cursoNombre }: { cursoId: string;
   const [imprimiendoFichas, setImprimiendoFichas] = useState(false);
   const [procesandoAccesoId, setProcesandoAccesoId] = useState<string | null>(null);
   const [estadosAcceso, setEstadosAcceso] = useState<Record<string, boolean>>({});
+  const [mensajesNoLeidos, setMensajesNoLeidos] = useState<Record<string, number>>({});
+  const [chatObjetivo, setChatObjetivo] = useState<EstudianteRow | null>(null);
 
   const cargar = useCallback(async () => {
     setLoading(true);
@@ -62,8 +66,12 @@ export function CursoEstudiantesTab({ cursoId, cursoNombre }: { cursoId: string;
     setLoading(false);
 
     const idsConAcceso = estudiantesData.map((e) => e.estudiante_id).filter((id): id is string => Boolean(id));
-    const { data: estados } = await fetchEstadosAccesoGlobal(idsConAcceso);
+    const [{ data: estados }, { data: noLeidos }] = await Promise.all([
+      fetchEstadosAccesoGlobal(idsConAcceso),
+      fetchMensajesNoLeidosPorEstudiante(idsConAcceso),
+    ]);
     setEstadosAcceso(estados);
+    setMensajesNoLeidos(noLeidos);
   }, [cursoId]);
 
   useEffect(() => {
@@ -227,6 +235,21 @@ export function CursoEstudiantesTab({ cursoId, cursoNombre }: { cursoId: string;
                     procesando={procesandoAccesoId === estudiante.id}
                   />
                 ) : null}
+                {estudiante.estado === "activo" && estudiante.estudiante_id ? (
+                  <button
+                    className="relative flex h-9 w-9 items-center justify-center border border-white/10 bg-white/8 text-slate-200 hover:border-emerald-300/50"
+                    onClick={() => setChatObjetivo(estudiante)}
+                    title="Chatear con este estudiante"
+                    type="button"
+                  >
+                    <MessageCircle className="h-4 w-4" />
+                    {mensajesNoLeidos[estudiante.estudiante_id] ? (
+                      <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-emerald-400 px-1 text-[10px] font-bold text-slate-950">
+                        {mensajesNoLeidos[estudiante.estudiante_id]}
+                      </span>
+                    ) : null}
+                  </button>
+                ) : null}
                 <button
                   className="flex h-9 w-9 items-center justify-center border border-white/10 bg-white/8 text-slate-200 hover:border-emerald-300/50"
                   onClick={() => setEditarObjetivo(estudiante)}
@@ -354,6 +377,19 @@ export function CursoEstudiantesTab({ cursoId, cursoNombre }: { cursoId: string;
       ) : null}
 
       {credencial ? <CredencialModal credencial={credencial} cursoNombre={cursoNombre} onClose={() => setCredencial(null)} /> : null}
+
+      {chatObjetivo?.estudiante_id ? (
+        <ChatEstudianteModal
+          estudianteId={chatObjetivo.estudiante_id}
+          estudianteNombre={chatObjetivo.nombre}
+          onClose={() => setChatObjetivo(null)}
+          onLeido={async () => {
+            const idsConAcceso = estudiantes.map((e) => e.estudiante_id).filter((id): id is string => Boolean(id));
+            const { data: noLeidos } = await fetchMensajesNoLeidosPorEstudiante(idsConAcceso);
+            setMensajesNoLeidos(noLeidos);
+          }}
+        />
+      ) : null}
     </div>
   );
 }

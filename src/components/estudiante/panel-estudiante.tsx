@@ -1,9 +1,10 @@
 "use client";
 
-import { GraduationCap, KeyRound, LogOut } from "lucide-react";
-import { useState } from "react";
-import { logoutEstudiante, type MiCurso, type MiPerfil } from "@/lib/estudiante/estudiante-client";
+import { GraduationCap, KeyRound, LogOut, MessageCircle } from "lucide-react";
+import { useCallback, useEffect, useState } from "react";
+import { fetchMisMensajesNoLeidos, logoutEstudiante, type MiCurso, type MiPerfil } from "@/lib/estudiante/estudiante-client";
 import { CambiarContrasenaModal } from "./cambiar-contrasena-modal";
+import { ChatModal } from "./chat-modal";
 import { CursoEstudianteDetalle } from "./curso-estudiante-detalle";
 
 const ESTADO_LABEL: Record<string, string> = {
@@ -23,6 +24,20 @@ export function PanelEstudiante({
 }) {
   const [modalContrasenaAbierto, setModalContrasenaAbierto] = useState(perfil.debeCambiarContrasena);
   const [cursoAbierto, setCursoAbierto] = useState<MiCurso | null>(null);
+  const [chatAbierto, setChatAbierto] = useState(false);
+  const [mensajesNoLeidos, setMensajesNoLeidos] = useState(0);
+
+  const cargarNoLeidos = useCallback(async () => {
+    const { data } = await fetchMisMensajesNoLeidos();
+    setMensajesNoLeidos(data);
+  }, []);
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- consulta inicial de mensajes sin leer al montar el panel
+    void cargarNoLeidos();
+    const interval = setInterval(cargarNoLeidos, 15000);
+    return () => clearInterval(interval);
+  }, [cargarNoLeidos]);
 
   return (
     <div className="min-h-screen bg-white text-slate-900">
@@ -36,6 +51,19 @@ export function PanelEstudiante({
             <p className="text-sm font-semibold text-slate-900">Hola, {perfil.nombre.split(" ")[0]}</p>
             <p className="text-xs text-slate-400">{perfil.correo}</p>
           </div>
+          <button
+            className="relative flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 text-slate-500 transition hover:border-slate-400 hover:text-slate-800"
+            onClick={() => setChatAbierto(true)}
+            title="Chatear con tu docente"
+            type="button"
+          >
+            <MessageCircle className="h-4 w-4" />
+            {mensajesNoLeidos > 0 ? (
+              <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-emerald-500 px-1 text-[10px] font-bold text-white">
+                {mensajesNoLeidos}
+              </span>
+            ) : null}
+          </button>
           <button
             className="flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 text-slate-500 transition hover:border-slate-400 hover:text-slate-800"
             onClick={() => setModalContrasenaAbierto(true)}
@@ -105,6 +133,8 @@ export function PanelEstudiante({
           onClose={() => setModalContrasenaAbierto(false)}
         />
       ) : null}
+
+      {chatAbierto ? <ChatModal onClose={() => setChatAbierto(false)} onLeido={cargarNoLeidos} /> : null}
     </div>
   );
 }

@@ -276,6 +276,66 @@ export async function fetchMiEstadoCurso(cursoId: string): Promise<{ data: MiEst
   return { data: { aprobado: fila.aprobado, actividadesCalificadas: fila.actividades_calificadas }, error: null };
 }
 
+export type MiMensaje = { id: string; remitente: "docente" | "estudiante"; contenido: string; creadoEn: string };
+
+export async function fetchMisMensajes(): Promise<{ data: MiMensaje[]; error: string | null }> {
+  const supabase = getSupabaseClient();
+  if (!supabase) return { data: [], error: "Faltan las variables de Supabase." };
+
+  const { data, error } = await supabase.rpc("gestionesjj_estudiante_mis_mensajes");
+  if (error) return { data: [], error: error.message };
+
+  const filas = (data ?? []) as Array<{ id: string; remitente: "docente" | "estudiante"; contenido: string; created_at: string }>;
+  return {
+    data: filas.map((fila) => ({ id: fila.id, remitente: fila.remitente, contenido: fila.contenido, creadoEn: fila.created_at })),
+    error: null,
+  };
+}
+
+export async function fetchMisMensajesNoLeidos(): Promise<{ data: number; error: string | null }> {
+  const supabase = getSupabaseClient();
+  if (!supabase) return { data: 0, error: "Faltan las variables de Supabase." };
+
+  const { data, error } = await supabase.rpc("gestionesjj_estudiante_mensajes_no_leidos");
+  if (error) return { data: 0, error: error.message };
+  return { data: typeof data === "number" ? data : 0, error: null };
+}
+
+export async function enviarMensaje(contenido: string): Promise<{ error: string | null }> {
+  const token = await getAuthToken();
+  if (!token) return { error: "Sesión no válida. Vuelve a iniciar." };
+
+  try {
+    const response = await fetch("/api/estudiante/mensajes/enviar", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ contenido }),
+    });
+    const json = (await response.json().catch(() => null)) as { error?: string } | null;
+    if (!response.ok) return { error: json?.error ?? "No se pudo enviar el mensaje." };
+    return { error: null };
+  } catch {
+    return { error: "Error de conexión." };
+  }
+}
+
+export async function marcarMensajesLeidos(): Promise<{ error: string | null }> {
+  const token = await getAuthToken();
+  if (!token) return { error: "Sesión no válida. Vuelve a iniciar." };
+
+  try {
+    const response = await fetch("/api/estudiante/mensajes/marcar-leido", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    const json = (await response.json().catch(() => null)) as { error?: string } | null;
+    if (!response.ok) return { error: json?.error ?? "No se pudo actualizar." };
+    return { error: null };
+  } catch {
+    return { error: "Error de conexión." };
+  }
+}
+
 export async function cambiarMiContrasena(nuevaContrasena: string) {
   const supabase = getSupabaseClient();
   if (!supabase) return { error: "Faltan las variables de Supabase." };
