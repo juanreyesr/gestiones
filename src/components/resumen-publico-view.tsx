@@ -116,17 +116,13 @@ export function ResumenPublicoView({ token }: { token: string }) {
   };
 
   return (
-    <main className="relative min-h-screen bg-[#08111f] text-slate-100">
-      <div
-        aria-hidden
-        className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top,rgb(16_185_129/0.12),transparent_55%),linear-gradient(to_bottom,rgb(2_6_23/0.4),rgb(2_6_23/0.9))]"
-      />
-      <div className="coordinacion-scope relative mx-auto w-full max-w-6xl px-4 py-8 sm:py-10">
+    <main className="min-h-screen bg-white text-slate-900">
+      <div className="coordinacion-scope mx-auto w-full max-w-6xl px-4 py-8 sm:py-10">
         {estado === "cargando" ? <p className="py-16 text-center text-sm text-slate-400">Cargando resumen...</p> : null}
 
         {estado === "invalido" || estado === "inactivo" || estado === "error" ? (
-          <div className="mx-auto grid max-w-md gap-3 border border-white/10 bg-white/6 p-8 text-center backdrop-blur-xl">
-            <p className="text-lg font-semibold text-white">No se pudo abrir el resumen</p>
+          <div className="mx-auto grid max-w-md gap-3 rounded-2xl border border-slate-200 bg-white p-8 text-center shadow-sm">
+            <p className="text-lg font-semibold text-slate-900">No se pudo abrir el resumen</p>
             <p className="text-sm leading-6 text-slate-400">
               {estado === "inactivo"
                 ? "Este enlace fue desactivado por la coordinación académica."
@@ -139,14 +135,14 @@ export function ResumenPublicoView({ token }: { token: string }) {
 
         {estado === "ok" ? (
           <div className="grid gap-5">
-            <div className="flex flex-col gap-4 border border-white/10 bg-white/6 p-4 backdrop-blur-xl sm:p-5 lg:flex-row lg:items-end lg:justify-between">
+            <div className="flex flex-col gap-4 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5 lg:flex-row lg:items-end lg:justify-between">
               <div>
-                <div className="mb-2 inline-flex items-center gap-2 text-xs font-semibold uppercase text-emerald-200">
+                <div className="mb-2 inline-flex items-center gap-2 text-xs font-semibold uppercase text-emerald-600">
                   <BarChart3 className="h-4 w-4" />
                   Coordinacion academica
                 </div>
-                <h1 className="text-2xl font-semibold text-white sm:text-3xl">Resumen general</h1>
-                <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-300">
+                <h1 className="text-2xl font-semibold text-slate-900 sm:text-3xl">Resumen general</h1>
+                <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-500">
                   Evaluacion docente: resultados de todos los trimestres y todos los anios registrados.
                   {etiqueta ? ` Enlace compartido con: ${etiqueta}.` : ""}
                 </p>
@@ -156,7 +152,7 @@ export function ResumenPublicoView({ token }: { token: string }) {
                 </p>
               </div>
               <button
-                className="inline-flex h-11 w-fit items-center justify-center gap-2 border border-white/10 bg-white/8 px-6 text-sm font-bold text-slate-100 transition hover:border-white/30 disabled:opacity-40"
+                className="inline-flex h-11 w-fit items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-6 text-sm font-bold text-slate-600 transition hover:border-slate-400 disabled:opacity-40"
                 disabled={!todas.length || exportando}
                 onClick={() => void handleDescargarPdf()}
                 title="Incluye todo el historial, sin importar el filtro seleccionado"
@@ -171,10 +167,10 @@ export function ResumenPublicoView({ token }: { token: string }) {
               {PERIODOS.map((item) => (
                 <button
                   key={item.label}
-                  className={`border px-3 py-1.5 text-xs font-semibold transition ${
+                  className={`rounded-lg border px-3 py-1.5 text-xs font-semibold transition ${
                     periodo === item.value
-                      ? "border-emerald-300/70 bg-emerald-300/14 text-white"
-                      : "border-white/10 bg-white/8 text-slate-300 hover:border-white/30"
+                      ? "border-slate-900 bg-slate-900 text-white"
+                      : "border-slate-200 bg-white text-slate-500 hover:border-slate-400"
                   }`}
                   onClick={() => setPeriodo(item.value)}
                   type="button"
@@ -182,7 +178,7 @@ export function ResumenPublicoView({ token }: { token: string }) {
                   {item.label}
                 </button>
               ))}
-              <select className="field w-auto" onChange={(event) => setAnio(event.target.value)} value={anio}>
+              <select className="field-light w-auto" onChange={(event) => setAnio(event.target.value)} value={anio}>
                 <option value={TODOS_LOS_ANIOS}>Todos los años</option>
                 {anios.map((item) => (
                   <option key={item} value={item}>
@@ -192,7 +188,7 @@ export function ResumenPublicoView({ token }: { token: string }) {
               </select>
             </div>
 
-            <ResumenGeneralPanel historicoRows={todas} rows={rows} />
+            <ResumenGeneralPanel historicoRows={todas} light rows={rows} />
           </div>
         ) : null}
       </div>
