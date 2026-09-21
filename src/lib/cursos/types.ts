@@ -177,6 +177,18 @@ export type EntregaRow = {
   updated_at: string;
 };
 
+export type TipoRemitenteMensaje = "docente" | "estudiante";
+
+export type MensajeRow = {
+  id: string;
+  estudiante_id: string;
+  remitente: TipoRemitenteMensaje;
+  contenido: string;
+  leido_docente: boolean;
+  leido_estudiante: boolean;
+  created_at: string;
+};
+
 export type AsistenciaRow = {
   id: string;
   created_by: string;
