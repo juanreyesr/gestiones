@@ -58,6 +58,22 @@ export async function deleteSemana(id: string) {
   return { error: error?.message ?? null };
 }
 
+/** Checkbox "habilitar para estudiantes" de la semana, con autoguardado. */
+export async function setHabilitadoEstudiantes(id: string, habilitado: boolean) {
+  const supabase = getSupabaseClient();
+  if (!supabase) return { error: "Faltan las variables de Supabase." };
+
+  const { error } = await supabase
+    .from("gestionesjj_curso_semanas")
+    .update({
+      habilitado_estudiantes: habilitado,
+      habilitado_en: habilitado ? new Date().toISOString() : null,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", id);
+  return { error: error?.message ?? null };
+}
+
 export function siguienteNumero(semanas: SemanaRow[]): number {
   if (!semanas.length) return 1;
   return Math.max(...semanas.map((semana) => semana.numero)) + 1;

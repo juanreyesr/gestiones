@@ -72,6 +72,79 @@ export async function fetchMisCursos(): Promise<{ data: MiCurso[]; error: string
   };
 }
 
+export type MiSemana = { id: string; numero: number; titulo: string | null; fecha: string | null };
+
+export async function fetchMisSemanas(cursoId: string): Promise<{ data: MiSemana[]; error: string | null }> {
+  const supabase = getSupabaseClient();
+  if (!supabase) return { data: [], error: "Faltan las variables de Supabase." };
+
+  const { data, error } = await supabase.rpc("gestionesjj_estudiante_semanas_curso", { p_curso_id: cursoId });
+  if (error) return { data: [], error: error.message };
+
+  const filas = (data ?? []) as Array<{ id: string; numero: number; titulo: string | null; fecha: string | null }>;
+  return { data: filas.map((fila) => ({ id: fila.id, numero: fila.numero, titulo: fila.titulo, fecha: fila.fecha })), error: null };
+}
+
+export type MiContenido = {
+  id: string;
+  categoria: "contenido" | "material_extra";
+  titulo: string;
+  descripcion: string | null;
+  tieneArchivo: boolean;
+  urlExterna: string | null;
+};
+
+export async function fetchMisContenidos(semanaId: string): Promise<{ data: MiContenido[]; error: string | null }> {
+  const supabase = getSupabaseClient();
+  if (!supabase) return { data: [], error: "Faltan las variables de Supabase." };
+
+  const { data, error } = await supabase.rpc("gestionesjj_estudiante_contenidos_semana", { p_semana_id: semanaId });
+  if (error) return { data: [], error: error.message };
+
+  const filas = (data ?? []) as Array<{
+    id: string;
+    categoria: "contenido" | "material_extra";
+    titulo: string;
+    descripcion: string | null;
+    tiene_archivo: boolean;
+    url_externa: string | null;
+  }>;
+
+  return {
+    data: filas.map((fila) => ({
+      id: fila.id,
+      categoria: fila.categoria,
+      titulo: fila.titulo,
+      descripcion: fila.descripcion,
+      tieneArchivo: Boolean(fila.tiene_archivo),
+      urlExterna: fila.url_externa,
+    })),
+    error: null,
+  };
+}
+
+export async function obtenerUrlContenido(contenidoId: string): Promise<{ url: string | null; error: string | null }> {
+  const supabase = getSupabaseClient();
+  if (!supabase) return { url: null, error: "Faltan las variables de Supabase." };
+
+  const { data: sessionData } = await supabase.auth.getSession();
+  const token = sessionData.session?.access_token;
+  if (!token) return { url: null, error: "Sesión no válida. Vuelve a iniciar." };
+
+  try {
+    const response = await fetch("/api/estudiante/contenido-url", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ contenidoId }),
+    });
+    const json = (await response.json().catch(() => null)) as { url?: string; error?: string } | null;
+    if (!response.ok) return { url: null, error: json?.error ?? "No se pudo abrir el archivo." };
+    return { url: json?.url ?? null, error: null };
+  } catch {
+    return { url: null, error: "Error de conexión." };
+  }
+}
+
 export async function cambiarMiContrasena(nuevaContrasena: string) {
   const supabase = getSupabaseClient();
   if (!supabase) return { error: "Faltan las variables de Supabase." };

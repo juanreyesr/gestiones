@@ -6,6 +6,7 @@ export type TipoSesion = "normal" | "examen_parcial" | "examen_final";
 export type EstadoEstudiante = "activo" | "retirado";
 export type TipoEventoEstudiante = "asignacion" | "retiro" | "reincorporacion";
 export type CategoriaContenido = "contenido" | "material_extra";
+export type VisibilidadEstudiantes = "hereda" | "visible" | "oculto";
 export type TipoActividad = "tarea" | "actividad" | "examen_parcial" | "examen_final";
 export type EstadoAsistencia = "sin_marcar" | "presente" | "ausente" | "excusa" | "tarde";
 
@@ -64,6 +65,8 @@ export type SemanaRow = {
   fecha: string | null;
   tipo_sesion: TipoSesion;
   notas: string | null;
+  habilitado_estudiantes: boolean;
+  habilitado_en: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -117,6 +120,7 @@ export type ContenidoRow = {
   archivo_mime: string | null;
   url_externa: string | null;
   orden: number;
+  visible_estudiantes: VisibilidadEstudiantes;
   created_at: string;
 };
 

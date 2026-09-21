@@ -4,7 +4,7 @@ import { CalendarDays, Pencil, Plus, Trash2 } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { ModalPortal } from "@/components/modal-portal";
-import { deleteSemana, fetchSemanas, insertSemana, siguienteNumero, updateSemana } from "@/lib/cursos/semanas";
+import { deleteSemana, fetchSemanas, insertSemana, setHabilitadoEstudiantes, siguienteNumero, updateSemana } from "@/lib/cursos/semanas";
 import { TIPO_SESION_LABELS, formatearFecha, type SemanaRow, type TipoSesion } from "@/lib/cursos/types";
 import { BTN_GHOST, BTN_PRIMARY, CardBox, Chip, EmptyState, ErrorBanner, Field } from "./ui";
 
@@ -21,6 +21,7 @@ export function CursoSemanasTab({ cursoId, onOpenSemana }: { cursoId: string; on
   const [modal, setModal] = useState<{ open: false } | { open: true; semana: SemanaRow | null }>({ open: false });
   const [eliminar, setEliminar] = useState<SemanaRow | null>(null);
   const [eliminando, setEliminando] = useState(false);
+  const [guardandoHabilitado, setGuardandoHabilitado] = useState<string | null>(null);
 
   const cargar = useCallback(async () => {
     setLoading(true);
@@ -34,6 +35,24 @@ export function CursoSemanasTab({ cursoId, onOpenSemana }: { cursoId: string; on
     // eslint-disable-next-line react-hooks/set-state-in-effect -- recarga semanas al cambiar de curso
     void cargar();
   }, [cargar]);
+
+  const handleToggleHabilitado = async (semana: SemanaRow) => {
+    const siguiente = !semana.habilitado_estudiantes;
+    setGuardandoHabilitado(semana.id);
+    const { error: toggleError } = await setHabilitadoEstudiantes(semana.id, siguiente);
+    setGuardandoHabilitado(null);
+    if (toggleError) {
+      setError(toggleError);
+      return;
+    }
+    setSemanas((prev) =>
+      prev.map((item) =>
+        item.id === semana.id
+          ? { ...item, habilitado_estudiantes: siguiente, habilitado_en: siguiente ? new Date().toISOString() : null }
+          : item,
+      ),
+    );
+  };
 
   const handleEliminar = async () => {
     if (!eliminar) return;
@@ -109,6 +128,19 @@ export function CursoSemanasTab({ cursoId, onOpenSemana }: { cursoId: string; on
                   {TIPO_SESION_LABELS[semana.tipo_sesion]}
                 </Chip>
               ) : null}
+              <label
+                className="mt-3 flex w-fit items-center gap-2 text-xs font-semibold text-slate-300"
+                onClick={(event) => event.stopPropagation()}
+              >
+                <input
+                  checked={semana.habilitado_estudiantes}
+                  className="h-3.5 w-3.5 accent-emerald-300"
+                  disabled={guardandoHabilitado === semana.id}
+                  onChange={() => handleToggleHabilitado(semana)}
+                  type="checkbox"
+                />
+                Habilitar para estudiantes
+              </label>
             </CardBox>
           ))}
         </div>

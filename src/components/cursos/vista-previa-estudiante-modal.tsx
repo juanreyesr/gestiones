@@ -1,32 +1,91 @@
 "use client";
 
 import { GraduationCap, X } from "lucide-react";
+import { useCallback, useEffect, useState } from "react";
 import { ModalPortal } from "@/components/modal-portal";
+import { CursoContenidoLista, type ContenidoEstudianteVista } from "@/components/estudiante/curso-contenido-lista";
+import { urlFirmada } from "@/lib/cursos/archivos";
+import { fetchContenidos } from "@/lib/cursos/contenidos";
+import { fetchSemanas } from "@/lib/cursos/semanas";
+import type { ContenidoRow, SemanaRow } from "@/lib/cursos/types";
 
 /**
- * Vista previa de lo que vería un estudiante genérico de este curso. Por
- * ahora (Fase 0) todavía no hay semanas/contenidos publicables, así que
- * muestra el mismo estado vacío que verá el estudiante real; cuando la
- * Fase 1 agregue contenidos y tareas, este mismo componente reutilizará el
- * panel del estudiante para mostrarlos tal cual se ven allá.
+ * Vista previa de lo que vería un estudiante genérico de este curso: mismas
+ * semanas habilitadas, mismos contenidos visibles, leídos directo por el
+ * owner (que ya puede ver todo) en vez de por las RPCs del estudiante.
  */
 export function VistaPreviaEstudianteModal({
+  cursoId,
   cursoNombre,
   onClose,
   universidadNombre,
 }: {
+  cursoId: string;
   cursoNombre: string;
   onClose: () => void;
   universidadNombre: string;
 }) {
+  const [semanas, setSemanas] = useState<SemanaRow[]>([]);
+  const [contenidosPorSemana, setContenidosPorSemana] = useState<Record<string, ContenidoRow[]>>({});
+  const [cargando, setCargando] = useState(true);
+  const [cargandoSemanaId, setCargandoSemanaId] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelado = false;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- carga inicial de semanas al abrir la vista previa
+    setCargando(true);
+    fetchSemanas(cursoId).then(({ data }) => {
+      if (cancelado) return;
+      setSemanas(data.filter((semana) => semana.habilitado_estudiantes));
+      setCargando(false);
+    });
+    return () => {
+      cancelado = true;
+    };
+  }, [cursoId]);
+
+  const handleExpandirSemana = useCallback(async (semanaId: string) => {
+    setCargandoSemanaId(semanaId);
+    const { data } = await fetchContenidos(semanaId);
+    setCargandoSemanaId(null);
+    setContenidosPorSemana((prev) => ({ ...prev, [semanaId]: data.filter((c) => c.visible_estudiantes !== "oculto") }));
+  }, []);
+
+  const handleAbrirArchivo = useCallback(
+    async (contenido: ContenidoEstudianteVista) => {
+      const original = Object.values(contenidosPorSemana)
+        .flat()
+        .find((c) => c.id === contenido.id);
+      if (!original?.archivo_path) return;
+      const { url } = await urlFirmada(original.archivo_path);
+      if (url) window.open(url, "_blank", "noopener,noreferrer");
+    },
+    [contenidosPorSemana],
+  );
+
+  const semanasVista = semanas.map((semana) => ({ id: semana.id, numero: semana.numero, titulo: semana.titulo, fecha: semana.fecha }));
+  const contenidosVista: Record<string, ContenidoEstudianteVista[]> = Object.fromEntries(
+    Object.entries(contenidosPorSemana).map(([semanaId, contenidos]) => [
+      semanaId,
+      contenidos.map((c) => ({
+        id: c.id,
+        categoria: c.categoria,
+        titulo: c.titulo,
+        descripcion: c.descripcion,
+        tieneArchivo: Boolean(c.archivo_path),
+        urlExterna: c.url_externa,
+      })),
+    ]),
+  );
+
   return (
     <ModalPortal>
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4" onClick={onClose}>
         <div
-          className="w-full max-w-lg overflow-hidden border border-white/10 bg-white text-slate-900"
+          className="max-h-[85vh] w-full max-w-lg overflow-y-auto border border-white/10 bg-white text-slate-900"
           onClick={(event) => event.stopPropagation()}
         >
-          <div className="flex items-center justify-between bg-slate-900 px-5 py-3 text-white">
+          <div className="sticky top-0 flex items-center justify-between bg-slate-900 px-5 py-3 text-white">
             <span className="text-xs font-semibold uppercase tracking-wide text-emerald-300">
               Vista previa · así lo ve un estudiante
             </span>
@@ -46,13 +105,17 @@ export function VistaPreviaEstudianteModal({
               </div>
             </div>
 
-            <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50 p-8 text-center">
-              <p className="text-sm text-slate-500">
-                Aún no hay semanas publicadas para estudiantes en este curso.
-                <br />
-                En cuanto habilites una semana, su contenido aparecerá aquí exactamente así.
-              </p>
-            </div>
+            {cargando ? (
+              <p className="text-sm text-slate-400">Cargando...</p>
+            ) : (
+              <CursoContenidoLista
+                cargandoSemanaId={cargandoSemanaId}
+                contenidosPorSemana={contenidosVista}
+                onAbrirArchivo={handleAbrirArchivo}
+                onExpandirSemana={handleExpandirSemana}
+                semanas={semanasVista}
+              />
+            )}
           </div>
         </div>
       </div>

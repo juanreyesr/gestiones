@@ -1,5 +1,5 @@
 import { getSupabaseClient } from "@/lib/supabase";
-import type { CategoriaContenido, ContenidoRow } from "./types";
+import type { CategoriaContenido, ContenidoRow, VisibilidadEstudiantes } from "./types";
 
 export async function fetchContenidos(semanaId: string) {
   const supabase = getSupabaseClient();
@@ -39,5 +39,13 @@ export async function deleteContenido(id: string) {
   if (!supabase) return { error: "Faltan las variables de Supabase." };
 
   const { error } = await supabase.from("gestionesjj_curso_contenidos").delete().eq("id", id);
+  return { error: error?.message ?? null };
+}
+
+export async function setVisibilidadContenido(id: string, visibilidad: VisibilidadEstudiantes) {
+  const supabase = getSupabaseClient();
+  if (!supabase) return { error: "Faltan las variables de Supabase." };
+
+  const { error } = await supabase.from("gestionesjj_curso_contenidos").update({ visible_estudiantes: visibilidad }).eq("id", id);
   return { error: error?.message ?? null };
 }

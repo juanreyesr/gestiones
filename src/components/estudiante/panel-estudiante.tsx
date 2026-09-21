@@ -4,6 +4,7 @@ import { GraduationCap, KeyRound, LogOut } from "lucide-react";
 import { useState } from "react";
 import { logoutEstudiante, type MiCurso, type MiPerfil } from "@/lib/estudiante/estudiante-client";
 import { CambiarContrasenaModal } from "./cambiar-contrasena-modal";
+import { CursoEstudianteDetalle } from "./curso-estudiante-detalle";
 
 const ESTADO_LABEL: Record<string, string> = {
   activo: "En curso",
@@ -21,6 +22,7 @@ export function PanelEstudiante({
   perfil: MiPerfil;
 }) {
   const [modalContrasenaAbierto, setModalContrasenaAbierto] = useState(perfil.debeCambiarContrasena);
+  const [cursoAbierto, setCursoAbierto] = useState<MiCurso | null>(null);
 
   return (
     <div className="min-h-screen bg-white text-slate-900">
@@ -54,33 +56,43 @@ export function PanelEstudiante({
       </header>
 
       <main className="mx-auto max-w-4xl px-6 py-12 sm:px-10">
-        <h1 className="text-2xl font-semibold text-slate-900">Tus cursos</h1>
-        <p className="mt-1 text-sm text-slate-500">Aquí verás las semanas, tareas y calificaciones que tu docente publique.</p>
-
-        {cursos.length === 0 ? (
-          <div className="mt-10 rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-10 text-center">
-            <p className="text-sm text-slate-500">
-              Todavía no tienes ningún curso visible.
-              <br />
-              En cuanto tu docente active el acceso, aparecerá aquí.
-            </p>
-          </div>
+        {cursoAbierto ? (
+          <CursoEstudianteDetalle curso={cursoAbierto} onVolver={() => setCursoAbierto(null)} />
         ) : (
-          <div className="mt-8 grid gap-4 sm:grid-cols-2">
-            {cursos.map((curso) => (
-              <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm" key={curso.cursoId}>
-                <p className="text-xs font-medium uppercase tracking-wide text-slate-400">{curso.universidadNombre}</p>
-                <h2 className="mt-1 text-lg font-semibold text-slate-900">{curso.cursoNombre}</h2>
-                <p className="mt-1 text-sm text-slate-500">
-                  {[curso.cursoCodigo, curso.periodo].filter(Boolean).join(" · ") || "Sin datos adicionales"}
+          <>
+            <h1 className="text-2xl font-semibold text-slate-900">Tus cursos</h1>
+            <p className="mt-1 text-sm text-slate-500">Entra a un curso para ver sus semanas, tareas y calificaciones.</p>
+
+            {cursos.length === 0 ? (
+              <div className="mt-10 rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-10 text-center">
+                <p className="text-sm text-slate-500">
+                  Todavía no tienes ningún curso visible.
+                  <br />
+                  En cuanto tu docente active el acceso, aparecerá aquí.
                 </p>
-                <span className="mt-4 inline-flex items-center rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600">
-                  {ESTADO_LABEL[curso.estado] ?? curso.estado}
-                </span>
-                <p className="mt-4 text-xs text-slate-400">Aún no hay semanas publicadas.</p>
               </div>
-            ))}
-          </div>
+            ) : (
+              <div className="mt-8 grid gap-4 sm:grid-cols-2">
+                {cursos.map((curso) => (
+                  <button
+                    className="rounded-2xl border border-slate-200 bg-white p-6 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-md"
+                    key={curso.cursoId}
+                    onClick={() => setCursoAbierto(curso)}
+                    type="button"
+                  >
+                    <p className="text-xs font-medium uppercase tracking-wide text-slate-400">{curso.universidadNombre}</p>
+                    <h2 className="mt-1 text-lg font-semibold text-slate-900">{curso.cursoNombre}</h2>
+                    <p className="mt-1 text-sm text-slate-500">
+                      {[curso.cursoCodigo, curso.periodo].filter(Boolean).join(" · ") || "Sin datos adicionales"}
+                    </p>
+                    <span className="mt-4 inline-flex items-center rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600">
+                      {ESTADO_LABEL[curso.estado] ?? curso.estado}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </>
         )}
       </main>
 
