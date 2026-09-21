@@ -93,6 +93,15 @@ const DICCIONARIO: Record<Idioma, Record<string, string>> = {
     chat_titulo: "Chat con tu docente",
     chat_sin_mensajes: "Aún no hay mensajes. Escribe el primero.",
     chat_placeholder: "Escribe un mensaje...",
+
+    // Notificaciones
+    notif_titulo: "Notificaciones",
+    notif_vacio: "No tienes notificaciones.",
+    notif_marcar_todas: "Marcar todas como leídas",
+    notif_tipo_contenido: "Nueva semana disponible",
+    notif_tipo_tarea: "Nueva tarea publicada",
+    notif_tipo_calificacion: "Nueva calificación publicada",
+    notif_tipo_mensaje: "Nuevo mensaje de tu docente",
   },
   en: {
     login_titulo: "Student access",
@@ -166,6 +175,14 @@ const DICCIONARIO: Record<Idioma, Record<string, string>> = {
     chat_titulo: "Chat with your teacher",
     chat_sin_mensajes: "No messages yet. Write the first one.",
     chat_placeholder: "Type a message...",
+
+    notif_titulo: "Notifications",
+    notif_vacio: "You have no notifications.",
+    notif_marcar_todas: "Mark all as read",
+    notif_tipo_contenido: "New week available",
+    notif_tipo_tarea: "New assignment published",
+    notif_tipo_calificacion: "New grade published",
+    notif_tipo_mensaje: "New message from your teacher",
   },
   pt: {
     login_titulo: "Acesso para estudantes",
@@ -239,6 +256,14 @@ const DICCIONARIO: Record<Idioma, Record<string, string>> = {
     chat_titulo: "Conversa com seu professor",
     chat_sin_mensajes: "Ainda não há mensagens. Escreva a primeira.",
     chat_placeholder: "Digite uma mensagem...",
+
+    notif_titulo: "Notificações",
+    notif_vacio: "Você não tem notificações.",
+    notif_marcar_todas: "Marcar todas como lidas",
+    notif_tipo_contenido: "Nova semana disponível",
+    notif_tipo_tarea: "Nova tarefa publicada",
+    notif_tipo_calificacion: "Nova nota publicada",
+    notif_tipo_mensaje: "Nova mensagem do seu professor",
   },
 };
 
