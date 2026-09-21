@@ -65,17 +65,17 @@ export function PanelEstudiante({
 
   return (
     <div className="min-h-screen bg-white text-slate-900">
-      <header className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 px-6 py-4 sm:px-10">
+      <header className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 px-4 py-4 sm:px-10">
         <div className="flex items-center gap-2 text-slate-500">
           <GraduationCap className="h-5 w-5" />
           <span className="text-sm font-medium">GestionesJJ</span>
         </div>
-        <div className="flex items-center gap-4">
-          <div className="text-right">
-            <p className="text-sm font-semibold text-slate-900">
+        <div className="flex flex-wrap items-center justify-end gap-2 sm:gap-4">
+          <div className="min-w-0 text-right">
+            <p className="truncate text-sm font-semibold text-slate-900">
               {t("panel_saludo")}, {perfil.nombre.split(" ")[0]}
             </p>
-            <p className="text-xs text-slate-400">{perfil.correo}</p>
+            <p className="truncate text-xs text-slate-400">{perfil.correo}</p>
           </div>
           <SelectorIdioma onChange={(nuevo) => void guardarIdioma(nuevo)} />
           <button

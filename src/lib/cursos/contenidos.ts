@@ -34,6 +34,24 @@ export async function insertContenido(payload: {
   return { id: (data?.id as string | undefined) ?? null, error: error?.message ?? null };
 }
 
+export async function updateContenido(
+  id: string,
+  payload: {
+    titulo: string;
+    descripcion?: string | null;
+    archivo_path?: string | null;
+    archivo_nombre?: string | null;
+    archivo_mime?: string | null;
+    url_externa?: string | null;
+  },
+) {
+  const supabase = getSupabaseClient();
+  if (!supabase) return { error: "Faltan las variables de Supabase." };
+
+  const { error } = await supabase.from("gestionesjj_curso_contenidos").update(payload).eq("id", id);
+  return { error: error?.message ?? null };
+}
+
 export async function deleteContenido(id: string) {
   const supabase = getSupabaseClient();
   if (!supabase) return { error: "Faltan las variables de Supabase." };
