@@ -60,6 +60,7 @@ export function CursoDetalle({
             <p className="text-sm text-slate-400">
               {[curso.codigo, curso.periodo, curso.horario].filter(Boolean).join(" · ") || "Sin datos adicionales"}
             </p>
+            {curso.docente_nombre ? <p className="text-xs text-slate-500">Docente: {curso.docente_nombre}</p> : null}
           </div>
         </div>
 

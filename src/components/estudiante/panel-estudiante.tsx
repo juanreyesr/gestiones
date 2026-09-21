@@ -151,6 +151,11 @@ export function PanelEstudiante({
                     <p className="mt-1 text-sm text-slate-500">
                       {[curso.cursoCodigo, curso.periodo].filter(Boolean).join(" · ") || t("panel_sin_datos")}
                     </p>
+                    {curso.docenteNombre ? (
+                      <p className="mt-0.5 text-xs text-slate-400">
+                        {t("panel_docente")}: {curso.docenteNombre}
+                      </p>
+                    ) : null}
                     <span className="mt-4 inline-flex items-center rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600">
                       {ESTADO_LABEL[curso.estado] ?? curso.estado}
                     </span>

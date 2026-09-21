@@ -34,6 +34,7 @@ export type CursoImpartidoRow = {
   estado: EstadoCurso;
   origen_curso_id: string | null;
   acceso_estudiantes: boolean;
+  docente_nombre: string | null;
   created_at: string;
   updated_at: string;
 };

@@ -69,6 +69,7 @@ export type MiCurso = {
   periodo: string | null;
   estado: string;
   universidadNombre: string;
+  docenteNombre: string | null;
 };
 
 export async function fetchMisCursos(): Promise<{ data: MiCurso[]; error: string | null }> {
@@ -85,6 +86,7 @@ export async function fetchMisCursos(): Promise<{ data: MiCurso[]; error: string
     periodo: string | null;
     estado: string;
     universidad_nombre: string;
+    docente_nombre: string | null;
   }>;
 
   return {
@@ -95,6 +97,7 @@ export async function fetchMisCursos(): Promise<{ data: MiCurso[]; error: string
       periodo: fila.periodo,
       estado: fila.estado,
       universidadNombre: fila.universidad_nombre,
+      docenteNombre: fila.docente_nombre,
     })),
     error: null,
   };

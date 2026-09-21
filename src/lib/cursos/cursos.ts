@@ -51,6 +51,7 @@ export async function insertCurso(payload: {
   periodo?: string | null;
   horario?: string | null;
   estado?: EstadoCurso;
+  docente_nombre?: string | null;
 }) {
   const supabase = getSupabaseClient();
   if (!supabase) return { id: null as string | null, error: "Faltan las variables de Supabase." };
@@ -68,6 +69,7 @@ export async function updateCurso(
     periodo?: string | null;
     horario?: string | null;
     estado?: EstadoCurso;
+    docente_nombre?: string | null;
   },
 ) {
   const supabase = getSupabaseClient();
@@ -130,6 +132,7 @@ export async function clonarCurso(
     periodo?: string | null;
     horario?: string | null;
     descripcion?: string | null;
+    docente_nombre?: string | null;
   },
 ) {
   const supabase = getSupabaseClient();
@@ -144,6 +147,7 @@ export async function clonarCurso(
       periodo: destino.periodo ?? null,
       horario: destino.horario ?? null,
       descripcion: destino.descripcion ?? null,
+      docente_nombre: destino.docente_nombre ?? null,
       origen_curso_id: origenId,
     })
     .select("id")
