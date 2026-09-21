@@ -1,13 +1,40 @@
 "use client";
 
-import { ClipboardCheck, Pencil, Plus, Trash2 } from "lucide-react";
+import { ClipboardCheck, Eye, EyeOff, Pencil, Plus, Trash2, Upload } from "lucide-react";
 import { useState } from "react";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { ModalPortal } from "@/components/modal-portal";
-import { deleteActividad, insertActividad, updateActividad } from "@/lib/cursos/actividades";
-import { TIPO_ACTIVIDAD_LABELS, type ActividadRow, type EstudianteRow, type TipoActividad } from "@/lib/cursos/types";
+import { deleteActividad, insertActividad, setVisibilidadActividad, updateActividad } from "@/lib/cursos/actividades";
+import {
+  TIPO_ACTIVIDAD_LABELS,
+  formatearFechaLimite,
+  type ActividadRow,
+  type EstudianteRow,
+  type TipoActividad,
+  type VisibilidadEstudiantes,
+} from "@/lib/cursos/types";
 import { CalificarActividadModal } from "./calificar-actividad-modal";
 import { BTN_GHOST, BTN_PRIMARY, Chip, EmptyState, ErrorBanner, Field } from "./ui";
+
+const VISIBILIDAD_SIGUIENTE: Record<VisibilidadEstudiantes, VisibilidadEstudiantes> = {
+  hereda: "visible",
+  visible: "oculto",
+  oculto: "hereda",
+};
+
+const VISIBILIDAD_LABEL: Record<VisibilidadEstudiantes, string> = {
+  hereda: "Según la semana",
+  visible: "Forzado visible",
+  oculto: "Forzado oculto",
+};
+
+function isoAFechaLocal(iso: string | null): string {
+  if (!iso) return "";
+  const fecha = new Date(iso);
+  if (Number.isNaN(fecha.getTime())) return "";
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${fecha.getFullYear()}-${pad(fecha.getMonth() + 1)}-${pad(fecha.getDate())}T${pad(fecha.getHours())}:${pad(fecha.getMinutes())}`;
+}
 
 export function SemanaActividadesSection({
   actividades,
@@ -25,6 +52,19 @@ export function SemanaActividadesSection({
   const [eliminando, setEliminando] = useState(false);
   const [error, setError] = useState("");
   const [calificando, setCalificando] = useState<ActividadRow | null>(null);
+  const [cambiandoVisibilidad, setCambiandoVisibilidad] = useState<string | null>(null);
+
+  const handleCambiarVisibilidad = async (actividad: ActividadRow) => {
+    const siguiente = VISIBILIDAD_SIGUIENTE[actividad.visible_estudiantes];
+    setCambiandoVisibilidad(actividad.id);
+    const { error: visibilidadError } = await setVisibilidadActividad(actividad.id, siguiente);
+    setCambiandoVisibilidad(null);
+    if (visibilidadError) {
+      setError(visibilidadError);
+      return;
+    }
+    await onReload();
+  };
 
   const handleEliminar = async () => {
     if (!eliminar) return;
@@ -69,11 +109,27 @@ export function SemanaActividadesSection({
                   {actividad.punteo !== null ? `${actividad.punteo} pts · ` : ""}
                   {actividad.entrega_proxima_semana ? "Se entrega la próxima semana" : "Sin fecha de entrega definida"}
                 </div>
+                {actividad.entrega_habilitada ? (
+                  <div className="mt-1 flex items-center gap-1.5 text-xs text-amber-200">
+                    <Upload className="h-3.5 w-3.5" />
+                    Entrega de archivo habilitada · {formatearFechaLimite(actividad.fecha_limite)}
+                  </div>
+                ) : null}
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2">
                 <button className={BTN_GHOST} onClick={() => setCalificando(actividad)} type="button">
                   <ClipboardCheck className="h-4 w-4" />
                   Calificar
+                </button>
+                <button
+                  className={BTN_GHOST}
+                  disabled={cambiandoVisibilidad === actividad.id}
+                  onClick={() => handleCambiarVisibilidad(actividad)}
+                  title="Clic para cambiar: según la semana → visible siempre → oculto siempre"
+                  type="button"
+                >
+                  {actividad.visible_estudiantes === "oculto" ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  {VISIBILIDAD_LABEL[actividad.visible_estudiantes]}
                 </button>
                 <button
                   className="flex h-9 w-9 items-center justify-center border border-white/10 bg-white/8 text-slate-200 hover:border-emerald-300/50"
@@ -146,6 +202,8 @@ function ActividadModal({
   const [entregaProximaSemana, setEntregaProximaSemana] = useState(actividad?.entrega_proxima_semana ?? true);
   const [tienePunteo, setTienePunteo] = useState(actividad?.punteo !== null && actividad?.punteo !== undefined);
   const [punteo, setPunteo] = useState(actividad?.punteo !== null && actividad?.punteo !== undefined ? String(actividad.punteo) : "");
+  const [entregaHabilitada, setEntregaHabilitada] = useState(actividad?.entrega_habilitada ?? false);
+  const [fechaLimite, setFechaLimite] = useState(isoAFechaLocal(actividad?.fecha_limite ?? null));
   const [guardando, setGuardando] = useState(false);
   const [error, setError] = useState("");
 
@@ -161,6 +219,8 @@ function ActividadModal({
       descripcion: descripcion.trim() || null,
       entrega_proxima_semana: entregaProximaSemana,
       punteo: tienePunteo && punteo.trim() ? Number(punteo) : null,
+      entrega_habilitada: entregaHabilitada,
+      fecha_limite: fechaLimite ? new Date(fechaLimite).toISOString() : null,
     };
     const { error: saveError } = actividad
       ? await updateActividad(actividad.id, payload)
@@ -205,6 +265,19 @@ function ActividadModal({
               />
               Se entrega la próxima semana
             </label>
+            <label className="flex items-center gap-2 text-sm text-slate-200">
+              <input
+                checked={entregaHabilitada}
+                onChange={(event) => setEntregaHabilitada(event.target.checked)}
+                type="checkbox"
+              />
+              Habilitar entrega de archivo por el estudiante
+            </label>
+            {entregaHabilitada ? (
+              <Field label="Fecha límite (tu hora local)">
+                <input className="field" onChange={(event) => setFechaLimite(event.target.value)} type="datetime-local" value={fechaLimite} />
+              </Field>
+            ) : null}
             <div className="grid gap-1.5">
               <span className="text-xs font-semibold uppercase text-slate-400">¿Deseas asignarle un punteo?</span>
               <div className="flex gap-2">

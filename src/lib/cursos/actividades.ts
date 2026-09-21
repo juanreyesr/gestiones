@@ -1,5 +1,5 @@
 import { getSupabaseClient } from "@/lib/supabase";
-import type { ActividadConSemanaRow, ActividadRow, CalificacionRow, TipoActividad } from "./types";
+import type { ActividadConSemanaRow, ActividadRow, CalificacionRow, TipoActividad, VisibilidadEstudiantes } from "./types";
 
 export async function fetchActividades(semanaId: string) {
   const supabase = getSupabaseClient();
@@ -36,6 +36,8 @@ export async function insertActividad(payload: {
   descripcion?: string | null;
   punteo?: number | null;
   entrega_proxima_semana?: boolean;
+  entrega_habilitada?: boolean;
+  fecha_limite?: string | null;
 }) {
   const supabase = getSupabaseClient();
   if (!supabase) return { id: null as string | null, error: "Faltan las variables de Supabase." };
@@ -52,6 +54,8 @@ export async function updateActividad(
     descripcion?: string | null;
     punteo?: number | null;
     entrega_proxima_semana?: boolean;
+    entrega_habilitada?: boolean;
+    fecha_limite?: string | null;
   },
 ) {
   const supabase = getSupabaseClient();
@@ -61,6 +65,14 @@ export async function updateActividad(
     .from("gestionesjj_curso_actividades")
     .update({ ...payload, updated_at: new Date().toISOString() })
     .eq("id", id);
+  return { error: error?.message ?? null };
+}
+
+export async function setVisibilidadActividad(id: string, visibilidad: VisibilidadEstudiantes) {
+  const supabase = getSupabaseClient();
+  if (!supabase) return { error: "Faltan las variables de Supabase." };
+
+  const { error } = await supabase.from("gestionesjj_curso_actividades").update({ visible_estudiantes: visibilidad }).eq("id", id);
   return { error: error?.message ?? null };
 }
 
@@ -98,6 +110,19 @@ export async function upsertCalificacion(payload: {
   const { error } = await supabase
     .from("gestionesjj_curso_calificaciones")
     .upsert({ ...payload, updated_at: new Date().toISOString() }, { onConflict: "actividad_id,estudiante_id" });
+  return { error: error?.message ?? null };
+}
+
+/** Publica todas las calificaciones ya guardadas de esta tarea que aún no se le han mostrado al estudiante. */
+export async function publicarCalificacionesPendientes(actividadId: string) {
+  const supabase = getSupabaseClient();
+  if (!supabase) return { error: "Faltan las variables de Supabase." };
+
+  const { error } = await supabase
+    .from("gestionesjj_curso_calificaciones")
+    .update({ publicado_en: new Date().toISOString() })
+    .eq("actividad_id", actividadId)
+    .is("publicado_en", null);
   return { error: error?.message ?? null };
 }
 
