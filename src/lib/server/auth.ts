@@ -7,7 +7,9 @@ const OWNER_EMAIL = "lic.juanreyesr@gmail.com";
  * Verifica que la petición venga del dueño de la plataforma: el navegador
  * envía el access token de Supabase en Authorization: Bearer.
  */
-export async function requireOwner(request: Request): Promise<{ ok: true } | { ok: false; status: number; error: string }> {
+export async function requireOwner(
+  request: Request,
+): Promise<{ ok: true; ownerId: string } | { ok: false; status: number; error: string }> {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const key = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
   if (!url || !key) {
@@ -26,7 +28,7 @@ export async function requireOwner(request: Request): Promise<{ ok: true } | { o
     return { ok: false, status: 401, error: "No autorizado." };
   }
 
-  return { ok: true };
+  return { ok: true, ownerId: data.user.id };
 }
 
 /**

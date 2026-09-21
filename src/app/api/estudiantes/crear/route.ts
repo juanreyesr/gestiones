@@ -90,6 +90,7 @@ export async function POST(request: Request) {
   const { data: estudianteCreado, error: insertError } = await admin
     .from("gestionesjj_estudiantes")
     .insert({
+      created_by: auth.ownerId,
       auth_user_id: nuevoUsuario.user.id,
       nombre,
       correo,

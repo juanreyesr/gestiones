@@ -83,6 +83,7 @@ export async function POST(request: Request) {
     const { data: estudianteCreado, error: insertEstudianteError } = await admin
       .from("gestionesjj_estudiantes")
       .insert({
+        created_by: auth.ownerId,
         auth_user_id: nuevoUsuario.user.id,
         nombre: solicitud.nombre,
         correo: solicitud.correo,
@@ -102,6 +103,7 @@ export async function POST(request: Request) {
   const { data: cursoEstudiante, error: insertInscripcionError } = await admin
     .from("gestionesjj_curso_estudiantes")
     .insert({
+      created_by: auth.ownerId,
       curso_id: solicitud.curso_id,
       nombre: solicitud.nombre,
       correo: solicitud.correo,
@@ -115,6 +117,7 @@ export async function POST(request: Request) {
   }
 
   await admin.from("gestionesjj_curso_estudiante_eventos").insert({
+    created_by: auth.ownerId,
     curso_id: solicitud.curso_id,
     estudiante_id: cursoEstudiante.id,
     tipo: "asignacion",
