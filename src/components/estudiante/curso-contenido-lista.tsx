@@ -5,13 +5,15 @@ import type React from "react";
 import { useState } from "react";
 import type { Idioma } from "@/lib/cursos/types";
 import { formatearFecha, formatearFechaHora, formatearFechaLimite } from "@/lib/cursos/types";
-import { traducir } from "@/lib/estudiante/i18n";
+import { descripcionEnIdioma, traducir } from "@/lib/estudiante/i18n";
 
 export type ContenidoEstudianteVista = {
   id: string;
   categoria: "contenido" | "material_extra";
   titulo: string;
   descripcion: string | null;
+  descripcionEn?: string | null;
+  descripcionPt?: string | null;
   tieneArchivo: boolean;
   urlExterna: string | null;
 };
@@ -27,6 +29,8 @@ export type TareaEstudianteVista = {
   id: string;
   titulo: string;
   descripcion: string | null;
+  descripcionEn?: string | null;
+  descripcionPt?: string | null;
   punteo: number | null;
   entregaHabilitada: boolean;
   fechaLimite: string | null;
@@ -122,6 +126,7 @@ export function CursoContenidoLista({
                   ) : (
                     <div className="grid gap-2">
                       {contenidos.map((contenido) => {
+                        const descripcion = descripcionEnIdioma(idioma, contenido.descripcion, contenido.descripcionEn, contenido.descripcionPt);
                         return (
                           <div
                             className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-slate-100 bg-slate-50 px-3 py-2"
@@ -135,7 +140,7 @@ export function CursoContenidoLista({
                               )}
                               <div>
                                 <p className="text-sm font-medium text-slate-800">{contenido.titulo}</p>
-                                {contenido.descripcion ? <p className="text-xs text-slate-400">{contenido.descripcion}</p> : null}
+                                {descripcion ? <p className="text-xs text-slate-400">{descripcion}</p> : null}
                               </div>
                             </div>
                             <div className="flex items-center gap-2">
@@ -219,6 +224,7 @@ function TareaItem({
 }) {
   const [archivosAbiertos, setArchivosAbiertos] = useState(false);
   const t = (clave: string) => traducir(idioma, clave);
+  const descripcion = descripcionEnIdioma(idioma, tarea.descripcion, tarea.descripcionEn, tarea.descripcionPt);
   const publicada = tarea.miNota !== null || tarea.miComentarioCalificacion !== null;
 
   const handleSeleccionarArchivo = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -242,7 +248,7 @@ function TareaItem({
             {tarea.titulo}
             {tarea.punteo !== null ? ` · ${tarea.punteo} pts` : ""}
           </p>
-          {tarea.descripcion ? <p className="mt-0.5 text-xs text-slate-500">{tarea.descripcion}</p> : null}
+          {descripcion ? <p className="mt-0.5 text-xs text-slate-500">{descripcion}</p> : null}
           {tarea.entregaHabilitada ? (
             <p className="mt-1 text-xs text-slate-400">
               {t("tarea_fecha_limite")}: {formatearFechaLimite(tarea.fechaLimite, idioma)}

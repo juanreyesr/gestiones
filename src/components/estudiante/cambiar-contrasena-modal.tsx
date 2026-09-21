@@ -2,15 +2,21 @@
 
 import { useState } from "react";
 import { ModalPortal } from "@/components/modal-portal";
-import { cambiarMiContrasena } from "@/lib/estudiante/estudiante-client";
+import { cambiarMiContrasena, omitirCambioContrasena } from "@/lib/estudiante/estudiante-client";
 import { useIdioma } from "./idioma-context";
 
 export function CambiarContrasenaModal({ onCambiada, onClose }: { onCambiada: () => void; onClose: () => void }) {
   const [nueva, setNueva] = useState("");
   const [confirmar, setConfirmar] = useState("");
+  const [noVolverPreguntar, setNoVolverPreguntar] = useState(false);
   const [guardando, setGuardando] = useState(false);
   const [error, setError] = useState("");
   const { t } = useIdioma();
+
+  const handleAhoraNo = async () => {
+    if (noVolverPreguntar) await omitirCambioContrasena();
+    onClose();
+  };
 
   const handleGuardar = async () => {
     if (nueva.length < 8) {
@@ -64,8 +70,17 @@ export function CambiarContrasenaModal({ onCambiada, onClose }: { onCambiada: ()
 
           {error ? <p className="mt-3 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">{error}</p> : null}
 
+          <label className="mt-4 flex items-center gap-2 text-sm text-slate-500">
+            <input checked={noVolverPreguntar} onChange={(event) => setNoVolverPreguntar(event.target.checked)} type="checkbox" />
+            {t("contrasena_no_volver_preguntar")}
+          </label>
+
           <div className="mt-5 flex justify-end gap-3">
-            <button className="rounded-lg px-4 py-2 text-sm font-semibold text-slate-500 hover:text-slate-800" onClick={onClose} type="button">
+            <button
+              className="rounded-lg px-4 py-2 text-sm font-semibold text-slate-500 hover:text-slate-800"
+              onClick={() => void handleAhoraNo()}
+              type="button"
+            >
               {t("contrasena_ahora_no")}
             </button>
             <button

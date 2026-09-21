@@ -1,9 +1,12 @@
 "use client";
 
-import { CalendarDays, ChevronLeft, ClipboardList, Eye, FileText, QrCode, Users } from "lucide-react";
+import { CalendarDays, ChevronLeft, ClipboardCheck, ClipboardList, Eye, FileText, MessageCircle, QrCode, Users } from "lucide-react";
 import type React from "react";
-import { useState } from "react";
+import { useCallback, useEffect, useState } from "react";
+import { fetchCalificacionesDeCurso } from "@/lib/cursos/actividades";
 import { setAccesoEstudiantes, setAutoasignacion } from "@/lib/cursos/cursos";
+import { fetchEstudiantes } from "@/lib/cursos/estudiantes";
+import { fetchMensajesNoLeidosPorEstudiante } from "@/lib/cursos/mensajes";
 import type { CursoImpartidoRow, SemanaRow, UniversidadRow } from "@/lib/cursos/types";
 import { ESTADO_CURSO_LABELS } from "@/lib/cursos/types";
 import { CompartirAsignacionModal } from "./compartir-asignacion-modal";
@@ -40,6 +43,29 @@ export function CursoDetalle({
   const [autoasignacion, setAutoasignacionState] = useState(curso.autoasignacion_activa);
   const [guardandoAutoasignacion, setGuardandoAutoasignacion] = useState(false);
   const [compartirAbierto, setCompartirAbierto] = useState(false);
+  const [mensajesNoLeidos, setMensajesNoLeidos] = useState(0);
+  const [tareasPorCalificar, setTareasPorCalificar] = useState(0);
+
+  const cargarPendientes = useCallback(async () => {
+    const { data: estudiantes } = await fetchEstudiantes(curso.id);
+    const idsGlobales = estudiantes
+      .filter((e) => e.estado === "activo")
+      .map((e) => e.estudiante_id)
+      .filter((id): id is string => Boolean(id));
+    const [{ data: noLeidosPorEstudiante }, { data: calificaciones }] = await Promise.all([
+      fetchMensajesNoLeidosPorEstudiante(idsGlobales),
+      fetchCalificacionesDeCurso(curso.id),
+    ]);
+    setMensajesNoLeidos(Object.values(noLeidosPorEstudiante).reduce((total, n) => total + n, 0));
+    setTareasPorCalificar(calificaciones.filter((c) => c.entregado && c.nota === null).length);
+  }, [curso.id]);
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- consulta inicial de pendientes al abrir el curso
+    void cargarPendientes();
+    const interval = setInterval(() => void cargarPendientes(), 20000);
+    return () => clearInterval(interval);
+  }, [cargarPendientes]);
 
   const handleToggleAcceso = async () => {
     const siguiente = !acceso;
@@ -113,6 +139,39 @@ export function CursoDetalle({
           </button>
         </div>
       </div>
+
+      {mensajesNoLeidos > 0 || tareasPorCalificar > 0 ? (
+        <div className="flex flex-wrap gap-3">
+          {mensajesNoLeidos > 0 ? (
+            <button
+              className="relative flex items-center gap-2 border border-sky-300/40 bg-sky-300/10 px-4 py-2 text-sm font-semibold text-sky-100 hover:border-sky-300/70"
+              onClick={() => setTab("estudiantes")}
+              title="Ver conversaciones con estudiantes"
+              type="button"
+            >
+              <MessageCircle className="h-4 w-4" />
+              Mensajes sin leer
+              <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-sky-300 px-1.5 text-xs font-bold text-slate-950">
+                {mensajesNoLeidos}
+              </span>
+            </button>
+          ) : null}
+          {tareasPorCalificar > 0 ? (
+            <button
+              className="relative flex items-center gap-2 border border-amber-300/40 bg-amber-300/10 px-4 py-2 text-sm font-semibold text-amber-100 hover:border-amber-300/70"
+              onClick={() => setTab("semanas")}
+              title="Ver tareas entregadas pendientes de calificar"
+              type="button"
+            >
+              <ClipboardCheck className="h-4 w-4" />
+              Tareas por calificar
+              <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-amber-300 px-1.5 text-xs font-bold text-slate-950">
+                {tareasPorCalificar}
+              </span>
+            </button>
+          ) : null}
+        </div>
+      ) : null}
 
       <CursoTabs onChange={setTab} value={tab} />
 
