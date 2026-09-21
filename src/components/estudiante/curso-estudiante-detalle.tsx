@@ -21,6 +21,7 @@ import {
   type MiEstadoCurso,
   type MiSemana,
 } from "@/lib/estudiante/estudiante-client";
+import { useIdioma } from "./idioma-context";
 
 export function CursoEstudianteDetalle({ curso, onVolver }: { curso: MiCurso; onVolver: () => void }) {
   const [semanas, setSemanas] = useState<MiSemana[]>([]);
@@ -32,6 +33,7 @@ export function CursoEstudianteDetalle({ curso, onVolver }: { curso: MiCurso; on
   const [cargandoSemanaId, setCargandoSemanaId] = useState<string | null>(null);
   const [subiendoTareaId, setSubiendoTareaId] = useState<string | null>(null);
   const [error, setError] = useState("");
+  const { idioma, t } = useIdioma();
 
   useEffect(() => {
     let cancelado = false;
@@ -59,20 +61,22 @@ export function CursoEstudianteDetalle({ curso, onVolver }: { curso: MiCurso; on
     ]);
     setCargandoSemanaId(null);
     if (contenidosError || tareasError) {
-      setError(contenidosError ?? tareasError ?? "No se pudo cargar la semana.");
+      setError(contenidosError ?? tareasError ?? t("curso_error_semana"));
       return;
     }
     setContenidosPorSemana((prev) => ({ ...prev, [semanaId]: contenidos }));
     setTareasPorSemana((prev) => ({ ...prev, [semanaId]: tareasData }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- t() cambia de identidad cada render (nueva función), no debe reprogramar el callback
   }, []);
 
   const handleAbrirArchivo = useCallback(async (contenido: ContenidoEstudianteVista) => {
     const { url, error: fetchError } = await obtenerUrlContenido(contenido.id);
     if (fetchError || !url) {
-      setError(fetchError ?? "No se pudo abrir el archivo.");
+      setError(fetchError ?? t("curso_error_archivo"));
       return;
     }
     window.open(url, "_blank", "noopener,noreferrer");
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- t() cambia de identidad cada render (nueva función), no debe reprogramar el callback
   }, []);
 
   const handleSubirArchivo = useCallback(async (tarea: TareaEstudianteVista, archivo: File) => {
@@ -105,24 +109,25 @@ export function CursoEstudianteDetalle({ curso, onVolver }: { curso: MiCurso; on
   const handleDescargarArchivoPropio = useCallback(async (archivo: ArchivoPropioVista) => {
     const { url, error: fetchError } = await obtenerUrlArchivoPropio(archivo.id);
     if (fetchError || !url) {
-      setError(fetchError ?? "No se pudo abrir el archivo.");
+      setError(fetchError ?? t("curso_error_archivo"));
       return;
     }
     window.open(url, "_blank", "noopener,noreferrer");
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- t() cambia de identidad cada render (nueva función), no debe reprogramar el callback
   }, []);
 
   return (
     <div>
       <button className="mb-6 flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-800" onClick={onVolver} type="button">
         <ChevronLeft className="h-4 w-4" />
-        Volver a mis cursos
+        {t("curso_volver")}
       </button>
 
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <p className="text-xs font-medium uppercase tracking-wide text-slate-400">{curso.universidadNombre}</p>
           <h1 className="mt-1 text-2xl font-semibold text-slate-900">{curso.cursoNombre}</h1>
-          <p className="mt-1 text-sm text-slate-500">{[curso.cursoCodigo, curso.periodo].filter(Boolean).join(" · ") || "Sin datos adicionales"}</p>
+          <p className="mt-1 text-sm text-slate-500">{[curso.cursoCodigo, curso.periodo].filter(Boolean).join(" · ") || t("panel_sin_datos")}</p>
         </div>
         {estadoCurso?.aprobado !== null && estadoCurso?.aprobado !== undefined ? (
           <span
@@ -131,7 +136,7 @@ export function CursoEstudianteDetalle({ curso, onVolver }: { curso: MiCurso; on
             }`}
           >
             {estadoCurso.aprobado ? <CheckCircle2 className="h-4 w-4" /> : <XCircle className="h-4 w-4" />}
-            {estadoCurso.aprobado ? "Aprobado" : "Reprobado"}
+            {estadoCurso.aprobado ? t("curso_aprobado") : t("curso_reprobado")}
           </span>
         ) : null}
       </div>
@@ -140,11 +145,12 @@ export function CursoEstudianteDetalle({ curso, onVolver }: { curso: MiCurso; on
 
       <div className="mt-8">
         {cargando ? (
-          <p className="text-sm text-slate-400">Cargando...</p>
+          <p className="text-sm text-slate-400">{t("central_cargando")}</p>
         ) : (
           <CursoContenidoLista
             cargandoSemanaId={cargandoSemanaId}
             contenidosPorSemana={contenidosPorSemana}
+            idioma={idioma}
             onAbrirArchivo={handleAbrirArchivo}
             onExpandirSemana={handleExpandirSemana}
             semanas={semanas}

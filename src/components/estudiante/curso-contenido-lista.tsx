@@ -3,7 +3,9 @@
 import { ChevronDown, ChevronRight, ClipboardList, Download, FileText, Link2, Upload } from "lucide-react";
 import type React from "react";
 import { useState } from "react";
+import type { Idioma } from "@/lib/cursos/types";
 import { formatearFecha, formatearFechaHora, formatearFechaLimite } from "@/lib/cursos/types";
+import { traducir } from "@/lib/estudiante/i18n";
 
 export type ContenidoEstudianteVista = {
   id: string;
@@ -48,13 +50,18 @@ type TareasConfig = {
 /**
  * Lista de semanas/contenidos/tareas visibles para un estudiante, en
  * acordeón. Presentacional y compartida: la usa el panel real del
- * estudiante (datos vía RPC, con entrega de archivos habilitada) y la
- * vista previa "Ver como estudiante" del admin (datos leídos directo por
- * el owner, sin acciones de escritura: se omite `tareas.onSubirArchivo`).
+ * estudiante (datos vía RPC, con entrega de archivos habilitada, en su
+ * idioma preferido) y la vista previa "Ver como estudiante" del admin
+ * (datos leídos directo por el owner, sin acciones de escritura: se omite
+ * `tareas.onSubirArchivo`, siempre en español). Por eso traduce con la
+ * función pura `traducir(idioma, clave)` en vez de un contexto de React:
+ * así no depende de que el árbol del admin esté envuelto en
+ * `IdiomaProvider`.
  */
 export function CursoContenidoLista({
   cargandoSemanaId,
   contenidosPorSemana,
+  idioma = "es",
   onAbrirArchivo,
   onExpandirSemana,
   semanas,
@@ -62,12 +69,14 @@ export function CursoContenidoLista({
 }: {
   cargandoSemanaId: string | null;
   contenidosPorSemana: Record<string, ContenidoEstudianteVista[] | undefined>;
+  idioma?: Idioma;
   onAbrirArchivo: (contenido: ContenidoEstudianteVista) => void;
   onExpandirSemana: (semanaId: string) => void;
   semanas: SemanaEstudianteVista[];
   tareas?: TareasConfig;
 }) {
   const [abierta, setAbierta] = useState<string | null>(null);
+  const t = (clave: string) => traducir(idioma, clave);
 
   const toggle = (semanaId: string) => {
     const siguiente = abierta === semanaId ? null : semanaId;
@@ -78,7 +87,7 @@ export function CursoContenidoLista({
   if (!semanas.length) {
     return (
       <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-8 text-center text-sm text-slate-500">
-        Aún no hay semanas habilitadas para este curso.
+        {t("lista_sin_semanas")}
       </div>
     );
   }
@@ -94,7 +103,7 @@ export function CursoContenidoLista({
             <button className="flex w-full items-center justify-between px-4 py-3 text-left" onClick={() => toggle(semana.id)} type="button">
               <div>
                 <p className="text-sm font-semibold text-slate-900">
-                  Semana {semana.numero}
+                  {t("lista_semana")} {semana.numero}
                   {semana.titulo ? ` — ${semana.titulo}` : ""}
                 </p>
                 <p className="text-xs text-slate-400">{formatearFecha(semana.fecha)}</p>
@@ -105,11 +114,11 @@ export function CursoContenidoLista({
             {estaAbierta ? (
               <div className="grid gap-4 border-t border-slate-100 p-4">
                 <div>
-                  <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400">Contenidos</p>
+                  <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400">{t("lista_contenidos")}</p>
                   {cargandoSemanaId === semana.id ? (
-                    <p className="text-sm text-slate-400">Cargando...</p>
+                    <p className="text-sm text-slate-400">{t("central_cargando")}</p>
                   ) : !contenidos || contenidos.length === 0 ? (
-                    <p className="text-sm text-slate-400">Aún no hay contenido publicado en esta semana.</p>
+                    <p className="text-sm text-slate-400">{t("lista_sin_contenido")}</p>
                   ) : (
                     <div className="grid gap-2">
                       {contenidos.map((contenido) => {
@@ -137,7 +146,7 @@ export function CursoContenidoLista({
                                   type="button"
                                 >
                                   <Download className="h-3.5 w-3.5" />
-                                  Ver / descargar
+                                  {t("lista_ver_descargar")}
                                 </button>
                               ) : contenido.urlExterna ? (
                                 <button
@@ -146,7 +155,7 @@ export function CursoContenidoLista({
                                   type="button"
                                 >
                                   <Link2 className="h-3.5 w-3.5" />
-                                  Abrir enlace
+                                  {t("lista_abrir_enlace")}
                                 </button>
                               ) : null}
                             </div>
@@ -159,16 +168,17 @@ export function CursoContenidoLista({
 
                 {tareas ? (
                   <div>
-                    <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400">Tareas</p>
+                    <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400">{t("lista_tareas")}</p>
                     {cargandoSemanaId === semana.id ? (
-                      <p className="text-sm text-slate-400">Cargando...</p>
+                      <p className="text-sm text-slate-400">{t("central_cargando")}</p>
                     ) : !tareasSemana || tareasSemana.length === 0 ? (
-                      <p className="text-sm text-slate-400">Aún no hay tareas publicadas en esta semana.</p>
+                      <p className="text-sm text-slate-400">{t("lista_sin_tareas")}</p>
                     ) : (
                       <div className="grid gap-2">
                         {tareasSemana.map((tarea) => (
                           <TareaItem
                             archivos={tareas.archivosPorTarea?.[tarea.id]}
+                            idioma={idioma}
                             key={tarea.id}
                             onDescargarArchivoPropio={tareas.onDescargarArchivoPropio}
                             onSubirArchivo={tareas.onSubirArchivo}
@@ -192,6 +202,7 @@ export function CursoContenidoLista({
 
 function TareaItem({
   archivos,
+  idioma,
   onDescargarArchivoPropio,
   onSubirArchivo,
   onVerMisArchivos,
@@ -199,6 +210,7 @@ function TareaItem({
   tarea,
 }: {
   archivos: ArchivoPropioVista[] | undefined;
+  idioma: Idioma;
   onDescargarArchivoPropio: TareasConfig["onDescargarArchivoPropio"];
   onSubirArchivo: TareasConfig["onSubirArchivo"];
   onVerMisArchivos: TareasConfig["onVerMisArchivos"];
@@ -206,6 +218,7 @@ function TareaItem({
   tarea: TareaEstudianteVista;
 }) {
   const [archivosAbiertos, setArchivosAbiertos] = useState(false);
+  const t = (clave: string) => traducir(idioma, clave);
   const publicada = tarea.miNota !== null || tarea.miComentarioCalificacion !== null;
 
   const handleSeleccionarArchivo = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -230,20 +243,26 @@ function TareaItem({
             {tarea.punteo !== null ? ` · ${tarea.punteo} pts` : ""}
           </p>
           {tarea.descripcion ? <p className="mt-0.5 text-xs text-slate-500">{tarea.descripcion}</p> : null}
-          {tarea.entregaHabilitada ? <p className="mt-1 text-xs text-slate-400">Fecha límite: {formatearFechaLimite(tarea.fechaLimite)}</p> : null}
+          {tarea.entregaHabilitada ? (
+            <p className="mt-1 text-xs text-slate-400">
+              {t("tarea_fecha_limite")}: {formatearFechaLimite(tarea.fechaLimite, idioma)}
+            </p>
+          ) : null}
 
           {tarea.miEntregadoEn ? (
             <p className={`mt-1 text-xs ${tarea.miTardia ? "font-semibold text-amber-600" : "text-emerald-600"}`}>
-              Entregaste el {formatearFechaHora(tarea.miEntregadoEn)}
-              {tarea.miTardia ? " (tardía)" : ""}
+              {t("tarea_entregaste")} {formatearFechaHora(tarea.miEntregadoEn)}
+              {tarea.miTardia ? ` ${t("tarea_tardia")}` : ""}
             </p>
           ) : tarea.entregaHabilitada ? (
-            <p className="mt-1 text-xs text-slate-400">Aún no has entregado.</p>
+            <p className="mt-1 text-xs text-slate-400">{t("tarea_no_entregado")}</p>
           ) : null}
 
           {publicada ? (
             <div className="mt-2 rounded-md border border-emerald-200 bg-emerald-50 p-2">
-              <p className="text-xs font-semibold text-emerald-700">Nota: {tarea.miNota ?? "—"}</p>
+              <p className="text-xs font-semibold text-emerald-700">
+                {t("tarea_nota")}: {tarea.miNota ?? "—"}
+              </p>
               {tarea.miComentarioCalificacion ? <p className="mt-0.5 text-xs text-emerald-700">{tarea.miComentarioCalificacion}</p> : null}
             </div>
           ) : null}
@@ -253,7 +272,7 @@ function TareaItem({
               {onSubirArchivo ? (
                 <label className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-semibold text-slate-600 hover:border-slate-400">
                   <Upload className="h-3.5 w-3.5" />
-                  {subiendo ? "Subiendo..." : tarea.miEntregadoEn ? "Entregar otro archivo" : "Subir archivo"}
+                  {subiendo ? t("tarea_subiendo") : tarea.miEntregadoEn ? t("tarea_entregar_otro") : t("tarea_subir_archivo")}
                   <input className="hidden" disabled={subiendo} onChange={handleSeleccionarArchivo} type="file" />
                 </label>
               ) : null}
@@ -263,7 +282,7 @@ function TareaItem({
                   onClick={handleVerArchivos}
                   type="button"
                 >
-                  {archivosAbiertos ? "Ocultar mis archivos" : "Ver mis archivos"}
+                  {archivosAbiertos ? t("tarea_ocultar_archivos") : t("tarea_ver_archivos")}
                 </button>
               ) : null}
             </div>
@@ -272,9 +291,9 @@ function TareaItem({
           {archivosAbiertos ? (
             <div className="mt-2 flex flex-wrap gap-2">
               {!archivos ? (
-                <p className="text-xs text-slate-400">Cargando...</p>
+                <p className="text-xs text-slate-400">{t("central_cargando")}</p>
               ) : archivos.length === 0 ? (
-                <p className="text-xs text-slate-400">Sin archivos.</p>
+                <p className="text-xs text-slate-400">{t("tarea_sin_archivos")}</p>
               ) : (
                 archivos.map((archivo) => (
                   <button
@@ -284,7 +303,7 @@ function TareaItem({
                     type="button"
                   >
                     <Download className="h-3 w-3" />
-                    {archivo.nombre ?? "Archivo"}
+                    {archivo.nombre ?? t("tarea_archivo_generico")}
                   </button>
                 ))
               )}

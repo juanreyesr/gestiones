@@ -11,16 +11,26 @@ import {
   type MiPerfil,
 } from "@/lib/estudiante/estudiante-client";
 import { getSupabaseClient, isSupabaseConfigured } from "@/lib/supabase";
+import { IdiomaProvider, useIdioma } from "./idioma-context";
 import { LoginEstudianteForm } from "./login-estudiante-form";
 import { PanelEstudiante } from "./panel-estudiante";
 
 export function EstudianteView() {
+  return (
+    <IdiomaProvider>
+      <EstudianteViewInterna />
+    </IdiomaProvider>
+  );
+}
+
+function EstudianteViewInterna() {
   const [session, setSession] = useState<Session | null>(null);
   const [cargandoSesion, setCargandoSesion] = useState(true);
   const [perfil, setPerfil] = useState<MiPerfil | null>(null);
   const [cursos, setCursos] = useState<MiCurso[]>([]);
   const [cargandoDatos, setCargandoDatos] = useState(false);
   const [errorPerfil, setErrorPerfil] = useState("");
+  const { setIdioma, t } = useIdioma();
 
   useEffect(() => {
     const supabase = getSupabaseClient();
@@ -47,9 +57,12 @@ export function EstudianteView() {
     ]);
     setPerfil(perfilData);
     setCursos(cursosData);
-    setErrorPerfil(perfilData ? "" : perfilError || "Esta cuenta no está habilitada como estudiante.");
+    setErrorPerfil(perfilData ? "" : perfilError || "");
+    // El idioma guardado en la cuenta manda sobre lo que haya en este navegador,
+    // asi el estudiante ve el mismo idioma sin importar desde donde entre.
+    if (perfilData) setIdioma(perfilData.idioma);
     setCargandoDatos(false);
-  }, []);
+  }, [setIdioma]);
 
   useEffect(() => {
     if (session) {
@@ -62,11 +75,11 @@ export function EstudianteView() {
   }, [session, cargarDatos]);
 
   if (!isSupabaseConfigured) {
-    return <MensajeCentral texto="El servicio no está disponible en este momento." />;
+    return <MensajeCentral texto={t("central_no_disponible")} />;
   }
 
   if (cargandoSesion) {
-    return <MensajeCentral texto="Cargando..." />;
+    return <MensajeCentral texto={t("central_cargando")} />;
   }
 
   if (!session) {
@@ -74,27 +87,28 @@ export function EstudianteView() {
   }
 
   if (cargandoDatos && !perfil) {
-    return <MensajeCentral texto="Cargando tu cuenta..." />;
+    return <MensajeCentral texto={t("central_cargando_cuenta")} />;
   }
 
   if (!perfil) {
-    return <MensajeCentral conSalir texto={errorPerfil || "Esta cuenta no está habilitada como estudiante."} />;
+    return <MensajeCentral conSalir texto={errorPerfil || t("central_cuenta_no_habilitada")} />;
   }
 
   return <PanelEstudiante cursos={cursos} onCambioContrasena={cargarDatos} perfil={perfil} />;
 }
 
 function MensajeCentral({ conSalir, texto }: { conSalir?: boolean; texto: string }) {
+  const { t } = useIdioma();
   return (
     <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-white px-6 text-center text-slate-500">
       <p className="text-sm">{texto}</p>
       {conSalir ? (
         <button className="text-sm font-semibold text-slate-700 underline" onClick={() => logoutEstudiante()} type="button">
-          Salir e intentar con otra cuenta
+          {t("central_salir_otra_cuenta")}
         </button>
       ) : (
         <Link className="text-sm text-slate-400 hover:text-slate-600" href="/">
-          ← Volver
+          ← {t("central_volver")}
         </Link>
       )}
     </div>
