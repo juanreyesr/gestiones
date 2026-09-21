@@ -89,6 +89,7 @@ const DICCIONARIO: Record<Idioma, Record<string, string>> = {
     contrasena_ahora_no: "Ahora no",
     contrasena_guardando: "Guardando...",
     contrasena_guardar: "Guardar",
+    contrasena_no_volver_preguntar: "No volver a preguntarme",
 
     // Chat
     chat_titulo: "Chat con tu docente",
@@ -189,6 +190,7 @@ const DICCIONARIO: Record<Idioma, Record<string, string>> = {
     contrasena_ahora_no: "Not now",
     contrasena_guardando: "Saving...",
     contrasena_guardar: "Save",
+    contrasena_no_volver_preguntar: "Don't ask me again",
 
     chat_titulo: "Chat with your teacher",
     chat_sin_mensajes: "No messages yet. Write the first one.",
@@ -286,6 +288,7 @@ const DICCIONARIO: Record<Idioma, Record<string, string>> = {
     contrasena_ahora_no: "Agora não",
     contrasena_guardando: "Salvando...",
     contrasena_guardar: "Salvar",
+    contrasena_no_volver_preguntar: "Não perguntar novamente",
 
     chat_titulo: "Conversa com seu professor",
     chat_sin_mensajes: "Ainda não há mensagens. Escreva a primeira.",
@@ -323,4 +326,21 @@ const DICCIONARIO: Record<Idioma, Record<string, string>> = {
  */
 export function traducir(idioma: Idioma, clave: string): string {
   return DICCIONARIO[idioma][clave] ?? DICCIONARIO.es[clave] ?? clave;
+}
+
+/**
+ * Resuelve la descripción/instrucción de una tarea o contenido en el
+ * idioma del estudiante: usa la traducción manual que el docente escribió
+ * para ese idioma (descripcionEn/descripcionPt) si existe y no está vacía;
+ * si no, cae al texto en español.
+ */
+export function descripcionEnIdioma(
+  idioma: Idioma,
+  descripcion: string | null,
+  descripcionEn: string | null | undefined,
+  descripcionPt: string | null | undefined,
+): string | null {
+  if (idioma === "en" && descripcionEn?.trim()) return descripcionEn;
+  if (idioma === "pt" && descripcionPt?.trim()) return descripcionPt;
+  return descripcion;
 }

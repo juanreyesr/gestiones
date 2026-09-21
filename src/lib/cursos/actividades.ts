@@ -34,6 +34,8 @@ export async function insertActividad(payload: {
   tipo: TipoActividad;
   titulo: string;
   descripcion?: string | null;
+  descripcion_en?: string | null;
+  descripcion_pt?: string | null;
   punteo?: number | null;
   entrega_proxima_semana?: boolean;
   entrega_habilitada?: boolean;
@@ -52,6 +54,8 @@ export async function updateActividad(
     tipo?: TipoActividad;
     titulo?: string;
     descripcion?: string | null;
+    descripcion_en?: string | null;
+    descripcion_pt?: string | null;
     punteo?: number | null;
     entrega_proxima_semana?: boolean;
     entrega_habilitada?: boolean;

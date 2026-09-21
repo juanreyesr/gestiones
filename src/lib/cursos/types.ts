@@ -132,6 +132,8 @@ export type ContenidoRow = {
   categoria: CategoriaContenido;
   titulo: string;
   descripcion: string | null;
+  descripcion_en: string | null;
+  descripcion_pt: string | null;
   archivo_path: string | null;
   archivo_nombre: string | null;
   archivo_mime: string | null;
@@ -148,6 +150,8 @@ export type ActividadRow = {
   tipo: TipoActividad;
   titulo: string;
   descripcion: string | null;
+  descripcion_en: string | null;
+  descripcion_pt: string | null;
   punteo: number | null;
   entrega_proxima_semana: boolean;
   visible_estudiantes: VisibilidadEstudiantes;

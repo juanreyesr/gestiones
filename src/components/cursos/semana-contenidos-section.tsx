@@ -8,7 +8,7 @@ import { borrarArchivos, esImagen, esPdf, esPresentacionOffice, rutaArchivoCurso
 import { deleteContenido, insertContenido, setVisibilidadContenido, updateContenido } from "@/lib/cursos/contenidos";
 import type { CategoriaContenido, ContenidoRow, VisibilidadEstudiantes } from "@/lib/cursos/types";
 import { PresentacionArchivo } from "./presentacion-archivo";
-import { BTN_GHOST, BTN_PRIMARY, EmptyState, ErrorBanner, Field } from "./ui";
+import { BTN_GHOST, BTN_PRIMARY, DescripcionesIdiomas, EmptyState, ErrorBanner, Field } from "./ui";
 
 const VISIBILIDAD_SIGUIENTE: Record<VisibilidadEstudiantes, VisibilidadEstudiantes> = {
   hereda: "visible",
@@ -219,6 +219,8 @@ function ContenidoModal({
 }) {
   const [tituloValor, setTituloValor] = useState(contenido?.titulo ?? "");
   const [descripcion, setDescripcion] = useState(contenido?.descripcion ?? "");
+  const [descripcionEn, setDescripcionEn] = useState(contenido?.descripcion_en ?? "");
+  const [descripcionPt, setDescripcionPt] = useState(contenido?.descripcion_pt ?? "");
   const [archivo, setArchivo] = useState<File | null>(null);
   const [urlExterna, setUrlExterna] = useState(contenido?.url_externa ?? "");
   const [guardando, setGuardando] = useState(false);
@@ -252,6 +254,8 @@ function ContenidoModal({
     const payload = {
       titulo: tituloValor.trim(),
       descripcion: descripcion.trim() || null,
+      descripcion_en: descripcionEn.trim() || null,
+      descripcion_pt: descripcionPt.trim() || null,
       archivo_path: archivoPath,
       archivo_nombre: archivoNombre,
       archivo_mime: archivoMime,
@@ -287,6 +291,7 @@ function ContenidoModal({
             <Field label="Descripción">
               <textarea className="field" onChange={(event) => setDescripcion(event.target.value)} rows={2} value={descripcion} />
             </Field>
+            <DescripcionesIdiomas en={descripcionEn} onChangeEn={setDescripcionEn} onChangePt={setDescripcionPt} pt={descripcionPt} />
             <Field label="Archivo">
               <label className="flex cursor-pointer items-center gap-2 border border-white/10 bg-white/8 px-3 py-2 text-sm text-slate-300 hover:border-white/30">
                 <Upload className="h-4 w-4" />

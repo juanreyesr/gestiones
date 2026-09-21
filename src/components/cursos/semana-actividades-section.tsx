@@ -14,7 +14,7 @@ import {
   type VisibilidadEstudiantes,
 } from "@/lib/cursos/types";
 import { CalificarActividadModal } from "./calificar-actividad-modal";
-import { BTN_GHOST, BTN_PRIMARY, Chip, EmptyState, ErrorBanner, Field } from "./ui";
+import { BTN_GHOST, BTN_PRIMARY, Chip, DescripcionesIdiomas, EmptyState, ErrorBanner, Field } from "./ui";
 
 const VISIBILIDAD_SIGUIENTE: Record<VisibilidadEstudiantes, VisibilidadEstudiantes> = {
   hereda: "visible",
@@ -199,6 +199,8 @@ function ActividadModal({
   const [tipo, setTipo] = useState<TipoActividad>(actividad?.tipo ?? "tarea");
   const [titulo, setTitulo] = useState(actividad?.titulo ?? "");
   const [descripcion, setDescripcion] = useState(actividad?.descripcion ?? "");
+  const [descripcionEn, setDescripcionEn] = useState(actividad?.descripcion_en ?? "");
+  const [descripcionPt, setDescripcionPt] = useState(actividad?.descripcion_pt ?? "");
   const [entregaProximaSemana, setEntregaProximaSemana] = useState(actividad?.entrega_proxima_semana ?? true);
   const [tienePunteo, setTienePunteo] = useState(actividad?.punteo !== null && actividad?.punteo !== undefined);
   const [punteo, setPunteo] = useState(actividad?.punteo !== null && actividad?.punteo !== undefined ? String(actividad.punteo) : "");
@@ -217,6 +219,8 @@ function ActividadModal({
       tipo,
       titulo: titulo.trim(),
       descripcion: descripcion.trim() || null,
+      descripcion_en: descripcionEn.trim() || null,
+      descripcion_pt: descripcionPt.trim() || null,
       entrega_proxima_semana: entregaProximaSemana,
       punteo: tienePunteo && punteo.trim() ? Number(punteo) : null,
       entrega_habilitada: entregaHabilitada,
@@ -257,6 +261,7 @@ function ActividadModal({
             <Field label="Descripción">
               <textarea className="field" onChange={(event) => setDescripcion(event.target.value)} rows={2} value={descripcion} />
             </Field>
+            <DescripcionesIdiomas en={descripcionEn} onChangeEn={setDescripcionEn} onChangePt={setDescripcionPt} pt={descripcionPt} />
             <label className="flex items-center gap-2 text-sm text-slate-200">
               <input
                 checked={entregaProximaSemana}

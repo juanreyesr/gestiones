@@ -1,6 +1,8 @@
 "use client";
 
+import { Languages } from "lucide-react";
 import type React from "react";
+import { useState } from "react";
 
 export const BTN_PRIMARY =
   "inline-flex items-center gap-2 bg-emerald-300 px-4 py-2 text-sm font-bold text-slate-950 transition hover:bg-emerald-200 disabled:opacity-60";
@@ -15,6 +17,54 @@ export function Field({ children, label }: { children: React.ReactNode; label: s
       <span className="text-xs font-semibold uppercase text-slate-400">{label}</span>
       {children}
     </label>
+  );
+}
+
+/**
+ * Traducción manual (no automática) de una descripción/instrucción a
+ * inglés y portugués: el estudiante que tenga ese idioma elegido en su
+ * panel ve esta versión en vez de la de español; si queda vacía, ve la de
+ * español como respaldo. Colapsado por defecto porque es opcional.
+ */
+export function DescripcionesIdiomas({
+  en,
+  onChangeEn,
+  onChangePt,
+  pt,
+}: {
+  en: string;
+  onChangeEn: (valor: string) => void;
+  onChangePt: (valor: string) => void;
+  pt: string;
+}) {
+  const [abierto, setAbierto] = useState(Boolean(en.trim() || pt.trim()));
+
+  if (!abierto) {
+    return (
+      <button
+        className="inline-flex items-center gap-2 self-start text-xs font-semibold text-slate-400 hover:text-slate-200"
+        onClick={() => setAbierto(true)}
+        type="button"
+      >
+        <Languages className="h-3.5 w-3.5" />
+        Agregar traducción a inglés/portugués (opcional)
+      </button>
+    );
+  }
+
+  return (
+    <div className="grid gap-3 border border-white/10 bg-white/4 p-3">
+      <div className="flex items-center gap-2 text-xs font-semibold uppercase text-slate-400">
+        <Languages className="h-3.5 w-3.5" />
+        Traducciones (opcional; si se dejan vacías, el estudiante ve la versión en español)
+      </div>
+      <Field label="Descripción (English)">
+        <textarea className="field" onChange={(event) => onChangeEn(event.target.value)} rows={2} value={en} />
+      </Field>
+      <Field label="Descrição (Português)">
+        <textarea className="field" onChange={(event) => onChangePt(event.target.value)} rows={2} value={pt} />
+      </Field>
+    </div>
   );
 }
 

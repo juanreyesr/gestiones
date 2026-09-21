@@ -21,6 +21,8 @@ export async function insertContenido(payload: {
   categoria: CategoriaContenido;
   titulo: string;
   descripcion?: string | null;
+  descripcion_en?: string | null;
+  descripcion_pt?: string | null;
   archivo_path?: string | null;
   archivo_nombre?: string | null;
   archivo_mime?: string | null;
@@ -39,6 +41,8 @@ export async function updateContenido(
   payload: {
     titulo: string;
     descripcion?: string | null;
+    descripcion_en?: string | null;
+    descripcion_pt?: string | null;
     archivo_path?: string | null;
     archivo_nombre?: string | null;
     archivo_mime?: string | null;

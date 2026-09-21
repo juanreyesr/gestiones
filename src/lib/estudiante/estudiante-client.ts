@@ -121,6 +121,8 @@ export type MiContenido = {
   categoria: "contenido" | "material_extra";
   titulo: string;
   descripcion: string | null;
+  descripcionEn: string | null;
+  descripcionPt: string | null;
   tieneArchivo: boolean;
   urlExterna: string | null;
 };
@@ -137,6 +139,8 @@ export async function fetchMisContenidos(semanaId: string): Promise<{ data: MiCo
     categoria: "contenido" | "material_extra";
     titulo: string;
     descripcion: string | null;
+    descripcion_en: string | null;
+    descripcion_pt: string | null;
     tiene_archivo: boolean;
     url_externa: string | null;
   }>;
@@ -147,6 +151,8 @@ export async function fetchMisContenidos(semanaId: string): Promise<{ data: MiCo
       categoria: fila.categoria,
       titulo: fila.titulo,
       descripcion: fila.descripcion,
+      descripcionEn: fila.descripcion_en,
+      descripcionPt: fila.descripcion_pt,
       tieneArchivo: Boolean(fila.tiene_archivo),
       urlExterna: fila.url_externa,
     })),
@@ -181,6 +187,8 @@ export type MiTarea = {
   tipo: string;
   titulo: string;
   descripcion: string | null;
+  descripcionEn: string | null;
+  descripcionPt: string | null;
   punteo: number | null;
   entregaHabilitada: boolean;
   fechaLimite: string | null;
@@ -203,6 +211,8 @@ export async function fetchMisActividades(semanaId: string): Promise<{ data: MiT
     tipo: string;
     titulo: string;
     descripcion: string | null;
+    descripcion_en: string | null;
+    descripcion_pt: string | null;
     punteo: number | null;
     entrega_habilitada: boolean;
     fecha_limite: string | null;
@@ -219,6 +229,8 @@ export async function fetchMisActividades(semanaId: string): Promise<{ data: MiT
       tipo: fila.tipo,
       titulo: fila.titulo,
       descripcion: fila.descripcion,
+      descripcionEn: fila.descripcion_en,
+      descripcionPt: fila.descripcion_pt,
       punteo: fila.punteo,
       entregaHabilitada: fila.entrega_habilitada,
       fechaLimite: fila.fecha_limite,
@@ -570,6 +582,24 @@ export async function cambiarMiContrasena(nuevaContrasena: string) {
     });
     const json = (await response.json().catch(() => null)) as { error?: string } | null;
     if (!response.ok) return { error: json?.error ?? "No se pudo cambiar la contraseña." };
+    return { error: null };
+  } catch {
+    return { error: "Error de conexión." };
+  }
+}
+
+/** El estudiante elige "no volver a preguntarme": no cambia la contraseña, solo deja de pedirla en cada ingreso. */
+export async function omitirCambioContrasena() {
+  const token = await getAuthToken();
+  if (!token) return { error: "Sesión no válida. Vuelve a iniciar." };
+
+  try {
+    const response = await fetch("/api/estudiante/omitir-cambio-contrasena", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    const json = (await response.json().catch(() => null)) as { error?: string } | null;
+    if (!response.ok) return { error: json?.error ?? "No se pudo guardar la preferencia." };
     return { error: null };
   } catch {
     return { error: "Error de conexión." };
