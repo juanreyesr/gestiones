@@ -4,7 +4,7 @@ Centro personal para gestionar areas de trabajo y vida: Iglesia, Clinica, Coordi
 
 ## Primera fase
 
-- Interfaz moderna con fondo 3D e ingreso privado.
+- Interfaz moderna, minimalista, con fondo negro e ingreso privado.
 - Modulo inicial de Coordinacion para evaluacion docente.
 - Seleccion de docente, curso, ano, trimestre y fecha.
 - Rubrica por categorias de planeacion, docencia, metodologia, sesiones, evaluacion y plataforma.
@@ -163,7 +163,7 @@ Las migraciones de este modulo estan en `supabase/migrations/009_gestionesjj_rec
 
 ## Rendimiento
 
-Las librerias pesadas (`jspdf` para exportar PDFs, `exceljs` para Excel, `docx` para los documentos Word del area Iglesia, y `three`/`@react-three` del fondo 3D) se cargan solo cuando realmente se usan (import dinamico / `next/dynamic` con `ssr: false`) en vez de ir en el paquete inicial de la app — confirmado revisando que no aparecen en el manifiesto de carga inmediata del build de produccion.
+Las librerias pesadas (`jspdf` para exportar PDFs, `exceljs` para Excel, `docx` para los documentos Word del area Iglesia) se cargan solo cuando realmente se usan (import dinamico / `next/dynamic` con `ssr: false`) en vez de ir en el paquete inicial de la app — confirmado revisando que no aparecen en el manifiesto de carga inmediata del build de produccion.
 
 ## Supabase
 
