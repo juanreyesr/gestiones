@@ -13,6 +13,8 @@ import {
 } from "@/lib/estudiante/estudiante-client";
 import { useIdioma } from "./idioma-context";
 
+const MAX_BYTES_FOTO = 5 * 1024 * 1024; // 5 MB, igual que valida el servidor
+
 export function PerfilModal({ onClose }: { onClose: () => void }) {
   const [ficha, setFicha] = useState<MiFicha | null>(null);
   const [fotoUrl, setFotoUrl] = useState<string | null>(null);
@@ -53,6 +55,10 @@ export function PerfilModal({ onClose }: { onClose: () => void }) {
     const archivo = event.target.files?.[0];
     event.target.value = "";
     if (!archivo) return;
+    if (archivo.size > MAX_BYTES_FOTO) {
+      setError(t("perfil_foto_max_error"));
+      return;
+    }
     setSubiendoFoto(true);
     setError("");
     const { error: subirError } = await subirMiFoto(archivo);
@@ -130,6 +136,7 @@ export function PerfilModal({ onClose }: { onClose: () => void }) {
                   >
                     {subiendoFoto ? t("perfil_subiendo") : ficha?.tieneFoto ? t("perfil_cambiar_foto") : t("perfil_subir_foto")}
                   </button>
+                  <p className="mt-1 text-[11px] text-slate-400">{t("perfil_foto_max")}</p>
                   <input
                     accept="image/png,image/jpeg,image/webp"
                     className="hidden"

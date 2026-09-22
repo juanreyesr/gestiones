@@ -14,6 +14,7 @@ import {
 import { useIdioma } from "./idioma-context";
 
 const INTERVALO_MS = 4000;
+const MAX_BYTES_ADJUNTO = 20 * 1024 * 1024; // 20 MB, igual que valida el servidor
 
 export function ChatModal({ onClose, onLeido }: { onClose: () => void; onLeido: () => void | Promise<void> }) {
   const [mensajes, setMensajes] = useState<MiMensaje[]>([]);
@@ -123,13 +124,27 @@ export function ChatModal({ onClose, onLeido }: { onClose: () => void; onLeido: 
           </div>
         ) : null}
 
-        <div className="mt-3 flex items-end gap-2">
+        <p className="mt-2 text-[11px] text-slate-400">{t("chat_adjuntar_max")}</p>
+
+        <div className="mt-2 flex items-end gap-2">
           <label
             className="flex h-11 w-11 shrink-0 cursor-pointer items-center justify-center rounded-lg border border-slate-200 text-slate-500 hover:border-slate-400 hover:text-slate-800"
             title={t("chat_adjuntar")}
           >
             <Paperclip className="h-4 w-4" />
-            <input className="hidden" onChange={(event) => setArchivo(event.target.files?.[0] ?? null)} type="file" />
+            <input
+              className="hidden"
+              onChange={(event) => {
+                const nuevoArchivo = event.target.files?.[0] ?? null;
+                if (nuevoArchivo && nuevoArchivo.size > MAX_BYTES_ADJUNTO) {
+                  setError(t("chat_adjuntar_max_error"));
+                  event.target.value = "";
+                  return;
+                }
+                setArchivo(nuevoArchivo);
+              }}
+              type="file"
+            />
           </label>
           <textarea
             className="field-light flex-1 resize-none"

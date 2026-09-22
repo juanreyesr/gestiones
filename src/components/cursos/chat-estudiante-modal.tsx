@@ -3,7 +3,7 @@
 import { Download, MessageCircle, Paperclip, Send, X } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ModalPortal } from "@/components/modal-portal";
-import { enviarMensajeDocente, fetchMensajes, marcarMensajesLeidosDocente, urlFirmadaAdjuntoMensaje } from "@/lib/cursos/mensajes";
+import { enviarMensajeDocente, fetchMensajes, MAX_BYTES_ADJUNTO, marcarMensajesLeidosDocente, urlFirmadaAdjuntoMensaje } from "@/lib/cursos/mensajes";
 import { formatearFechaHora, type MensajeRow } from "@/lib/cursos/types";
 import { BTN_PRIMARY, ErrorBanner } from "./ui";
 
@@ -115,13 +115,27 @@ export function ChatEstudianteModal({
             </div>
           ) : null}
 
-          <div className="mt-3 flex items-end gap-2">
+          <p className="mt-2 text-[11px] text-slate-500">Adjuntos: tamaño máximo 20 MB.</p>
+
+          <div className="mt-2 flex items-end gap-2">
             <label
               className="flex h-11 w-11 shrink-0 cursor-pointer items-center justify-center border border-white/10 bg-white/8 text-slate-300 hover:border-white/30"
-              title="Adjuntar archivo"
+              title="Adjuntar archivo (máximo 20 MB)"
             >
               <Paperclip className="h-4 w-4" />
-              <input className="hidden" onChange={(event) => setArchivo(event.target.files?.[0] ?? null)} type="file" />
+              <input
+                className="hidden"
+                onChange={(event) => {
+                  const nuevoArchivo = event.target.files?.[0] ?? null;
+                  if (nuevoArchivo && nuevoArchivo.size > MAX_BYTES_ADJUNTO) {
+                    setError("El archivo no puede pesar más de 20 MB.");
+                    event.target.value = "";
+                    return;
+                  }
+                  setArchivo(nuevoArchivo);
+                }}
+                type="file"
+              />
             </label>
             <textarea
               className="field flex-1 resize-none"

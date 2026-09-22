@@ -7,6 +7,8 @@ import type { Idioma } from "@/lib/cursos/types";
 import { formatearFecha, formatearFechaHora, formatearFechaLimite } from "@/lib/cursos/types";
 import { descripcionEnIdioma, traducir } from "@/lib/estudiante/i18n";
 
+const MAX_BYTES_ENTREGA = 20 * 1024 * 1024; // 20 MB, igual que valida el servidor
+
 export type ContenidoEstudianteVista = {
   id: string;
   categoria: "contenido" | "material_extra";
@@ -223,6 +225,7 @@ function TareaItem({
   tarea: TareaEstudianteVista;
 }) {
   const [archivosAbiertos, setArchivosAbiertos] = useState(false);
+  const [errorArchivo, setErrorArchivo] = useState("");
   const t = (clave: string) => traducir(idioma, clave);
   const descripcion = descripcionEnIdioma(idioma, tarea.descripcion, tarea.descripcionEn, tarea.descripcionPt);
   const publicada = tarea.miNota !== null || tarea.miComentarioCalificacion !== null;
@@ -230,7 +233,13 @@ function TareaItem({
   const handleSeleccionarArchivo = (event: React.ChangeEvent<HTMLInputElement>) => {
     const archivo = event.target.files?.[0];
     event.target.value = "";
-    if (archivo && onSubirArchivo) void onSubirArchivo(tarea, archivo);
+    if (!archivo) return;
+    if (archivo.size > MAX_BYTES_ENTREGA) {
+      setErrorArchivo(t("tarea_archivo_max_error"));
+      return;
+    }
+    setErrorArchivo("");
+    if (onSubirArchivo) void onSubirArchivo(tarea, archivo);
   };
 
   const handleVerArchivos = () => {
@@ -276,11 +285,15 @@ function TareaItem({
           {tarea.entregaHabilitada ? (
             <div className="mt-2 flex flex-wrap items-center gap-2">
               {onSubirArchivo ? (
-                <label className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-semibold text-slate-600 hover:border-slate-400">
-                  <Upload className="h-3.5 w-3.5" />
-                  {subiendo ? t("tarea_subiendo") : tarea.miEntregadoEn ? t("tarea_entregar_otro") : t("tarea_subir_archivo")}
-                  <input className="hidden" disabled={subiendo} onChange={handleSeleccionarArchivo} type="file" />
-                </label>
+                <div className="flex flex-col gap-1">
+                  <label className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-semibold text-slate-600 hover:border-slate-400">
+                    <Upload className="h-3.5 w-3.5" />
+                    {subiendo ? t("tarea_subiendo") : tarea.miEntregadoEn ? t("tarea_entregar_otro") : t("tarea_subir_archivo")}
+                    <input className="hidden" disabled={subiendo} onChange={handleSeleccionarArchivo} type="file" />
+                  </label>
+                  <span className="text-[11px] text-slate-400">{t("tarea_archivo_max")}</span>
+                  {errorArchivo ? <span className="text-[11px] font-semibold text-red-600">{errorArchivo}</span> : null}
+                </div>
               ) : null}
               {tarea.miEntregadoEn ? (
                 <button

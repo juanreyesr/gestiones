@@ -78,6 +78,8 @@ const DICCIONARIO: Record<Idioma, Record<string, string>> = {
     tarea_ocultar_archivos: "Ocultar mis archivos",
     tarea_sin_archivos: "Sin archivos.",
     tarea_archivo_generico: "Archivo",
+    tarea_archivo_max: "Tamaño máximo: 20 MB.",
+    tarea_archivo_max_error: "El archivo no puede pesar más de 20 MB.",
 
     // Cambiar contraseña
     contrasena_titulo: "Cambia tu contraseña",
@@ -96,6 +98,8 @@ const DICCIONARIO: Record<Idioma, Record<string, string>> = {
     chat_sin_mensajes: "Aún no hay mensajes. Escribe el primero.",
     chat_placeholder: "Escribe un mensaje...",
     chat_adjuntar: "Adjuntar archivo",
+    chat_adjuntar_max: "Adjuntos: tamaño máximo 20 MB.",
+    chat_adjuntar_max_error: "El archivo no puede pesar más de 20 MB.",
     chat_abriendo: "Abriendo...",
     chat_archivo_generico: "Archivo adjunto",
 
@@ -114,6 +118,8 @@ const DICCIONARIO: Record<Idioma, Record<string, string>> = {
     perfil_foto: "Foto",
     perfil_cambiar_foto: "Cambiar foto",
     perfil_subir_foto: "Subir foto",
+    perfil_foto_max: "Tamaño máximo: 5 MB.",
+    perfil_foto_max_error: "La foto no puede pesar más de 5 MB.",
     perfil_subiendo: "Subiendo...",
     perfil_fecha_nacimiento: "Fecha de nacimiento",
     perfil_pais: "País de origen",
@@ -183,6 +189,8 @@ const DICCIONARIO: Record<Idioma, Record<string, string>> = {
     tarea_ocultar_archivos: "Hide my files",
     tarea_sin_archivos: "No files.",
     tarea_archivo_generico: "File",
+    tarea_archivo_max: "Maximum size: 20 MB.",
+    tarea_archivo_max_error: "The file can't be larger than 20 MB.",
 
     contrasena_titulo: "Change your password",
     contrasena_sub: "Choose a password only you know.",
@@ -199,6 +207,8 @@ const DICCIONARIO: Record<Idioma, Record<string, string>> = {
     chat_sin_mensajes: "No messages yet. Write the first one.",
     chat_placeholder: "Type a message...",
     chat_adjuntar: "Attach file",
+    chat_adjuntar_max: "Attachments: 20 MB maximum.",
+    chat_adjuntar_max_error: "The file can't be larger than 20 MB.",
     chat_abriendo: "Opening...",
     chat_archivo_generico: "Attached file",
 
@@ -215,6 +225,8 @@ const DICCIONARIO: Record<Idioma, Record<string, string>> = {
     perfil_foto: "Photo",
     perfil_cambiar_foto: "Change photo",
     perfil_subir_foto: "Upload photo",
+    perfil_foto_max: "Maximum size: 5 MB.",
+    perfil_foto_max_error: "The photo can't be larger than 5 MB.",
     perfil_subiendo: "Uploading...",
     perfil_fecha_nacimiento: "Date of birth",
     perfil_pais: "Country of origin",
@@ -284,6 +296,8 @@ const DICCIONARIO: Record<Idioma, Record<string, string>> = {
     tarea_ocultar_archivos: "Ocultar meus arquivos",
     tarea_sin_archivos: "Sem arquivos.",
     tarea_archivo_generico: "Arquivo",
+    tarea_archivo_max: "Tamanho máximo: 20 MB.",
+    tarea_archivo_max_error: "O arquivo não pode pesar mais de 20 MB.",
 
     contrasena_titulo: "Altere sua senha",
     contrasena_sub: "Escolha uma senha que só você conheça.",
@@ -300,6 +314,8 @@ const DICCIONARIO: Record<Idioma, Record<string, string>> = {
     chat_sin_mensajes: "Ainda não há mensagens. Escreva a primeira.",
     chat_placeholder: "Digite uma mensagem...",
     chat_adjuntar: "Anexar arquivo",
+    chat_adjuntar_max: "Anexos: tamanho máximo 20 MB.",
+    chat_adjuntar_max_error: "O arquivo não pode pesar mais de 20 MB.",
     chat_abriendo: "Abrindo...",
     chat_archivo_generico: "Arquivo anexado",
 
@@ -316,6 +332,8 @@ const DICCIONARIO: Record<Idioma, Record<string, string>> = {
     perfil_foto: "Foto",
     perfil_cambiar_foto: "Alterar foto",
     perfil_subir_foto: "Enviar foto",
+    perfil_foto_max: "Tamanho máximo: 5 MB.",
+    perfil_foto_max_error: "A foto não pode pesar mais de 5 MB.",
     perfil_subiendo: "Enviando...",
     perfil_fecha_nacimiento: "Data de nascimento",
     perfil_pais: "País de origem",

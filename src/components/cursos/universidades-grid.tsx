@@ -4,7 +4,7 @@ import { Building2, Pencil, Plus, Trash2, Upload } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { ModalPortal } from "@/components/modal-portal";
-import { esImagen, extensionDe, rutaLogoUniversidad, subirArchivo, urlFirmada } from "@/lib/cursos/archivos";
+import { esImagen, extensionDe, MAX_BYTES_ARCHIVO, rutaLogoUniversidad, subirArchivo, urlFirmada } from "@/lib/cursos/archivos";
 import { fetchConteoCursosPorUniversidad } from "@/lib/cursos/cursos";
 import { COLORES_UNIVERSIDAD, type UniversidadRow } from "@/lib/cursos/types";
 import { deleteUniversidad, insertUniversidad, updateUniversidad } from "@/lib/cursos/universidades";
@@ -277,6 +277,11 @@ function UniversidadModal({
                   className="hidden"
                   onChange={(event) => {
                     const file = event.target.files?.[0] ?? null;
+                    if (file && file.size > MAX_BYTES_ARCHIVO) {
+                      setError("El archivo no puede pesar más de 20 MB.");
+                      event.target.value = "";
+                      return;
+                    }
                     setLogoFile(file);
                     if (file && esImagen(file.type, file.name)) {
                       setLogoPreview(URL.createObjectURL(file));
@@ -287,6 +292,7 @@ function UniversidadModal({
                   type="file"
                 />
               </label>
+              <p className="text-xs text-slate-500">Tamaño máximo: 20 MB.</p>
               {logoPreview ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img alt="Vista previa del logo" className="mt-2 h-16 w-16 object-cover" src={logoPreview} />
