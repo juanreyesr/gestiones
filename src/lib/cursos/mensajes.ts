@@ -22,7 +22,7 @@ export async function fetchMensajes(estudianteId: string) {
 }
 
 const BUCKET_ADJUNTOS = "gestionesjj-mensajes-adjuntos";
-const MAX_BYTES_ADJUNTO = 20 * 1024 * 1024; // 20 MB, igual que las entregas de tareas
+export const MAX_BYTES_ADJUNTO = 20 * 1024 * 1024; // 20 MB, igual que las entregas de tareas
 
 function sanitizarNombreAdjunto(nombre: string): string {
   return nombre.replace(/[^a-zA-Z0-9._-]+/g, "_").slice(-140);

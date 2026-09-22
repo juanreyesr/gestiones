@@ -4,7 +4,16 @@ import { Download, Eye, FileText, Link2, Plus, Trash2, Upload } from "lucide-rea
 import { useCallback, useEffect, useState } from "react";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { ModalPortal } from "@/components/modal-portal";
-import { borrarArchivos, esImagen, esPdf, esPresentacionOffice, rutaArchivoCurso, subirArchivo, urlFirmada } from "@/lib/cursos/archivos";
+import {
+  borrarArchivos,
+  esImagen,
+  esPdf,
+  esPresentacionOffice,
+  MAX_BYTES_ARCHIVO,
+  rutaArchivoCurso,
+  subirArchivo,
+  urlFirmada,
+} from "@/lib/cursos/archivos";
 import { deletePlanificacion, fetchPlanificaciones, insertPlanificacion } from "@/lib/cursos/planificaciones";
 import { TIPO_PLANIFICACION_LABELS, type PlanificacionRow, type TipoPlanificacion } from "@/lib/cursos/types";
 import { PresentacionArchivo } from "./presentacion-archivo";
@@ -247,10 +256,19 @@ function AgregarDocumentoModal({
                 {archivo ? archivo.name : "Seleccionar archivo"}
                 <input
                   className="hidden"
-                  onChange={(event) => setArchivo(event.target.files?.[0] ?? null)}
+                  onChange={(event) => {
+                    const nuevoArchivo = event.target.files?.[0] ?? null;
+                    if (nuevoArchivo && nuevoArchivo.size > MAX_BYTES_ARCHIVO) {
+                      setError("El archivo no puede pesar más de 20 MB.");
+                      event.target.value = "";
+                      return;
+                    }
+                    setArchivo(nuevoArchivo);
+                  }}
                   type="file"
                 />
               </label>
+              <p className="text-xs text-slate-500">Tamaño máximo: 20 MB.</p>
             </Field>
             <Field label="O bien, URL externa">
               <div className="flex items-center gap-2">

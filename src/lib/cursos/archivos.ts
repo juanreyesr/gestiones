@@ -1,10 +1,12 @@
 import { getSupabaseClient } from "@/lib/supabase";
 
 export const BUCKET = "gestionesjj-cursos";
+export const MAX_BYTES_ARCHIVO = 20 * 1024 * 1024; // 20 MB, mismo límite que entregas y mensajes
 
 export async function subirArchivo(path: string, file: File) {
   const supabase = getSupabaseClient();
   if (!supabase) return { error: "Faltan las variables de Supabase." };
+  if (file.size > MAX_BYTES_ARCHIVO) return { error: "El archivo no puede pesar más de 20 MB." };
 
   const { error } = await supabase.storage.from(BUCKET).upload(path, file, { upsert: true });
   return { error: error?.message ?? null };
