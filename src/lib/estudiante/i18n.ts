@@ -95,6 +95,9 @@ const DICCIONARIO: Record<Idioma, Record<string, string>> = {
     chat_titulo: "Chat con tu docente",
     chat_sin_mensajes: "Aún no hay mensajes. Escribe el primero.",
     chat_placeholder: "Escribe un mensaje...",
+    chat_adjuntar: "Adjuntar archivo",
+    chat_abriendo: "Abriendo...",
+    chat_archivo_generico: "Archivo adjunto",
 
     // Notificaciones
     notif_titulo: "Notificaciones",
@@ -195,6 +198,9 @@ const DICCIONARIO: Record<Idioma, Record<string, string>> = {
     chat_titulo: "Chat with your teacher",
     chat_sin_mensajes: "No messages yet. Write the first one.",
     chat_placeholder: "Type a message...",
+    chat_adjuntar: "Attach file",
+    chat_abriendo: "Opening...",
+    chat_archivo_generico: "Attached file",
 
     notif_titulo: "Notifications",
     notif_vacio: "You have no notifications.",
@@ -293,6 +299,9 @@ const DICCIONARIO: Record<Idioma, Record<string, string>> = {
     chat_titulo: "Conversa com seu professor",
     chat_sin_mensajes: "Ainda não há mensagens. Escreva a primeira.",
     chat_placeholder: "Digite uma mensagem...",
+    chat_adjuntar: "Anexar arquivo",
+    chat_abriendo: "Abrindo...",
+    chat_archivo_generico: "Arquivo anexado",
 
     notif_titulo: "Notificações",
     notif_vacio: "Você não tem notificações.",

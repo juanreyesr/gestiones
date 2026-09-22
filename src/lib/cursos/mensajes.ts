@@ -21,18 +21,50 @@ export async function fetchMensajes(estudianteId: string) {
   return { data: (data ?? []) as MensajeRow[], error: null };
 }
 
-export async function enviarMensajeDocente(estudianteId: string, contenido: string) {
+const BUCKET_ADJUNTOS = "gestionesjj-mensajes-adjuntos";
+const MAX_BYTES_ADJUNTO = 20 * 1024 * 1024; // 20 MB, igual que las entregas de tareas
+
+function sanitizarNombreAdjunto(nombre: string): string {
+  return nombre.replace(/[^a-zA-Z0-9._-]+/g, "_").slice(-140);
+}
+
+export async function enviarMensajeDocente(estudianteId: string, contenido: string, archivo?: File | null) {
   const supabase = getSupabaseClient();
   if (!supabase) return { error: "Faltan las variables de Supabase." };
+
+  if (archivo && archivo.size > MAX_BYTES_ADJUNTO) {
+    return { error: "El archivo no puede pesar más de 20 MB." };
+  }
+
+  let archivoPath: string | null = null;
+  if (archivo) {
+    archivoPath = `mensajes/${estudianteId}/${Date.now()}-${sanitizarNombreAdjunto(archivo.name)}`;
+    const { error: uploadError } = await supabase.storage.from(BUCKET_ADJUNTOS).upload(archivoPath, archivo);
+    if (uploadError) return { error: uploadError.message };
+  }
 
   const { error } = await supabase.from("gestionesjj_estudiante_mensajes").insert({
     estudiante_id: estudianteId,
     remitente: "docente",
-    contenido,
+    contenido: contenido || null,
+    archivo_path: archivoPath,
+    archivo_nombre: archivo?.name ?? null,
+    archivo_mime: archivo?.type ?? null,
     leido_docente: true,
     leido_estudiante: false,
   });
+  if (error && archivoPath) await supabase.storage.from(BUCKET_ADJUNTOS).remove([archivoPath]);
   return { error: error?.message ?? null };
+}
+
+/** URL firmada de corta duración para ver/descargar el adjunto de un mensaje (el owner ya tiene acceso directo por RLS del bucket). */
+export async function urlFirmadaAdjuntoMensaje(archivoPath: string, expiresSeconds = 300) {
+  const supabase = getSupabaseClient();
+  if (!supabase) return { url: null as string | null, error: "Faltan las variables de Supabase." };
+
+  const { data, error } = await supabase.storage.from(BUCKET_ADJUNTOS).createSignedUrl(archivoPath, expiresSeconds);
+  if (error || !data) return { url: null, error: error?.message ?? "No se pudo abrir el archivo." };
+  return { url: data.signedUrl, error: null };
 }
 
 export async function marcarMensajesLeidosDocente(estudianteId: string) {

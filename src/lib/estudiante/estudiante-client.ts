@@ -319,7 +319,14 @@ export async function fetchMiEstadoCurso(cursoId: string): Promise<{ data: MiEst
   return { data: { aprobado: fila.aprobado, actividadesCalificadas: fila.actividades_calificadas }, error: null };
 }
 
-export type MiMensaje = { id: string; remitente: "docente" | "estudiante"; contenido: string; creadoEn: string };
+export type MiMensaje = {
+  id: string;
+  remitente: "docente" | "estudiante";
+  contenido: string | null;
+  archivoNombre: string | null;
+  tieneArchivo: boolean;
+  creadoEn: string;
+};
 
 export async function fetchMisMensajes(): Promise<{ data: MiMensaje[]; error: string | null }> {
   const supabase = getSupabaseClient();
@@ -328,9 +335,23 @@ export async function fetchMisMensajes(): Promise<{ data: MiMensaje[]; error: st
   const { data, error } = await supabase.rpc("gestionesjj_estudiante_mis_mensajes");
   if (error) return { data: [], error: error.message };
 
-  const filas = (data ?? []) as Array<{ id: string; remitente: "docente" | "estudiante"; contenido: string; created_at: string }>;
+  const filas = (data ?? []) as Array<{
+    id: string;
+    remitente: "docente" | "estudiante";
+    contenido: string | null;
+    archivo_nombre: string | null;
+    tiene_archivo: boolean;
+    created_at: string;
+  }>;
   return {
-    data: filas.map((fila) => ({ id: fila.id, remitente: fila.remitente, contenido: fila.contenido, creadoEn: fila.created_at })),
+    data: filas.map((fila) => ({
+      id: fila.id,
+      remitente: fila.remitente,
+      contenido: fila.contenido,
+      archivoNombre: fila.archivo_nombre,
+      tieneArchivo: Boolean(fila.tiene_archivo),
+      creadoEn: fila.created_at,
+    })),
     error: null,
   };
 }
@@ -344,21 +365,43 @@ export async function fetchMisMensajesNoLeidos(): Promise<{ data: number; error:
   return { data: typeof data === "number" ? data : 0, error: null };
 }
 
-export async function enviarMensaje(contenido: string): Promise<{ error: string | null }> {
+export async function enviarMensaje(contenido: string, archivo?: File | null): Promise<{ error: string | null }> {
   const token = await getAuthToken();
   if (!token) return { error: "Sesión no válida. Vuelve a iniciar." };
 
   try {
+    const formData = new FormData();
+    formData.set("contenido", contenido);
+    if (archivo) formData.set("archivo", archivo);
     const response = await fetch("/api/estudiante/mensajes/enviar", {
       method: "POST",
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-      body: JSON.stringify({ contenido }),
+      headers: { Authorization: `Bearer ${token}` },
+      body: formData,
     });
     const json = (await response.json().catch(() => null)) as { error?: string } | null;
     if (!response.ok) return { error: json?.error ?? "No se pudo enviar el mensaje." };
     return { error: null };
   } catch {
     return { error: "Error de conexión." };
+  }
+}
+
+/** URL firmada de corta duración para ver/descargar el adjunto de un mensaje propio. */
+export async function obtenerUrlAdjuntoMensaje(mensajeId: string): Promise<{ url: string | null; error: string | null }> {
+  const token = await getAuthToken();
+  if (!token) return { url: null, error: "Sesión no válida. Vuelve a iniciar." };
+
+  try {
+    const response = await fetch("/api/estudiante/mensajes/archivo-url", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ mensajeId }),
+    });
+    const json = (await response.json().catch(() => null)) as { url?: string; error?: string } | null;
+    if (!response.ok) return { url: null, error: json?.error ?? "No se pudo abrir el archivo." };
+    return { url: json?.url ?? null, error: null };
+  } catch {
+    return { url: null, error: "Error de conexión." };
   }
 }
 

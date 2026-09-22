@@ -207,7 +207,10 @@ export type MensajeRow = {
   id: string;
   estudiante_id: string;
   remitente: TipoRemitenteMensaje;
-  contenido: string;
+  contenido: string | null;
+  archivo_path: string | null;
+  archivo_nombre: string | null;
+  archivo_mime: string | null;
   leido_docente: boolean;
   leido_estudiante: boolean;
   created_at: string;
