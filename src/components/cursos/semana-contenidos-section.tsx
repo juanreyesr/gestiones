@@ -119,7 +119,7 @@ export function SemanaContenidosSection({
                     {contenido.descripcion ? <p className="mt-1 text-xs text-slate-400">{contenido.descripcion}</p> : null}
                   </div>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex flex-wrap items-center gap-2">
                   {contenido.archivo_path && presentable ? (
                     <button className={BTN_GHOST} onClick={() => setVisor(contenido)} type="button">
                       <Presentation className="h-4 w-4" />

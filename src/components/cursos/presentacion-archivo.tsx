@@ -60,9 +60,9 @@ export function PresentacionArchivo({
   return (
     <ModalPortal>
       <div className="fixed inset-0 z-50 flex flex-col bg-black" ref={contenedorRef}>
-        <div className="flex items-center justify-between border-b border-white/10 bg-slate-950 px-4 py-2.5">
-          <span className="truncate text-sm font-semibold text-white">{titulo}</span>
-          <div className="flex items-center gap-2">
+        <div className="flex items-center justify-between gap-2 border-b border-white/10 bg-slate-950 px-4 py-2.5">
+          <span className="min-w-0 flex-1 truncate text-sm font-semibold text-white">{titulo}</span>
+          <div className="flex shrink-0 items-center gap-2">
             <button className={BTN_GHOST} onClick={handlePantallaCompleta} type="button">
               <Maximize className="h-4 w-4" />
               Pantalla completa

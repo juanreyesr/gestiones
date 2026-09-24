@@ -110,7 +110,7 @@ export function CursoPlanificacionTab({ cursoId }: { cursoId: string }) {
                   {documento.descripcion ? <p className="mt-1 text-xs text-slate-400">{documento.descripcion}</p> : null}
                 </div>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2">
                 <button className={BTN_GHOST} onClick={() => handleVer(documento)} type="button">
                   <Eye className="h-4 w-4" />
                   Ver
