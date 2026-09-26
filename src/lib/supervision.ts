@@ -24,6 +24,14 @@ export type HorarioParseado = { dia: number; inicio: string; fin: string | null 
 
 const sinAcentos = (texto: string) => texto.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
 
+/**
+ * El coordinador tambien imparte cursos (p. ej. Tesis), pero no se supervisa
+ * a si mismo: sus cursos quedan fuera del plan y de la cobertura.
+ */
+export function esCursoDelCoordinador(docenteNombre: string | null | undefined) {
+  return !!docenteNombre && sinAcentos(docenteNombre).replace(/\s+/g, " ").trim().startsWith("juan jose reyes");
+}
+
 /** "Sábado 07:00 a 09:00 horas" -> { dia: 6, inicio: "07:00", fin: "09:00" }. */
 export function parseHorario(horario: string | null | undefined): HorarioParseado | null {
   if (!horario) return null;

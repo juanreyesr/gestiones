@@ -20,6 +20,7 @@ import { fetchCursosAdmin, type CursoAdminRow } from "@/lib/cursos-admin";
 import { currentTrimestre, fetchEvaluacionesPorPeriodo, type EvaluacionRow } from "@/lib/evaluacion-helpers";
 import { formatoCorto, hoyISO } from "@/lib/fechas";
 import {
+  esCursoDelCoordinador,
   estadoItem,
   finPorDefecto,
   generarPlan,
@@ -137,9 +138,24 @@ export function SupervisionView({
 
   const docentesActivos = useMemo(() => new Map(docentes.map((d) => [d.id, d.nombre])), [docentes]);
 
-  const cursosPeriodo = useMemo(
+  const cursosDelPeriodo = useMemo(
     () => cursos.filter((c) => c.activo && c.anio === anio && c.trimestre === trimestre),
     [cursos, anio, trimestre],
+  );
+
+  const nombreDocente = useCallback(
+    (c: CursoAdminRow) => (c.docenteId ? (docentesActivos.get(c.docenteId) ?? c.docenteNombre) : c.docenteNombre),
+    [docentesActivos],
+  );
+
+  const cursosPropios = useMemo(
+    () => cursosDelPeriodo.filter((c) => esCursoDelCoordinador(nombreDocente(c))),
+    [cursosDelPeriodo, nombreDocente],
+  );
+
+  const cursosPeriodo = useMemo(
+    () => cursosDelPeriodo.filter((c) => !esCursoDelCoordinador(nombreDocente(c))),
+    [cursosDelPeriodo, nombreDocente],
   );
 
   const cursosSinDocente = useMemo(
@@ -304,7 +320,7 @@ export function SupervisionView({
 
           <GraficaSemanal logros={logros} semanaActual={semanaActual} />
 
-          {plan.docentesSinCupo.length || plan.cursosSinCupo.length || plan.sinHorario.length || cursosSinDocente.length ? (
+          {plan.docentesSinCupo.length || plan.cursosSinCupo.length || plan.sinHorario.length || cursosSinDocente.length || cursosPropios.length ? (
             <div className="grid gap-1 border border-amber-300/30 bg-amber-300/8 p-3 text-sm text-amber-100">
               {plan.docentesSinCupo.length ? (
                 <p>
@@ -319,6 +335,9 @@ export function SupervisionView({
               ) : null}
               {plan.sinHorario.length ? (
                 <p>Sin horario legible (no se programan): {plan.sinHorario.map((c) => c.nombre).join(", ")}.</p>
+              ) : null}
+              {cursosPropios.length ? (
+                <p>Tus cursos no se programan (no te supervisas a ti mismo): {cursosPropios.map((c) => c.nombre).join(", ")}.</p>
               ) : null}
               {cursosSinDocente.length ? (
                 <p>
