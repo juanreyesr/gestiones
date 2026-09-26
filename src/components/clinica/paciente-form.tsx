@@ -5,6 +5,7 @@ import { useMemo, useState } from "react";
 import { upsertPaciente } from "@/lib/clinica/pacientes";
 import type { PacienteEstado, PacientePayload, PacienteRow } from "@/lib/clinica/types";
 import { PACIENTE_ESTADOS } from "@/lib/clinica/types";
+import { inferirPais, PAISES, paisDe, paisPorCodigo } from "@/lib/paises";
 import { SituacionFields, type SituacionValue } from "./situacion-fields";
 import { BTN_PRIMARY, Field } from "./ui";
 
@@ -12,6 +13,8 @@ type FormState = {
   nombre: string;
   telefono: string;
   email: string;
+  pais: string;
+  zonaHoraria: string;
   fechaNacimiento: string;
   genero: string;
   escolaridad: string;
@@ -35,6 +38,8 @@ function toFormState(paciente: PacienteRow | null): FormState {
     nombre: paciente?.nombre ?? "",
     telefono: paciente?.telefono ?? "",
     email: paciente?.email ?? "",
+    pais: paciente?.pais ?? "",
+    zonaHoraria: paciente?.zonaHoraria ?? "",
     fechaNacimiento: paciente?.fechaNacimiento ?? "",
     genero: paciente?.genero ?? "",
     escolaridad: paciente?.escolaridad ?? "",
@@ -72,6 +77,8 @@ function toPayload(form: FormState, situacion: SituacionValue): PacientePayload 
     nombre: form.nombre.trim(),
     telefono: form.telefono.trim(),
     email: opt(form.email),
+    pais: opt(form.pais),
+    zona_horaria: opt(form.zonaHoraria),
     fecha_nacimiento: opt(form.fechaNacimiento),
     genero: opt(form.genero),
     ocupacion: opt(situacion.ocupacion),
@@ -125,6 +132,51 @@ function Section({
       </button>
       {open ? <div className="grid gap-4 border-t border-white/10 p-4">{children}</div> : null}
     </div>
+  );
+}
+
+/**
+ * Pais y zona horaria del paciente. "Automatico" deja el campo vacio: el
+ * pais se deduce del "+codigo" del telefono (o Guatemala) y la zona es la
+ * principal del pais. Se usan para el enlace de WhatsApp y para escribir la
+ * hora de la cita en la hora del paciente.
+ */
+function PaisFields({
+  form,
+  onChange,
+}: {
+  form: FormState;
+  onChange: (cambios: Partial<Pick<FormState, "pais" | "zonaHoraria">>) => void;
+}) {
+  const deducido = paisPorCodigo(inferirPais(form.telefono) ?? "GT");
+  const efectivo = paisPorCodigo(paisDe({ pais: form.pais || null, telefono: form.telefono }));
+  return (
+    <>
+      <Field label="País">
+        <select className="field" onChange={(event) => onChange({ pais: event.target.value, zonaHoraria: "" })} value={form.pais}>
+          <option value="">
+            Automático ({deducido.bandera} {deducido.nombre})
+          </option>
+          {PAISES.map((p) => (
+            <option key={p.codigo} value={p.codigo}>
+              {p.bandera} {p.nombre} (+{p.prefijo})
+            </option>
+          ))}
+        </select>
+      </Field>
+      {efectivo.zonas.length > 1 ? (
+        <Field label="Zona horaria">
+          <select className="field" onChange={(event) => onChange({ zonaHoraria: event.target.value })} value={form.zonaHoraria}>
+            <option value="">{efectivo.zonas[0].nombre} (principal)</option>
+            {efectivo.zonas.slice(1).map((z) => (
+              <option key={z.id} value={z.id}>
+                {z.nombre}
+              </option>
+            ))}
+          </select>
+        </Field>
+      ) : null}
+    </>
   );
 }
 
@@ -217,7 +269,11 @@ export function PacienteForm({
       <Section onToggle={() => toggle("personales")} open={openSections.personales} title="Datos personales">
         <div className="grid gap-4 sm:grid-cols-2">
           <Field label="Nombre completo *">{input("nombre", { placeholder: "Nombre del paciente" })}</Field>
-          <Field label="Teléfono *">{input("telefono", { placeholder: "0000-0000" })}</Field>
+          <Field label="Teléfono *">{input("telefono", { placeholder: "0000-0000 · de otro país: +504 9999 8888" })}</Field>
+          <PaisFields form={form} onChange={(cambios) => {
+            setForm((prev) => ({ ...prev, ...cambios }));
+            setSavedAt(null);
+          }} />
           <Field label="Fecha de nacimiento">{input("fechaNacimiento", { type: "date" })}</Field>
           <Field label="Género">
             <select className="field" onChange={(event) => set("genero")(event.target.value)} value={form.genero}>

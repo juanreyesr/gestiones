@@ -3,6 +3,25 @@
 import { CalendarCheck2, CalendarDays, ChevronLeft, Clock, HeartPulse, Send } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { agruparSlotsPorDia, claveDiaLocal, formatoFechaLarga, formatoHora, type SlotPublico } from "@/lib/clinica/slots";
+import { mismaHoraQueConsultorio, nombreZona, PAIS_POR_DEFECTO, PAISES, paisPorCodigo, ZONA_CONSULTORIO } from "@/lib/paises";
+
+/** Zona horaria del navegador del visitante (los horarios se muestran en ella). */
+function zonaDelNavegador() {
+  try {
+    return Intl.DateTimeFormat().resolvedOptions().timeZone || ZONA_CONSULTORIO;
+  } catch {
+    return ZONA_CONSULTORIO;
+  }
+}
+
+/** Pais sugerido para el telefono segun la zona del navegador (Guatemala si no se reconoce). */
+function paisDeZona(zona: string) {
+  return PAISES.find((p) => p.zonas.some((z) => z.id === zona))?.codigo ?? PAIS_POR_DEFECTO;
+}
+
+function horaEnGuatemala(iso: string) {
+  return new Intl.DateTimeFormat("es-GT", { timeZone: ZONA_CONSULTORIO, hour: "numeric", minute: "2-digit" }).format(new Date(iso));
+}
 
 type Paso = "cargando" | "inactivo" | "dia" | "hora" | "datos" | "enviado";
 
@@ -16,6 +35,8 @@ export function BookingPage() {
   const [slotElegido, setSlotElegido] = useState<SlotPublico | null>(null);
   const [nombre, setNombre] = useState("");
   const [telefono, setTelefono] = useState("");
+  const [zonaVisitante] = useState(zonaDelNavegador);
+  const [paisTelefono, setPaisTelefono] = useState(() => paisDeZona(zonaDelNavegador()));
   const [email, setEmail] = useState("");
   const [motivo, setMotivo] = useState("");
   const [empresa, setEmpresa] = useState(""); // honeypot
@@ -78,7 +99,10 @@ export function BookingPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           nombre: nombre.trim(),
-          telefono: telefono.trim(),
+          // Se guarda con "+codigo" para que el WhatsApp y el pais del paciente salgan bien.
+          telefono: telefono.trim().startsWith("+")
+            ? telefono.trim()
+            : `+${paisPorCodigo(paisTelefono).prefijo} ${telefono.trim()}`,
           email: email.trim() || null,
           motivo: motivo.trim() || null,
           inicio: slotElegido.inicio,
@@ -207,6 +231,12 @@ export function BookingPage() {
               {info ? (
                 <p className="text-xs text-slate-400">Cada sesión dura {info.duracionMin} minutos.</p>
               ) : null}
+              {(porDia.get(diaElegido) ?? [])[0] && !mismaHoraQueConsultorio(zonaVisitante, (porDia.get(diaElegido) ?? [])[0].inicio) ? (
+                <p className="rounded-lg bg-amber-50 p-3 text-xs leading-5 text-amber-800">
+                  🌎 Los horarios se muestran en <b>tu hora local</b> ({nombreZona(zonaVisitante)}). El consultorio está en
+                  Guatemala.
+                </p>
+              ) : null}
             </div>
           ) : null}
 
@@ -223,6 +253,11 @@ export function BookingPage() {
               <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-500">3 · Tus datos</h2>
               <div className="rounded-lg bg-emerald-50 p-3 text-sm text-emerald-700">
                 <span className="capitalize">{formatoFechaLarga(slotElegido.inicio)}</span> · {formatoHora(slotElegido.inicio)}
+                {!mismaHoraQueConsultorio(zonaVisitante, slotElegido.inicio) ? (
+                  <span className="block text-xs text-emerald-800/80">
+                    Tu hora ({nombreZona(zonaVisitante)}). En Guatemala serán las {horaEnGuatemala(slotElegido.inicio)}.
+                  </span>
+                ) : null}
               </div>
 
               <div className="grid gap-1.5">
@@ -250,8 +285,28 @@ export function BookingPage() {
                 <input className="field-light" onChange={(event) => setNombre(event.target.value)} value={nombre} />
               </label>
               <label className="grid gap-1.5">
-                <span className="text-xs font-semibold uppercase text-slate-500">Teléfono *</span>
-                <input className="field-light" onChange={(event) => setTelefono(event.target.value)} value={telefono} />
+                <span className="text-xs font-semibold uppercase text-slate-500">Teléfono (WhatsApp) *</span>
+                <span className="flex gap-2">
+                  <select
+                    aria-label="País del teléfono"
+                    className="field-light w-32 shrink-0"
+                    onChange={(event) => setPaisTelefono(event.target.value)}
+                    value={paisTelefono}
+                  >
+                    {PAISES.map((p) => (
+                      <option key={p.codigo} value={p.codigo}>
+                        {p.bandera} +{p.prefijo}
+                      </option>
+                    ))}
+                  </select>
+                  <input
+                    className="field-light min-w-0 flex-1"
+                    inputMode="tel"
+                    onChange={(event) => setTelefono(event.target.value)}
+                    placeholder={paisTelefono === "GT" ? "5555 1234" : "Número"}
+                    value={telefono}
+                  />
+                </span>
               </label>
               <label className="grid gap-1.5">
                 <span className="text-xs font-semibold uppercase text-slate-500">Correo electrónico</span>

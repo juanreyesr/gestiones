@@ -1,6 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { buscarCoincidencia, type Coincidencia, type PacienteComparable } from "@/lib/clinica/coincidencias";
 import { parsearReserva } from "@/lib/clinica/reserva-google";
+import { inferirPais, PAIS_POR_DEFECTO, paisPorCodigo } from "@/lib/paises";
 import {
   getStoredTokens,
   isGoogleConfigured,
@@ -47,7 +48,7 @@ export type ReservaRow = {
 };
 
 export async function pacientesComparables(admin: SupabaseClient): Promise<PacienteComparable[]> {
-  const { data } = await admin.from("gestionesjj_pacientes").select("id,nombre,telefono,email").limit(5000);
+  const { data } = await admin.from("gestionesjj_pacientes").select("id,nombre,telefono,email,pais").limit(5000);
   return (data ?? []) as PacienteComparable[];
 }
 
@@ -61,6 +62,7 @@ export function textoReserva(r: ReservaRow, coincidencia: Coincidencia | null) {
     `🗓 ${esc(fechaHora(r.inicio))}`,
     `👤 ${esc(r.nombre ?? "Sin nombre")}`,
     r.telefono || r.email ? `📞 ${esc([r.telefono, r.email].filter(Boolean).join(" · "))}` : null,
+    lineaPais(r.telefono),
     r.motivo ? `📝 ${esc(recortar(r.motivo, 400))}` : null,
     r.notas ? `💬 ${esc(recortar(r.notas, 400))}` : null,
     r.consentimiento ? "✔️ Aceptó el consentimiento" : null,
@@ -71,6 +73,13 @@ export function textoReserva(r: ReservaRow, coincidencia: Coincidencia | null) {
   ]
     .filter((linea) => linea !== null)
     .join("\n");
+}
+
+function lineaPais(telefono: string | null) {
+  const pais = inferirPais(telefono);
+  if (!pais || pais === PAIS_POR_DEFECTO) return null;
+  const info = paisPorCodigo(pais);
+  return `🌎 ${info.bandera} ${esc(info.nombre)}`;
 }
 
 export function botonesReserva(r: ReservaRow, coincidencia: Coincidencia | null): BotonInline[][] {
@@ -283,6 +292,8 @@ export async function resolverReserva(
           nombre,
           telefono,
           email,
+          // Calendly guarda el telefono con "+codigo": de ahi sale el pais (y su zona horaria).
+          pais: inferirPais(telefono),
           motivo_consulta: reserva.motivo,
           notas_generales: reserva.notas
             ? `Antes de iniciar (formulario de ${reserva.tipo_evento ?? "reserva"}): ${reserva.notas}`

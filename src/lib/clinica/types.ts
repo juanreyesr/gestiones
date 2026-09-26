@@ -27,6 +27,10 @@ export type PacienteRow = {
   nombre: string;
   telefono: string;
   email: string | null;
+  /** ISO (GT, HN, ES...). null = se deduce del "+codigo" del telefono o Guatemala. */
+  pais: string | null;
+  /** Zona IANA. null = la principal del pais. */
+  zonaHoraria: string | null;
   fechaNacimiento: string | null;
   genero: string | null;
   ocupacion: string | null;
@@ -60,6 +64,8 @@ export type PacientePayload = {
   nombre: string;
   telefono: string;
   email?: string | null;
+  pais?: string | null;
+  zona_horaria?: string | null;
   fecha_nacimiento?: string | null;
   genero?: string | null;
   ocupacion?: string | null;

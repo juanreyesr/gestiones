@@ -1,6 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { buscarCoincidencia, type Coincidencia } from "@/lib/clinica/coincidencias";
 import { enlaceWhatsApp, textoRecordatorioCita } from "@/lib/clinica/recordatorio";
+import { mismaHoraQueConsultorio, nombreZona, PAIS_POR_DEFECTO, paisDe, paisPorCodigo, zonaDe } from "@/lib/paises";
 import { type EventoGoogle, getStoredTokens, insertEvent, isGoogleConfigured, listarEventos } from "./google-calendar";
 import { pacientesComparables, resolverReserva } from "./reservas-google";
 import { getSupabaseAdmin } from "./supabase-admin";
@@ -212,13 +213,13 @@ type RawCita = {
   motivo: string | null;
   contacto_nombre: string | null;
   contacto_telefono: string | null;
-  gestionesjj_pacientes: { nombre: string; telefono: string | null } | null;
+  gestionesjj_pacientes: { nombre: string; telefono: string | null; pais: string | null; zona_horaria: string | null } | null;
 };
 
 async function citasEntre(admin: SupabaseClient, desdeIso: string, hastaIso: string) {
   const { data } = await admin
     .from("gestionesjj_citas")
-    .select("id,inicio,estado,modalidad,motivo,contacto_nombre,contacto_telefono,gestionesjj_pacientes(nombre,telefono)")
+    .select("id,inicio,estado,modalidad,motivo,contacto_nombre,contacto_telefono,gestionesjj_pacientes(nombre,telefono,pais,zona_horaria)")
     .gte("inicio", desdeIso)
     .lt("inicio", hastaIso)
     .in("estado", ["pendiente", "confirmada"])
@@ -232,18 +233,29 @@ function nombreCita(cita: RawCita) {
 }
 
 /** Boton de Telegram que abre WhatsApp con el recordatorio listo para el paciente. */
-function botonWhatsAppCita(cita: RawCita, etiqueta: string): BotonInline | null {
+function ubicacionPaciente(cita: RawCita) {
   const telefono = cita.gestionesjj_pacientes?.telefono ?? cita.contacto_telefono;
+  const datos = { pais: cita.gestionesjj_pacientes?.pais, zonaHoraria: cita.gestionesjj_pacientes?.zona_horaria, telefono };
+  return { telefono, pais: paisDe(datos), zona: zonaDe(datos) };
+}
+
+/** Boton de Telegram que abre WhatsApp con el recordatorio listo para el paciente (en su hora). */
+function botonWhatsAppCita(cita: RawCita, etiqueta: string): BotonInline | null {
+  const { telefono, pais, zona } = ubicacionPaciente(cita);
   if (!telefono) return null;
-  const fechaLarga = new Intl.DateTimeFormat("es-GT", {
-    timeZone: "America/Guatemala",
-    weekday: "long",
-    day: "numeric",
-    month: "long",
-    year: "numeric",
-  }).format(new Date(cita.inicio));
-  const mensaje = textoRecordatorioCita(nombreCita(cita), fechaLarga, hora(cita.inicio));
-  return { text: etiqueta, url: enlaceWhatsApp(telefono, mensaje) };
+  const mensaje = textoRecordatorioCita(nombreCita(cita), cita.inicio, zona);
+  return { text: etiqueta, url: enlaceWhatsApp(telefono, mensaje, pais) };
+}
+
+/** "🌎 🇪🇸 España · su hora: 11:00 p. m." para pacientes fuera de Guatemala (null si es de Guatemala). */
+function lineaPaisCita(cita: RawCita) {
+  const { pais, zona } = ubicacionPaciente(cita);
+  if (pais === PAIS_POR_DEFECTO) return null;
+  const info = paisPorCodigo(pais);
+  const suHora = mismaHoraQueConsultorio(zona, cita.inicio)
+    ? ""
+    : ` · su hora: ${new Intl.DateTimeFormat("es-GT", { timeZone: zona, hour: "numeric", minute: "2-digit" }).format(new Date(cita.inicio))} (${nombreZona(zona)})`;
+  return `🌎 ${info.bandera} ${esc(info.nombre)}${esc(suHora)}`;
 }
 
 type RawItem = {
@@ -378,6 +390,7 @@ export async function enviarRecordatoriosCitas(admin: SupabaseClient, config: Te
     const texto = [
       `⏰ <b>Cita en ${minutos} min</b> — ${esc(hora(cita.inicio))}`,
       `👤 ${esc(nombreCita(cita))}${cita.modalidad === "virtual" ? " · 💻 virtual" : ""}${cita.estado === "pendiente" ? " · <i>por confirmar</i>" : ""}`,
+      lineaPaisCita(cita),
       cita.motivo ? `📝 ${esc(recortar(cita.motivo, 300))}` : null,
     ]
       .filter((linea) => linea !== null)
