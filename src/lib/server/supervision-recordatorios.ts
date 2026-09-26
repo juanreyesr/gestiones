@@ -52,7 +52,7 @@ export async function enviarRecordatoriosSupervision(admin: SupabaseClient, conf
     admin
       .from("gestionesjj_cursos")
       .select("id,nombre,horario,edificio,virtual,activo,anio,trimestre,docente_id,gestionesjj_docentes(nombre)"),
-    admin.from("gestionesjj_docentes").select("id,nombre").eq("activo", true),
+    admin.from("gestionesjj_docentes").select("id,nombre,correo").eq("activo", true),
   ]);
   const cursos: CursoBase[] = ((cursosRaw ?? []) as unknown as RawCurso[]).map((c) => ({
     id: c.id,
@@ -66,7 +66,9 @@ export async function enviarRecordatoriosSupervision(admin: SupabaseClient, conf
     docenteId: c.docente_id,
     docenteNombre: c.gestionesjj_docentes?.nombre ?? null,
   }));
-  const docentesActivos = new Map(((docentesRaw ?? []) as Array<{ id: string; nombre: string }>).map((d) => [d.id, d.nombre]));
+  const docentes = (docentesRaw ?? []) as Array<{ id: string; nombre: string; correo: string | null }>;
+  const docentesActivos = new Map(docentes.map((d) => [d.id, d.nombre]));
+  const correosDocentes = new Map(docentes.map((d) => [d.id, d.correo]));
 
   const ahora = Date.now();
   let enviados = 0;
@@ -84,6 +86,7 @@ export async function enviarRecordatoriosSupervision(admin: SupabaseClient, conf
       trimestre: periodo.trimestre,
       cursos,
       docentesActivos,
+      correosDocentes,
       evaluaciones,
       rango: {
         inicioClases: periodo.inicio_clases,
@@ -112,12 +115,11 @@ export async function enviarRecordatoriosSupervision(admin: SupabaseClient, conf
       if (!registrado?.length) continue;
 
       const minutos = Math.max(1, Math.round(faltan / 60_000));
-      const lugar = item.virtual ? "💻 Virtual" : item.edificio ? `🏫 Salón ${esc(item.edificio)}` : null;
       const texto = [
         `🎓 <b>Supervisión en ${minutos} min</b> — ${esc(hora(inicio.toISOString()))}`,
         `📚 ${esc(item.cursoNombre)}`,
-        `👤 ${esc(item.docenteNombre)}`,
-        lugar,
+        `👤 ${esc(item.docenteNombre)}${item.virtual ? " · 💻 virtual" : ""}`,
+        item.docenteCorreo ? `✉️ ${esc(item.docenteCorreo)}` : null,
       ]
         .filter((linea) => linea !== null)
         .join("\n");

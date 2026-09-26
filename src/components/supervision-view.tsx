@@ -3,12 +3,15 @@
 import {
   AlertTriangle,
   CalendarCheck2,
+  Check,
   CheckCircle2,
   CircleDashed,
   ClipboardCheck,
   Clock,
+  Copy,
   Download,
   LayoutGrid,
+  Mail,
   Monitor,
   PlayCircle,
   RefreshCw,
@@ -198,13 +201,14 @@ export function SupervisionView({
   };
 
   const docentesActivos = useMemo(() => new Map(docentes.map((d) => [d.id, d.nombre])), [docentes]);
+  const correosDocentes = useMemo(() => new Map(docentes.map((d) => [d.id, d.correo])), [docentes]);
 
   const base = useMemo(
     () =>
       rango
-        ? construirPlanSupervision({ anio, trimestre, cursos, docentesActivos, evaluaciones, rango })
+        ? construirPlanSupervision({ anio, trimestre, cursos, docentesActivos, correosDocentes, evaluaciones, rango })
         : null,
-    [anio, trimestre, cursos, docentesActivos, evaluaciones, rango],
+    [anio, trimestre, cursos, docentesActivos, correosDocentes, evaluaciones, rango],
   );
   const plan = base?.plan ?? null;
   const semanas = useMemo(() => base?.semanas ?? [], [base]);
@@ -669,6 +673,11 @@ function TarjetaRegistrada({
       </span>
       <span className="text-sm font-semibold text-slate-100">{evaluacion.curso_nombre}</span>
       <span className="text-xs text-slate-300">{evaluacion.docente_nombre}</span>
+      {evaluacion.docente_correo ? (
+        <span className="inline-flex items-center gap-1 text-xs text-slate-400">
+          <Mail className="h-3 w-3" /> {evaluacion.docente_correo}
+        </span>
+      ) : null}
     </button>
   );
 }
@@ -832,40 +841,76 @@ function TarjetaSupervision({
   const Icono = info.icono;
   const esOtroDia = item.fecha !== item.semana;
   return (
-    <button
-      className="group grid gap-1 border border-white/10 bg-slate-950/50 p-2.5 text-left transition hover:border-emerald-300/60 hover:bg-emerald-300/8"
-      onClick={onIniciar}
-      title="Abrir la evaluación con este docente y curso"
-      type="button"
-    >
-      <span className="flex items-center justify-between gap-2">
-        <span className="inline-flex items-center gap-1.5 text-sm font-bold text-white">
-          <Clock className="h-3.5 w-3.5 text-emerald-300" />
-          {item.inicio}
-          {item.fin ? `–${item.fin}` : ""}
-          {esOtroDia ? <span className="font-normal text-slate-400">({formatoCorto(item.fecha)})</span> : null}
-        </span>
-        <span className={`inline-flex items-center gap-1 border px-1.5 py-0.5 text-[11px] font-semibold ${info.clase}`}>
-          <Icono className="h-3 w-3" />
-          {info.texto}
-        </span>
-      </span>
-      <span className="text-sm font-semibold text-slate-100">{item.cursoNombre}</span>
-      <span className="text-xs text-slate-300">{item.docenteNombre}</span>
-      <span className="flex flex-wrap items-center gap-x-2 text-[11px] text-slate-400">
-        <span>{MOTIVOS[item.motivo]}</span>
-        {item.virtual ? (
-          <span className="inline-flex items-center gap-1">
-            <Monitor className="h-3 w-3" /> Virtual
+    <div className="group grid border border-white/10 bg-slate-950/50 transition hover:border-emerald-300/60 hover:bg-emerald-300/8">
+      <button
+        className="grid gap-1 p-2.5 pb-1.5 text-left"
+        onClick={onIniciar}
+        title="Abrir la evaluación con este docente y curso"
+        type="button"
+      >
+        <span className="flex items-center justify-between gap-2">
+          <span className="inline-flex items-center gap-1.5 text-sm font-bold text-white">
+            <Clock className="h-3.5 w-3.5 text-emerald-300" />
+            {item.inicio}
+            {item.fin ? `–${item.fin}` : ""}
+            {esOtroDia ? <span className="font-normal text-slate-400">({formatoCorto(item.fecha)})</span> : null}
           </span>
-        ) : item.edificio ? (
-          <span>Salón {item.edificio}</span>
-        ) : null}
-        <span className="ml-auto inline-flex items-center gap-1 font-semibold text-emerald-200 opacity-0 transition group-hover:opacity-100">
-          <PlayCircle className="h-3 w-3" /> Iniciar
+          <span className={`inline-flex items-center gap-1 border px-1.5 py-0.5 text-[11px] font-semibold ${info.clase}`}>
+            <Icono className="h-3 w-3" />
+            {info.texto}
+          </span>
         </span>
+        <span className="text-sm font-semibold text-slate-100">{item.cursoNombre}</span>
+        <span className="text-xs text-slate-300">{item.docenteNombre}</span>
+        <span className="flex flex-wrap items-center gap-x-2 text-[11px] text-slate-400">
+          <span>{MOTIVOS[item.motivo]}</span>
+          {item.virtual ? (
+            <span className="inline-flex items-center gap-1">
+              <Monitor className="h-3 w-3" /> Virtual
+            </span>
+          ) : null}
+          <span className="ml-auto inline-flex items-center gap-1 font-semibold text-emerald-200 opacity-0 transition group-hover:opacity-100">
+            <PlayCircle className="h-3 w-3" /> Iniciar
+          </span>
+        </span>
+      </button>
+      {/* Fuera del boton para poder seleccionarlo y copiarlo sin abrir la evaluacion. */}
+      <CorreoDocente correo={item.docenteCorreo} />
+    </div>
+  );
+}
+
+/** Correo del docente con boton de copiar (para llenar otros formatos). */
+function CorreoDocente({ correo }: { correo: string | null }) {
+  const [copiado, setCopiado] = useState(false);
+  if (!correo) {
+    return <p className="px-2.5 pb-2.5 text-[11px] text-slate-500">Sin correo registrado</p>;
+  }
+  const copiar = async () => {
+    try {
+      await navigator.clipboard.writeText(correo);
+      setCopiado(true);
+      window.setTimeout(() => setCopiado(false), 1500);
+    } catch {
+      // Sin permiso de portapapeles: el correo sigue visible para copiarlo a mano.
+    }
+  };
+  return (
+    <div className="flex items-center gap-1.5 px-2.5 pb-2.5 text-xs text-slate-300">
+      <Mail className="h-3.5 w-3.5 shrink-0 text-emerald-300" />
+      <span className="min-w-0 truncate select-all" title={correo}>
+        {correo}
       </span>
-    </button>
+      <button
+        className="ml-auto inline-flex shrink-0 items-center gap-1 border border-white/10 px-1.5 py-0.5 text-[11px] font-semibold text-slate-300 transition hover:border-emerald-300/60 hover:text-white"
+        onClick={copiar}
+        title="Copiar el correo"
+        type="button"
+      >
+        {copiado ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
+        {copiado ? "Copiado" : "Copiar"}
+      </button>
+    </div>
   );
 }
 

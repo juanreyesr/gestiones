@@ -1681,7 +1681,10 @@ function StepDatosGenerales(props: Parameters<typeof CoordinacionPanel>[0]) {
             <span className="inline-flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-slate-300">
               <CalendarClock className="h-3.5 w-3.5 text-emerald-300" />
               <span className="font-semibold text-emerald-100">{curso.horario?.trim() || "Sin horario registrado"}</span>
-              {curso.edificio ? <span className="text-slate-400">· Salón {curso.edificio}</span> : null}
+              <span className="inline-flex items-center gap-1 text-slate-300">
+                · <Mail className="h-3.5 w-3.5 text-emerald-300" />
+                <span className="select-all">{docente?.correo?.trim() || "Sin correo registrado"}</span>
+              </span>
               {curso.grupo ? <span className="text-slate-400">· {curso.grupo}</span> : null}
             </span>
           ) : null}

@@ -126,6 +126,7 @@ export type CursoPlanificable = {
   virtual: boolean;
   docenteId: string;
   docenteNombre: string;
+  docenteCorreo?: string | null;
 };
 
 export type ItemSupervision = {
@@ -143,6 +144,7 @@ export type ItemSupervision = {
   virtual: boolean;
   docenteId: string;
   docenteNombre: string;
+  docenteCorreo: string | null;
   /** docente: primera visita al docente; curso: primera al curso; seguimiento: repeticion. */
   motivo: "docente" | "curso" | "seguimiento";
 };
@@ -253,6 +255,7 @@ export function generarPlan(params: {
       virtual: c.virtual,
       docenteId: c.docenteId,
       docenteNombre: c.docenteNombre,
+      docenteCorreo: c.docenteCorreo ?? null,
       motivo: c.motivo,
     });
   };
@@ -450,6 +453,8 @@ export function construirPlanSupervision<C extends CursoBase>(params: {
   cursos: C[];
   /** id -> nombre de los docentes activos. */
   docentesActivos: Map<string, string>;
+  /** id -> correo del docente, para mostrarlo junto a cada supervision. */
+  correosDocentes?: Map<string, string | null>;
   evaluaciones: EvaluacionMinima[];
   rango: RangoSupervision;
 }) {
@@ -482,6 +487,7 @@ export function construirPlanSupervision<C extends CursoBase>(params: {
         virtual: c.virtual,
         docenteId: c.docenteId as string,
         docenteNombre: docentesActivos.get(c.docenteId as string) ?? c.docenteNombre ?? "Docente",
+        docenteCorreo: params.correosDocentes?.get(c.docenteId as string) ?? null,
       })),
     inicio: rango.inicio,
     fin: rango.fin,
