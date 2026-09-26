@@ -12,21 +12,34 @@ import { comparaSeguro } from "./telegram";
  *  - WHATSAPP_TEMPLATE_IDIOMA  idioma de la plantilla (por defecto "es")
  *  - WHATSAPP_VERIFY_TOKEN     texto libre para verificar el webhook
  *  - WHATSAPP_APP_SECRET       secreto de la app de Meta: valida la firma de cada webhook
+ *  - WHATSAPP_PROVEEDOR        "meta" (por defecto) o "360dialog"
  *  - WHATSAPP_API_URL          opcional: base distinta si un proveedor (BSP) da su propio endpoint
  *  - WHATSAPP_GRAPH_VERSION    opcional: version de la Graph API (por defecto v23.0)
+ *
+ * Con 360dialog (https://docs.360dialog.com) el cuerpo de los mensajes es el
+ * mismo de la Cloud API; cambian la base (waba-v2.360dialog.io, sin id de
+ * numero) y la cabecera de la llave (D360-API-KEY). WHATSAPP_TOKEN es esa llave.
  */
 
+const es360dialog = () => (process.env.WHATSAPP_PROVEEDOR ?? "").trim().toLowerCase() === "360dialog";
+
 export function isWhatsAppConfigured() {
-  return Boolean(
-    process.env.WHATSAPP_TOKEN && process.env.WHATSAPP_PHONE_NUMBER_ID && process.env.WHATSAPP_TEMPLATE_CITA,
-  );
+  const destino = es360dialog() || process.env.WHATSAPP_API_URL || process.env.WHATSAPP_PHONE_NUMBER_ID;
+  return Boolean(process.env.WHATSAPP_TOKEN && process.env.WHATSAPP_TEMPLATE_CITA && destino);
 }
 
 function urlMensajes() {
   const propia = (process.env.WHATSAPP_API_URL ?? "").replace(/\/+$/, "");
   if (propia) return `${propia}/messages`;
+  if (es360dialog()) return "https://waba-v2.360dialog.io/messages";
   const version = process.env.WHATSAPP_GRAPH_VERSION || "v23.0";
   return `https://graph.facebook.com/${version}/${process.env.WHATSAPP_PHONE_NUMBER_ID}/messages`;
+}
+
+function cabeceras(token: string): Record<string, string> {
+  return es360dialog()
+    ? { "Content-Type": "application/json", "D360-API-KEY": token }
+    : { "Content-Type": "application/json", Authorization: `Bearer ${token}` };
 }
 
 type RespuestaEnvio = { ok: true; id: string } | { ok: false; error: string };
@@ -59,7 +72,7 @@ export async function enviarPlantilla(params: {
   try {
     const response = await fetch(urlMensajes(), {
       method: "POST",
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      headers: cabeceras(token),
       body: JSON.stringify({
         messaging_product: "whatsapp",
         recipient_type: "individual",
@@ -136,7 +149,7 @@ export async function enviarTexto(telefono: string, texto: string): Promise<Resp
   try {
     const response = await fetch(urlMensajes(), {
       method: "POST",
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      headers: cabeceras(token),
       body: JSON.stringify({
         messaging_product: "whatsapp",
         recipient_type: "individual",

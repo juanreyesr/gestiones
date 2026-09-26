@@ -78,7 +78,20 @@ Piloto con **WhatsApp Business Platform (Cloud API)** en modo coexistencia: el m
 - **Por paciente**: casilla "Enviarle recordatorio automatico por WhatsApp" en su ficha (activada por defecto). En la agenda, el detalle de la cita muestra si el recordatorio se envio, entrego o leyo y que respondio el paciente.
 - Tabla `gestionesjj_whatsapp_mensajes` (solo lectura para el owner; escribe el servidor).
 
-### Configurar WhatsApp
+### Configurar WhatsApp con 360dialog (coexistencia, recomendado)
+
+1. Crear cuenta en [360dialog](https://hub.360dialog.com) (plan Regular: 49 EUR por numero al mes, sin recargo sobre las tarifas de Meta) y conectar el numero de WhatsApp Business por **coexistencia** (Embedded Signup desde el Hub). La app WhatsApp Business del telefono debe abrirse al menos una vez cada 13 dias para que la conexion siga activa.
+2. En el Hub, generar la **API key** del numero.
+3. Crear la **plantilla** `recordatorio_cita` (Utilidad, espanol) como se describe abajo y esperar su aprobacion.
+4. **Variables en Vercel**: `WHATSAPP_PROVEEDOR=360dialog`, `WHATSAPP_TOKEN=<API key de 360dialog>`, `WHATSAPP_TEMPLATE_CITA=recordatorio_cita`, `WHATSAPP_TEMPLATE_IDIOMA=es`, `WHATSAPP_VERIFY_TOKEN=<texto largo aleatorio>`; `WHATSAPP_APP_SECRET` vacio (360dialog no firma con la firma de Meta).
+5. **Webhook**: registrarlo una vez con la API de 360dialog:
+   ```bash
+   curl -X POST https://waba-v2.360dialog.io/v1/configs/webhook \
+     -H "D360-API-KEY: <API key>" -H "Content-Type: application/json" \
+     -d '{"url": "https://www.juanjreyes.org/api/whatsapp/webhook?token=<WHATSAPP_VERIFY_TOKEN>"}'
+   ```
+
+### Configurar WhatsApp directo con Meta u otro proveedor
 
 1. **Numero en coexistencia**: el numero debe estar en la app WhatsApp Business (2.24.17+) y conectarse a la Cloud API a traves de un proveedor autorizado por Meta (Solution Partner / Tech Provider) con *Embedded Signup*. Al conectarlo se desactivan en los chats individuales los mensajes temporales, "ver una vez", la ubicacion en tiempo real y las listas de difusion.
 2. **Plantilla** (Meta Business > WhatsApp Manager > Plantillas), categoria **Utilidad**, idioma espanol, nombre `recordatorio_cita`:
