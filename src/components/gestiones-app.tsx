@@ -6,6 +6,7 @@ import {
   BookOpenCheck,
   Building2,
   CalendarClock,
+  CalendarCheck2,
   CalendarDays,
   CheckCircle2,
   ChevronLeft,
@@ -63,6 +64,7 @@ import { fetchConfigCodigos, guardarClinicaCodigo, guardarKioscoCodigo } from "@
 import { exportReporteToPdf } from "@/lib/pdf";
 import { exportRespaldoToExcel } from "@/lib/respaldo-excel";
 import { contarAlertasSeguimientos, fetchReuniones } from "@/lib/reuniones";
+import { horarioCorto } from "@/lib/supervision";
 import { getSupabaseClient, isSupabaseConfigured } from "@/lib/supabase";
 import { ClinicaLock } from "./clinica-lock";
 import { ClinicaView } from "./clinica/clinica-view";
@@ -81,6 +83,7 @@ import { PresentacionView } from "./presentacion-view";
 import { RecursosView } from "./recursos/recursos-view";
 import type { ReporteData } from "./reporte-printable";
 import { ReunionesView } from "./reuniones-view";
+import { SupervisionView, type IniciarSupervision } from "./supervision-view";
 import { TelegramModal } from "./telegram-modal";
 
 const ALLOWED_EMAIL = "lic.juanreyesr@gmail.com";
@@ -88,7 +91,7 @@ const ALLOWED_EMAIL = "lic.juanreyesr@gmail.com";
 type Scores = Record<number, number>;
 type AreaId = (typeof AREAS)[number]["id"];
 type Entrevistas = Record<1 | 2, Record<number, number>>;
-type CoordinacionView = "resumen" | "nueva" | "informe" | "control" | "presentacion" | "reuniones" | "docentes" | "encuestas";
+type CoordinacionView = "resumen" | "nueva" | "informe" | "control" | "presentacion" | "reuniones" | "docentes" | "encuestas" | "supervision";
 
 const areaIcons: Record<AreaId, React.ComponentType<{ className?: string }>> = {
   iglesia: Church,
@@ -661,6 +664,17 @@ export function GestionesApp() {
     setCoordinacionView("nueva");
   };
 
+  /** Desde el calendario de supervision: abre la evaluacion con docente y curso ya cargados. */
+  const handleIniciarSupervision = (datos: IniciarSupervision) => {
+    resetWizard();
+    setSelectedDocenteId(datos.docenteId);
+    setSelectedCursoId(datos.cursoId);
+    setAnio(datos.anio);
+    setTrimestre(datos.trimestre);
+    setCoordinacionView("nueva");
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
   const handleEditarEvaluacion = (row: EvaluacionRow) => {
     setSelectedDocenteId(row.docente_id);
     setSelectedCursoId(row.curso_id);
@@ -998,6 +1012,12 @@ export function GestionesApp() {
                         </div>
                       ) : null}
 
+                      {coordinacionView === "supervision" ? (
+                        <div className="border border-white/10 bg-slate-950/58 p-4 backdrop-blur-xl sm:p-5">
+                          <SupervisionView docentes={docentes} onIniciar={handleIniciarSupervision} />
+                        </div>
+                      ) : null}
+
                       {coordinacionView === "nueva" ? (
                         <div className="grid gap-5 xl:grid-cols-[1fr_360px]">
                           <div className="border border-white/10 bg-slate-950/58 p-4 backdrop-blur-xl sm:p-5">
@@ -1286,6 +1306,7 @@ function CoordinacionTabs({
     { value: "reuniones", label: "Reuniones con docentes", corto: "Reuniones", icon: NotebookPen },
     { value: "docentes", label: "Control de docentes", corto: "Docentes", icon: UserRoundCog },
     { value: "encuestas", label: "Encuesta estudiantil", corto: "Encuesta", icon: ClipboardList },
+    { value: "supervision", label: "Programación de supervisiones", corto: "Supervisión", icon: CalendarCheck2 },
   ];
 
   const tiraRef = useRef<HTMLDivElement | null>(null);
@@ -1594,7 +1615,7 @@ function StepDatosGenerales(props: Parameters<typeof CoordinacionPanel>[0]) {
                   <optgroup key={valorTrimestre} label={TRIMESTRE_LABELS[valorTrimestre]}>
                     {cursosDelTrimestre.map((item) => (
                       <option key={item.id} value={item.id}>
-                        {item.nombre}
+                        {item.nombre} · {horarioCorto(item.horario)}
                       </option>
                     ))}
                   </optgroup>
@@ -1611,6 +1632,14 @@ function StepDatosGenerales(props: Parameters<typeof CoordinacionPanel>[0]) {
               <Plus className="h-4 w-4" />
             </button>
           </div>
+          {curso ? (
+            <span className="inline-flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-slate-300">
+              <CalendarClock className="h-3.5 w-3.5 text-emerald-300" />
+              <span className="font-semibold text-emerald-100">{curso.horario?.trim() || "Sin horario registrado"}</span>
+              {curso.edificio ? <span className="text-slate-400">· Salón {curso.edificio}</span> : null}
+              {curso.grupo ? <span className="text-slate-400">· {curso.grupo}</span> : null}
+            </span>
+          ) : null}
         </Field>
         <Field label="Año">
           <input className="field" min={2024} type="number" value={anio} onChange={(event) => setAnio(Number(event.target.value))} />
