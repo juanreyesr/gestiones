@@ -31,7 +31,11 @@ type FormState = {
   referidoPor: string;
   notasGenerales: string;
   estado: PacienteEstado;
+  whatsappRecordatorios: boolean;
 };
+
+/** Campos de texto del formulario (los que editan input/textarea). */
+type CampoTexto = Exclude<keyof FormState, "whatsappRecordatorios">;
 
 function toFormState(paciente: PacienteRow | null): FormState {
   return {
@@ -56,6 +60,7 @@ function toFormState(paciente: PacienteRow | null): FormState {
     referidoPor: paciente?.referidoPor ?? "",
     notasGenerales: paciente?.notasGenerales ?? "",
     estado: paciente?.estado ?? "activo",
+    whatsappRecordatorios: paciente?.whatsappRecordatorios ?? true,
   };
 }
 
@@ -106,6 +111,7 @@ function toPayload(form: FormState, situacion: SituacionValue): PacientePayload 
     convive_otros: situacion.viveSolo === false ? opt(situacion.conviveOtros) : null,
     horario_trabajo: opt(situacion.horarioTrabajo),
     estado: form.estado,
+    whatsapp_recordatorios: form.whatsappRecordatorios,
   };
 }
 
@@ -208,7 +214,7 @@ export function PacienteForm({
   const dirty = useMemo(() => JSON.stringify({ form, situacion }) !== original, [form, situacion, original]);
   const canSave = form.nombre.trim().length > 0 && form.telefono.trim().length > 0;
 
-  const set = (key: keyof FormState) => (value: string) => {
+  const set = (key: CampoTexto) => (value: string) => {
     setForm((prev) => ({ ...prev, [key]: value }));
     setSavedAt(null);
   };
@@ -234,11 +240,11 @@ export function PacienteForm({
     onSaved(id);
   };
 
-  const input = (key: keyof FormState, props?: React.InputHTMLAttributes<HTMLInputElement>) => (
+  const input = (key: CampoTexto, props?: React.InputHTMLAttributes<HTMLInputElement>) => (
     <input className="field" onChange={(event) => set(key)(event.target.value)} value={form[key]} {...props} />
   );
 
-  const textarea = (key: keyof FormState, rows = 3, placeholder?: string) => (
+  const textarea = (key: CampoTexto, rows = 3, placeholder?: string) => (
     <textarea
       className="field resize-y"
       onChange={(event) => set(key)(event.target.value)}
@@ -269,7 +275,21 @@ export function PacienteForm({
       <Section onToggle={() => toggle("personales")} open={openSections.personales} title="Datos personales">
         <div className="grid gap-4 sm:grid-cols-2">
           <Field label="Nombre completo *">{input("nombre", { placeholder: "Nombre del paciente" })}</Field>
-          <Field label="Teléfono *">{input("telefono", { placeholder: "0000-0000 · de otro país: +504 9999 8888" })}</Field>
+          <div className="grid gap-1.5">
+            <Field label="Teléfono *">{input("telefono", { placeholder: "0000-0000 · de otro país: +504 9999 8888" })}</Field>
+            <label className="flex items-center gap-2 text-xs text-slate-300">
+              <input
+                checked={form.whatsappRecordatorios}
+                onChange={(event) => {
+                  const valor = event.target.checked;
+                  setForm((prev) => ({ ...prev, whatsappRecordatorios: valor }));
+                  setSavedAt(null);
+                }}
+                type="checkbox"
+              />
+              Enviarle recordatorio automático por WhatsApp 24 h antes de cada cita
+            </label>
+          </div>
           <PaisFields form={form} onChange={(cambios) => {
             setForm((prev) => ({ ...prev, ...cambios }));
             setSavedAt(null);

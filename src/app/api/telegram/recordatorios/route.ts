@@ -3,6 +3,7 @@ import { sincronizarReservas } from "@/lib/server/reservas-google";
 import { getSupabaseAdmin } from "@/lib/server/supabase-admin";
 import { comparaSeguro, isTelegramConfigured, leerConfig } from "@/lib/server/telegram";
 import { enviarRecordatoriosCitas, enviarRecordatoriosGoogle } from "@/lib/server/telegram-bot";
+import { enviarRecordatoriosWhatsApp } from "@/lib/server/whatsapp-citas";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -12,6 +13,7 @@ export const dynamic = "force-dynamic";
  * con Authorization: Bearer <CRON_SECRET>, el mismo secreto que protege el
  * resumen diario de Vercel Cron.
  *  - Recordatorios por Telegram de citas y compromisos de Google (si hay chat vinculado).
+ *  - Recordatorio de citas al paciente por WhatsApp 24 h antes (si esta configurado).
  *  - Deteccion de reservas de Calendly u otros sistemas en Google Calendar
  *    (siempre: el panel las muestra aunque Telegram no este vinculado).
  */
@@ -31,6 +33,8 @@ export async function POST(request: Request) {
   const citas = telegramActivo ? await enviarRecordatoriosCitas(admin, config!) : 0;
   // Un fallo de Google no debe impedir los recordatorios de las citas.
   const compromisos = telegramActivo ? await enviarRecordatoriosGoogle(admin, config!).catch(() => 0) : 0;
+  // Independiente de Telegram: el recordatorio es para el paciente.
+  const whatsapp = await enviarRecordatoriosWhatsApp(admin, telegramActivo ? config : null).catch(() => 0);
   const reservas = await sincronizarReservas(admin, telegramActivo ? config : null).catch(() => ({ nuevas: 0 }));
 
   // Limpieza: los registros de avisos de hace mas de 2 dias ya no sirven.
@@ -43,6 +47,7 @@ export async function POST(request: Request) {
     enviados: citas + compromisos,
     citas,
     compromisos,
+    whatsapp,
     reservas: reservas.nuevas,
   });
 }

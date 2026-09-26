@@ -35,10 +35,11 @@ type RawPaciente = {
   datos_token: string | null;
   datos_completados_at: string | null;
   consentimiento_aceptado_at: string | null;
+  whatsapp_recordatorios: boolean | null;
 };
 
 const PACIENTE_COLUMNS =
-  "id,nombre,telefono,email,pais,zona_horaria,fecha_nacimiento,genero,ocupacion,escolaridad,estado_civil,direccion,emergencia_nombre,emergencia_telefono,emergencia_relacion,motivo_consulta,antecedentes_medicos,antecedentes_psicologicos,antecedentes_familiares,medicacion_actual,referido_por,notas_generales,tiene_hijos,hijos,vive_solo,convive_con,convive_otros,horario_trabajo,estado,created_at,datos_token,datos_completados_at,consentimiento_aceptado_at";
+  "id,nombre,telefono,email,pais,zona_horaria,fecha_nacimiento,genero,ocupacion,escolaridad,estado_civil,direccion,emergencia_nombre,emergencia_telefono,emergencia_relacion,motivo_consulta,antecedentes_medicos,antecedentes_psicologicos,antecedentes_familiares,medicacion_actual,referido_por,notas_generales,tiene_hijos,hijos,vive_solo,convive_con,convive_otros,horario_trabajo,estado,created_at,datos_token,datos_completados_at,consentimiento_aceptado_at,whatsapp_recordatorios";
 
 function mapPaciente(row: RawPaciente): PacienteRow {
   return {
@@ -75,6 +76,7 @@ function mapPaciente(row: RawPaciente): PacienteRow {
     datosToken: row.datos_token,
     datosCompletadosAt: row.datos_completados_at,
     consentimientoAceptadoAt: row.consentimiento_aceptado_at,
+    whatsappRecordatorios: row.whatsapp_recordatorios ?? true,
   };
 }
 

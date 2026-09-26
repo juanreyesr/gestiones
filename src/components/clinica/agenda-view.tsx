@@ -17,6 +17,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { cambiarEstadoCita, eliminarCita, fetchCitas } from "@/lib/clinica/citas";
 import { buildGoogleTemplateLink, fetchGoogleBusy, syncCitaConGoogle, type BusyBlock } from "@/lib/clinica/google-client";
 import { buildRecordatorio } from "@/lib/clinica/recordatorio";
+import { fetchEstadoWhatsAppCita, type EstadoWhatsAppCita } from "@/lib/clinica/whatsapp-estado";
 import { agregarDias, claveDiaLocal, formatoFechaHora, formatoHora, inicioDeSemana } from "@/lib/clinica/slots";
 import type { CitaEstado, CitaRow, PacienteRow } from "@/lib/clinica/types";
 import { ConfirmDialog } from "../confirm-dialog";
@@ -71,6 +72,46 @@ const HORA_FIN = 21;
 const ALTO_HORA = 52; // px por hora
 
 const DIA_LABELS = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"];
+
+const TEXTO_ESTADO_WA: Record<EstadoWhatsAppCita["estado"], string> = {
+  enviando: "enviándose",
+  enviado: "enviado",
+  entregado: "entregado",
+  leido: "leído",
+  fallido: "no se pudo enviar",
+};
+
+/** Estado del recordatorio automatico (24 h antes) y la respuesta del paciente, si ya hay. */
+function EstadoRecordatorioWhatsApp({ citaId }: { citaId: string }) {
+  const [estado, setEstado] = useState<EstadoWhatsAppCita | null>(null);
+  useEffect(() => {
+    let vigente = true;
+    fetchEstadoWhatsAppCita(citaId).then((valor) => {
+      if (vigente) setEstado(valor);
+    });
+    return () => {
+      vigente = false;
+    };
+  }, [citaId]);
+  if (!estado) return null;
+  const hora = (iso: string) =>
+    new Intl.DateTimeFormat("es-GT", { day: "numeric", month: "short", hour: "numeric", minute: "2-digit" }).format(new Date(iso));
+  return (
+    <div className="mb-3 grid gap-1 border border-white/10 bg-white/5 p-2 text-xs text-slate-300">
+      <span>
+        Recordatorio automático por WhatsApp: <b className={estado.estado === "fallido" ? "text-red-300" : "text-emerald-200"}>{TEXTO_ESTADO_WA[estado.estado]}</b>{" "}
+        ({hora(estado.enviadoEn)})
+      </span>
+      {estado.estado === "fallido" && estado.error ? <span className="text-red-300">{estado.error}</span> : null}
+      {estado.respuesta ? (
+        <span className={estado.respuesta === "confirmar" ? "font-semibold text-emerald-200" : "font-semibold text-amber-200"}>
+          {estado.respuesta === "confirmar" ? "✅ El paciente confirmó" : "🔁 El paciente pidió reprogramar"}
+          {estado.respondidoEn ? ` · ${hora(estado.respondidoEn)}` : ""}
+        </span>
+      ) : null}
+    </div>
+  );
+}
 
 function CitaDetalleModal({
   cita,
@@ -168,6 +209,7 @@ function CitaDetalleModal({
           {activa ? (
             <div className="mt-4 border-t border-white/10 pt-4">
               <div className="mb-2 text-xs font-semibold uppercase text-slate-400">Recordar al paciente</div>
+              <EstadoRecordatorioWhatsApp citaId={cita.id} />
               <div className="flex flex-wrap gap-2">
                 <a
                   className="inline-flex items-center gap-1.5 border border-emerald-300/40 bg-emerald-300/10 px-3 py-1.5 text-sm font-semibold text-emerald-200 transition hover:bg-emerald-300/20"

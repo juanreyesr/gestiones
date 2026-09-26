@@ -58,6 +58,8 @@ export type PacienteRow = {
   datosToken: string | null;
   datosCompletadosAt: string | null;
   consentimientoAceptadoAt: string | null;
+  /** Recibe el recordatorio automatico de WhatsApp 24 h antes de cada cita. */
+  whatsappRecordatorios: boolean;
 };
 
 export type PacientePayload = {
@@ -89,6 +91,7 @@ export type PacientePayload = {
   convive_otros?: string | null;
   horario_trabajo?: string | null;
   estado?: PacienteEstado;
+  whatsapp_recordatorios?: boolean;
 };
 
 export type CompromisoRow = {
