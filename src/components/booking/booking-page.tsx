@@ -3,21 +3,15 @@
 import { CalendarCheck2, CalendarDays, ChevronLeft, Clock, HeartPulse, Send } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { agruparSlotsPorDia, claveDiaLocal, formatoFechaLarga, formatoHora, type SlotPublico } from "@/lib/clinica/slots";
-import { mismaHoraQueConsultorio, nombreZona, PAIS_POR_DEFECTO, PAISES, paisPorCodigo, ZONA_CONSULTORIO } from "@/lib/paises";
-
-/** Zona horaria del navegador del visitante (los horarios se muestran en ella). */
-function zonaDelNavegador() {
-  try {
-    return Intl.DateTimeFormat().resolvedOptions().timeZone || ZONA_CONSULTORIO;
-  } catch {
-    return ZONA_CONSULTORIO;
-  }
-}
-
-/** Pais sugerido para el telefono segun la zona del navegador (Guatemala si no se reconoce). */
-function paisDeZona(zona: string) {
-  return PAISES.find((p) => p.zonas.some((z) => z.id === zona))?.codigo ?? PAIS_POR_DEFECTO;
-}
+import {
+  mismaHoraQueConsultorio,
+  nombreZona,
+  PAISES,
+  paisDeZona,
+  paisPorCodigo,
+  ZONA_CONSULTORIO,
+  zonaDelNavegador,
+} from "@/lib/paises";
 
 function horaEnGuatemala(iso: string) {
   return new Intl.DateTimeFormat("es-GT", { timeZone: ZONA_CONSULTORIO, hour: "numeric", minute: "2-digit" }).format(new Date(iso));

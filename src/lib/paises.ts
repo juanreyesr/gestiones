@@ -162,3 +162,17 @@ export function nombreZona(zona: string) {
   }
   return zona.split("/").pop()?.replace(/_/g, " ") ?? zona;
 }
+
+/** Zona horaria del navegador (solo en el cliente; en el servidor devuelve la del consultorio). */
+export function zonaDelNavegador() {
+  try {
+    return Intl.DateTimeFormat().resolvedOptions().timeZone || ZONA_CONSULTORIO;
+  } catch {
+    return ZONA_CONSULTORIO;
+  }
+}
+
+/** Pais al que pertenece una zona horaria (Guatemala si no se reconoce). */
+export function paisDeZona(zona: string) {
+  return PAISES.find((p) => p.zonas.some((z) => z.id === zona))?.codigo ?? PAIS_POR_DEFECTO;
+}

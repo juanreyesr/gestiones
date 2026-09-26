@@ -4,6 +4,7 @@ import { CheckCircle2, ClipboardList, HeartPulse, Save } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { SituacionFields, type SituacionValue } from "@/components/clinica/situacion-fields";
 import type { HijoInfo } from "@/lib/clinica/types";
+import { inferirPais, PAISES, paisDeZona, paisPorCodigo, zonaDelNavegador } from "@/lib/paises";
 
 type Estado = "cargando" | "ok" | "completado" | "invalido" | "enviado";
 
@@ -20,6 +21,8 @@ type FormState = {
   emergenciaTelefono: string;
   emergenciaRelacion: string;
   referidoPor: string;
+  pais: string;
+  zonaHoraria: string;
 };
 
 const VACIO: FormState = {
@@ -35,6 +38,8 @@ const VACIO: FormState = {
   emergenciaTelefono: "",
   emergenciaRelacion: "",
   referidoPor: "",
+  pais: "GT",
+  zonaHoraria: "",
 };
 
 const SITUACION_VACIA: SituacionValue = {
@@ -47,8 +52,10 @@ const SITUACION_VACIA: SituacionValue = {
   horarioTrabajo: "",
 };
 
-type DatosRespuesta = Partial<FormState> & {
+type DatosRespuesta = Partial<Omit<FormState, "pais" | "zonaHoraria">> & {
   estado?: string;
+  pais?: string | null;
+  zonaHoraria?: string | null;
   ocupacion?: string | null;
   tieneHijos?: boolean | null;
   hijos?: HijoInfo[] | null;
@@ -98,7 +105,6 @@ export function DatosPacientePage({ token }: { token: string }) {
       }
       setForm({
         nombre: data.nombre ?? "",
-        telefono: data.telefono ?? "",
         email: data.email ?? "",
         fechaNacimiento: data.fechaNacimiento ?? "",
         genero: data.genero ?? "",
@@ -109,6 +115,23 @@ export function DatosPacientePage({ token }: { token: string }) {
         emergenciaTelefono: data.emergenciaTelefono ?? "",
         emergenciaRelacion: data.emergenciaRelacion ?? "",
         referidoPor: data.referidoPor ?? "",
+        // Pais: el del expediente; si no, el del +codigo del telefono; si no hay telefono, el de la zona del navegador.
+        ...(() => {
+          const zonaNavegador = zonaDelNavegador();
+          // Un numero guardado sin +codigo es de Guatemala; el navegador solo decide si no hay telefono.
+          const pais =
+            data.pais || inferirPais(data.telefono) || (data.telefono?.trim() ? "GT" : paisDeZona(zonaNavegador));
+          const zonas = paisPorCodigo(pais).zonas;
+          const zona = data.zonaHoraria || (zonas.some((z) => z.id === zonaNavegador) ? zonaNavegador : "");
+          // El codigo del pais se muestra aparte: se quita del numero si ya lo traia.
+          const prefijo = `+${paisPorCodigo(pais).prefijo}`;
+          const telefono = (data.telefono ?? "").trim();
+          return {
+            pais,
+            zonaHoraria: zonas.length > 1 && zona !== zonas[0].id ? zona : "",
+            telefono: telefono.startsWith(prefijo) ? telefono.slice(prefijo.length).trim() : telefono,
+          };
+        })(),
       });
       setSituacion({
         tieneHijos: data.tieneHijos ?? null,
@@ -140,8 +163,11 @@ export function DatosPacientePage({ token }: { token: string }) {
     }
     setGuardando(true);
     setError("");
+    const telefono = form.telefono.trim();
     const payload = {
       ...form,
+      // Se guarda con +codigo para que WhatsApp y el pais del expediente salgan bien.
+      telefono: telefono.startsWith("+") ? telefono : `+${paisPorCodigo(form.pais).prefijo} ${telefono}`,
       ocupacion: situacion.ocupacion,
       horarioTrabajo: situacion.horarioTrabajo,
       tieneHijos: situacion.tieneHijos,
@@ -223,7 +249,46 @@ export function DatosPacientePage({ token }: { token: string }) {
             <div className="grid gap-4">
               <div className="grid gap-4 sm:grid-cols-2">
                 <Campo label="Nombre completo *" onChange={set("nombre")} value={form.nombre} />
-                <Campo label="Teléfono *" onChange={set("telefono")} value={form.telefono} />
+                <label className="grid gap-1.5">
+                  <span className="text-xs font-semibold uppercase text-slate-400">País *</span>
+                  <select
+                    className="field-light"
+                    onChange={(e) => setForm((prev) => ({ ...prev, pais: e.target.value, zonaHoraria: "" }))}
+                    value={form.pais}
+                  >
+                    {PAISES.map((p) => (
+                      <option key={p.codigo} value={p.codigo}>
+                        {p.bandera} {p.nombre}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                {paisPorCodigo(form.pais).zonas.length > 1 ? (
+                  <label className="grid gap-1.5">
+                    <span className="text-xs font-semibold uppercase text-slate-400">Zona horaria</span>
+                    <select className="field-light" onChange={(e) => set("zonaHoraria")(e.target.value)} value={form.zonaHoraria}>
+                      {paisPorCodigo(form.pais).zonas.map((z, i) => (
+                        <option key={z.id} value={i === 0 ? "" : z.id}>
+                          {z.nombre}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                ) : null}
+                <label className="grid gap-1.5">
+                  <span className="text-xs font-semibold uppercase text-slate-400">Teléfono (WhatsApp) *</span>
+                  <span className="flex items-center gap-2">
+                    <span className="shrink-0 rounded-md border border-slate-200 bg-slate-50 px-2.5 py-2 text-sm text-slate-600">
+                      {paisPorCodigo(form.pais).bandera} +{paisPorCodigo(form.pais).prefijo}
+                    </span>
+                    <input
+                      className="field-light min-w-0 flex-1"
+                      inputMode="tel"
+                      onChange={(e) => set("telefono")(e.target.value)}
+                      value={form.telefono}
+                    />
+                  </span>
+                </label>
                 <Campo label="Correo electrónico" onChange={set("email")} type="email" value={form.email} />
                 <Campo label="Fecha de nacimiento" onChange={set("fechaNacimiento")} type="date" value={form.fechaNacimiento} />
                 <Campo label="Género" onChange={set("genero")} value={form.genero} />

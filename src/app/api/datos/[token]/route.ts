@@ -28,6 +28,8 @@ type RawDatos = {
   convive_con: string[] | null;
   convive_otros: string | null;
   horario_trabajo: string | null;
+  pais?: string | null;
+  zona_horaria?: string | null;
 };
 
 export async function GET(request: Request, { params }: { params: Promise<{ token: string }> }) {
@@ -75,6 +77,8 @@ export async function GET(request: Request, { params }: { params: Promise<{ toke
       conviveCon: row.convive_con ?? [],
       conviveOtros: row.convive_otros,
       horarioTrabajo: row.horario_trabajo,
+      pais: row.pais ?? null,
+      zonaHoraria: row.zona_horaria ?? null,
     },
     { headers: { "Cache-Control": "no-store" } }
   );
@@ -141,6 +145,8 @@ export async function POST(request: Request, { params }: { params: Promise<{ tok
     p_convive_con: conviveCon,
     p_convive_otros: opt("conviveOtros"),
     p_horario_trabajo: opt("horarioTrabajo"),
+    p_pais: opt("pais")?.toUpperCase().slice(0, 2) ?? null,
+    p_zona_horaria: opt("zonaHoraria")?.slice(0, 64) ?? null,
   });
 
   if (error) {
