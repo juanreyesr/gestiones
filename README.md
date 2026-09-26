@@ -29,6 +29,8 @@ Centro de gestion de pacientes y sesiones de terapia:
 3. Define `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `NEXT_PUBLIC_APP_URL` y `SUPABASE_SECRET_KEY` (service role de Supabase) en Vercel.
 4. En Clinica → Configuracion pulsa "Conectar Google Calendar".
 
+Importante: en la **pantalla de consentimiento OAuth** usa tipo "Externo" y, al terminar, pasa el estado de publicacion de "Testing" a **"In production"**. En modo Testing Google emite tokens que vencen a los 7 dias y el calendario se desconectaria cada semana. Como la app no esta verificada por Google, al conectar aparece "Google no verificó esta app": entra a *Configuracion avanzada → Ir a GestionesJJ (no seguro)*; es tu propia app y solo la usa tu cuenta.
+
 Sin estas variables todo funciona igual; cada cita ofrece un enlace manual "Añadir a Google Calendar".
 
 ### Resumenes con IA (opcional)
@@ -44,7 +46,8 @@ Un bot privado de Telegram que avisa de lo que pasa en la plataforma y deja actu
 - 🩺 **Solicitud de cita** desde `/agendar`, con botones **Aprobar** / **Rechazar**. Aprobar crea el paciente y la cita igual que desde la app (misma funcion `gestionesjj_aprobar_solicitud`) y, si Google Calendar esta conectado, crea el evento.
 - 💬 **Mensaje de un estudiante** (texto y nombre del adjunto). **Responder** a ese aviso en Telegram le contesta al estudiante: el mensaje aparece en su panel y los suyos quedan como leidos.
 - 📥 **Entrega de tarea** (marca si fue tardia), 🎓 **solicitud de inscripcion** a un curso y 📊 **respuestas de encuestas** (esta ultima apagada por defecto).
-- ☀️ **Resumen diario a las 7:00 a. m.** (Guatemala): citas del dia, pendientes que vencen hoy o vencidos, solicitudes y mensajes por atender.
+- ☀️ **Resumen diario a las 7:00 a. m.** (Guatemala): citas del dia, pendientes que vencen hoy o vencidos, solicitudes y mensajes por atender, con un boton **📲 Recordar a …** por cada cita de hoy que abre WhatsApp con el recordatorio listo para el paciente.
+- ⏰ **Recordatorio 1 hora antes de cada cita** (paciente, hora, modalidad y motivo) con boton para mandarle el recordatorio por WhatsApp. Cada cita se avisa una vez; si se reprograma, se vuelve a avisar.
 
 **Comandos del bot**: `/hoy` (resumen), `/citas` (proximos 7 dias), `/solicitudes` (con botones para aprobar), `/pendientes` (vencidos y de los proximos 3 dias, con boton ✅ Listo), `/nuevo texto` (anota un pendiente en el primer grupo del primer tablero), `/mensajes` (mensajes de estudiantes sin leer, cada uno respondible) y `/ayuda`.
 
@@ -52,8 +55,9 @@ Un bot privado de Telegram que avisa de lo que pasa en la plataforma y deja actu
 
 1. En Telegram abre **@BotFather**, envia `/newbot`, elige nombre y usuario, y copia el token.
 2. En Vercel define `TELEGRAM_BOT_TOKEN`, `TELEGRAM_WEBHOOK_SECRET` y `CRON_SECRET` (ver `.env.example`), ademas de `SUPABASE_SECRET_KEY` y `NEXT_PUBLIC_APP_URL`, y vuelve a desplegar.
-3. Aplica la migracion `033_gestionesjj_telegram.sql`.
-4. En el panel pulsa **Conectar Telegram → Vincular Telegram**: registra el webhook, fija los comandos del bot y genera un enlace de un solo uso (vence en 15 minutos, con QR). Abrelo en tu telefono y pulsa **Iniciar**.
+3. Aplica las migraciones `033_gestionesjj_telegram.sql` y `034_gestionesjj_telegram_recordatorios.sql`.
+4. Para los recordatorios antes de cada cita: en Supabase → Project Settings → **Vault** crea un secreto llamado `gestionesjj_cron_secret` con el **mismo valor** de `CRON_SECRET`. Vercel Hobby solo permite cron diario, asi que el disparador cada 10 minutos es `pg_cron` + `pg_net` de Supabase (job `gestionesjj_recordatorios_citas`), que llama a `POST /api/telegram/recordatorios` con ese secreto. Sin el secreto la ruta responde 401 y simplemente no hay recordatorios.
+5. En el panel pulsa **Conectar Telegram → Vincular Telegram**: registra el webhook, fija los comandos del bot y genera un enlace de un solo uso (vence en 15 minutos, con QR). Abrelo en tu telefono y pulsa **Iniciar**.
 
 Seguridad: el webhook rechaza toda peticion sin el header `X-Telegram-Bot-Api-Secret-Token` correcto; el codigo de vinculacion se guarda solo como SHA-256; las tablas `gestionesjj_telegram_config` y `gestionesjj_telegram_hilos` tienen RLS sin politicas (solo el servidor con service role las toca), y `gestionesjj_telegram_aprobar_solicitud` solo la puede ejecutar `service_role`. Si Telegram falla, la accion que origino el aviso no se ve afectada (los avisos se envian con `after()`, despues de responder).
 

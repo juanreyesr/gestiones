@@ -34,7 +34,8 @@ export async function GET(request: Request) {
   if (!config.preferencias.resumen_diario) return NextResponse.json({ status: "desactivado" });
   if (config.ultimoResumen === hoy) return NextResponse.json({ status: "ya_enviado" });
 
-  const res = await enviarMensaje(config.chatId, await construirResumenDiario(admin));
+  const resumen = await construirResumenDiario(admin);
+  const res = await enviarMensaje(config.chatId, resumen.texto, { botones: resumen.botones });
   if (!res.ok) return NextResponse.json({ status: "error", error: res.error }, { status: 502 });
 
   await admin.from("gestionesjj_telegram_config").update({ ultimo_resumen: hoy }).eq("id", 1);
