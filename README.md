@@ -78,7 +78,19 @@ Piloto con **WhatsApp Business Platform (Cloud API)** en modo coexistencia: el m
 - **Por paciente**: casilla "Enviarle recordatorio automatico por WhatsApp" en su ficha (activada por defecto). En la agenda, el detalle de la cita muestra si el recordatorio se envio, entrego o leyo y que respondio el paciente.
 - Tabla `gestionesjj_whatsapp_mensajes` (solo lectura para el owner; escribe el servidor).
 
-### Configurar WhatsApp con 360dialog (coexistencia, recomendado)
+### Configurar WhatsApp con YCloud (coexistencia, sin cuota mensual — recomendado)
+
+YCloud tiene plan gratuito permanente y no cobra recargo sobre las tarifas de Meta: solo se paga cada recordatorio entregado.
+
+1. Crear cuenta en [YCloud](https://www.ycloud.com) (plan Free) y conectar el numero de WhatsApp Business con **WhatsApp Business App Coexistence** (Embedded Signup desde su consola). Agregar un metodo de pago para los cobros de Meta por mensaje.
+2. Crear la **plantilla** `recordatorio_cita` (Utilidad, espanol) como se describe abajo y esperar su aprobacion.
+3. En la consola, **Developers → API Keys**: copiar la API key.
+4. En **Developers → Webhook → Add Endpoint**: URL `https://www.juanjreyes.org/api/whatsapp/webhook`, eventos `whatsapp.inbound_message.received` y `whatsapp.message.updated`. Copiar el **secret** que muestra al crearlo.
+5. **Variables en Vercel**: `WHATSAPP_PROVEEDOR=ycloud`, `WHATSAPP_TOKEN=<API key>`, `WHATSAPP_NUMERO=+502XXXXXXXX` (tu numero), `WHATSAPP_WEBHOOK_SECRET=<secret del webhook>`, `WHATSAPP_TEMPLATE_CITA=recordatorio_cita`, `WHATSAPP_TEMPLATE_IDIOMA=es`.
+
+La firma de cada evento (`YCloud-Signature`) se valida con ese secret y se rechazan eventos de mas de 5 minutos.
+
+### Configurar WhatsApp con 360dialog (coexistencia, 49 EUR al mes)
 
 1. Crear cuenta en [360dialog](https://hub.360dialog.com) (plan Regular: 49 EUR por numero al mes, sin recargo sobre las tarifas de Meta) y conectar el numero de WhatsApp Business por **coexistencia** (Embedded Signup desde el Hub). La app WhatsApp Business del telefono debe abrirse al menos una vez cada 13 dias para que la conexion siga activa.
 2. En el Hub, generar la **API key** del numero.
