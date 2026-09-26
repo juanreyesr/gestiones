@@ -3,12 +3,15 @@
 import {
   AlertTriangle,
   CalendarCheck2,
+  Check,
   CheckCircle2,
   CircleDashed,
   ClipboardCheck,
   Clock,
+  Copy,
   Download,
   LayoutGrid,
+  Mail,
   Monitor,
   PlayCircle,
   RefreshCw,
@@ -24,25 +27,24 @@ import { fetchCarreras, fetchCursosAdmin, type CursoAdminRow } from "@/lib/curso
 import { currentTrimestre, fetchEvaluacionesPorPeriodo, type EvaluacionRow } from "@/lib/evaluacion-helpers";
 import { formatoCorto, hoyISO } from "@/lib/fechas";
 import {
-  esCursoDelCoordinador,
+  construirPlanSupervision,
   estadoItem,
-  finPorDefecto,
-  generarPlan,
   horasDeHorario,
-  inicioClasesPorDefecto,
   logroSemanal,
   marcaCelda,
   mesDeFecha,
   MINIMO_POR_SABADO,
+  rangoPorDefecto,
   rotuloTrimestreCarrera,
   sabadoDeSemana,
   sabadoEnOPosterior,
-  sabadosEntre,
   type EstadoItem,
   type ItemSupervision,
   type LogroSemana,
   type MarcaCelda,
+  type RangoSupervision,
 } from "@/lib/supervision";
+import { fetchPeriodoSupervision, guardarPeriodoSupervision } from "@/lib/supervision-periodos";
 import type { GrupoProgramacion, SupervisionRealizada } from "@/lib/supervision-excel";
 import { ErrorBanner, Field, INPUT } from "./ui-comun";
 
@@ -53,52 +55,33 @@ export type IniciarSupervision = {
   trimestre: Trimestre;
 };
 
-/**
- * inicioClases: sabado de la semana 1 del trimestre (desde ahi se mide el
- * logro, retroactivo incluido). inicio: desde cuando se reparte la propuesta.
- * parcial: numero de semana de parciales, sin supervisiones programadas.
- */
-type Rango = { inicioClases: string; inicio: string; fin: string; parcial: number | null };
-
-const SEMANA_PARCIAL_POR_DEFECTO = 8;
+type Rango = RangoSupervision;
 
 const claveRango = (anio: number, trimestre: Trimestre) => `gestionesjj:supervision:${anio}-T${trimestre}`;
 
 /**
- * El rango se fija la primera vez que se abre el periodo: si el inicio del
- * plan se recalculara con "hoy" en cada visita, la propuesta se correria sola
- * cada semana. Se guarda solo en este navegador (es una preferencia de vista).
+ * Rango guardado en este navegador antes de que las fechas pasaran a la base
+ * (migracion 040). Solo se usa para migrarlo la primera vez.
  */
-function leerRango(anio: number, trimestre: Trimestre): Rango {
-  const fin = finPorDefecto(anio, trimestre);
-  const porDefecto: Rango = {
-    inicioClases: inicioClasesPorDefecto(fin),
-    inicio: sabadoEnOPosterior(hoyISO()),
-    fin,
-    parcial: SEMANA_PARCIAL_POR_DEFECTO,
-  };
+function leerRangoLocal(anio: number, trimestre: Trimestre): Rango | null {
   try {
     const guardado = window.localStorage.getItem(claveRango(anio, trimestre));
-    if (guardado) {
-      const valor = JSON.parse(guardado) as Partial<Rango>;
-      if (valor.inicio && valor.fin) {
-        // Rangos guardados antes de existir la semana 1 y los parciales.
-        return {
-          inicioClases: valor.inicioClases ?? inicioClasesPorDefecto(valor.fin),
-          inicio: valor.inicio,
-          fin: valor.fin,
-          parcial: valor.parcial === undefined ? SEMANA_PARCIAL_POR_DEFECTO : valor.parcial,
-        };
-      }
-    }
-    window.localStorage.setItem(claveRango(anio, trimestre), JSON.stringify(porDefecto));
+    if (!guardado) return null;
+    const valor = JSON.parse(guardado) as Partial<Rango>;
+    if (!valor.inicio || !valor.fin) return null;
+    const porDefecto = rangoPorDefecto(anio, trimestre, hoyISO());
+    return {
+      inicioClases: valor.inicioClases ?? porDefecto.inicioClases,
+      inicio: valor.inicio,
+      fin: valor.fin,
+      parcial: valor.parcial === undefined ? porDefecto.parcial : valor.parcial,
+    };
   } catch {
-    // Sin almacenamiento disponible: se usa el rango por defecto.
+    return null;
   }
-  return porDefecto;
 }
 
-function guardarRango(anio: number, trimestre: Trimestre, rango: Rango) {
+function guardarRangoLocal(anio: number, trimestre: Trimestre, rango: Rango) {
   try {
     window.localStorage.setItem(claveRango(anio, trimestre), JSON.stringify(rango));
   } catch {
@@ -163,9 +146,29 @@ export function SupervisionView({
   const [error, setError] = useState("");
   const hoy = hoyISO();
 
+  /**
+   * Las fechas se fijan la primera vez que se abre el periodo (si el inicio
+   * del plan se recalculara con "hoy" en cada visita, la propuesta se correria
+   * sola cada semana) y se guardan en la base para que el recordatorio de
+   * Telegram use el mismo plan. Si la base no responde, quedan en el navegador.
+   */
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- el rango vive en localStorage, solo existe en el navegador
-    setRango(leerRango(anio, trimestre));
+    let vigente = true;
+    (async () => {
+      const { data, error: errorPeriodo } = await fetchPeriodoSupervision(anio, trimestre);
+      if (!vigente) return;
+      if (data) {
+        setRango(data);
+        return;
+      }
+      const inicial = leerRangoLocal(anio, trimestre) ?? rangoPorDefecto(anio, trimestre, hoyISO());
+      setRango(inicial);
+      guardarRangoLocal(anio, trimestre, inicial);
+      if (!errorPeriodo) await guardarPeriodoSupervision(anio, trimestre, inicial);
+    })();
+    return () => {
+      vigente = false;
+    };
   }, [anio, trimestre]);
 
   const cargar = useCallback(async () => {
@@ -191,67 +194,34 @@ export function SupervisionView({
     if (!rango) return;
     const nuevo = { ...rango, ...cambio };
     setRango(nuevo);
-    guardarRango(anio, trimestre, nuevo);
+    guardarRangoLocal(anio, trimestre, nuevo);
+    guardarPeriodoSupervision(anio, trimestre, nuevo).then(({ error: errorGuardado }) => {
+      if (errorGuardado) setError(`No se guardaron las fechas del periodo: ${errorGuardado}`);
+    });
   };
 
   const docentesActivos = useMemo(() => new Map(docentes.map((d) => [d.id, d.nombre])), [docentes]);
+  const correosDocentes = useMemo(() => new Map(docentes.map((d) => [d.id, d.correo])), [docentes]);
 
-  const cursosDelPeriodo = useMemo(
-    () => cursos.filter((c) => c.activo && c.anio === anio && c.trimestre === trimestre),
-    [cursos, anio, trimestre],
+  const base = useMemo(
+    () =>
+      rango
+        ? construirPlanSupervision({ anio, trimestre, cursos, docentesActivos, correosDocentes, evaluaciones, rango })
+        : null,
+    [anio, trimestre, cursos, docentesActivos, correosDocentes, evaluaciones, rango],
   );
-
+  const plan = base?.plan ?? null;
+  const semanas = useMemo(() => base?.semanas ?? [], [base]);
+  const semanaParcial = base?.semanaParcial ?? null;
+  const cursosDelPeriodo = useMemo(() => base?.cursosDelPeriodo ?? [], [base]);
+  const cursosPeriodo = useMemo(() => base?.cursosPeriodo ?? [], [base]);
+  const cursosPropios = base?.cursosPropios ?? [];
+  const cursosSinDocente = base?.cursosSinDocente ?? [];
+  const planificables = useMemo(() => base?.planificables ?? new Set<string>(), [base]);
   const nombreDocente = useCallback(
     (c: CursoAdminRow) => (c.docenteId ? (docentesActivos.get(c.docenteId) ?? c.docenteNombre) : c.docenteNombre),
     [docentesActivos],
   );
-
-  const cursosPropios = useMemo(
-    () => cursosDelPeriodo.filter((c) => esCursoDelCoordinador(nombreDocente(c))),
-    [cursosDelPeriodo, nombreDocente],
-  );
-
-  const cursosPeriodo = useMemo(
-    () => cursosDelPeriodo.filter((c) => !esCursoDelCoordinador(nombreDocente(c))),
-    [cursosDelPeriodo, nombreDocente],
-  );
-
-  const cursosSinDocente = useMemo(
-    () => cursosPeriodo.filter((c) => !c.docenteId || !docentesActivos.has(c.docenteId)),
-    [cursosPeriodo, docentesActivos],
-  );
-
-  /** Cursos que se pueden supervisar (docente activo y no es el coordinador). */
-  const planificables = useMemo(
-    () => new Set(cursosPeriodo.filter((c) => c.docenteId && docentesActivos.has(c.docenteId)).map((c) => c.id)),
-    [cursosPeriodo, docentesActivos],
-  );
-
-  const semanas = useMemo(() => (rango ? sabadosEntre(rango.inicioClases, rango.fin) : []), [rango]);
-  const semanaParcial = rango?.parcial ? (semanas[rango.parcial - 1] ?? null) : null;
-
-  const plan = useMemo(() => {
-    if (!rango) return null;
-    const previas = evaluaciones.filter((e) => e.fecha_observacion < rango.inicio);
-    return generarPlan({
-      cursos: cursosPeriodo
-        .filter((c) => planificables.has(c.id))
-        .map((c) => ({
-          id: c.id,
-          nombre: c.nombre,
-          horario: c.horario,
-          edificio: c.edificio,
-          virtual: c.virtual,
-          docenteId: c.docenteId as string,
-          docenteNombre: docentesActivos.get(c.docenteId as string) ?? c.docenteNombre ?? "Docente",
-        })),
-      inicio: rango.inicio,
-      fin: rango.fin,
-      docentesYaSupervisados: new Set(previas.map((e) => e.docente_id).filter((id): id is string => !!id)),
-      cursosYaSupervisados: new Set(previas.map((e) => e.curso_id).filter((id): id is string => !!id)),
-      semanasExcluidas: semanaParcial ? new Set([semanaParcial]) : undefined,
-    });
-  }, [rango, evaluaciones, cursosPeriodo, planificables, docentesActivos, semanaParcial]);
 
   const itemsPorSemana = useMemo(() => new Map(plan?.semanas.map((s) => [s.semana, s.items]) ?? []), [plan]);
   const itemPorCursoSemana = useMemo(() => {
@@ -703,6 +673,11 @@ function TarjetaRegistrada({
       </span>
       <span className="text-sm font-semibold text-slate-100">{evaluacion.curso_nombre}</span>
       <span className="text-xs text-slate-300">{evaluacion.docente_nombre}</span>
+      {evaluacion.docente_correo ? (
+        <span className="inline-flex items-center gap-1 text-xs text-slate-400">
+          <Mail className="h-3 w-3" /> {evaluacion.docente_correo}
+        </span>
+      ) : null}
     </button>
   );
 }
@@ -866,40 +841,76 @@ function TarjetaSupervision({
   const Icono = info.icono;
   const esOtroDia = item.fecha !== item.semana;
   return (
-    <button
-      className="group grid gap-1 border border-white/10 bg-slate-950/50 p-2.5 text-left transition hover:border-emerald-300/60 hover:bg-emerald-300/8"
-      onClick={onIniciar}
-      title="Abrir la evaluación con este docente y curso"
-      type="button"
-    >
-      <span className="flex items-center justify-between gap-2">
-        <span className="inline-flex items-center gap-1.5 text-sm font-bold text-white">
-          <Clock className="h-3.5 w-3.5 text-emerald-300" />
-          {item.inicio}
-          {item.fin ? `–${item.fin}` : ""}
-          {esOtroDia ? <span className="font-normal text-slate-400">({formatoCorto(item.fecha)})</span> : null}
-        </span>
-        <span className={`inline-flex items-center gap-1 border px-1.5 py-0.5 text-[11px] font-semibold ${info.clase}`}>
-          <Icono className="h-3 w-3" />
-          {info.texto}
-        </span>
-      </span>
-      <span className="text-sm font-semibold text-slate-100">{item.cursoNombre}</span>
-      <span className="text-xs text-slate-300">{item.docenteNombre}</span>
-      <span className="flex flex-wrap items-center gap-x-2 text-[11px] text-slate-400">
-        <span>{MOTIVOS[item.motivo]}</span>
-        {item.virtual ? (
-          <span className="inline-flex items-center gap-1">
-            <Monitor className="h-3 w-3" /> Virtual
+    <div className="group grid border border-white/10 bg-slate-950/50 transition hover:border-emerald-300/60 hover:bg-emerald-300/8">
+      <button
+        className="grid gap-1 p-2.5 pb-1.5 text-left"
+        onClick={onIniciar}
+        title="Abrir la evaluación con este docente y curso"
+        type="button"
+      >
+        <span className="flex items-center justify-between gap-2">
+          <span className="inline-flex items-center gap-1.5 text-sm font-bold text-white">
+            <Clock className="h-3.5 w-3.5 text-emerald-300" />
+            {item.inicio}
+            {item.fin ? `–${item.fin}` : ""}
+            {esOtroDia ? <span className="font-normal text-slate-400">({formatoCorto(item.fecha)})</span> : null}
           </span>
-        ) : item.edificio ? (
-          <span>Salón {item.edificio}</span>
-        ) : null}
-        <span className="ml-auto inline-flex items-center gap-1 font-semibold text-emerald-200 opacity-0 transition group-hover:opacity-100">
-          <PlayCircle className="h-3 w-3" /> Iniciar
+          <span className={`inline-flex items-center gap-1 border px-1.5 py-0.5 text-[11px] font-semibold ${info.clase}`}>
+            <Icono className="h-3 w-3" />
+            {info.texto}
+          </span>
         </span>
+        <span className="text-sm font-semibold text-slate-100">{item.cursoNombre}</span>
+        <span className="text-xs text-slate-300">{item.docenteNombre}</span>
+        <span className="flex flex-wrap items-center gap-x-2 text-[11px] text-slate-400">
+          <span>{MOTIVOS[item.motivo]}</span>
+          {item.virtual ? (
+            <span className="inline-flex items-center gap-1">
+              <Monitor className="h-3 w-3" /> Virtual
+            </span>
+          ) : null}
+          <span className="ml-auto inline-flex items-center gap-1 font-semibold text-emerald-200 opacity-0 transition group-hover:opacity-100">
+            <PlayCircle className="h-3 w-3" /> Iniciar
+          </span>
+        </span>
+      </button>
+      {/* Fuera del boton para poder seleccionarlo y copiarlo sin abrir la evaluacion. */}
+      <CorreoDocente correo={item.docenteCorreo} />
+    </div>
+  );
+}
+
+/** Correo del docente con boton de copiar (para llenar otros formatos). */
+function CorreoDocente({ correo }: { correo: string | null }) {
+  const [copiado, setCopiado] = useState(false);
+  if (!correo) {
+    return <p className="px-2.5 pb-2.5 text-[11px] text-slate-500">Sin correo registrado</p>;
+  }
+  const copiar = async () => {
+    try {
+      await navigator.clipboard.writeText(correo);
+      setCopiado(true);
+      window.setTimeout(() => setCopiado(false), 1500);
+    } catch {
+      // Sin permiso de portapapeles: el correo sigue visible para copiarlo a mano.
+    }
+  };
+  return (
+    <div className="flex items-center gap-1.5 px-2.5 pb-2.5 text-xs text-slate-300">
+      <Mail className="h-3.5 w-3.5 shrink-0 text-emerald-300" />
+      <span className="min-w-0 truncate select-all" title={correo}>
+        {correo}
       </span>
-    </button>
+      <button
+        className="ml-auto inline-flex shrink-0 items-center gap-1 border border-white/10 px-1.5 py-0.5 text-[11px] font-semibold text-slate-300 transition hover:border-emerald-300/60 hover:text-white"
+        onClick={copiar}
+        title="Copiar el correo"
+        type="button"
+      >
+        {copiado ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
+        {copiado ? "Copiado" : "Copiar"}
+      </button>
+    </div>
   );
 }
 

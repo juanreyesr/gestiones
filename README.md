@@ -128,7 +128,9 @@ Planifica y mide las supervisiones de clase del trimestre (`src/lib/supervision.
 - **Logro semanal**: esperado = 1 supervision por semana, optimo = 2; avance del plan, supervisiones realizadas y cobertura de docentes y cursos.
 - **Excel** (`src/lib/supervision-excel.ts`): hoja *Programacion* con el formato institucional, *Logro semanal* y *Supervisiones realizadas* (con su origen: del plan, antes del plan o fuera del plan).
 
-No usa tablas nuevas: el plan se calcula a partir de cursos y evaluaciones, y las fechas del periodo se guardan en el navegador.
+El plan no se guarda: se calcula a partir de cursos, evaluaciones y las fechas del periodo, que viven en `gestionesjj_supervision_periodos` (migracion `040`) para que la vista y el servidor calculen el mismo plan desde cualquier dispositivo.
+
+- **Recordatorio por Telegram 5 minutos antes** de cada supervision programada (`src/lib/server/supervision-recordatorios.ts`), con boton **▶️ Abrir la supervision** que lleva a `/?supervision=<curso>`: la app pide iniciar sesion si hace falta y abre la evaluacion con docente y curso cargados. Lo dispara `pg_cron` cada minuto contra `POST /api/telegram/supervisiones` (mismo `CRON_SECRET` en Vault que la migracion `034`); cada supervision se avisa una vez (`gestionesjj_telegram_recordatorios_supervision`) y no se avisa si ya se registro. Se puede apagar en *Conectar Telegram*.
 
 ## Modulo Pendientes (tareas y proyectos)
 

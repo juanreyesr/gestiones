@@ -780,6 +780,30 @@ export function GestionesApp() {
     setActiveArea(area);
   };
 
+  /**
+   * Enlace del recordatorio de Telegram: /?supervision=<cursoId> abre la
+   * evaluacion de ese curso con el docente ya cargado. Si hace falta iniciar
+   * sesion, el parametro espera en la URL hasta que haya sesion y docentes.
+   */
+  const supervisionEnlace = useSupervisionEnlace();
+  useEffect(() => {
+    if (!session || !supervisionEnlace.cursoId || !docentes.length) return;
+    const cursoId = supervisionEnlace.cursoId;
+    supervisionEnlace.consumir();
+    const docenteDelCurso = docentes.find((item) => item.cursos.some((c) => c.id === cursoId));
+    const cursoDelEnlace = docenteDelCurso?.cursos.find((c) => c.id === cursoId);
+    if (!docenteDelCurso || !cursoDelEnlace) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- abre la evaluacion pedida por el enlace
+    handleIniciarSupervision({
+      docenteId: docenteDelCurso.id,
+      cursoId,
+      anio: cursoDelEnlace.anio,
+      trimestre: cursoDelEnlace.trimestre,
+    });
+    handleCambiarArea("coordinacion");
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- solo reacciona a la llegada de sesion, docentes o enlace
+  }, [session, docentes, supervisionEnlace.cursoId]);
+
   const areaActiva = activeArea ? (AREAS.find((item) => item.id === activeArea) ?? null) : null;
   const AreaActivaIcon = activeArea ? areaIcons[activeArea] : Sparkles;
 
@@ -1161,6 +1185,23 @@ export function GestionesApp() {
       <TelegramModal onClose={() => setTelegramOpen(false)} open={telegramOpen} />
     </>
   );
+}
+
+/** Lee (una vez) el parametro ?supervision= y permite quitarlo de la URL al usarlo. */
+function useSupervisionEnlace() {
+  const [cursoId, setCursoId] = useState<string | null>(null);
+  useEffect(() => {
+    const valor = new URLSearchParams(window.location.search).get("supervision");
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- la URL solo existe en el navegador
+    if (valor) setCursoId(valor);
+  }, []);
+  const consumir = useCallback(() => {
+    setCursoId(null);
+    const url = new URL(window.location.href);
+    url.searchParams.delete("supervision");
+    window.history.replaceState(null, "", `${url.pathname}${url.search}${url.hash}`);
+  }, []);
+  return { cursoId, consumir };
 }
 
 function LoginGate(props: {
@@ -1640,7 +1681,10 @@ function StepDatosGenerales(props: Parameters<typeof CoordinacionPanel>[0]) {
             <span className="inline-flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-slate-300">
               <CalendarClock className="h-3.5 w-3.5 text-emerald-300" />
               <span className="font-semibold text-emerald-100">{curso.horario?.trim() || "Sin horario registrado"}</span>
-              {curso.edificio ? <span className="text-slate-400">· Salón {curso.edificio}</span> : null}
+              <span className="inline-flex items-center gap-1 text-slate-300">
+                · <Mail className="h-3.5 w-3.5 text-emerald-300" />
+                <span className="select-all">{docente?.correo?.trim() || "Sin correo registrado"}</span>
+              </span>
               {curso.grupo ? <span className="text-slate-400">· {curso.grupo}</span> : null}
             </span>
           ) : null}

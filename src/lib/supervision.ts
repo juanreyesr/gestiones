@@ -126,6 +126,7 @@ export type CursoPlanificable = {
   virtual: boolean;
   docenteId: string;
   docenteNombre: string;
+  docenteCorreo?: string | null;
 };
 
 export type ItemSupervision = {
@@ -143,6 +144,7 @@ export type ItemSupervision = {
   virtual: boolean;
   docenteId: string;
   docenteNombre: string;
+  docenteCorreo: string | null;
   /** docente: primera visita al docente; curso: primera al curso; seguimiento: repeticion. */
   motivo: "docente" | "curso" | "seguimiento";
 };
@@ -253,6 +255,7 @@ export function generarPlan(params: {
       virtual: c.virtual,
       docenteId: c.docenteId,
       docenteNombre: c.docenteNombre,
+      docenteCorreo: c.docenteCorreo ?? null,
       motivo: c.motivo,
     });
   };
@@ -402,4 +405,106 @@ export function marcaCelda(params: {
   if (estado === "vencida") return "NR";
   if (estado === "otra-fecha") return "";
   return "P";
+}
+
+// ============================================================
+// Plan completo del periodo (lo usan la vista y el recordatorio del servidor)
+// ============================================================
+
+/**
+ * inicioClases: sabado de la semana 1 (desde ahi se mide el logro).
+ * inicio: desde cuando se reparte la propuesta. parcial: numero de semana de
+ * parciales, sin supervisiones programadas.
+ */
+export type RangoSupervision = { inicioClases: string; inicio: string; fin: string; parcial: number | null };
+
+export const SEMANA_PARCIAL_POR_DEFECTO = 8;
+
+export function rangoPorDefecto(anio: number, trimestre: Trimestre, hoy: string): RangoSupervision {
+  const fin = finPorDefecto(anio, trimestre);
+  return {
+    inicioClases: inicioClasesPorDefecto(fin),
+    inicio: sabadoEnOPosterior(hoy),
+    fin,
+    parcial: SEMANA_PARCIAL_POR_DEFECTO,
+  };
+}
+
+export type CursoBase = {
+  id: string;
+  nombre: string;
+  horario: string | null;
+  edificio: string | null;
+  virtual: boolean;
+  activo: boolean;
+  anio: number;
+  trimestre: Trimestre;
+  docenteId: string | null;
+  docenteNombre: string | null;
+};
+
+/**
+ * Separa los cursos del periodo (supervisables, del coordinador, sin docente
+ * activo) y calcula el plan con las evaluaciones anteriores a su inicio.
+ */
+export function construirPlanSupervision<C extends CursoBase>(params: {
+  anio: number;
+  trimestre: Trimestre;
+  cursos: C[];
+  /** id -> nombre de los docentes activos. */
+  docentesActivos: Map<string, string>;
+  /** id -> correo del docente, para mostrarlo junto a cada supervision. */
+  correosDocentes?: Map<string, string | null>;
+  evaluaciones: EvaluacionMinima[];
+  rango: RangoSupervision;
+}) {
+  const { rango, docentesActivos } = params;
+  const nombreDocente = (c: C) =>
+    c.docenteId ? (docentesActivos.get(c.docenteId) ?? c.docenteNombre) : c.docenteNombre;
+
+  const cursosDelPeriodo = params.cursos.filter(
+    (c) => c.activo && c.anio === params.anio && c.trimestre === params.trimestre,
+  );
+  const cursosPropios = cursosDelPeriodo.filter((c) => esCursoDelCoordinador(nombreDocente(c)));
+  const cursosPeriodo = cursosDelPeriodo.filter((c) => !esCursoDelCoordinador(nombreDocente(c)));
+  const cursosSinDocente = cursosPeriodo.filter((c) => !c.docenteId || !docentesActivos.has(c.docenteId));
+  const planificables = new Set(
+    cursosPeriodo.filter((c) => c.docenteId && docentesActivos.has(c.docenteId)).map((c) => c.id),
+  );
+
+  const semanas = sabadosEntre(rango.inicioClases, rango.fin);
+  const semanaParcial = rango.parcial ? (semanas[rango.parcial - 1] ?? null) : null;
+  const previas = params.evaluaciones.filter((e) => e.fecha_observacion < rango.inicio);
+
+  const plan = generarPlan({
+    cursos: cursosPeriodo
+      .filter((c) => planificables.has(c.id))
+      .map((c) => ({
+        id: c.id,
+        nombre: c.nombre,
+        horario: c.horario,
+        edificio: c.edificio,
+        virtual: c.virtual,
+        docenteId: c.docenteId as string,
+        docenteNombre: docentesActivos.get(c.docenteId as string) ?? c.docenteNombre ?? "Docente",
+        docenteCorreo: params.correosDocentes?.get(c.docenteId as string) ?? null,
+      })),
+    inicio: rango.inicio,
+    fin: rango.fin,
+    docentesYaSupervisados: new Set(previas.map((e) => e.docente_id).filter((id): id is string => !!id)),
+    cursosYaSupervisados: new Set(previas.map((e) => e.curso_id).filter((id): id is string => !!id)),
+    semanasExcluidas: semanaParcial ? new Set([semanaParcial]) : undefined,
+  });
+
+  return {
+    plan,
+    semanas,
+    semanaParcial,
+    cursosDelPeriodo,
+    cursosPropios,
+    cursosPeriodo,
+    cursosSinDocente,
+    planificables,
+    nombreDocente,
+  };
 }
