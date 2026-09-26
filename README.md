@@ -20,7 +20,7 @@ Centro de gestion de pacientes y sesiones de terapia:
 - **Sesiones**: al iniciar pregunta "¿De que quiere hablar hoy: algo especifico o seguimiento de la sesion anterior?". En seguimiento muestra el resumen previo; en tema nuevo muestra solo los compromisos/tareas anteriores. Notas con autoguardado, checklist de compromisos, y cierre con resumen (generado con IA si hay `ANTHROPIC_API_KEY`, editable siempre), aspectos de seguimiento, compromisos y tareas para la proxima sesion.
 - **Agenda**: vista semanal y de lista, estados de cita (pendiente, confirmada, completada, cancelada, no asistio), proteccion contra doble reserva a nivel de base de datos.
 - **Auto-agendamiento** (`/agendar`): pagina publica tipo Calendly donde los pacientes solicitan cita en los espacios libres; cada solicitud requiere aprobacion. Se activa desde Configuracion.
-- **Google Calendar** (opcional): las citas se sincronizan a tu calendario y tus eventos ocupados se restan de la disponibilidad. Requiere `SUPABASE_SECRET_KEY`, `GOOGLE_CLIENT_ID` y `GOOGLE_CLIENT_SECRET`.
+- **Google Calendar** (opcional): las citas se sincronizan a tu calendario y los eventos ocupados de **todos tus calendarios visibles** en Google (el principal, compartidos, suscritos o sincronizados desde otros sistemas) se restan de la disponibilidad de `/agendar`. La verificacion se repite al enviar la solicitud, asi que un horario que se ocupo despues de abrir la pagina ya no se puede pedir. Los eventos marcados como "Disponible" en Google (cumpleanos, feriados) no bloquean. Requiere `SUPABASE_SECRET_KEY`, `GOOGLE_CLIENT_ID` y `GOOGLE_CLIENT_SECRET`.
 
 ### Dominio publico
 
@@ -53,7 +53,7 @@ Un bot privado de Telegram que avisa de lo que pasa en la plataforma y deja actu
 - ☀️ **Resumen diario a las 7:00 a. m.** (Guatemala): citas del dia, pendientes que vencen hoy o vencidos, solicitudes y mensajes por atender, con un boton **📲 Recordar a …** por cada cita de hoy que abre WhatsApp con el recordatorio listo para el paciente.
 - ⏰ **Recordatorio 1 hora antes de cada cita** (paciente, hora, modalidad y motivo) con boton para mandarle el recordatorio por WhatsApp. Cada cita se avisa una vez; si se reprograma, se vuelve a avisar.
 
-**Comandos del bot**: `/hoy` (resumen), `/citas` (proximos 7 dias), `/solicitudes` (con botones para aprobar), `/pendientes` (vencidos y de los proximos 3 dias, con boton ✅ Listo), `/nuevo texto` (anota un pendiente en el primer grupo del primer tablero), `/mensajes` (mensajes de estudiantes sin leer, cada uno respondible) y `/ayuda`.
+**Comandos del bot**: `/agenda` (citas de la clinica + compromisos de Google Calendar; acepta `hoy`, `mañana`, `viernes`, `15/10`, `esta semana`, `próxima semana`, `14 días`; tambien responde a preguntas escritas normal como "¿qué tengo mañana?"), `/hoy` (resumen, que ya incluye los compromisos de Google del dia), `/citas` (proximos 7 dias), `/solicitudes` (con botones para aprobar), `/pendientes` (vencidos y de los proximos 3 dias, con boton ✅ Listo), `/nuevo texto` (anota un pendiente en el primer grupo del primer tablero), `/mensajes` (mensajes de estudiantes sin leer, cada uno respondible) y `/ayuda`.
 
 ### Configurar Telegram
 

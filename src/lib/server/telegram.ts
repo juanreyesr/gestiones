@@ -95,6 +95,7 @@ export async function obtenerUsuarioBot(): Promise<string | null> {
 
 export const COMANDOS_BOT = [
   { command: "hoy", description: "Resumen del día" },
+  { command: "agenda", description: "Citas y compromisos: /agenda mañana, viernes, 15/10..." },
   { command: "citas", description: "Citas de los próximos 7 días" },
   { command: "solicitudes", description: "Solicitudes de cita por aprobar" },
   { command: "pendientes", description: "Pendientes vencidos y próximos" },
