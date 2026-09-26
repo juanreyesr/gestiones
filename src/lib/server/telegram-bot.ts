@@ -5,6 +5,7 @@ import { mismaHoraQueConsultorio, nombreZona, PAIS_POR_DEFECTO, paisDe, paisPorC
 import { type EventoGoogle, getStoredTokens, insertEvent, isGoogleConfigured, listarEventos } from "./google-calendar";
 import { pacientesComparables, resolverReserva } from "./reservas-google";
 import { getSupabaseAdmin } from "./supabase-admin";
+import { buscarPacienteParaDatos, enviarEnlaceAgenda, enviarEnlaceDatos, pedidoDeEnlace } from "./telegram-enlaces";
 import {
   type BotonInline,
   type TelegramConfig,
@@ -20,6 +21,7 @@ import {
   leerConfig,
   recortar,
   telegramApi,
+  COMANDOS_BOT,
 } from "./telegram";
 
 /**
@@ -82,6 +84,15 @@ export async function procesarUpdate(update: TelegramUpdate) {
   }
 
   const comando = texto.match(/^\/(\w+)(?:@\w+)?(?:\s+([\s\S]*))?$/);
+  const pedido = comando ? null : pedidoDeEnlace(texto);
+  if (pedido?.tipo === "agenda") {
+    await enviarEnlaceAgenda(admin, chatId);
+    return;
+  }
+  if (pedido?.tipo === "datos") {
+    await buscarPacienteParaDatos(admin, chatId, pedido.nombre);
+    return;
+  }
   if (!comando && preguntaPorAgenda(texto)) {
     await enviarMensaje(chatId, await construirAgenda(admin, rangoAgenda(texto)));
     return;
@@ -109,6 +120,15 @@ export async function procesarUpdate(update: TelegramUpdate) {
     case "citas":
       await enviarMensaje(chatId, await textoCitas(admin));
       return;
+    case "agendar":
+    case "enlace":
+    case "link":
+      await enviarEnlaceAgenda(admin, chatId);
+      return;
+    case "datos":
+    case "perfil":
+      await buscarPacienteParaDatos(admin, chatId, argumento);
+      return;
     case "solicitudes":
       await enviarSolicitudes(admin, chatId);
       return;
@@ -123,6 +143,8 @@ export async function procesarUpdate(update: TelegramUpdate) {
       return;
     case "ayuda":
     case "help":
+      // De paso refresca el menu de comandos (asi aparecen los nuevos sin volver a vincular).
+      await telegramApi("setMyCommands", { commands: COMANDOS_BOT });
       await enviarMensaje(chatId, textoAyuda());
       return;
     default:
@@ -193,6 +215,8 @@ function textoAyuda() {
     "/solicitudes — solicitudes de cita con botones para aprobar o rechazar",
     "/pendientes — pendientes vencidos y de los próximos 3 días, con botón ✅ Listo",
     "/nuevo <i>texto</i> — anota un pendiente nuevo",
+    "/agendar — enlace de tu página de citas, listo para enviar",
+    "/datos <i>nombre</i> — enlace para que un paciente llene sus datos (con botón de WhatsApp a su número)",
     "/mensajes — mensajes de estudiantes sin leer",
     "",
     "💬 Para contestarle a un estudiante, <b>responde</b> (desliza el mensaje) al aviso de su mensaje.",
@@ -974,6 +998,12 @@ async function procesarCallback(admin: SupabaseClient, query: CallbackQuery) {
     const resultado = await resolverReserva(admin, config.ownerId, id, accionReserva, { config });
     await responder((resultado.ok ? resultado.mensaje : resultado.error).slice(0, 190));
     if (!resultado.ok) await enviarMensaje(chatId, `⚠️ ${esc(resultado.error)}`, { responderA: messageId });
+    return;
+  }
+
+  if (ambito === "dat" && id && (accion === "ve" || accion === "re")) {
+    await responder(accion === "re" ? "Enlace reabierto." : "Enviando enlace...");
+    await enviarEnlaceDatos(admin, chatId, id, accion === "re");
     return;
   }
 

@@ -100,6 +100,8 @@ export const COMANDOS_BOT = [
   { command: "solicitudes", description: "Solicitudes de cita por aprobar" },
   { command: "pendientes", description: "Pendientes vencidos y próximos" },
   { command: "nuevo", description: "Crear un pendiente: /nuevo texto" },
+  { command: "agendar", description: "Enlace de tu página de citas para enviar" },
+  { command: "datos", description: "Enlace de datos de un paciente: /datos Ana" },
   { command: "mensajes", description: "Mensajes de estudiantes sin leer" },
   { command: "ayuda", description: "Qué puedo hacer" },
 ];
