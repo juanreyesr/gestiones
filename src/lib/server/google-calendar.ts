@@ -281,12 +281,15 @@ export async function queryFreeBusy(desdeIso: string, hastaIso: string) {
 export type EventoGoogle = {
   id: string;
   titulo: string;
+  calendarioId: string;
   calendario: string;
   calendarioPrincipal: boolean;
   inicio: string;
   fin: string;
   todoElDia: boolean;
   ubicacion: string | null;
+  /** Enlace de Google Meet, si el evento tiene videollamada. */
+  videollamada: string | null;
   /** Id de la cita de GestionesJJ si el evento lo creo la propia app. */
   gestionesId: string | null;
 };
@@ -296,6 +299,7 @@ type RawEvento = {
   status?: string;
   summary?: string;
   location?: string;
+  hangoutLink?: string;
   transparency?: string;
   start?: { dateTime?: string; date?: string };
   end?: { dateTime?: string; date?: string };
@@ -341,6 +345,7 @@ export async function listarEventos(desdeIso: string, hastaIso: string) {
           return {
             id: e.id,
             titulo: e.summary?.trim() || "(Sin título)",
+            calendarioId: calendario.id,
             calendario: calendario.nombre,
             calendarioPrincipal: calendario.principal,
             // Los eventos de todo el dia traen solo la fecha; se fijan a medianoche de Guatemala.
@@ -348,6 +353,7 @@ export async function listarEventos(desdeIso: string, hastaIso: string) {
             fin: e.end?.dateTime ?? `${e.end?.date}T00:00:00-06:00`,
             todoElDia,
             ubicacion: e.location?.trim() || null,
+            videollamada: e.hangoutLink ?? null,
             gestionesId: e.extendedProperties?.private?.gestionesId ?? null,
           };
         });

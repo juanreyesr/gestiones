@@ -387,6 +387,57 @@ export async function enviarRecordatoriosCitas(admin: SupabaseClient, config: Te
   return enviados;
 }
 
+/**
+ * Avisa de los compromisos de Google Calendar (de cualquier calendario
+ * visible) que empiezan dentro de la proxima hora. Se omiten los de todo el
+ * dia y las citas que creo la propia app (esas ya tienen su recordatorio).
+ * Cada evento se avisa una vez por horario: si se mueve, se vuelve a avisar.
+ */
+export async function enviarRecordatoriosGoogle(admin: SupabaseClient, config: TelegramConfig) {
+  if (!config.chatId || !config.preferencias.google_recordatorio) return 0;
+
+  const ahora = Date.now();
+  const { eventos, conectado } = await eventosGoogleSinCitas(
+    new Date(ahora).toISOString(),
+    new Date(ahora + ANTICIPACION_RECORDATORIO_MIN * 60_000).toISOString(),
+  );
+  if (!conectado) return 0;
+
+  let enviados = 0;
+  const vistos = new Set<string>();
+  for (const evento of eventos) {
+    // Solo los que todavia no empiezan (listarEventos tambien trae los que ya estan en curso).
+    if (evento.todoElDia || Date.parse(evento.inicio) <= ahora) continue;
+    // Una invitacion puede aparecer en dos calendarios con el mismo id: un solo aviso.
+    const unico = `${evento.id}|${Date.parse(evento.inicio)}`;
+    if (vistos.has(unico)) continue;
+    vistos.add(unico);
+
+    const { data: registrado } = await admin
+      .from("gestionesjj_telegram_recordatorios_google")
+      .upsert(
+        { evento_clave: `${evento.calendarioId}:${evento.id}`, inicio: new Date(evento.inicio).toISOString() },
+        { onConflict: "evento_clave,inicio", ignoreDuplicates: true },
+      )
+      .select("evento_clave");
+    if (!registrado?.length) continue;
+
+    const minutos = Math.max(1, Math.round((Date.parse(evento.inicio) - ahora) / 60_000));
+    const texto = [
+      `⏰ <b>Compromiso en ${minutos} min</b> — ${esc(hora(evento.inicio))}–${esc(hora(evento.fin))}`,
+      `📅 ${esc(evento.titulo)}${evento.calendarioPrincipal ? "" : ` <i>(${esc(evento.calendario)})</i>`}`,
+      evento.ubicacion ? `📍 ${esc(recortar(evento.ubicacion, 200))}` : null,
+    ]
+      .filter((linea) => linea !== null)
+      .join("\n");
+
+    const botones = evento.videollamada ? [[{ text: "🎥 Unirse a la videollamada", url: evento.videollamada }]] : undefined;
+    const res = await enviarMensaje(config.chatId, texto, botones ? { botones } : undefined);
+    if (res.ok) enviados += 1;
+  }
+  return enviados;
+}
+
 // ============================================================
 // Agenda: citas de la clinica + compromisos de Google Calendar
 // ============================================================
