@@ -5,8 +5,12 @@ import { appUrl, enviarMensaje, esc, fechaLocal, hora, type TelegramConfig } fro
 
 /** Minutos de anticipacion del aviso. */
 export const ANTICIPACION_SUPERVISION_MIN = 5;
-/** Margen para no perder un aviso si el cron de cada minuto se atrasa un poco. */
-const VENTANA_MIN = ANTICIPACION_SUPERVISION_MIN + 1;
+/**
+ * El cron corre cada minuto en punto: con 30 s de margen, la ejecucion de las
+ * 11:39 (faltan 6 min) no avisa y la de las 11:40 (faltan 5) si. Si esa se
+ * pierde, la de las 11:41 todavia entra: el aviso llega tarde, nunca antes.
+ */
+const VENTANA_MS = (ANTICIPACION_SUPERVISION_MIN * 60 + 30) * 1000;
 
 type RawPeriodo = {
   anio: number;
@@ -101,7 +105,7 @@ export async function enviarRecordatoriosSupervision(admin: SupabaseClient, conf
       // Guatemala es UTC-6 todo el ano (sin horario de verano).
       const inicio = new Date(`${item.fecha}T${item.inicio}:00-06:00`);
       const faltan = inicio.getTime() - ahora;
-      if (faltan <= 0 || faltan > VENTANA_MIN * 60_000) continue;
+      if (faltan <= 0 || faltan > VENTANA_MS) continue;
       if (estadoItem(item, evaluaciones, hoy) === "realizada") continue;
 
       // Se registra antes de enviar: si dos ejecuciones se cruzan, solo una gana.
