@@ -102,6 +102,7 @@ export const COMANDOS_BOT = [
   { command: "nuevo", description: "Crear un pendiente: /nuevo texto" },
   { command: "agendar", description: "Enlace de tu página de citas para enviar" },
   { command: "datos", description: "Enlace de datos de un paciente: /datos Ana" },
+  { command: "ubicacion", description: "Dirección del consultorio con Maps y Waze" },
   { command: "mensajes", description: "Mensajes de estudiantes sin leer" },
   { command: "ayuda", description: "Qué puedo hacer" },
 ];

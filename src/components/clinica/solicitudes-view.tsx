@@ -7,6 +7,9 @@ import { formatoFechaHora, formatoHora } from "@/lib/clinica/slots";
 import { aprobarSolicitud, fetchSolicitudes, rechazarSolicitud } from "@/lib/clinica/solicitudes";
 import type { PacienteRow, SolicitudRow } from "@/lib/clinica/types";
 import { buscarCoincidencia } from "@/lib/clinica/coincidencias";
+import { fetchDisponibilidad } from "@/lib/clinica/disponibilidad";
+import { enlaceWhatsApp } from "@/lib/clinica/recordatorio";
+import { mensajeUbicacion, type UbicacionConsultorio } from "@/lib/clinica/ubicacion";
 import { ModalPortal } from "../modal-portal";
 import { ReservasGoogleSection } from "./reservas-google-section";
 import { BTN_ACCENT, BTN_GHOST, EmptyState, SectionCard, SolicitudBadge } from "./ui";
@@ -173,6 +176,17 @@ export function SolicitudesView({
   const [error, setError] = useState("");
   const [aprobando, setAprobando] = useState<SolicitudRow | null>(null);
   const [rechazandoId, setRechazandoId] = useState<string | null>(null);
+  const [ubicacion, setUbicacion] = useState<UbicacionConsultorio>({ direccion: null, mapsUrl: null });
+
+  useEffect(() => {
+    let vigente = true;
+    void fetchDisponibilidad().then(({ data }) => {
+      if (vigente) setUbicacion({ direccion: data.direccionConsultorio || null, mapsUrl: data.ubicacionMapsUrl || null });
+    });
+    return () => {
+      vigente = false;
+    };
+  }, []);
 
   const cargar = useCallback(async () => {
     setLoading(true);
@@ -248,8 +262,22 @@ export function SolicitudesView({
                     <div className="text-xs text-slate-400">hasta {formatoHora(solicitud.fin)}</div>
                   </div>
                 </div>
-                {solicitud.yaEsPaciente || solicitud.primeraSesion || solicitud.darSeguimiento ? (
+                {solicitud.yaEsPaciente ||
+                solicitud.primeraSesion ||
+                solicitud.darSeguimiento ||
+                solicitud.modalidad ||
+                solicitud.necesitaUbicacion ? (
                   <div className="flex flex-wrap gap-1.5">
+                    {solicitud.modalidad ? (
+                      <span className="border border-violet-300/40 bg-violet-300/10 px-2 py-0.5 text-[11px] font-semibold text-violet-200">
+                        {solicitud.modalidad === "virtual" ? "💻 Virtual" : "🏢 Presencial"}
+                      </span>
+                    ) : null}
+                    {solicitud.necesitaUbicacion ? (
+                      <span className="border border-rose-300/40 bg-rose-300/10 px-2 py-0.5 text-[11px] font-semibold text-rose-200">
+                        📍 Pidió la ubicación
+                      </span>
+                    ) : null}
                     {solicitud.yaEsPaciente ? (
                       <span className="border border-sky-300/40 bg-sky-300/10 px-2 py-0.5 text-[11px] font-semibold text-sky-200">
                         Ya soy paciente
@@ -268,6 +296,22 @@ export function SolicitudesView({
                   </div>
                 ) : null}
                 {solicitud.motivo ? <p className="text-sm leading-6 text-slate-300">“{solicitud.motivo}”</p> : null}
+                {solicitud.necesitaUbicacion ? (
+                  mensajeUbicacion(solicitud.nombre, ubicacion) ? (
+                    <a
+                      className="inline-flex w-fit items-center gap-1.5 border border-rose-300/40 bg-rose-300/10 px-3 py-1.5 text-sm font-semibold text-rose-100 transition hover:border-rose-200"
+                      href={enlaceWhatsApp(solicitud.telefono, mensajeUbicacion(solicitud.nombre, ubicacion)!)}
+                      rel="noreferrer"
+                      target="_blank"
+                    >
+                      📍 Enviar ubicación por WhatsApp
+                    </a>
+                  ) : (
+                    <p className="text-xs text-rose-200">
+                      Pidió la ubicación: escribe la dirección del consultorio en Configuración para enviársela con un toque.
+                    </p>
+                  )
+                ) : null}
                 <div className="flex flex-wrap justify-end gap-2">
                   <button
                     className="inline-flex items-center gap-1.5 border border-red-400/40 bg-red-400/10 px-3 py-1.5 text-sm font-semibold text-red-200 transition hover:border-red-300 disabled:opacity-60"

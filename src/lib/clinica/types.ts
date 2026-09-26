@@ -152,6 +152,8 @@ export type SolicitudRow = {
   yaEsPaciente: boolean;
   primeraSesion: boolean;
   darSeguimiento: boolean;
+  modalidad: "presencial" | "virtual" | null;
+  necesitaUbicacion: boolean;
 };
 
 export type RangoHorario = { inicio: string; fin: string };
@@ -168,6 +170,8 @@ export type DisponibilidadConfig = {
   agendamientoPublico: boolean;
   horarioSemanal: HorarioSemanal;
   consentimientoTexto: string;
+  direccionConsultorio: string;
+  ubicacionMapsUrl: string;
 };
 
 export const PACIENTE_ESTADOS: { value: PacienteEstado; label: string }[] = [

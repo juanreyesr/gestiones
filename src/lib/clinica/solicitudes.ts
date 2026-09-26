@@ -16,10 +16,12 @@ type RawSolicitud = {
   ya_es_paciente: boolean;
   primera_sesion: boolean;
   dar_seguimiento: boolean;
+  modalidad: "presencial" | "virtual" | null;
+  necesita_ubicacion: boolean;
 };
 
 const SOLICITUD_COLUMNS =
-  "id,nombre,telefono,email,motivo,inicio,fin,estado,paciente_id,cita_id,created_at,ya_es_paciente,primera_sesion,dar_seguimiento";
+  "id,nombre,telefono,email,motivo,inicio,fin,estado,paciente_id,cita_id,created_at,ya_es_paciente,primera_sesion,dar_seguimiento,modalidad,necesita_ubicacion";
 
 function mapSolicitud(row: RawSolicitud): SolicitudRow {
   return {
@@ -37,6 +39,8 @@ function mapSolicitud(row: RawSolicitud): SolicitudRow {
     yaEsPaciente: row.ya_es_paciente,
     primeraSesion: row.primera_sesion,
     darSeguimiento: row.dar_seguimiento,
+    modalidad: row.modalidad,
+    necesitaUbicacion: row.necesita_ubicacion,
   };
 }
 

@@ -2,7 +2,13 @@ import { getSupabaseAdmin } from "./supabase-admin";
 import { esc, isTelegramConfigured, notificar, recortar } from "./telegram";
 import { buscarCoincidencia } from "@/lib/clinica/coincidencias";
 import { pacientesComparables } from "./reservas-google";
-import { botonesSolicitudCita, textoMensajeEstudiante, textoSolicitudCita } from "./telegram-bot";
+import {
+  botonesSolicitudCita,
+  botonesUbicacionSolicitud,
+  COLUMNAS_SOLICITUD,
+  textoMensajeEstudiante,
+  textoSolicitudCita,
+} from "./telegram-bot";
 
 /**
  * Avisos al owner por Telegram desde las rutas de la app. Se llaman dentro
@@ -15,13 +21,13 @@ export async function avisarSolicitudCita(solicitudId: string) {
   if (!isTelegramConfigured() || !admin) return;
   const { data: sol } = await admin
     .from("gestionesjj_solicitudes_cita")
-    .select("nombre,telefono,email,motivo,inicio,ya_es_paciente,primera_sesion,dar_seguimiento")
+    .select(COLUMNAS_SOLICITUD)
     .eq("id", solicitudId)
     .maybeSingle();
   if (!sol) return;
   const coincidencia = buscarCoincidencia(await pacientesComparables(admin), sol);
   await notificar("citas_solicitudes", textoSolicitudCita(sol, coincidencia), {
-    botones: botonesSolicitudCita(solicitudId, coincidencia),
+    botones: botonesSolicitudCita(solicitudId, coincidencia, await botonesUbicacionSolicitud(admin, sol)),
   });
 }
 

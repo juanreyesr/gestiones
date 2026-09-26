@@ -10,6 +10,7 @@ import {
   type GoogleStatus,
 } from "@/lib/clinica/google-client";
 import { DIAS_SEMANA, previewSlotsSemana } from "@/lib/clinica/slots";
+import { enlacesUbicacion } from "@/lib/clinica/ubicacion";
 import type { DisponibilidadConfig, RangoHorario } from "@/lib/clinica/types";
 import { BTN_ACCENT, BTN_GHOST, BTN_PRIMARY, Field, SectionCard } from "./ui";
 import { urlPublica } from "@/lib/url-publica";
@@ -245,6 +246,59 @@ export function DisponibilidadConfigView() {
               El paciente debe aceptar este texto para poder solicitar una cita. Revísalo según tu criterio profesional y
               la ley de tu país; se guarda una copia de lo aceptado en el expediente de cada paciente.
             </p>
+          </div>
+        </SectionCard>
+
+        <SectionCard title="Ubicación del consultorio">
+          <div className="grid gap-3">
+            <p className="text-xs leading-5 text-slate-400">
+              Cuando alguien agenda una cita presencial y marca «Necesito la ubicación», Telegram te avisa con un botón
+              que abre WhatsApp con esta dirección y los enlaces de Google Maps y Waze listos para enviar. También la
+              pides cuando quieras con /ubicacion.
+            </p>
+            <Field label="Dirección">
+              <textarea
+                className="field resize-y leading-6"
+                maxLength={300}
+                onChange={(event) => set("direccionConsultorio", event.target.value)}
+                placeholder="Ej.: 5a calle 1-23 zona 1, Ciudad, puerta azul"
+                rows={2}
+                value={config.direccionConsultorio}
+              />
+            </Field>
+            <Field label="Enlace de Google Maps (opcional)">
+              <input
+                className="field"
+                maxLength={500}
+                onChange={(event) => set("ubicacionMapsUrl", event.target.value)}
+                placeholder="https://maps.app.goo.gl/... o https://www.google.com/maps/..."
+                type="url"
+                value={config.ubicacionMapsUrl}
+              />
+            </Field>
+            <p className="text-xs leading-5 text-slate-500">
+              En Google Maps busca el consultorio, toca «Compartir» y copia el enlace. Si el enlace trae las coordenadas
+              (contiene «@14.6…,-90.8…»), Waze te llevará al punto exacto; si no, busca por la dirección.
+            </p>
+            {config.ubicacionMapsUrl.trim() && !config.ubicacionMapsUrl.trim().startsWith("https://") ? (
+              <p className="text-xs font-semibold text-amber-300">El enlace debe empezar con https://</p>
+            ) : null}
+            {(() => {
+              const enlaces = enlacesUbicacion({
+                direccion: config.direccionConsultorio,
+                mapsUrl: config.ubicacionMapsUrl.trim().startsWith("https://") ? config.ubicacionMapsUrl.trim() : null,
+              });
+              return enlaces ? (
+                <div className="flex flex-wrap gap-2">
+                  <a className={BTN_GHOST} href={enlaces.google} rel="noreferrer" target="_blank">
+                    Probar Google Maps
+                  </a>
+                  <a className={BTN_GHOST} href={enlaces.waze} rel="noreferrer" target="_blank">
+                    Probar Waze
+                  </a>
+                </div>
+              ) : null;
+            })()}
           </div>
         </SectionCard>
 

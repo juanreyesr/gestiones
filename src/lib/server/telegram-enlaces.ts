@@ -1,6 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { normalizarNombre } from "@/lib/clinica/coincidencias";
 import { enlaceWhatsApp } from "@/lib/clinica/recordatorio";
+import { enlacesUbicacion, mensajeUbicacion, type UbicacionConsultorio } from "@/lib/clinica/ubicacion";
 import { paisDe } from "@/lib/paises";
 import { type BotonInline, appUrl, enviarMensaje, esc } from "./telegram";
 
@@ -175,4 +176,58 @@ export function pedidoDeEnlace(texto: string): { tipo: "agenda" } | { tipo: "dat
   }
   if (/\b(agenda|agendar|cita|citas|reservar)\b/.test(t)) return { tipo: "agenda" };
   return null;
+}
+
+// ============================================================
+// Ubicacion del consultorio
+// ============================================================
+
+export async function leerUbicacionConsultorio(admin: SupabaseClient): Promise<UbicacionConsultorio> {
+  const { data } = await admin
+    .from("gestionesjj_disponibilidad")
+    .select("direccion_consultorio,ubicacion_maps_url")
+    .limit(1)
+    .maybeSingle();
+  const row = data as { direccion_consultorio?: string | null; ubicacion_maps_url?: string | null } | null;
+  return { direccion: row?.direccion_consultorio ?? null, mapsUrl: row?.ubicacion_maps_url ?? null };
+}
+
+/**
+ * Boton "Enviarle la ubicacion": abre WhatsApp con el numero de la persona y
+ * el mensaje con la direccion + Google Maps + Waze. null si no hay direccion
+ * configurada.
+ */
+export function botonUbicacion(
+  ubicacion: UbicacionConsultorio,
+  destinatario: { nombre: string | null; telefono: string | null; pais?: string | null },
+): BotonInline | null {
+  const mensaje = mensajeUbicacion(destinatario.nombre, ubicacion);
+  if (!mensaje) return null;
+  return {
+    text: "📍 Enviarle la ubicación por WhatsApp",
+    url: enlaceWhatsApp(destinatario.telefono, mensaje, paisDe({ pais: destinatario.pais, telefono: destinatario.telefono })),
+  };
+}
+
+/** /ubicacion: el mensaje con la direccion, listo para reenviar. */
+export async function enviarUbicacion(admin: SupabaseClient, chatId: number) {
+  const ubicacion = await leerUbicacionConsultorio(admin);
+  const mensaje = mensajeUbicacion(null, ubicacion);
+  const enlaces = enlacesUbicacion(ubicacion);
+  if (!mensaje || !enlaces) {
+    await enviarMensaje(
+      chatId,
+      "📍 Aún no configuraste la dirección del consultorio. Escríbela en Clínica → Configuración → <b>Ubicación del consultorio</b>.",
+    );
+    return;
+  }
+  await enviarMensaje(chatId, ["📍 <b>Ubicación del consultorio</b>", "", esc(mensaje)].join("\n"), {
+    botones: [
+      [
+        { text: "🗺 Google Maps", url: enlaces.google },
+        { text: "🚗 Waze", url: enlaces.waze },
+      ],
+      [compartir(mensaje)],
+    ],
+  });
 }

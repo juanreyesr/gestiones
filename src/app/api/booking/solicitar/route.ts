@@ -22,6 +22,8 @@ export async function POST(request: Request) {
     yaEsPaciente?: boolean;
     primeraSesion?: boolean;
     darSeguimiento?: boolean;
+    modalidad?: string | null;
+    necesitaUbicacion?: boolean;
     empresa?: string; // honeypot: las personas nunca lo llenan
   } | null;
 
@@ -61,6 +63,8 @@ export async function POST(request: Request) {
     p_ya_es_paciente: body.yaEsPaciente ?? false,
     p_primera_sesion: body.primeraSesion ?? false,
     p_dar_seguimiento: body.darSeguimiento ?? false,
+    p_modalidad: body.modalidad === "presencial" || body.modalidad === "virtual" ? body.modalidad : null,
+    p_necesita_ubicacion: body.modalidad === "presencial" && body.necesitaUbicacion === true,
   });
 
   if (error) {
