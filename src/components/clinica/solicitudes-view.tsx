@@ -6,7 +6,9 @@ import { syncCitaConGoogle } from "@/lib/clinica/google-client";
 import { formatoFechaHora, formatoHora } from "@/lib/clinica/slots";
 import { aprobarSolicitud, fetchSolicitudes, rechazarSolicitud } from "@/lib/clinica/solicitudes";
 import type { PacienteRow, SolicitudRow } from "@/lib/clinica/types";
+import { buscarCoincidencia } from "@/lib/clinica/coincidencias";
 import { ModalPortal } from "../modal-portal";
+import { ReservasGoogleSection } from "./reservas-google-section";
 import { BTN_ACCENT, BTN_GHOST, EmptyState, SectionCard, SolicitudBadge } from "./ui";
 
 function AprobarModal({
@@ -20,8 +22,10 @@ function AprobarModal({
   pacientes: PacienteRow[];
   solicitud: SolicitudRow;
 }) {
-  const [modo, setModo] = useState<"nuevo" | "existente">(solicitud.yaEsPaciente ? "existente" : "nuevo");
-  const [pacienteId, setPacienteId] = useState("");
+  // Si ya hay un paciente con el mismo telefono, correo o nombre, se propone vincularlo.
+  const [coincidencia] = useState(() => buscarCoincidencia(pacientes, solicitud));
+  const [modo, setModo] = useState<"nuevo" | "existente">(solicitud.yaEsPaciente || coincidencia ? "existente" : "nuevo");
+  const [pacienteId, setPacienteId] = useState(coincidencia?.paciente.id ?? "");
   const [busqueda, setBusqueda] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -112,6 +116,11 @@ function AprobarModal({
               />
               <span className="min-w-0 flex-1">
                 <span className="block text-sm font-semibold text-white">Vincular a paciente existente</span>
+                {coincidencia ? (
+                  <span className="mt-0.5 block text-xs text-amber-200">
+                    Parece ser {coincidencia.paciente.nombre} (mismo {coincidencia.por}).
+                  </span>
+                ) : null}
                 {modo === "existente" ? (
                   <span className="mt-2 grid gap-2">
                     <input
@@ -198,6 +207,8 @@ export function SolicitudesView({
   return (
     <div className="grid gap-5">
       {error ? <div className="border border-red-400/40 bg-red-400/10 p-3 text-sm text-red-200">{error}</div> : null}
+
+      <ReservasGoogleSection onCambio={onCambio} pacientes={pacientes} />
 
       <SectionCard title={`Solicitudes pendientes (${pendientes.length})`}>
         {loading ? (

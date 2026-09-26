@@ -1,6 +1,8 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { buscarCoincidencia, type Coincidencia } from "@/lib/clinica/coincidencias";
 import { enlaceWhatsApp, textoRecordatorioCita } from "@/lib/clinica/recordatorio";
 import { type EventoGoogle, getStoredTokens, insertEvent, isGoogleConfigured, listarEventos } from "./google-calendar";
+import { pacientesComparables, resolverReserva } from "./reservas-google";
 import { getSupabaseAdmin } from "./supabase-admin";
 import {
   type BotonInline,
@@ -193,6 +195,7 @@ function textoAyuda() {
     "/mensajes — mensajes de estudiantes sin leer",
     "",
     "💬 Para contestarle a un estudiante, <b>responde</b> (desliza el mensaje) al aviso de su mensaje.",
+    "📅 Las reservas de Calendly que lleguen a tu Google Calendar te las mando con botones para vincularlas a un paciente o crearlo.",
     "🗓 También puedes preguntar escribiendo normal: <i>¿qué tengo mañana?</i>, <i>¿tengo compromisos el viernes?</i>",
   ].join("\n");
 }
@@ -605,7 +608,7 @@ type RawSolicitud = {
   dar_seguimiento: boolean;
 };
 
-export function textoSolicitudCita(sol: Omit<RawSolicitud, "id" | "estado">) {
+export function textoSolicitudCita(sol: Omit<RawSolicitud, "id" | "estado">, coincidencia?: Coincidencia | null) {
   const etiquetas = [
     sol.ya_es_paciente ? "ya es paciente" : null,
     sol.primera_sesion ? "primera sesión" : null,
@@ -617,15 +620,27 @@ export function textoSolicitudCita(sol: Omit<RawSolicitud, "id" | "estado">) {
     `📅 ${esc(fechaHora(sol.inicio))}`,
     `📞 ${esc(sol.telefono)}${sol.email ? ` · ${esc(sol.email)}` : ""}`,
     sol.motivo ? `📝 ${esc(recortar(sol.motivo, 600))}` : null,
+    coincidencia === undefined
+      ? null
+      : coincidencia
+        ? `\n🔎 <b>Parece ser ${esc(coincidencia.paciente.nombre)}</b> (mismo ${coincidencia.por})`
+        : "\n🔎 No coincide con ningún paciente registrado.",
   ]
     .filter((linea) => linea !== null)
     .join("\n");
 }
 
-export function botonesSolicitudCita(solicitudId: string): BotonInline[][] {
+export function botonesSolicitudCita(solicitudId: string, coincidencia?: Coincidencia | null): BotonInline[][] {
+  if (coincidencia) {
+    return [
+      [{ text: `✅ Aprobar: es ${coincidencia.paciente.nombre.split(" ")[0]}`, callback_data: `sol:vp:${solicitudId}` }],
+      [{ text: "➕ Aprobar como paciente nuevo", callback_data: `sol:ap:${solicitudId}` }],
+      [{ text: "❌ Rechazar", callback_data: `sol:re:${solicitudId}` }],
+    ];
+  }
   return [
     [
-      { text: "✅ Aprobar", callback_data: `sol:ap:${solicitudId}` },
+      { text: "✅ Aprobar (paciente nuevo)", callback_data: `sol:ap:${solicitudId}` },
       { text: "❌ Rechazar", callback_data: `sol:re:${solicitudId}` },
     ],
   ];
@@ -645,8 +660,10 @@ async function enviarSolicitudes(admin: SupabaseClient, chatId: number) {
     await enviarMensaje(chatId, "🩺 No hay solicitudes de cita por aprobar.");
     return;
   }
+  const pacientes = await pacientesComparables(admin);
   for (const sol of solicitudes) {
-    await enviarMensaje(chatId, textoSolicitudCita(sol), { botones: botonesSolicitudCita(sol.id) });
+    const coincidencia = buscarCoincidencia(pacientes, sol);
+    await enviarMensaje(chatId, textoSolicitudCita(sol, coincidencia), { botones: botonesSolicitudCita(sol.id, coincidencia) });
   }
 }
 
@@ -889,17 +906,31 @@ async function procesarCallback(admin: SupabaseClient, query: CallbackQuery) {
     }
     const base = textoSolicitudCita(sol as RawSolicitud);
 
-    if (accion === "ap") {
+    if (accion === "ap" || accion === "vp") {
+      // "vp": vincular al paciente que coincide (se recalcula al tocar el boton).
+      let paciente: { id: string; nombre: string } | null = null;
+      if (accion === "vp") {
+        paciente = buscarCoincidencia(await pacientesComparables(admin), sol as RawSolicitud)?.paciente ?? null;
+        if (!paciente) {
+          await responder("Ya no encuentro al paciente que coincidía. Apruébala desde el panel.");
+          return;
+        }
+      }
       const { data: citaId, error } = await admin.rpc("gestionesjj_telegram_aprobar_solicitud", {
         p_solicitud_id: id,
         p_owner_id: config.ownerId,
+        p_paciente_id: paciente?.id ?? null,
       });
       if (error) {
         await responder(error.message.slice(0, 190));
         return;
       }
       await responder("Cita aprobada.");
-      await editarMensaje(chatId, messageId, `${base}\n\n✅ <b>Aprobada</b> — ya está en tu agenda.`);
+      await editarMensaje(
+        chatId,
+        messageId,
+        `${base}\n\n✅ <b>Aprobada</b>${paciente ? ` en el expediente de ${esc(paciente.nombre)}` : " — paciente nuevo creado"}. Ya está en tu agenda.`,
+      );
       if (citaId) await sincronizarCitaGoogle(admin, citaId as string).catch(() => undefined);
       return;
     }
@@ -919,6 +950,18 @@ async function procesarCallback(admin: SupabaseClient, query: CallbackQuery) {
       await editarMensaje(chatId, messageId, `${base}\n\n❌ <b>Rechazada</b>`);
       return;
     }
+  }
+
+  if (ambito === "gr" && id) {
+    const accionReserva = accion === "vp" ? "vincular" : accion === "nv" ? "crear" : accion === "ig" ? "ignorar" : null;
+    if (!accionReserva) {
+      await responder("Acción no reconocida.");
+      return;
+    }
+    const resultado = await resolverReserva(admin, config.ownerId, id, accionReserva, { config });
+    await responder((resultado.ok ? resultado.mensaje : resultado.error).slice(0, 190));
+    if (!resultado.ok) await enviarMensaje(chatId, `⚠️ ${esc(resultado.error)}`, { responderA: messageId });
+    return;
   }
 
   if (ambito === "pen" && accion === "ok" && id) {
