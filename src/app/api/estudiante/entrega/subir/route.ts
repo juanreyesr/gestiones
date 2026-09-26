@@ -1,8 +1,9 @@
 import crypto from "node:crypto";
-import { NextResponse } from "next/server";
+import { after, NextResponse } from "next/server";
 import { requireEstudiante } from "@/lib/server/auth";
 import { rateLimit, rateLimitResponse } from "@/lib/server/rate-limit";
 import { getSupabaseAdmin } from "@/lib/server/supabase-admin";
+import { avisarEntrega } from "@/lib/server/telegram-avisos";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -147,6 +148,13 @@ export async function POST(request: Request) {
     await admin.storage.from(BUCKET).remove([path]);
     return NextResponse.json({ error: archivoError.message }, { status: 500 });
   }
+
+  const cursoId = semana.curso_id as string;
+  after(() =>
+    avisarEntrega({ actividadId, estudianteId: auth.estudianteId, cursoId, archivoNombre: archivo.name, tardia }).catch(
+      () => undefined,
+    ),
+  );
 
   return NextResponse.json({ ok: true, tardia });
 }

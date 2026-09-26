@@ -1,7 +1,8 @@
-import { NextResponse } from "next/server";
+import { after, NextResponse } from "next/server";
 import { cifrarContrasena } from "@/lib/server/estudiante-crypto";
 import { rateLimit, rateLimitResponse } from "@/lib/server/rate-limit";
 import { getSupabaseAdmin } from "@/lib/server/supabase-admin";
+import { avisarSolicitudCurso } from "@/lib/server/telegram-avisos";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -98,6 +99,9 @@ export async function POST(request: Request) {
   if (insertError) {
     return NextResponse.json({ error: "No se pudo enviar la solicitud." }, { status: 500 });
   }
+
+  const cursoId = curso.id as string;
+  after(() => avisarSolicitudCurso({ cursoId, nombre, correo }).catch(() => undefined));
 
   return NextResponse.json({ ok: true });
 }

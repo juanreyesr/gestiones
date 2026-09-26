@@ -1,5 +1,6 @@
-import { NextResponse } from "next/server";
+import { after, NextResponse } from "next/server";
 import { rateLimit, rateLimitResponse } from "@/lib/server/rate-limit";
+import { avisarRespuestaEncuesta } from "@/lib/server/telegram-avisos";
 import { getSupabaseClient } from "@/lib/supabase";
 import type { RespuestaEncuestaPayload } from "@/lib/encuestas/types";
 
@@ -68,6 +69,10 @@ export async function POST(request: Request) {
   if (error) {
     return NextResponse.json({ error: "No se pudo enviar la encuesta. Intenta de nuevo." }, { status: 422 });
   }
+
+  const token = body.token as string;
+  const expectativa = typeof body.expectativa_abierta === "string" ? body.expectativa_abierta.trim() || null : null;
+  after(() => avisarRespuestaEncuesta(token, expectativa).catch(() => undefined));
 
   return NextResponse.json({ ok: true });
 }

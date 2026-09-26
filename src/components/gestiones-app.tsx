@@ -26,6 +26,7 @@ import {
   Printer,
   Radio,
   Save,
+  Send,
   ShieldCheck,
   Sparkles,
   Star,
@@ -80,6 +81,7 @@ import { PresentacionView } from "./presentacion-view";
 import { RecursosView } from "./recursos/recursos-view";
 import type { ReporteData } from "./reporte-printable";
 import { ReunionesView } from "./reuniones-view";
+import { TelegramModal } from "./telegram-modal";
 
 const ALLOWED_EMAIL = "lic.juanreyesr@gmail.com";
 
@@ -192,6 +194,7 @@ export function GestionesApp() {
   const kioscoCodigoIdRef = useRef<string | null>(null);
   const [kioscoCodigo, setKioscoCodigo] = useState("1234");
   const [cambiarCodigoOpen, setCambiarCodigoOpen] = useState(false);
+  const [telegramOpen, setTelegramOpen] = useState(false);
   const [savingCodigo, setSavingCodigo] = useState(false);
   const [codigoError, setCodigoError] = useState("");
   const [clinicaCodigo, setClinicaCodigo] = useState<string | null>(null);
@@ -879,6 +882,14 @@ export function GestionesApp() {
                     Cambiar codigo de modo kiosco
                   </button>
                   <button
+                    className="mt-1.5 inline-flex items-center gap-2 text-xs font-semibold text-slate-300 hover:text-white"
+                    onClick={() => setTelegramOpen(true)}
+                    type="button"
+                  >
+                    <Send className="h-3.5 w-3.5" />
+                    Conectar Telegram
+                  </button>
+                  <button
                     className="mt-1.5 inline-flex items-center gap-2 text-xs font-semibold text-slate-300 hover:text-white disabled:opacity-60"
                     disabled={respaldoDescargando}
                     onClick={handleDescargarRespaldo}
@@ -1122,6 +1133,8 @@ export function GestionesApp() {
         saving={savingCodigoClinica}
         titulo="Codigo de acceso a Clinica"
       />
+
+      <TelegramModal onClose={() => setTelegramOpen(false)} open={telegramOpen} />
     </>
   );
 }

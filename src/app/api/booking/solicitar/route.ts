@@ -1,5 +1,6 @@
-import { NextResponse } from "next/server";
+import { after, NextResponse } from "next/server";
 import { rateLimit, rateLimitResponse } from "@/lib/server/rate-limit";
+import { avisarSolicitudCita } from "@/lib/server/telegram-avisos";
 import { getSupabaseClient } from "@/lib/supabase";
 
 export const runtime = "nodejs";
@@ -58,6 +59,8 @@ export async function POST(request: Request) {
     // Los mensajes de la RPC ya vienen en espanol y son seguros de mostrar.
     return NextResponse.json({ error: error.message }, { status: 422 });
   }
+
+  after(() => avisarSolicitudCita(data as string).catch(() => undefined));
 
   return NextResponse.json({ ok: true, solicitudId: data as string });
 }

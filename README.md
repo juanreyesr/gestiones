@@ -35,6 +35,28 @@ Sin estas variables todo funciona igual; cada cita ofrece un enlace manual "Aña
 
 Define `ANTHROPIC_API_KEY` (y opcionalmente `ANTHROPIC_MODEL`) en Vercel. Sin la clave, el cierre de sesion se llena manualmente con el mismo formulario.
 
+## Telegram (avisos y control desde el chat)
+
+Un bot privado de Telegram que avisa de lo que pasa en la plataforma y deja actuar sin abrir la app. Solo el chat vinculado por el owner puede darle ordenes; cualquier otro chat recibe "Este bot es privado".
+
+**Avisos que llegan** (cada uno se activa o desactiva desde el panel):
+
+- 🩺 **Solicitud de cita** desde `/agendar`, con botones **Aprobar** / **Rechazar**. Aprobar crea el paciente y la cita igual que desde la app (misma funcion `gestionesjj_aprobar_solicitud`) y, si Google Calendar esta conectado, crea el evento.
+- 💬 **Mensaje de un estudiante** (texto y nombre del adjunto). **Responder** a ese aviso en Telegram le contesta al estudiante: el mensaje aparece en su panel y los suyos quedan como leidos.
+- 📥 **Entrega de tarea** (marca si fue tardia), 🎓 **solicitud de inscripcion** a un curso y 📊 **respuestas de encuestas** (esta ultima apagada por defecto).
+- ☀️ **Resumen diario a las 7:00 a. m.** (Guatemala): citas del dia, pendientes que vencen hoy o vencidos, solicitudes y mensajes por atender.
+
+**Comandos del bot**: `/hoy` (resumen), `/citas` (proximos 7 dias), `/solicitudes` (con botones para aprobar), `/pendientes` (vencidos y de los proximos 3 dias, con boton ✅ Listo), `/nuevo texto` (anota un pendiente en el primer grupo del primer tablero), `/mensajes` (mensajes de estudiantes sin leer, cada uno respondible) y `/ayuda`.
+
+### Configurar Telegram
+
+1. En Telegram abre **@BotFather**, envia `/newbot`, elige nombre y usuario, y copia el token.
+2. En Vercel define `TELEGRAM_BOT_TOKEN`, `TELEGRAM_WEBHOOK_SECRET` y `CRON_SECRET` (ver `.env.example`), ademas de `SUPABASE_SECRET_KEY` y `NEXT_PUBLIC_APP_URL`, y vuelve a desplegar.
+3. Aplica la migracion `033_gestionesjj_telegram.sql`.
+4. En el panel pulsa **Conectar Telegram → Vincular Telegram**: registra el webhook, fija los comandos del bot y genera un enlace de un solo uso (vence en 15 minutos, con QR). Abrelo en tu telefono y pulsa **Iniciar**.
+
+Seguridad: el webhook rechaza toda peticion sin el header `X-Telegram-Bot-Api-Secret-Token` correcto; el codigo de vinculacion se guarda solo como SHA-256; las tablas `gestionesjj_telegram_config` y `gestionesjj_telegram_hilos` tienen RLS sin politicas (solo el servidor con service role las toca), y `gestionesjj_telegram_aprobar_solicitud` solo la puede ejecutar `service_role`. Si Telegram falla, la accion que origino el aviso no se ve afectada (los avisos se envian con `after()`, despues de responder).
+
 ## Modulo Cursos
 
 Centro de gestion de los cursos que se imparten en distintas universidades:

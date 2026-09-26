@@ -1,7 +1,8 @@
-import { NextResponse } from "next/server";
+import { after, NextResponse } from "next/server";
 import { requireEstudiante } from "@/lib/server/auth";
 import { rateLimit, rateLimitResponse } from "@/lib/server/rate-limit";
 import { getSupabaseAdmin } from "@/lib/server/supabase-admin";
+import { avisarMensajeEstudiante } from "@/lib/server/telegram-avisos";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -74,6 +75,9 @@ export async function POST(request: Request) {
     if (archivoPath) await admin.storage.from(BUCKET).remove([archivoPath]);
     return NextResponse.json({ error: "No se pudo enviar el mensaje." }, { status: 500 });
   }
+
+  const archivoNombre = tieneArchivo ? (archivo as File).name : null;
+  after(() => avisarMensajeEstudiante(auth.estudianteId, contenido || null, archivoNombre).catch(() => undefined));
 
   return NextResponse.json({ ok: true });
 }
