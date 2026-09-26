@@ -118,6 +118,18 @@ Mide, año contra año, por que los estudiantes de primer ingreso eligieron la u
 
 La migracion de este modulo esta en `supabase/migrations/013_gestionesjj_encuestas_estudiantiles.sql`. El flujo publico (consultar campaña, responder) pasa por RPCs `SECURITY DEFINER`, igual que el resto de flujos publicos de la app; no requiere `SUPABASE_SECRET_KEY`.
 
+## Programacion de supervisiones (dentro de Coordinacion)
+
+Planifica y mide las supervisiones de clase del trimestre (`src/lib/supervision.ts`, vista `src/components/supervision-view.tsx`):
+
+- **Propuesta automatica**: reparte los sabados entre "Plan desde" y el fin de clases (por defecto 21 de noviembre en el T3) con al menos 2 supervisiones por sabado, sin dos a la misma hora; primero una visita por docente, luego una por curso y despues seguimientos. La semana de parciales (por defecto la 8) no lleva supervisiones. Los cursos del coordinador, sin docente activo o sin horario no se programan.
+- **Integrado con las evaluaciones**: todo se mide desde la semana 1 del trimestre (13 sabados). Las evaluaciones anteriores al plan (retroactivas) y las hechas fuera de el tambien cuentan en el logro y la cobertura. Tocar una supervision programada abre la evaluacion con docente y curso cargados; tocar una realizada la abre para revisarla.
+- **Vistas**: calendario por semana y **formato institucional** (secciones por trimestre de la carrera, una columna por semana agrupada por mes, `X` realizada, `P` programada, `NR` no realizada). En el formato, una celda vacia registra una supervision fuera del plan.
+- **Logro semanal**: esperado = 1 supervision por semana, optimo = 2; avance del plan, supervisiones realizadas y cobertura de docentes y cursos.
+- **Excel** (`src/lib/supervision-excel.ts`): hoja *Programacion* con el formato institucional, *Logro semanal* y *Supervisiones realizadas* (con su origen: del plan, antes del plan o fuera del plan).
+
+No usa tablas nuevas: el plan se calcula a partir de cursos y evaluaciones, y las fechas del periodo se guardan en el navegador.
+
 ## Modulo Pendientes (tareas y proyectos)
 
 Un gestor de tareas propio inspirado en Monday, reducido a lo que se usa de verdad y con la estetica del resto de la app (fondo oscuro, esquinas rectas) pero conservando el lenguaje visual de Monday: franjas de color por grupo y pastillas de color por estado.
