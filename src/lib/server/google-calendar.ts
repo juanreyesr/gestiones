@@ -19,9 +19,24 @@ export function isGoogleConfigured() {
   return Boolean(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET);
 }
 
-export function getGoogleRedirectUri() {
-  const base = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
-  return `${base.replace(/\/$/, "")}/api/google/oauth/callback`;
+/**
+ * Origen desde el que se hace la conexion con Google. La cookie de estado de
+ * OAuth y la sesion de Supabase viven por dominio, asi que el callback debe
+ * volver al mismo dominio donde se inicio (www.juanjreyes.org o
+ * gestionesjj.vercel.app). Solo se aceptan dominios conocidos; cualquier
+ * otro cae a NEXT_PUBLIC_APP_URL. Cada origen debe estar registrado como URI
+ * de redireccion en Google Cloud Console.
+ */
+export function getAppOrigin(request?: Request) {
+  const configurado = (process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000").replace(/\/+$/, "");
+  if (!request) return configurado;
+  const origen = new URL(request.url).origin;
+  const permitidos = new Set([configurado, "https://www.juanjreyes.org", "https://gestionesjj.vercel.app", "http://localhost:3000"]);
+  return permitidos.has(origen) ? origen : configurado;
+}
+
+export function getGoogleRedirectUri(request?: Request) {
+  return `${getAppOrigin(request)}/api/google/oauth/callback`;
 }
 
 export async function getStoredTokens(): Promise<GoogleTokens | null> {

@@ -1,11 +1,10 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { getGoogleRedirectUri, isGoogleConfigured, saveTokens } from "@/lib/server/google-calendar";
+import { getAppOrigin, getGoogleRedirectUri, isGoogleConfigured, saveTokens } from "@/lib/server/google-calendar";
 
 export const runtime = "nodejs";
 
 function redirectHome(request: Request, resultado: "conectado" | "error") {
-  const base = process.env.NEXT_PUBLIC_APP_URL ?? new URL(request.url).origin;
-  const response = NextResponse.redirect(`${base.replace(/\/$/, "")}/?google=${resultado}`);
+  const response = NextResponse.redirect(`${getAppOrigin(request)}/?google=${resultado}`);
   response.cookies.set("gestiones_google_state", "", { maxAge: 0, path: "/" });
   return response;
 }
@@ -43,7 +42,7 @@ export async function GET(request: NextRequest) {
       client_secret: process.env.GOOGLE_CLIENT_SECRET ?? "",
       code,
       grant_type: "authorization_code",
-      redirect_uri: getGoogleRedirectUri(),
+      redirect_uri: getGoogleRedirectUri(request),
     }),
   });
 

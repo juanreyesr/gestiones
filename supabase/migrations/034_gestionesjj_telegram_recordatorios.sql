@@ -42,7 +42,7 @@ select cron.schedule(
   '*/10 * * * *',
   $cron$
   select net.http_post(
-    url := 'https://gestionesjj.vercel.app/api/telegram/recordatorios',
+    url := 'https://www.juanjreyes.org/api/telegram/recordatorios',
     headers := jsonb_build_object(
       'Content-Type', 'application/json',
       'Authorization', 'Bearer ' || coalesce(

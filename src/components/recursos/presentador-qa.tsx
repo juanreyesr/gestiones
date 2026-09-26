@@ -9,6 +9,7 @@ import { getSupabaseClient } from "@/lib/supabase";
 import type { QaPreguntaOwnerRow } from "@/lib/recursos/types";
 import { ConfirmDialog } from "../confirm-dialog";
 import { BTN_GHOST, EmptyState, ErrorBanner } from "./ui";
+import { urlPublica } from "@/lib/url-publica";
 
 export function PresentadorQA({
   onCerrar,
@@ -28,7 +29,7 @@ export function PresentadorQA({
   const [confirmandoCierre, setConfirmandoCierre] = useState(false);
   const [cerrando, setCerrando] = useState(false);
 
-  const enlace = typeof window !== "undefined" ? `${window.location.origin}/vivo/${pin}` : "";
+  const enlace = typeof window !== "undefined" ? urlPublica(`/vivo/${pin}`) : "";
 
   useEffect(() => {
     if (!enlace) return;

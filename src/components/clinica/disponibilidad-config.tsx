@@ -12,6 +12,7 @@ import {
 import { DIAS_SEMANA, previewSlotsSemana } from "@/lib/clinica/slots";
 import type { DisponibilidadConfig, RangoHorario } from "@/lib/clinica/types";
 import { BTN_ACCENT, BTN_GHOST, BTN_PRIMARY, Field, SectionCard } from "./ui";
+import { urlPublica } from "@/lib/url-publica";
 
 const ZONAS = [
   "America/Guatemala",
@@ -65,7 +66,7 @@ export function DisponibilidadConfigView() {
 
   const publicUrl = useMemo(() => {
     if (typeof window === "undefined") return "/agendar";
-    return `${window.location.origin}/agendar`;
+    return urlPublica("/agendar");
   }, []);
 
   const preview = useMemo(() => {

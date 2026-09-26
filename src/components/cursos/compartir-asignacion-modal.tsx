@@ -4,6 +4,7 @@ import { Check, Copy, X } from "lucide-react";
 import QRCode from "qrcode";
 import { useEffect, useState } from "react";
 import { ModalPortal } from "@/components/modal-portal";
+import { urlPublica } from "@/lib/url-publica";
 
 export function CompartirAsignacionModal({
   cursoNombre,
@@ -16,7 +17,7 @@ export function CompartirAsignacionModal({
 }) {
   const [qrDataUrl, setQrDataUrl] = useState("");
   const [copiado, setCopiado] = useState(false);
-  const enlace = typeof window !== "undefined" ? `${window.location.origin}/asignacion/${token}` : "";
+  const enlace = typeof window !== "undefined" ? urlPublica(`/asignacion/${token}`) : "";
 
   useEffect(() => {
     if (!enlace) return;

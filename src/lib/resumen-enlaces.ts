@@ -1,4 +1,5 @@
 import { getSupabaseClient } from "@/lib/supabase";
+import { urlPublica } from "@/lib/url-publica";
 
 const TABLA = "gestionesjj_coordinacion_resumen_enlaces";
 
@@ -20,8 +21,7 @@ export type EnlaceResumen = {
 };
 
 export function enlaceResumenUrl(token: string) {
-  const base = typeof window !== "undefined" ? window.location.origin : (process.env.NEXT_PUBLIC_APP_URL ?? "");
-  return `${base}/resumen/${token}`;
+  return urlPublica(`/resumen/${token}`);
 }
 
 export async function fetchEnlacesResumen() {

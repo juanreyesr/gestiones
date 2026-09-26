@@ -5,10 +5,11 @@ import QRCode from "qrcode";
 import { useEffect, useState } from "react";
 import type { CampanaConConteo } from "@/lib/encuestas/types";
 import { ModalPortal } from "../modal-portal";
+import { urlPublica } from "@/lib/url-publica";
 
 export function CampanaCompartir({ campana, onClose }: { campana: CampanaConConteo; onClose: () => void }) {
   const [qrDataUrl, setQrDataUrl] = useState("");
-  const enlace = typeof window !== "undefined" ? `${window.location.origin}/encuesta/${campana.token}` : "";
+  const enlace = typeof window !== "undefined" ? urlPublica(`/encuesta/${campana.token}`) : "";
 
   useEffect(() => {
     if (!enlace) return;

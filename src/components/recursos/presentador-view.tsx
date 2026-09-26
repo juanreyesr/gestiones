@@ -17,6 +17,7 @@ import type { ParticipanteRow, PreguntaRow, RespuestaRow, SesionRow, TipoRecurso
 import { ConfirmDialog } from "../confirm-dialog";
 import { ResultadosPregunta } from "./resultados-pregunta";
 import { BTN_GHOST, BTN_PRIMARY, ErrorBanner } from "./ui";
+import { urlPublica } from "@/lib/url-publica";
 
 export function PresentadorView({
   onCerrar,
@@ -46,7 +47,7 @@ export function PresentadorView({
   const [ahora, setAhora] = useState(() => Date.now());
   const preguntaActivaIdRef = useRef<string | null>(null);
 
-  const enlace = typeof window !== "undefined" ? `${window.location.origin}/vivo/${pin}` : "";
+  const enlace = typeof window !== "undefined" ? urlPublica(`/vivo/${pin}`) : "";
 
   useEffect(() => {
     if (!enlace) return;

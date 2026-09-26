@@ -22,10 +22,14 @@ Centro de gestion de pacientes y sesiones de terapia:
 - **Auto-agendamiento** (`/agendar`): pagina publica tipo Calendly donde los pacientes solicitan cita en los espacios libres; cada solicitud requiere aprobacion. Se activa desde Configuracion.
 - **Google Calendar** (opcional): las citas se sincronizan a tu calendario y tus eventos ocupados se restan de la disponibilidad. Requiere `SUPABASE_SECRET_KEY`, `GOOGLE_CLIENT_ID` y `GOOGLE_CLIENT_SECRET`.
 
+### Dominio publico
+
+La app responde en `www.juanjreyes.org` (dominio propio; `juanjreyes.org` redirige a `www`) y en `gestionesjj.vercel.app`. Define `NEXT_PUBLIC_APP_URL=https://www.juanjreyes.org`: los enlaces que se comparten (agendar, encuestas, QR de sesiones en vivo, asignacion a cursos, datos del paciente, resumen para jefatura) salen siempre con ese dominio aunque estes navegando desde el de Vercel (`src/lib/url-publica.ts`), y el webhook de Telegram se registra ahi al vincular.
+
 ### Configurar Google Calendar (opcional)
 
 1. En [Google Cloud Console](https://console.cloud.google.com/) crea un proyecto y habilita la **Google Calendar API**.
-2. En "Credenciales" crea un **ID de cliente OAuth 2.0** tipo "Aplicacion web" con URI de redireccion `https://TU-DOMINIO/api/google/oauth/callback` (y `http://localhost:3000/api/google/oauth/callback` para desarrollo).
+2. En "Credenciales" crea un **ID de cliente OAuth 2.0** tipo "Aplicacion web" con **una URI de redireccion por cada dominio** desde el que vayas a conectar: `https://www.juanjreyes.org/api/google/oauth/callback` y `https://gestionesjj.vercel.app/api/google/oauth/callback` (y `http://localhost:3000/api/google/oauth/callback` para desarrollo). La conexion vuelve al mismo dominio donde se inicio.
 3. Define `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `NEXT_PUBLIC_APP_URL` y `SUPABASE_SECRET_KEY` (service role de Supabase) en Vercel.
 4. En Clinica → Configuracion pulsa "Conectar Google Calendar".
 

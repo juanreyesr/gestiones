@@ -25,7 +25,7 @@ export async function POST(request: Request) {
   const state = randomBytes(24).toString("hex");
   const params = new URLSearchParams({
     client_id: process.env.GOOGLE_CLIENT_ID ?? "",
-    redirect_uri: getGoogleRedirectUri(),
+    redirect_uri: getGoogleRedirectUri(request),
     response_type: "code",
     scope: SCOPES,
     access_type: "offline",
