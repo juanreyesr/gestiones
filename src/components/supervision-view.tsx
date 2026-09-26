@@ -24,25 +24,24 @@ import { fetchCarreras, fetchCursosAdmin, type CursoAdminRow } from "@/lib/curso
 import { currentTrimestre, fetchEvaluacionesPorPeriodo, type EvaluacionRow } from "@/lib/evaluacion-helpers";
 import { formatoCorto, hoyISO } from "@/lib/fechas";
 import {
-  esCursoDelCoordinador,
+  construirPlanSupervision,
   estadoItem,
-  finPorDefecto,
-  generarPlan,
   horasDeHorario,
-  inicioClasesPorDefecto,
   logroSemanal,
   marcaCelda,
   mesDeFecha,
   MINIMO_POR_SABADO,
+  rangoPorDefecto,
   rotuloTrimestreCarrera,
   sabadoDeSemana,
   sabadoEnOPosterior,
-  sabadosEntre,
   type EstadoItem,
   type ItemSupervision,
   type LogroSemana,
   type MarcaCelda,
+  type RangoSupervision,
 } from "@/lib/supervision";
+import { fetchPeriodoSupervision, guardarPeriodoSupervision } from "@/lib/supervision-periodos";
 import type { GrupoProgramacion, SupervisionRealizada } from "@/lib/supervision-excel";
 import { ErrorBanner, Field, INPUT } from "./ui-comun";
 
@@ -53,52 +52,33 @@ export type IniciarSupervision = {
   trimestre: Trimestre;
 };
 
-/**
- * inicioClases: sabado de la semana 1 del trimestre (desde ahi se mide el
- * logro, retroactivo incluido). inicio: desde cuando se reparte la propuesta.
- * parcial: numero de semana de parciales, sin supervisiones programadas.
- */
-type Rango = { inicioClases: string; inicio: string; fin: string; parcial: number | null };
-
-const SEMANA_PARCIAL_POR_DEFECTO = 8;
+type Rango = RangoSupervision;
 
 const claveRango = (anio: number, trimestre: Trimestre) => `gestionesjj:supervision:${anio}-T${trimestre}`;
 
 /**
- * El rango se fija la primera vez que se abre el periodo: si el inicio del
- * plan se recalculara con "hoy" en cada visita, la propuesta se correria sola
- * cada semana. Se guarda solo en este navegador (es una preferencia de vista).
+ * Rango guardado en este navegador antes de que las fechas pasaran a la base
+ * (migracion 040). Solo se usa para migrarlo la primera vez.
  */
-function leerRango(anio: number, trimestre: Trimestre): Rango {
-  const fin = finPorDefecto(anio, trimestre);
-  const porDefecto: Rango = {
-    inicioClases: inicioClasesPorDefecto(fin),
-    inicio: sabadoEnOPosterior(hoyISO()),
-    fin,
-    parcial: SEMANA_PARCIAL_POR_DEFECTO,
-  };
+function leerRangoLocal(anio: number, trimestre: Trimestre): Rango | null {
   try {
     const guardado = window.localStorage.getItem(claveRango(anio, trimestre));
-    if (guardado) {
-      const valor = JSON.parse(guardado) as Partial<Rango>;
-      if (valor.inicio && valor.fin) {
-        // Rangos guardados antes de existir la semana 1 y los parciales.
-        return {
-          inicioClases: valor.inicioClases ?? inicioClasesPorDefecto(valor.fin),
-          inicio: valor.inicio,
-          fin: valor.fin,
-          parcial: valor.parcial === undefined ? SEMANA_PARCIAL_POR_DEFECTO : valor.parcial,
-        };
-      }
-    }
-    window.localStorage.setItem(claveRango(anio, trimestre), JSON.stringify(porDefecto));
+    if (!guardado) return null;
+    const valor = JSON.parse(guardado) as Partial<Rango>;
+    if (!valor.inicio || !valor.fin) return null;
+    const porDefecto = rangoPorDefecto(anio, trimestre, hoyISO());
+    return {
+      inicioClases: valor.inicioClases ?? porDefecto.inicioClases,
+      inicio: valor.inicio,
+      fin: valor.fin,
+      parcial: valor.parcial === undefined ? porDefecto.parcial : valor.parcial,
+    };
   } catch {
-    // Sin almacenamiento disponible: se usa el rango por defecto.
+    return null;
   }
-  return porDefecto;
 }
 
-function guardarRango(anio: number, trimestre: Trimestre, rango: Rango) {
+function guardarRangoLocal(anio: number, trimestre: Trimestre, rango: Rango) {
   try {
     window.localStorage.setItem(claveRango(anio, trimestre), JSON.stringify(rango));
   } catch {
@@ -163,9 +143,29 @@ export function SupervisionView({
   const [error, setError] = useState("");
   const hoy = hoyISO();
 
+  /**
+   * Las fechas se fijan la primera vez que se abre el periodo (si el inicio
+   * del plan se recalculara con "hoy" en cada visita, la propuesta se correria
+   * sola cada semana) y se guardan en la base para que el recordatorio de
+   * Telegram use el mismo plan. Si la base no responde, quedan en el navegador.
+   */
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- el rango vive en localStorage, solo existe en el navegador
-    setRango(leerRango(anio, trimestre));
+    let vigente = true;
+    (async () => {
+      const { data, error: errorPeriodo } = await fetchPeriodoSupervision(anio, trimestre);
+      if (!vigente) return;
+      if (data) {
+        setRango(data);
+        return;
+      }
+      const inicial = leerRangoLocal(anio, trimestre) ?? rangoPorDefecto(anio, trimestre, hoyISO());
+      setRango(inicial);
+      guardarRangoLocal(anio, trimestre, inicial);
+      if (!errorPeriodo) await guardarPeriodoSupervision(anio, trimestre, inicial);
+    })();
+    return () => {
+      vigente = false;
+    };
   }, [anio, trimestre]);
 
   const cargar = useCallback(async () => {
@@ -191,67 +191,33 @@ export function SupervisionView({
     if (!rango) return;
     const nuevo = { ...rango, ...cambio };
     setRango(nuevo);
-    guardarRango(anio, trimestre, nuevo);
+    guardarRangoLocal(anio, trimestre, nuevo);
+    guardarPeriodoSupervision(anio, trimestre, nuevo).then(({ error: errorGuardado }) => {
+      if (errorGuardado) setError(`No se guardaron las fechas del periodo: ${errorGuardado}`);
+    });
   };
 
   const docentesActivos = useMemo(() => new Map(docentes.map((d) => [d.id, d.nombre])), [docentes]);
 
-  const cursosDelPeriodo = useMemo(
-    () => cursos.filter((c) => c.activo && c.anio === anio && c.trimestre === trimestre),
-    [cursos, anio, trimestre],
+  const base = useMemo(
+    () =>
+      rango
+        ? construirPlanSupervision({ anio, trimestre, cursos, docentesActivos, evaluaciones, rango })
+        : null,
+    [anio, trimestre, cursos, docentesActivos, evaluaciones, rango],
   );
-
+  const plan = base?.plan ?? null;
+  const semanas = useMemo(() => base?.semanas ?? [], [base]);
+  const semanaParcial = base?.semanaParcial ?? null;
+  const cursosDelPeriodo = useMemo(() => base?.cursosDelPeriodo ?? [], [base]);
+  const cursosPeriodo = useMemo(() => base?.cursosPeriodo ?? [], [base]);
+  const cursosPropios = base?.cursosPropios ?? [];
+  const cursosSinDocente = base?.cursosSinDocente ?? [];
+  const planificables = useMemo(() => base?.planificables ?? new Set<string>(), [base]);
   const nombreDocente = useCallback(
     (c: CursoAdminRow) => (c.docenteId ? (docentesActivos.get(c.docenteId) ?? c.docenteNombre) : c.docenteNombre),
     [docentesActivos],
   );
-
-  const cursosPropios = useMemo(
-    () => cursosDelPeriodo.filter((c) => esCursoDelCoordinador(nombreDocente(c))),
-    [cursosDelPeriodo, nombreDocente],
-  );
-
-  const cursosPeriodo = useMemo(
-    () => cursosDelPeriodo.filter((c) => !esCursoDelCoordinador(nombreDocente(c))),
-    [cursosDelPeriodo, nombreDocente],
-  );
-
-  const cursosSinDocente = useMemo(
-    () => cursosPeriodo.filter((c) => !c.docenteId || !docentesActivos.has(c.docenteId)),
-    [cursosPeriodo, docentesActivos],
-  );
-
-  /** Cursos que se pueden supervisar (docente activo y no es el coordinador). */
-  const planificables = useMemo(
-    () => new Set(cursosPeriodo.filter((c) => c.docenteId && docentesActivos.has(c.docenteId)).map((c) => c.id)),
-    [cursosPeriodo, docentesActivos],
-  );
-
-  const semanas = useMemo(() => (rango ? sabadosEntre(rango.inicioClases, rango.fin) : []), [rango]);
-  const semanaParcial = rango?.parcial ? (semanas[rango.parcial - 1] ?? null) : null;
-
-  const plan = useMemo(() => {
-    if (!rango) return null;
-    const previas = evaluaciones.filter((e) => e.fecha_observacion < rango.inicio);
-    return generarPlan({
-      cursos: cursosPeriodo
-        .filter((c) => planificables.has(c.id))
-        .map((c) => ({
-          id: c.id,
-          nombre: c.nombre,
-          horario: c.horario,
-          edificio: c.edificio,
-          virtual: c.virtual,
-          docenteId: c.docenteId as string,
-          docenteNombre: docentesActivos.get(c.docenteId as string) ?? c.docenteNombre ?? "Docente",
-        })),
-      inicio: rango.inicio,
-      fin: rango.fin,
-      docentesYaSupervisados: new Set(previas.map((e) => e.docente_id).filter((id): id is string => !!id)),
-      cursosYaSupervisados: new Set(previas.map((e) => e.curso_id).filter((id): id is string => !!id)),
-      semanasExcluidas: semanaParcial ? new Set([semanaParcial]) : undefined,
-    });
-  }, [rango, evaluaciones, cursosPeriodo, planificables, docentesActivos, semanaParcial]);
 
   const itemsPorSemana = useMemo(() => new Map(plan?.semanas.map((s) => [s.semana, s.items]) ?? []), [plan]);
   const itemPorCursoSemana = useMemo(() => {
