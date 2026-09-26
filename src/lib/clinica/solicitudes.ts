@@ -86,7 +86,12 @@ export async function contarSolicitudesPendientes() {
     .gte("inicio", new Date().toISOString());
 
   if (error) return { count: 0, error: error.message };
-  return { count: count ?? 0, error: null };
+  // Tambien cuentan las reservas de Calendly (via Google Calendar) por revisar.
+  const { count: reservas } = await supabase
+    .from("gestionesjj_google_reservas")
+    .select("id", { count: "exact", head: true })
+    .eq("estado", "pendiente");
+  return { count: (count ?? 0) + (reservas ?? 0), error: null };
 }
 
 export async function aprobarSolicitud(solicitudId: string, pacienteId: string | null) {

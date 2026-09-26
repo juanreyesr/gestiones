@@ -290,6 +290,8 @@ export type EventoGoogle = {
   ubicacion: string | null;
   /** Enlace de Google Meet, si el evento tiene videollamada. */
   videollamada: string | null;
+  descripcion: string | null;
+  invitados: { email: string | null; nombre: string | null; yo: boolean; organizador: boolean }[];
   /** Id de la cita de GestionesJJ si el evento lo creo la propia app. */
   gestionesId: string | null;
 };
@@ -299,11 +301,12 @@ type RawEvento = {
   status?: string;
   summary?: string;
   location?: string;
+  description?: string;
   hangoutLink?: string;
   transparency?: string;
   start?: { dateTime?: string; date?: string };
   end?: { dateTime?: string; date?: string };
-  attendees?: { self?: boolean; responseStatus?: string }[];
+  attendees?: { self?: boolean; organizer?: boolean; email?: string; displayName?: string; responseStatus?: string }[];
   extendedProperties?: { private?: { gestionesId?: string } };
 };
 
@@ -354,6 +357,13 @@ export async function listarEventos(desdeIso: string, hastaIso: string) {
             todoElDia,
             ubicacion: e.location?.trim() || null,
             videollamada: e.hangoutLink ?? null,
+            descripcion: e.description ?? null,
+            invitados: (e.attendees ?? []).map((a) => ({
+              email: a.email ?? null,
+              nombre: a.displayName ?? null,
+              yo: Boolean(a.self),
+              organizador: Boolean(a.organizer),
+            })),
             gestionesId: e.extendedProperties?.private?.gestionesId ?? null,
           };
         });
@@ -362,4 +372,39 @@ export async function listarEventos(desdeIso: string, hastaIso: string) {
 
   const eventos = porCalendario.flat().sort((a, b) => Date.parse(a.inicio) - Date.parse(b.inicio));
   return { eventos, error: null };
+}
+
+/**
+ * Estado actual de un evento puntual: si sigue existiendo (y en que horario)
+ * o si fue borrado/cancelado. "error" cuando no se pudo saber (sin acceso,
+ * Google caido): quien llama no debe tomar decisiones con eso.
+ */
+export async function obtenerEvento(calendarId: string, eventId: string) {
+  const { token } = await getValidAccessToken();
+  if (!token) return { estado: "error" as const };
+  const response = await calendarRequest(token, calendarId, `/events/${encodeURIComponent(eventId)}`);
+  if (response.status === 404 || response.status === 410) return { estado: "no_existe" as const };
+  if (!response.ok) return { estado: "error" as const };
+  const e = (await response.json()) as RawEvento;
+  if (e.status === "cancelled") return { estado: "no_existe" as const };
+  return {
+    estado: "existe" as const,
+    inicio: e.start?.dateTime ?? `${e.start?.date}T00:00:00-06:00`,
+    fin: e.end?.dateTime ?? `${e.end?.date}T00:00:00-06:00`,
+  };
+}
+
+/**
+ * Marca un evento que creo otro sistema (Calendly...) como enlazado a una
+ * cita de GestionesJJ, para que la agenda y los avisos no lo cuenten dos
+ * veces. Solo agrega la propiedad privada; no toca titulo ni descripcion.
+ */
+export async function marcarEventoGestiones(calendarId: string, eventId: string, citaId: string) {
+  const { token, error } = await getValidAccessToken();
+  if (!token) return { error };
+  const response = await calendarRequest(token, calendarId, `/events/${encodeURIComponent(eventId)}`, {
+    method: "PATCH",
+    body: JSON.stringify({ extendedProperties: { private: { gestionesId: citaId } } }),
+  });
+  return { error: response.ok ? null : `Google respondió ${response.status}.` };
 }

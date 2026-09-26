@@ -1,5 +1,7 @@
 import { getSupabaseAdmin } from "./supabase-admin";
 import { esc, isTelegramConfigured, notificar, recortar } from "./telegram";
+import { buscarCoincidencia } from "@/lib/clinica/coincidencias";
+import { pacientesComparables } from "./reservas-google";
 import { botonesSolicitudCita, textoMensajeEstudiante, textoSolicitudCita } from "./telegram-bot";
 
 /**
@@ -17,7 +19,10 @@ export async function avisarSolicitudCita(solicitudId: string) {
     .eq("id", solicitudId)
     .maybeSingle();
   if (!sol) return;
-  await notificar("citas_solicitudes", textoSolicitudCita(sol), { botones: botonesSolicitudCita(solicitudId) });
+  const coincidencia = buscarCoincidencia(await pacientesComparables(admin), sol);
+  await notificar("citas_solicitudes", textoSolicitudCita(sol, coincidencia), {
+    botones: botonesSolicitudCita(solicitudId, coincidencia),
+  });
 }
 
 export async function avisarMensajeEstudiante(estudianteId: string, contenido: string | null, archivoNombre: string | null) {

@@ -6,6 +6,8 @@ type RawPaciente = {
   nombre: string;
   telefono: string;
   email: string | null;
+  pais: string | null;
+  zona_horaria: string | null;
   fecha_nacimiento: string | null;
   genero: string | null;
   ocupacion: string | null;
@@ -36,7 +38,7 @@ type RawPaciente = {
 };
 
 const PACIENTE_COLUMNS =
-  "id,nombre,telefono,email,fecha_nacimiento,genero,ocupacion,escolaridad,estado_civil,direccion,emergencia_nombre,emergencia_telefono,emergencia_relacion,motivo_consulta,antecedentes_medicos,antecedentes_psicologicos,antecedentes_familiares,medicacion_actual,referido_por,notas_generales,tiene_hijos,hijos,vive_solo,convive_con,convive_otros,horario_trabajo,estado,created_at,datos_token,datos_completados_at,consentimiento_aceptado_at";
+  "id,nombre,telefono,email,pais,zona_horaria,fecha_nacimiento,genero,ocupacion,escolaridad,estado_civil,direccion,emergencia_nombre,emergencia_telefono,emergencia_relacion,motivo_consulta,antecedentes_medicos,antecedentes_psicologicos,antecedentes_familiares,medicacion_actual,referido_por,notas_generales,tiene_hijos,hijos,vive_solo,convive_con,convive_otros,horario_trabajo,estado,created_at,datos_token,datos_completados_at,consentimiento_aceptado_at";
 
 function mapPaciente(row: RawPaciente): PacienteRow {
   return {
@@ -44,6 +46,8 @@ function mapPaciente(row: RawPaciente): PacienteRow {
     nombre: row.nombre,
     telefono: row.telefono,
     email: row.email,
+    pais: row.pais,
+    zonaHoraria: row.zona_horaria,
     fechaNacimiento: row.fecha_nacimiento,
     genero: row.genero,
     ocupacion: row.ocupacion,

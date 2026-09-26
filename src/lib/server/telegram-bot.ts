@@ -1,7 +1,11 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { buscarCoincidencia, type Coincidencia } from "@/lib/clinica/coincidencias";
 import { enlaceWhatsApp, textoRecordatorioCita } from "@/lib/clinica/recordatorio";
+import { mismaHoraQueConsultorio, nombreZona, PAIS_POR_DEFECTO, paisDe, paisPorCodigo, zonaDe } from "@/lib/paises";
 import { type EventoGoogle, getStoredTokens, insertEvent, isGoogleConfigured, listarEventos } from "./google-calendar";
+import { pacientesComparables, resolverReserva } from "./reservas-google";
 import { getSupabaseAdmin } from "./supabase-admin";
+import { buscarPacienteParaDatos, enviarEnlaceAgenda, enviarEnlaceDatos, pedidoDeEnlace } from "./telegram-enlaces";
 import {
   type BotonInline,
   type TelegramConfig,
@@ -17,6 +21,7 @@ import {
   leerConfig,
   recortar,
   telegramApi,
+  COMANDOS_BOT,
 } from "./telegram";
 
 /**
@@ -79,6 +84,15 @@ export async function procesarUpdate(update: TelegramUpdate) {
   }
 
   const comando = texto.match(/^\/(\w+)(?:@\w+)?(?:\s+([\s\S]*))?$/);
+  const pedido = comando ? null : pedidoDeEnlace(texto);
+  if (pedido?.tipo === "agenda") {
+    await enviarEnlaceAgenda(admin, chatId);
+    return;
+  }
+  if (pedido?.tipo === "datos") {
+    await buscarPacienteParaDatos(admin, chatId, pedido.nombre);
+    return;
+  }
   if (!comando && preguntaPorAgenda(texto)) {
     await enviarMensaje(chatId, await construirAgenda(admin, rangoAgenda(texto)));
     return;
@@ -106,6 +120,15 @@ export async function procesarUpdate(update: TelegramUpdate) {
     case "citas":
       await enviarMensaje(chatId, await textoCitas(admin));
       return;
+    case "agendar":
+    case "enlace":
+    case "link":
+      await enviarEnlaceAgenda(admin, chatId);
+      return;
+    case "datos":
+    case "perfil":
+      await buscarPacienteParaDatos(admin, chatId, argumento);
+      return;
     case "solicitudes":
       await enviarSolicitudes(admin, chatId);
       return;
@@ -120,6 +143,8 @@ export async function procesarUpdate(update: TelegramUpdate) {
       return;
     case "ayuda":
     case "help":
+      // De paso refresca el menu de comandos (asi aparecen los nuevos sin volver a vincular).
+      await telegramApi("setMyCommands", { commands: COMANDOS_BOT });
       await enviarMensaje(chatId, textoAyuda());
       return;
     default:
@@ -190,9 +215,12 @@ function textoAyuda() {
     "/solicitudes — solicitudes de cita con botones para aprobar o rechazar",
     "/pendientes — pendientes vencidos y de los próximos 3 días, con botón ✅ Listo",
     "/nuevo <i>texto</i> — anota un pendiente nuevo",
+    "/agendar — enlace de tu página de citas, listo para enviar",
+    "/datos <i>nombre</i> — enlace para que un paciente llene sus datos (con botón de WhatsApp a su número)",
     "/mensajes — mensajes de estudiantes sin leer",
     "",
     "💬 Para contestarle a un estudiante, <b>responde</b> (desliza el mensaje) al aviso de su mensaje.",
+    "📅 Las reservas de Calendly que lleguen a tu Google Calendar te las mando con botones para vincularlas a un paciente o crearlo.",
     "🗓 También puedes preguntar escribiendo normal: <i>¿qué tengo mañana?</i>, <i>¿tengo compromisos el viernes?</i>",
   ].join("\n");
 }
@@ -209,13 +237,13 @@ type RawCita = {
   motivo: string | null;
   contacto_nombre: string | null;
   contacto_telefono: string | null;
-  gestionesjj_pacientes: { nombre: string; telefono: string | null } | null;
+  gestionesjj_pacientes: { nombre: string; telefono: string | null; pais: string | null; zona_horaria: string | null } | null;
 };
 
 async function citasEntre(admin: SupabaseClient, desdeIso: string, hastaIso: string) {
   const { data } = await admin
     .from("gestionesjj_citas")
-    .select("id,inicio,estado,modalidad,motivo,contacto_nombre,contacto_telefono,gestionesjj_pacientes(nombre,telefono)")
+    .select("id,inicio,estado,modalidad,motivo,contacto_nombre,contacto_telefono,gestionesjj_pacientes(nombre,telefono,pais,zona_horaria)")
     .gte("inicio", desdeIso)
     .lt("inicio", hastaIso)
     .in("estado", ["pendiente", "confirmada"])
@@ -229,18 +257,29 @@ function nombreCita(cita: RawCita) {
 }
 
 /** Boton de Telegram que abre WhatsApp con el recordatorio listo para el paciente. */
-function botonWhatsAppCita(cita: RawCita, etiqueta: string): BotonInline | null {
+function ubicacionPaciente(cita: RawCita) {
   const telefono = cita.gestionesjj_pacientes?.telefono ?? cita.contacto_telefono;
+  const datos = { pais: cita.gestionesjj_pacientes?.pais, zonaHoraria: cita.gestionesjj_pacientes?.zona_horaria, telefono };
+  return { telefono, pais: paisDe(datos), zona: zonaDe(datos) };
+}
+
+/** Boton de Telegram que abre WhatsApp con el recordatorio listo para el paciente (en su hora). */
+function botonWhatsAppCita(cita: RawCita, etiqueta: string): BotonInline | null {
+  const { telefono, pais, zona } = ubicacionPaciente(cita);
   if (!telefono) return null;
-  const fechaLarga = new Intl.DateTimeFormat("es-GT", {
-    timeZone: "America/Guatemala",
-    weekday: "long",
-    day: "numeric",
-    month: "long",
-    year: "numeric",
-  }).format(new Date(cita.inicio));
-  const mensaje = textoRecordatorioCita(nombreCita(cita), fechaLarga, hora(cita.inicio));
-  return { text: etiqueta, url: enlaceWhatsApp(telefono, mensaje) };
+  const mensaje = textoRecordatorioCita(nombreCita(cita), cita.inicio, zona);
+  return { text: etiqueta, url: enlaceWhatsApp(telefono, mensaje, pais) };
+}
+
+/** "🌎 🇪🇸 España · su hora: 11:00 p. m." para pacientes fuera de Guatemala (null si es de Guatemala). */
+function lineaPaisCita(cita: RawCita) {
+  const { pais, zona } = ubicacionPaciente(cita);
+  if (pais === PAIS_POR_DEFECTO) return null;
+  const info = paisPorCodigo(pais);
+  const suHora = mismaHoraQueConsultorio(zona, cita.inicio)
+    ? ""
+    : ` · su hora: ${new Intl.DateTimeFormat("es-GT", { timeZone: zona, hour: "numeric", minute: "2-digit" }).format(new Date(cita.inicio))} (${nombreZona(zona)})`;
+  return `🌎 ${info.bandera} ${esc(info.nombre)}${esc(suHora)}`;
 }
 
 type RawItem = {
@@ -375,6 +414,7 @@ export async function enviarRecordatoriosCitas(admin: SupabaseClient, config: Te
     const texto = [
       `⏰ <b>Cita en ${minutos} min</b> — ${esc(hora(cita.inicio))}`,
       `👤 ${esc(nombreCita(cita))}${cita.modalidad === "virtual" ? " · 💻 virtual" : ""}${cita.estado === "pendiente" ? " · <i>por confirmar</i>" : ""}`,
+      lineaPaisCita(cita),
       cita.motivo ? `📝 ${esc(recortar(cita.motivo, 300))}` : null,
     ]
       .filter((linea) => linea !== null)
@@ -605,7 +645,7 @@ type RawSolicitud = {
   dar_seguimiento: boolean;
 };
 
-export function textoSolicitudCita(sol: Omit<RawSolicitud, "id" | "estado">) {
+export function textoSolicitudCita(sol: Omit<RawSolicitud, "id" | "estado">, coincidencia?: Coincidencia | null) {
   const etiquetas = [
     sol.ya_es_paciente ? "ya es paciente" : null,
     sol.primera_sesion ? "primera sesión" : null,
@@ -617,15 +657,27 @@ export function textoSolicitudCita(sol: Omit<RawSolicitud, "id" | "estado">) {
     `📅 ${esc(fechaHora(sol.inicio))}`,
     `📞 ${esc(sol.telefono)}${sol.email ? ` · ${esc(sol.email)}` : ""}`,
     sol.motivo ? `📝 ${esc(recortar(sol.motivo, 600))}` : null,
+    coincidencia === undefined
+      ? null
+      : coincidencia
+        ? `\n🔎 <b>Parece ser ${esc(coincidencia.paciente.nombre)}</b> (mismo ${coincidencia.por})`
+        : "\n🔎 No coincide con ningún paciente registrado.",
   ]
     .filter((linea) => linea !== null)
     .join("\n");
 }
 
-export function botonesSolicitudCita(solicitudId: string): BotonInline[][] {
+export function botonesSolicitudCita(solicitudId: string, coincidencia?: Coincidencia | null): BotonInline[][] {
+  if (coincidencia) {
+    return [
+      [{ text: `✅ Aprobar: es ${coincidencia.paciente.nombre.split(" ")[0]}`, callback_data: `sol:vp:${solicitudId}` }],
+      [{ text: "➕ Aprobar como paciente nuevo", callback_data: `sol:ap:${solicitudId}` }],
+      [{ text: "❌ Rechazar", callback_data: `sol:re:${solicitudId}` }],
+    ];
+  }
   return [
     [
-      { text: "✅ Aprobar", callback_data: `sol:ap:${solicitudId}` },
+      { text: "✅ Aprobar (paciente nuevo)", callback_data: `sol:ap:${solicitudId}` },
       { text: "❌ Rechazar", callback_data: `sol:re:${solicitudId}` },
     ],
   ];
@@ -645,8 +697,10 @@ async function enviarSolicitudes(admin: SupabaseClient, chatId: number) {
     await enviarMensaje(chatId, "🩺 No hay solicitudes de cita por aprobar.");
     return;
   }
+  const pacientes = await pacientesComparables(admin);
   for (const sol of solicitudes) {
-    await enviarMensaje(chatId, textoSolicitudCita(sol), { botones: botonesSolicitudCita(sol.id) });
+    const coincidencia = buscarCoincidencia(pacientes, sol);
+    await enviarMensaje(chatId, textoSolicitudCita(sol, coincidencia), { botones: botonesSolicitudCita(sol.id, coincidencia) });
   }
 }
 
@@ -889,17 +943,31 @@ async function procesarCallback(admin: SupabaseClient, query: CallbackQuery) {
     }
     const base = textoSolicitudCita(sol as RawSolicitud);
 
-    if (accion === "ap") {
+    if (accion === "ap" || accion === "vp") {
+      // "vp": vincular al paciente que coincide (se recalcula al tocar el boton).
+      let paciente: { id: string; nombre: string } | null = null;
+      if (accion === "vp") {
+        paciente = buscarCoincidencia(await pacientesComparables(admin), sol as RawSolicitud)?.paciente ?? null;
+        if (!paciente) {
+          await responder("Ya no encuentro al paciente que coincidía. Apruébala desde el panel.");
+          return;
+        }
+      }
       const { data: citaId, error } = await admin.rpc("gestionesjj_telegram_aprobar_solicitud", {
         p_solicitud_id: id,
         p_owner_id: config.ownerId,
+        p_paciente_id: paciente?.id ?? null,
       });
       if (error) {
         await responder(error.message.slice(0, 190));
         return;
       }
       await responder("Cita aprobada.");
-      await editarMensaje(chatId, messageId, `${base}\n\n✅ <b>Aprobada</b> — ya está en tu agenda.`);
+      await editarMensaje(
+        chatId,
+        messageId,
+        `${base}\n\n✅ <b>Aprobada</b>${paciente ? ` en el expediente de ${esc(paciente.nombre)}` : " — paciente nuevo creado"}. Ya está en tu agenda.`,
+      );
       if (citaId) await sincronizarCitaGoogle(admin, citaId as string).catch(() => undefined);
       return;
     }
@@ -919,6 +987,24 @@ async function procesarCallback(admin: SupabaseClient, query: CallbackQuery) {
       await editarMensaje(chatId, messageId, `${base}\n\n❌ <b>Rechazada</b>`);
       return;
     }
+  }
+
+  if (ambito === "gr" && id) {
+    const accionReserva = accion === "vp" ? "vincular" : accion === "nv" ? "crear" : accion === "ig" ? "ignorar" : null;
+    if (!accionReserva) {
+      await responder("Acción no reconocida.");
+      return;
+    }
+    const resultado = await resolverReserva(admin, config.ownerId, id, accionReserva, { config });
+    await responder((resultado.ok ? resultado.mensaje : resultado.error).slice(0, 190));
+    if (!resultado.ok) await enviarMensaje(chatId, `⚠️ ${esc(resultado.error)}`, { responderA: messageId });
+    return;
+  }
+
+  if (ambito === "dat" && id && (accion === "ve" || accion === "re")) {
+    await responder(accion === "re" ? "Enlace reabierto." : "Enviando enlace...");
+    await enviarEnlaceDatos(admin, chatId, id, accion === "re");
+    return;
   }
 
   if (ambito === "pen" && accion === "ok" && id) {

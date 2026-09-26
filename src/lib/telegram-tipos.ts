@@ -2,6 +2,7 @@
 
 export type TipoNotificacion =
   | "citas_solicitudes"
+  | "reservas_google"
   | "citas_recordatorio"
   | "google_recordatorio"
   | "estudiantes_mensajes"
@@ -12,6 +13,7 @@ export type TipoNotificacion =
 
 export const NOTIFICACIONES: { id: TipoNotificacion; etiqueta: string; porDefecto: boolean }[] = [
   { id: "citas_solicitudes", etiqueta: "Solicitudes de cita (Clínica)", porDefecto: true },
+  { id: "reservas_google", etiqueta: "Reservas de Calendly u otros sistemas (vía Google Calendar)", porDefecto: true },
   { id: "citas_recordatorio", etiqueta: "Recordatorio 1 hora antes de cada cita", porDefecto: true },
   { id: "google_recordatorio", etiqueta: "Aviso 1 hora antes de mis compromisos de Google Calendar", porDefecto: true },
   { id: "estudiantes_mensajes", etiqueta: "Mensajes de estudiantes", porDefecto: true },

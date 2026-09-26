@@ -82,7 +82,7 @@ function CitaDetalleModal({
   onEliminar,
 }: {
   cita: CitaRow;
-  contacto: { telefono: string | null; email: string | null; nombre: string | null };
+  contacto: { telefono: string | null; email: string | null; nombre: string | null; pais?: string | null; zonaHoraria?: string | null };
   googleConectado: boolean;
   onCambiarEstado: (estado: CitaEstado) => void;
   onCerrar: () => void;
@@ -328,6 +328,8 @@ export function AgendaView({ pacientes }: { pacientes: PacienteRow[] }) {
     return {
       telefono: paciente?.telefono ?? cita.contactoTelefono,
       email: paciente?.email ?? cita.contactoEmail,
+      pais: paciente?.pais ?? null,
+      zonaHoraria: paciente?.zonaHoraria ?? null,
       nombre: paciente?.nombre ?? cita.contactoNombre,
     };
   };
