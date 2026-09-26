@@ -57,6 +57,42 @@ export function finPorDefecto(anio: number, trimestre: Trimestre) {
   return `${anio}-04-25`;
 }
 
+/** Semana 1 del trimestre: 13 sabados de clase que terminan en `fin`. */
+export const SEMANAS_TRIMESTRE = 13;
+
+export function inicioClasesPorDefecto(fin: string) {
+  const fecha = parseFecha(sabadoDeSemana(fin));
+  if (!fecha) return fin;
+  fecha.setDate(fecha.getDate() - (SEMANAS_TRIMESTRE - 1) * 7);
+  return fechaISO(fecha);
+}
+
+const ORDINALES = [
+  "Primer", "Segundo", "Tercer", "Cuarto", "Quinto", "Sexto", "Séptimo", "Octavo", "Noveno", "Décimo",
+  "Undécimo", "Duodécimo", "Decimotercer", "Decimocuarto", "Decimoquinto",
+];
+
+/** "Tercer trimestre psicología clínica y consejería social" (año 1, T3). */
+export function rotuloTrimestreCarrera(anioCarrera: number, trimestre: number, carrera: string) {
+  const numero = (anioCarrera - 1) * 3 + trimestre;
+  const ordinal = ORDINALES[numero - 1] ?? `${numero}.º`;
+  return `${ordinal} trimestre ${carrera.toLocaleLowerCase("es")}`.trim();
+}
+
+const MESES = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
+
+export function mesDeFecha(fecha: string) {
+  return MESES[Number(fecha.slice(5, 7)) - 1] ?? "";
+}
+
+/** "9:30–11:30" a partir del horario del curso. */
+export function horasDeHorario(horario: string | null | undefined) {
+  const parseado = parseHorario(horario);
+  if (!parseado) return horario?.trim() ?? "";
+  const sinCero = (hora: string) => hora.replace(/^0/, "");
+  return `${sinCero(parseado.inicio)}${parseado.fin ? `–${sinCero(parseado.fin)}` : ""}`;
+}
+
 /** Sabado de la semana de la fecha (la semana va de domingo a sabado). */
 export function sabadoDeSemana(fecha: string) {
   const dia = parseFecha(fecha);
@@ -135,8 +171,10 @@ export function generarPlan(params: {
   fin: string;
   docentesYaSupervisados: Set<string>;
   cursosYaSupervisados: Set<string>;
+  /** Semanas sin supervisiones (p. ej. la de parciales). */
+  semanasExcluidas?: Set<string>;
 }): PlanSupervision {
-  const sabados = sabadosEntre(params.inicio, params.fin);
+  const sabados = sabadosEntre(params.inicio, params.fin).filter((s) => !params.semanasExcluidas?.has(s));
   const sinHorario: CursoPlanificable[] = [];
   const candidatos: Array<CursoPlanificable & { h: HorarioParseado }> = [];
 
@@ -298,30 +336,70 @@ export function estadoItem(item: ItemSupervision, evaluaciones: EvaluacionMinima
 
 export type LogroSemana = {
   semana: string;
+  numero: number;
   realizadas: number;
   programadas: number;
   /** 0-100: 1 supervision = logro esperado (100%). */
   pctEsperado: number;
   /** 0-100: 2 supervisiones = logro optimo (100%). */
   pctOptimo: number;
-  nivel: "optimo" | "esperado" | "sin-logro" | "futura";
+  nivel: "optimo" | "esperado" | "sin-logro" | "futura" | "parcial";
 };
 
-export function logroSemanal(
-  semanas: PlanSupervision["semanas"],
-  evaluaciones: EvaluacionMinima[],
-  hoy: string,
-): LogroSemana[] {
-  return semanas.map(({ semana, items }) => {
-    const realizadas = evaluaciones.filter((e) => sabadoDeSemana(e.fecha_observacion) === semana).length;
-    const futura = semana > sabadoDeSemana(hoy) || (semana === sabadoDeSemana(hoy) && realizadas === 0);
+/**
+ * Logro de TODAS las semanas del trimestre, desde la semana 1: cuenta cualquier
+ * evaluacion registrada esa semana, este o no en el plan (retroactivo y fuera
+ * de calendario incluidos). La semana de parciales no tiene meta.
+ */
+export function logroSemanal(params: {
+  semanas: string[];
+  programadasPorSemana: Map<string, number>;
+  evaluaciones: EvaluacionMinima[];
+  hoy: string;
+  parcial: string | null;
+}): LogroSemana[] {
+  const semanaHoy = sabadoDeSemana(params.hoy);
+  return params.semanas.map((semana, indice) => {
+    const realizadas = params.evaluaciones.filter((e) => sabadoDeSemana(e.fecha_observacion) === semana).length;
+    const futura = semana > semanaHoy || (semana === semanaHoy && realizadas === 0);
+    const nivel: LogroSemana["nivel"] =
+      semana === params.parcial && realizadas === 0
+        ? "parcial"
+        : realizadas >= 2
+          ? "optimo"
+          : realizadas === 1
+            ? "esperado"
+            : futura
+              ? "futura"
+              : "sin-logro";
     return {
       semana,
+      numero: indice + 1,
       realizadas,
-      programadas: items.length,
+      programadas: params.programadasPorSemana.get(semana) ?? 0,
       pctEsperado: Math.min(realizadas, 1) * 100,
       pctOptimo: Math.round((Math.min(realizadas, 2) / 2) * 100),
-      nivel: realizadas >= 2 ? "optimo" : realizadas === 1 ? "esperado" : futura ? "futura" : "sin-logro",
+      nivel,
     };
   });
+}
+
+/** Marca de una celda del formato: X realizada, P programada, NR programada y no realizada. */
+export type MarcaCelda = "X" | "P" | "NR" | "";
+
+export function marcaCelda(params: {
+  cursoId: string;
+  semana: string;
+  evaluaciones: EvaluacionMinima[];
+  item: ItemSupervision | undefined;
+  hoy: string;
+}): MarcaCelda {
+  if (params.evaluaciones.some((e) => e.curso_id === params.cursoId && sabadoDeSemana(e.fecha_observacion) === params.semana)) {
+    return "X";
+  }
+  if (!params.item) return "";
+  const estado = estadoItem(params.item, params.evaluaciones, params.hoy);
+  if (estado === "vencida") return "NR";
+  if (estado === "otra-fecha") return "";
+  return "P";
 }

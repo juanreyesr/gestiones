@@ -1014,7 +1014,11 @@ export function GestionesApp() {
 
                       {coordinacionView === "supervision" ? (
                         <div className="border border-white/10 bg-slate-950/58 p-4 backdrop-blur-xl sm:p-5">
-                          <SupervisionView docentes={docentes} onIniciar={handleIniciarSupervision} />
+                          <SupervisionView
+                            docentes={docentes}
+                            onAbrirEvaluacion={handleEditarEvaluacion}
+                            onIniciar={handleIniciarSupervision}
+                          />
                         </div>
                       ) : null}
 
