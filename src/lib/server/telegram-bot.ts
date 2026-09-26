@@ -1,6 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { enlaceWhatsApp, textoRecordatorioCita } from "@/lib/clinica/recordatorio";
-import { getStoredTokens, insertEvent, isGoogleConfigured } from "./google-calendar";
+import { type EventoGoogle, getStoredTokens, insertEvent, isGoogleConfigured, listarEventos } from "./google-calendar";
 import { getSupabaseAdmin } from "./supabase-admin";
 import {
   type BotonInline,
@@ -79,6 +79,10 @@ export async function procesarUpdate(update: TelegramUpdate) {
   }
 
   const comando = texto.match(/^\/(\w+)(?:@\w+)?(?:\s+([\s\S]*))?$/);
+  if (!comando && preguntaPorAgenda(texto)) {
+    await enviarMensaje(chatId, await construirAgenda(admin, rangoAgenda(texto)));
+    return;
+  }
   if (!comando) {
     await enviarMensaje(
       chatId,
@@ -95,6 +99,9 @@ export async function procesarUpdate(update: TelegramUpdate) {
         const resumen = await construirResumenDiario(admin);
         await enviarMensaje(chatId, resumen.texto, { botones: resumen.botones });
       }
+      return;
+    case "agenda":
+      await enviarMensaje(chatId, await construirAgenda(admin, rangoAgenda(argumento)));
       return;
     case "citas":
       await enviarMensaje(chatId, await textoCitas(admin));
@@ -177,7 +184,8 @@ async function procesarStart(admin: SupabaseClient, config: TelegramConfig | nul
 function textoAyuda() {
   return [
     "<b>Lo que puedo hacer</b>",
-    "/hoy — resumen del día: citas, pendientes, solicitudes y mensajes",
+    "/hoy — resumen del día: agenda, pendientes, solicitudes y mensajes",
+    "/agenda — tus citas y compromisos de Google Calendar. Acepta: <i>hoy, mañana, viernes, 15/10, esta semana, próxima semana, 14 días</i>",
     "/citas — citas de los próximos 7 días",
     "/solicitudes — solicitudes de cita con botones para aprobar o rechazar",
     "/pendientes — pendientes vencidos y de los próximos 3 días, con botón ✅ Listo",
@@ -185,6 +193,7 @@ function textoAyuda() {
     "/mensajes — mensajes de estudiantes sin leer",
     "",
     "💬 Para contestarle a un estudiante, <b>responde</b> (desliza el mensaje) al aviso de su mensaje.",
+    "🗓 También puedes preguntar escribiendo normal: <i>¿qué tengo mañana?</i>, <i>¿tengo compromisos el viernes?</i>",
   ].join("\n");
 }
 
@@ -296,11 +305,17 @@ export async function construirResumenDiario(admin: SupabaseClient): Promise<{ t
 
   const lineas = [`☀️ <b>Resumen de hoy</b> — ${esc(fechaTexto)}`, ""];
 
-  lineas.push(`🗓 <b>Citas (${citas.length})</b>`);
-  if (citas.length === 0) lineas.push("Sin citas hoy.");
-  for (const cita of citas) {
-    lineas.push(`• ${hora(cita.inicio)} — ${esc(nombreCita(cita))}${cita.modalidad === "virtual" ? " (virtual)" : ""}`);
-  }
+  const { eventos: compromisos } = await eventosGoogleSinCitas(inicioDiaIso(hoy), inicioDiaIso(manana));
+  lineas.push(`🗓 <b>Agenda de hoy</b> — ${citas.length} cita(s), ${compromisos.length} compromiso(s)`);
+  const agendaHoy = [
+    ...citas.map((cita) => ({
+      orden: Date.parse(cita.inicio),
+      texto: `• ${hora(cita.inicio)} 🩺 ${esc(nombreCita(cita))}${cita.modalidad === "virtual" ? " (virtual)" : ""}`,
+    })),
+    ...compromisos.map((evento) => ({ orden: Date.parse(evento.inicio), texto: `• ${lineaEvento(evento)}` })),
+  ].sort((a, b) => a.orden - b.orden);
+  if (agendaHoy.length === 0) lineas.push("Día libre: sin citas ni compromisos.");
+  for (const item of agendaHoy) lineas.push(item.texto);
 
   const vencidos = pendientes.filter((item) => item.fecha_limite! < hoy);
   const deHoy = pendientes.filter((item) => item.fecha_limite === hoy);
@@ -370,6 +385,143 @@ export async function enviarRecordatoriosCitas(admin: SupabaseClient, config: Te
     if (res.ok) enviados += 1;
   }
   return enviados;
+}
+
+// ============================================================
+// Agenda: citas de la clinica + compromisos de Google Calendar
+// ============================================================
+
+const ZONA_GT = "America/Guatemala";
+const NOMBRES_DIA = ["domingo", "lunes", "martes", "miercoles", "jueves", "viernes", "sabado"];
+
+type RangoAgenda = { desde: string; dias: number; titulo: string };
+
+function normalizar(texto: string) {
+  return texto.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+}
+
+function sumarDias(ymd: string, dias: number) {
+  return new Intl.DateTimeFormat("en-CA", { timeZone: ZONA_GT }).format(
+    new Date(Date.parse(`${ymd}T12:00:00-06:00`) + dias * 86_400_000),
+  );
+}
+
+function diaSemana(ymd: string) {
+  // Mediodia de Guatemala (18:00 UTC) cae el mismo dia en UTC.
+  return new Date(`${ymd}T12:00:00-06:00`).getUTCDay();
+}
+
+/** true si un mensaje libre parece una pregunta por la agenda. */
+export function preguntaPorAgenda(texto: string) {
+  return /\b(agenda|compromisos?|citas?|calendario|eventos?|ocupad[oa]s?|libre|que tengo|tengo algo|reuniones?)\b/.test(
+    normalizar(texto),
+  );
+}
+
+/**
+ * Interpreta el periodo pedido: "hoy", "manana", "pasado manana", un dia de
+ * la semana, "15/10", "esta semana", "proxima semana", "este mes" o "N dias".
+ * Sin nada reconocible: los proximos 7 dias.
+ */
+export function rangoAgenda(texto: string): RangoAgenda {
+  const t = normalizar(texto).trim();
+  const hoy = fechaLocal();
+
+  if (/pasado manana/.test(t)) return { desde: sumarDias(hoy, 2), dias: 1, titulo: "pasado mañana" };
+  if (/\bhoy\b/.test(t)) return { desde: hoy, dias: 1, titulo: "hoy" };
+  if (/\bmanana\b/.test(t)) return { desde: sumarDias(hoy, 1), dias: 1, titulo: "mañana" };
+
+  const dow = diaSemana(hoy);
+  if (/(proxima|siguiente) semana|semana (que viene|entrante)/.test(t)) {
+    const hastaLunes = ((8 - dow) % 7) || 7;
+    return { desde: sumarDias(hoy, hastaLunes), dias: 7, titulo: "la próxima semana" };
+  }
+  if (/\bsemana\b/.test(t)) return { desde: hoy, dias: dow === 0 ? 1 : 8 - dow, titulo: "esta semana" };
+  if (/\bmes\b/.test(t)) return { desde: hoy, dias: 30, titulo: "los próximos 30 días" };
+
+  const fecha = t.match(/\b(\d{1,2})[/-](\d{1,2})(?:[/-](\d{2,4}))?\b/);
+  if (fecha) {
+    const [, d, m, a] = fecha;
+    const anioActual = Number(hoy.slice(0, 4));
+    let anio = a ? Number(a.length === 2 ? `20${a}` : a) : anioActual;
+    let ymd = `${anio}-${m.padStart(2, "0")}-${d.padStart(2, "0")}`;
+    if (!a && ymd < hoy) {
+      anio += 1;
+      ymd = `${anio}-${m.padStart(2, "0")}-${d.padStart(2, "0")}`;
+    }
+    if (!Number.isNaN(Date.parse(`${ymd}T12:00:00-06:00`))) return { desde: ymd, dias: 1, titulo: `el ${d}/${m}` };
+  }
+
+  const indiceDia = NOMBRES_DIA.findIndex((nombre) => new RegExp(`\\b${nombre}\\b`).test(t));
+  if (indiceDia >= 0) {
+    const faltan = (indiceDia - dow + 7) % 7;
+    const nombre = ["domingo", "lunes", "martes", "miércoles", "jueves", "viernes", "sábado"][indiceDia];
+    return { desde: sumarDias(hoy, faltan), dias: 1, titulo: faltan === 0 ? "hoy" : `el ${nombre}` };
+  }
+
+  const numero = t.match(/\b(\d{1,2})\s*dias?\b/) ?? t.match(/^(\d{1,2})$/);
+  if (numero) {
+    const dias = Math.min(Math.max(Number(numero[1]), 1), 60);
+    return { desde: hoy, dias, titulo: `los próximos ${dias} días` };
+  }
+
+  return { desde: hoy, dias: 7, titulo: "los próximos 7 días" };
+}
+
+/** Eventos de Google que NO son citas de la clinica (esas ya salen de la BD). */
+async function eventosGoogleSinCitas(desdeIso: string, hastaIso: string) {
+  if (!isGoogleConfigured()) return { eventos: [] as EventoGoogle[], conectado: false };
+  const tokens = await getStoredTokens();
+  if (!tokens || tokens.estado !== "conectado") return { eventos: [] as EventoGoogle[], conectado: false };
+  const { eventos, error } = await listarEventos(desdeIso, hastaIso);
+  return { eventos: eventos.filter((e) => !e.gestionesId), conectado: !error };
+}
+
+function lineaEvento(evento: EventoGoogle) {
+  const horario = evento.todoElDia ? "Todo el día" : `${hora(evento.inicio)}–${hora(evento.fin)}`;
+  const calendario = evento.calendarioPrincipal ? "" : ` <i>(${esc(evento.calendario)})</i>`;
+  const lugar = evento.ubicacion ? ` · 📍 ${esc(recortar(evento.ubicacion, 60))}` : "";
+  return `${horario} 📅 ${esc(evento.titulo)}${calendario}${lugar}`;
+}
+
+export async function construirAgenda(admin: SupabaseClient, rango: RangoAgenda) {
+  const desdeIso = inicioDiaIso(rango.desde);
+  const hastaIso = inicioDiaIso(sumarDias(rango.desde, rango.dias));
+
+  const [citas, google] = await Promise.all([citasEntre(admin, desdeIso, hastaIso), eventosGoogleSinCitas(desdeIso, hastaIso)]);
+
+  const items = [
+    ...citas.map((cita) => ({
+      inicio: cita.inicio,
+      texto: `${hora(cita.inicio)} 🩺 ${esc(nombreCita(cita))}${cita.modalidad === "virtual" ? " (virtual)" : ""}${cita.estado === "pendiente" ? " <i>por confirmar</i>" : ""}`,
+    })),
+    ...google.eventos.map((evento) => ({
+      // Un evento de varios dias que empezo antes se muestra desde el primer dia pedido.
+      inicio: Date.parse(evento.inicio) < Date.parse(desdeIso) ? desdeIso : evento.inicio,
+      texto: lineaEvento(evento),
+    })),
+  ].sort((a, b) => Date.parse(a.inicio) - Date.parse(b.inicio));
+
+  const avisoGoogle = google.conectado
+    ? ""
+    : "\n\n<i>Google Calendar no está conectado: solo se muestran las citas de la clínica.</i>";
+
+  if (items.length === 0) {
+    return `🗓 No tienes citas ni compromisos ${esc(rango.titulo)}.${avisoGoogle}`;
+  }
+
+  const formatoDia = new Intl.DateTimeFormat("es-GT", { timeZone: ZONA_GT, weekday: "long", day: "numeric", month: "long" });
+  const lineas = [`🗓 <b>Tu agenda ${esc(rango.titulo)}</b> (${items.length})`];
+  let diaActual = "";
+  for (const item of items) {
+    const dia = formatoDia.format(new Date(item.inicio));
+    if (dia !== diaActual) {
+      diaActual = dia;
+      lineas.push("", `<b>${esc(dia.charAt(0).toUpperCase() + dia.slice(1))}</b>`);
+    }
+    lineas.push(`• ${item.texto}`);
+  }
+  return recortar(lineas.join("\n") + avisoGoogle);
 }
 
 // ============================================================

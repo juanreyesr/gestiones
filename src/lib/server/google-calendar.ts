@@ -221,23 +221,139 @@ export async function deleteEvent(eventId: string) {
   return { error: null };
 }
 
+type CalendarioGoogle = { id: string; nombre: string; principal: boolean };
+
+/**
+ * Calendarios que cuentan como "ocupado": el configurado (principal) mas
+ * todos los que el owner tiene visibles en Google Calendar (compartidos,
+ * suscritos, de otros sistemas sincronizados con su cuenta...). Asi un
+ * compromiso agendado fuera de GestionesJJ tambien bloquea ese horario.
+ */
+async function calendariosVisibles(token: string, calendarioPrincipal: string): Promise<CalendarioGoogle[]> {
+  const principal: CalendarioGoogle = { id: calendarioPrincipal, nombre: "Principal", principal: true };
+  const response = await fetch(`${CALENDAR_API}/users/me/calendarList?minAccessRole=freeBusyReader&maxResults=250`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!response.ok) return [principal];
+
+  const data = (await response.json()) as {
+    items?: { id: string; summary?: string; summaryOverride?: string; primary?: boolean; selected?: boolean; hidden?: boolean; deleted?: boolean }[];
+  };
+  const visibles = (data.items ?? [])
+    .filter((c) => !c.deleted && !c.hidden && (c.selected || c.primary || c.id === calendarioPrincipal))
+    .map((c) => ({
+      id: c.id,
+      nombre: c.summaryOverride || c.summary || c.id,
+      principal: Boolean(c.primary) || c.id === calendarioPrincipal,
+    }));
+  if (!visibles.some((c) => c.principal)) visibles.unshift(principal);
+  return visibles;
+}
+
 export async function queryFreeBusy(desdeIso: string, hastaIso: string) {
   const { token, error } = await getValidAccessToken();
   if (!token) return { busy: [] as { inicio: string; fin: string }[], error };
   const tokens = await getStoredTokens();
-  const calendarId = tokens?.calendar_id ?? "primary";
+  const calendarios = await calendariosVisibles(token, tokens?.calendar_id ?? "primary");
 
   const response = await fetch(`${CALENDAR_API}/freeBusy`, {
     method: "POST",
     headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-    body: JSON.stringify({ timeMin: desdeIso, timeMax: hastaIso, items: [{ id: calendarId }] }),
+    body: JSON.stringify({
+      timeMin: desdeIso,
+      timeMax: hastaIso,
+      // freeBusy acepta hasta 50 calendarios por consulta.
+      items: calendarios.slice(0, 50).map((c) => ({ id: c.id })),
+    }),
   });
   if (!response.ok) {
     return { busy: [] as { inicio: string; fin: string }[], error: `Google respondió ${response.status}.` };
   }
   const data = (await response.json()) as {
-    calendars?: Record<string, { busy?: { start: string; end: string }[] }>;
+    calendars?: Record<string, { busy?: { start: string; end: string }[]; errors?: unknown[] }>;
   };
-  const bloques = data.calendars?.[calendarId]?.busy ?? [];
+  // Se unen los bloques ocupados de todos los calendarios; los que respondan
+  // con error (sin permiso, borrados) simplemente no aportan bloques.
+  const bloques = Object.values(data.calendars ?? {}).flatMap((c) => c.busy ?? []);
   return { busy: bloques.map((b) => ({ inicio: b.start, fin: b.end })), error: null };
+}
+
+export type EventoGoogle = {
+  id: string;
+  titulo: string;
+  calendario: string;
+  calendarioPrincipal: boolean;
+  inicio: string;
+  fin: string;
+  todoElDia: boolean;
+  ubicacion: string | null;
+  /** Id de la cita de GestionesJJ si el evento lo creo la propia app. */
+  gestionesId: string | null;
+};
+
+type RawEvento = {
+  id: string;
+  status?: string;
+  summary?: string;
+  location?: string;
+  transparency?: string;
+  start?: { dateTime?: string; date?: string };
+  end?: { dateTime?: string; date?: string };
+  attendees?: { self?: boolean; responseStatus?: string }[];
+  extendedProperties?: { private?: { gestionesId?: string } };
+};
+
+/**
+ * Eventos de todos los calendarios visibles entre dos instantes, ordenados.
+ * Omite los cancelados, los marcados como "Disponible" (transparentes, p. ej.
+ * cumpleanos y feriados) y los que el owner rechazo.
+ */
+export async function listarEventos(desdeIso: string, hastaIso: string) {
+  const { token, error } = await getValidAccessToken();
+  if (!token) return { eventos: [] as EventoGoogle[], error };
+  const tokens = await getStoredTokens();
+  const calendarios = await calendariosVisibles(token, tokens?.calendar_id ?? "primary");
+
+  const params = new URLSearchParams({
+    timeMin: desdeIso,
+    timeMax: hastaIso,
+    singleEvents: "true",
+    orderBy: "startTime",
+    maxResults: "100",
+  });
+
+  const porCalendario = await Promise.all(
+    calendarios.slice(0, 20).map(async (calendario) => {
+      const response = await fetch(`${CALENDAR_API}/calendars/${encodeURIComponent(calendario.id)}/events?${params}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!response.ok) return [] as EventoGoogle[];
+      const data = (await response.json()) as { items?: RawEvento[] };
+      return (data.items ?? [])
+        .filter(
+          (e) =>
+            e.status !== "cancelled" &&
+            e.transparency !== "transparent" &&
+            !e.attendees?.some((a) => a.self && a.responseStatus === "declined"),
+        )
+        .map((e): EventoGoogle => {
+          const todoElDia = !e.start?.dateTime;
+          return {
+            id: e.id,
+            titulo: e.summary?.trim() || "(Sin título)",
+            calendario: calendario.nombre,
+            calendarioPrincipal: calendario.principal,
+            // Los eventos de todo el dia traen solo la fecha; se fijan a medianoche de Guatemala.
+            inicio: e.start?.dateTime ?? `${e.start?.date}T00:00:00-06:00`,
+            fin: e.end?.dateTime ?? `${e.end?.date}T00:00:00-06:00`,
+            todoElDia,
+            ubicacion: e.location?.trim() || null,
+            gestionesId: e.extendedProperties?.private?.gestionesId ?? null,
+          };
+        });
+    }),
+  );
+
+  const eventos = porCalendario.flat().sort((a, b) => Date.parse(a.inicio) - Date.parse(b.inicio));
+  return { eventos, error: null };
 }
