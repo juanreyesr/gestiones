@@ -69,6 +69,26 @@ Un bot privado de Telegram que avisa de lo que pasa en la plataforma y deja actu
 
 Seguridad: el webhook rechaza toda peticion sin el header `X-Telegram-Bot-Api-Secret-Token` correcto; el codigo de vinculacion se guarda solo como SHA-256; las tablas `gestionesjj_telegram_config` y `gestionesjj_telegram_hilos` tienen RLS sin politicas (solo el servidor con service role las toca), y `gestionesjj_telegram_aprobar_solicitud` solo la puede ejecutar `service_role`. Si Telegram falla, la accion que origino el aviso no se ve afectada (los avisos se envian con `after()`, despues de responder).
 
+## Recordatorio de citas por WhatsApp (Clinica)
+
+Piloto con **WhatsApp Business Platform (Cloud API)** en modo coexistencia: el mismo numero de WhatsApp Business del telefono sigue funcionando para conversar y el sistema envia los recordatorios (`src/lib/server/whatsapp.ts`, `src/lib/server/whatsapp-citas.ts`, migracion `041`).
+
+- **Recordatorio 24 h antes** de cada cita pendiente o confirmada (el cron de cada 10 minutos de la migracion `034`), en la hora del paciente, con botones **Confirmo** / **Necesito reprogramar**. Citas agendadas con menos de 2 h no se recuerdan. Cada cita se recuerda una vez por horario (si se reprograma, se vuelve a recordar).
+- **Respuestas** (webhook `/api/whatsapp/webhook`): *Confirmo* marca la cita como confirmada, responde "¡Gracias!" al paciente y avisa por Telegram; *Reprogramar* responde al paciente y avisa por Telegram con boton para escribirle. Solo cuenta la respuesta del mismo numero al que se envio. Si un envio falla, llega aviso por Telegram con el error.
+- **Por paciente**: casilla "Enviarle recordatorio automatico por WhatsApp" en su ficha (activada por defecto). En la agenda, el detalle de la cita muestra si el recordatorio se envio, entrego o leyo y que respondio el paciente.
+- Tabla `gestionesjj_whatsapp_mensajes` (solo lectura para el owner; escribe el servidor).
+
+### Configurar WhatsApp
+
+1. **Numero en coexistencia**: el numero debe estar en la app WhatsApp Business (2.24.17+) y conectarse a la Cloud API a traves de un proveedor autorizado por Meta (Solution Partner / Tech Provider) con *Embedded Signup*. Al conectarlo se desactivan en los chats individuales los mensajes temporales, "ver una vez", la ubicacion en tiempo real y las listas de difusion.
+2. **Plantilla** (Meta Business > WhatsApp Manager > Plantillas), categoria **Utilidad**, idioma espanol, nombre `recordatorio_cita`:
+   - Cuerpo: `Hola {{1}}, te recuerdo tu cita del {{2}} a las {{3}}. ¿Me confirmas tu asistencia?`
+   - Botones de respuesta rapida, en este orden: `Confirmo` y `Necesito reprogramar`.
+3. **Variables en Vercel**: `WHATSAPP_TOKEN`, `WHATSAPP_PHONE_NUMBER_ID`, `WHATSAPP_TEMPLATE_CITA`, `WHATSAPP_TEMPLATE_IDIOMA`, `WHATSAPP_VERIFY_TOKEN`, `WHATSAPP_APP_SECRET` (ver `.env.example`).
+4. **Webhook** en la app de Meta: URL `https://www.juanjreyes.org/api/whatsapp/webhook`, el mismo `WHATSAPP_VERIFY_TOKEN`, y suscribir el campo `messages`. Si el proveedor reenvia los eventos sin la firma de Meta, dejar `WHATSAPP_APP_SECRET` vacio y usar `.../api/whatsapp/webhook?token=<WHATSAPP_VERIFY_TOKEN>`.
+
+Costos (Meta, desde el 1 de julio de 2025): se cobra por plantilla entregada; las de Utilidad son gratis dentro de las 24 h siguientes a un mensaje del paciente. Las respuestas de "¡Gracias!" van dentro de esa ventana. El proveedor puede cobrar aparte.
+
 ## Modulo Cursos
 
 Centro de gestion de los cursos que se imparten en distintas universidades:
