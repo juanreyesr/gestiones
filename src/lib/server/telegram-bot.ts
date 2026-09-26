@@ -5,7 +5,15 @@ import { mismaHoraQueConsultorio, nombreZona, PAIS_POR_DEFECTO, paisDe, paisPorC
 import { type EventoGoogle, getStoredTokens, insertEvent, isGoogleConfigured, listarEventos } from "./google-calendar";
 import { pacientesComparables, resolverReserva } from "./reservas-google";
 import { getSupabaseAdmin } from "./supabase-admin";
-import { buscarPacienteParaDatos, enviarEnlaceAgenda, enviarEnlaceDatos, pedidoDeEnlace } from "./telegram-enlaces";
+import {
+  botonUbicacion,
+  buscarPacienteParaDatos,
+  enviarEnlaceAgenda,
+  enviarEnlaceDatos,
+  enviarUbicacion,
+  leerUbicacionConsultorio,
+  pedidoDeEnlace,
+} from "./telegram-enlaces";
 import {
   type BotonInline,
   type TelegramConfig,
@@ -84,6 +92,10 @@ export async function procesarUpdate(update: TelegramUpdate) {
   }
 
   const comando = texto.match(/^\/(\w+)(?:@\w+)?(?:\s+([\s\S]*))?$/);
+  if (!comando && /\b(ubicacion|direccion|como llegar)\b/.test(texto.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, ""))) {
+    await enviarUbicacion(admin, chatId);
+    return;
+  }
   const pedido = comando ? null : pedidoDeEnlace(texto);
   if (pedido?.tipo === "agenda") {
     await enviarEnlaceAgenda(admin, chatId);
@@ -119,6 +131,10 @@ export async function procesarUpdate(update: TelegramUpdate) {
       return;
     case "citas":
       await enviarMensaje(chatId, await textoCitas(admin));
+      return;
+    case "ubicacion":
+    case "direccion":
+      await enviarUbicacion(admin, chatId);
       return;
     case "agendar":
     case "enlace":
@@ -217,6 +233,7 @@ function textoAyuda() {
     "/nuevo <i>texto</i> — anota un pendiente nuevo",
     "/agendar — enlace de tu página de citas, listo para enviar",
     "/datos <i>nombre</i> — enlace para que un paciente llene sus datos (con botón de WhatsApp a su número)",
+    "/ubicacion — dirección del consultorio con Google Maps y Waze, lista para enviar",
     "/mensajes — mensajes de estudiantes sin leer",
     "",
     "💬 Para contestarle a un estudiante, <b>responde</b> (desliza el mensaje) al aviso de su mensaje.",
@@ -643,7 +660,19 @@ type RawSolicitud = {
   ya_es_paciente: boolean;
   primera_sesion: boolean;
   dar_seguimiento: boolean;
+  modalidad?: string | null;
+  necesita_ubicacion?: boolean | null;
 };
+
+export const COLUMNAS_SOLICITUD =
+  "nombre,telefono,email,motivo,inicio,ya_es_paciente,primera_sesion,dar_seguimiento,modalidad,necesita_ubicacion";
+
+/** Fila extra de botones con "Enviarle la ubicacion" si la persona la pidio (vacia si no). */
+export async function botonesUbicacionSolicitud(admin: SupabaseClient, sol: { nombre: string; telefono: string; necesita_ubicacion?: boolean | null }) {
+  if (!sol.necesita_ubicacion) return [] as BotonInline[][];
+  const boton = botonUbicacion(await leerUbicacionConsultorio(admin), { nombre: sol.nombre, telefono: sol.telefono });
+  return boton ? [[boton]] : [];
+}
 
 export function textoSolicitudCita(sol: Omit<RawSolicitud, "id" | "estado">, coincidencia?: Coincidencia | null) {
   const etiquetas = [
@@ -656,6 +685,8 @@ export function textoSolicitudCita(sol: Omit<RawSolicitud, "id" | "estado">, coi
     `<b>${esc(sol.nombre)}</b>${etiquetas.length ? ` (${etiquetas.join(", ")})` : ""}`,
     `📅 ${esc(fechaHora(sol.inicio))}`,
     `📞 ${esc(sol.telefono)}${sol.email ? ` · ${esc(sol.email)}` : ""}`,
+    sol.modalidad === "virtual" ? "💻 Virtual" : sol.modalidad === "presencial" ? "🏢 Presencial" : null,
+    sol.necesita_ubicacion ? "📍 <b>Solicitó la ubicación</b> — envíasela con el botón de abajo." : null,
     sol.motivo ? `📝 ${esc(recortar(sol.motivo, 600))}` : null,
     coincidencia === undefined
       ? null
@@ -667,12 +698,17 @@ export function textoSolicitudCita(sol: Omit<RawSolicitud, "id" | "estado">, coi
     .join("\n");
 }
 
-export function botonesSolicitudCita(solicitudId: string, coincidencia?: Coincidencia | null): BotonInline[][] {
+export function botonesSolicitudCita(
+  solicitudId: string,
+  coincidencia?: Coincidencia | null,
+  extra: BotonInline[][] = [],
+): BotonInline[][] {
   if (coincidencia) {
     return [
       [{ text: `✅ Aprobar: es ${coincidencia.paciente.nombre.split(" ")[0]}`, callback_data: `sol:vp:${solicitudId}` }],
       [{ text: "➕ Aprobar como paciente nuevo", callback_data: `sol:ap:${solicitudId}` }],
       [{ text: "❌ Rechazar", callback_data: `sol:re:${solicitudId}` }],
+      ...extra,
     ];
   }
   return [
@@ -680,13 +716,14 @@ export function botonesSolicitudCita(solicitudId: string, coincidencia?: Coincid
       { text: "✅ Aprobar (paciente nuevo)", callback_data: `sol:ap:${solicitudId}` },
       { text: "❌ Rechazar", callback_data: `sol:re:${solicitudId}` },
     ],
+    ...extra,
   ];
 }
 
 async function enviarSolicitudes(admin: SupabaseClient, chatId: number) {
   const { data } = await admin
     .from("gestionesjj_solicitudes_cita")
-    .select("id,nombre,telefono,email,motivo,inicio,estado,ya_es_paciente,primera_sesion,dar_seguimiento")
+    .select(`id,estado,${COLUMNAS_SOLICITUD}`)
     .eq("estado", "pendiente")
     .gte("inicio", new Date().toISOString())
     .order("inicio")
@@ -700,7 +737,9 @@ async function enviarSolicitudes(admin: SupabaseClient, chatId: number) {
   const pacientes = await pacientesComparables(admin);
   for (const sol of solicitudes) {
     const coincidencia = buscarCoincidencia(pacientes, sol);
-    await enviarMensaje(chatId, textoSolicitudCita(sol, coincidencia), { botones: botonesSolicitudCita(sol.id, coincidencia) });
+    await enviarMensaje(chatId, textoSolicitudCita(sol, coincidencia), {
+      botones: botonesSolicitudCita(sol.id, coincidencia, await botonesUbicacionSolicitud(admin, sol)),
+    });
   }
 }
 
@@ -933,7 +972,7 @@ async function procesarCallback(admin: SupabaseClient, query: CallbackQuery) {
   if (ambito === "sol" && id) {
     const { data: sol } = await admin
       .from("gestionesjj_solicitudes_cita")
-      .select("nombre,telefono,email,motivo,inicio,ya_es_paciente,primera_sesion,dar_seguimiento")
+      .select(COLUMNAS_SOLICITUD)
       .eq("id", id)
       .maybeSingle();
     if (!sol) {
@@ -942,6 +981,8 @@ async function procesarCallback(admin: SupabaseClient, query: CallbackQuery) {
       return;
     }
     const base = textoSolicitudCita(sol as RawSolicitud);
+    // El boton de ubicacion se conserva despues de aprobar o rechazar.
+    const ubicacion = await botonesUbicacionSolicitud(admin, sol as RawSolicitud);
 
     if (accion === "ap" || accion === "vp") {
       // "vp": vincular al paciente que coincide (se recalcula al tocar el boton).
@@ -967,6 +1008,7 @@ async function procesarCallback(admin: SupabaseClient, query: CallbackQuery) {
         chatId,
         messageId,
         `${base}\n\n✅ <b>Aprobada</b>${paciente ? ` en el expediente de ${esc(paciente.nombre)}` : " — paciente nuevo creado"}. Ya está en tu agenda.`,
+        ubicacion,
       );
       if (citaId) await sincronizarCitaGoogle(admin, citaId as string).catch(() => undefined);
       return;

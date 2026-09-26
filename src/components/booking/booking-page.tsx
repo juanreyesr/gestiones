@@ -36,6 +36,8 @@ export function BookingPage() {
   const [empresa, setEmpresa] = useState(""); // honeypot
   const [tipoPaciente, setTipoPaciente] = useState<"nuevo" | "existente" | null>(null);
   const [darSeguimiento, setDarSeguimiento] = useState(false);
+  const [modalidad, setModalidad] = useState<"presencial" | "virtual" | null>(null);
+  const [necesitaUbicacion, setNecesitaUbicacion] = useState(false);
   const [consentimiento, setConsentimiento] = useState(false);
   const [enviando, setEnviando] = useState(false);
   const [error, setError] = useState("");
@@ -77,7 +79,14 @@ export function BookingPage() {
   const dias = useMemo(() => Array.from(porDia.keys()).sort(), [porDia]);
 
   const datosCompletos =
-    Boolean(slotElegido) && nombre.trim().length > 0 && telefono.trim().length > 0 && tipoPaciente !== null && consentimiento;
+    Boolean(slotElegido) &&
+    nombre.trim().length > 0 &&
+    telefono.trim().length > 0 &&
+    tipoPaciente !== null &&
+    modalidad !== null &&
+    consentimiento;
+  // Las sesiones presenciales son en el consultorio, en Guatemala.
+  const presencialDisponible = paisTelefono === "GT";
 
   const handleEnviar = async () => {
     if (enviando) return;
@@ -104,6 +113,8 @@ export function BookingPage() {
           yaEsPaciente: tipoPaciente === "existente",
           primeraSesion: tipoPaciente === "nuevo",
           darSeguimiento: tipoPaciente === "existente" ? darSeguimiento : false,
+          modalidad,
+          necesitaUbicacion: modalidad === "presencial" ? necesitaUbicacion : false,
           empresa,
         }),
       });
@@ -284,7 +295,14 @@ export function BookingPage() {
                   <select
                     aria-label="País del teléfono"
                     className="field-light w-32 shrink-0"
-                    onChange={(event) => setPaisTelefono(event.target.value)}
+                    onChange={(event) => {
+                      setPaisTelefono(event.target.value);
+                      // Fuera de Guatemala solo hay sesiones virtuales.
+                      if (event.target.value !== "GT" && modalidad === "presencial") {
+                        setModalidad("virtual");
+                        setNecesitaUbicacion(false);
+                      }
+                    }}
                     value={paisTelefono}
                   >
                     {PAISES.map((p) => (
@@ -302,6 +320,49 @@ export function BookingPage() {
                   />
                 </span>
               </label>
+              <div className="grid gap-1.5">
+                <span className="text-xs font-semibold uppercase text-slate-500">Modalidad de la sesión *</span>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    className={`rounded-lg border px-3 py-2.5 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-50 ${modalidad === "presencial" ? "border-emerald-400 bg-emerald-50 text-emerald-800" : "border-slate-200 bg-white text-slate-600 hover:border-slate-300"}`}
+                    disabled={!presencialDisponible}
+                    onClick={() => setModalidad("presencial")}
+                    type="button"
+                  >
+                    🏢 Presencial
+                  </button>
+                  <button
+                    className={`rounded-lg border px-3 py-2.5 text-sm font-semibold transition ${modalidad === "virtual" ? "border-emerald-400 bg-emerald-50 text-emerald-800" : "border-slate-200 bg-white text-slate-600 hover:border-slate-300"}`}
+                    onClick={() => {
+                      setModalidad("virtual");
+                      setNecesitaUbicacion(false);
+                    }}
+                    type="button"
+                  >
+                    💻 Virtual
+                  </button>
+                </div>
+                <span className="text-xs text-slate-400">
+                  {presencialDisponible
+                    ? "Presencial: en el consultorio, en Guatemala."
+                    : "Las sesiones presenciales son solo en Guatemala; desde otro país la sesión es virtual."}
+                </span>
+                {modalidad === "presencial" ? (
+                  <label className="mt-1 flex cursor-pointer items-start gap-2.5 rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm text-slate-700">
+                    <input
+                      checked={necesitaUbicacion}
+                      className="mt-0.5 h-4 w-4 accent-emerald-600"
+                      onChange={(event) => setNecesitaUbicacion(event.target.checked)}
+                      type="checkbox"
+                    />
+                    <span>
+                      <b>Necesito la ubicación</b>
+                      <span className="block text-xs text-slate-500">Te enviaremos la dirección por WhatsApp, con enlaces para Waze y Google Maps.</span>
+                    </span>
+                  </label>
+                ) : null}
+              </div>
+
               <label className="grid gap-1.5">
                 <span className="text-xs font-semibold uppercase text-slate-500">Correo electrónico</span>
                 <input className="field-light" onChange={(event) => setEmail(event.target.value)} type="email" value={email} />

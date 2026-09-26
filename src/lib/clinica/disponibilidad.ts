@@ -11,6 +11,8 @@ type RawDisponibilidad = {
   agendamiento_publico: boolean;
   horario_semanal: HorarioSemanal;
   consentimiento_texto: string | null;
+  direccion_consultorio: string | null;
+  ubicacion_maps_url: string | null;
 };
 
 const CONSENT_DEFAULT =
@@ -26,6 +28,8 @@ const DEFAULT_CONFIG: DisponibilidadConfig = {
   agendamientoPublico: false,
   horarioSemanal: {},
   consentimientoTexto: CONSENT_DEFAULT,
+  direccionConsultorio: "",
+  ubicacionMapsUrl: "",
 };
 
 function mapConfig(row: RawDisponibilidad): DisponibilidadConfig {
@@ -39,6 +43,8 @@ function mapConfig(row: RawDisponibilidad): DisponibilidadConfig {
     agendamientoPublico: row.agendamiento_publico,
     horarioSemanal: row.horario_semanal ?? {},
     consentimientoTexto: row.consentimiento_texto ?? CONSENT_DEFAULT,
+    direccionConsultorio: row.direccion_consultorio ?? "",
+    ubicacionMapsUrl: row.ubicacion_maps_url ?? "",
   };
 }
 
@@ -48,7 +54,7 @@ export async function fetchDisponibilidad() {
 
   const { data, error } = await supabase
     .from("gestionesjj_disponibilidad")
-    .select("id,zona_horaria,duracion_min,buffer_min,antelacion_min_horas,antelacion_max_dias,agendamiento_publico,horario_semanal,consentimiento_texto")
+    .select("id,zona_horaria,duracion_min,buffer_min,antelacion_min_horas,antelacion_max_dias,agendamiento_publico,horario_semanal,consentimiento_texto,direccion_consultorio,ubicacion_maps_url")
     .limit(1)
     .maybeSingle();
 
@@ -70,6 +76,9 @@ export async function guardarDisponibilidad(config: DisponibilidadConfig) {
     agendamiento_publico: config.agendamientoPublico,
     horario_semanal: config.horarioSemanal,
     consentimiento_texto: config.consentimientoTexto,
+    direccion_consultorio: config.direccionConsultorio.trim() || null,
+    // Solo se guarda un enlace https (lo exige la BD); lo demas se ignora.
+    ubicacion_maps_url: config.ubicacionMapsUrl.trim().startsWith("https://") ? config.ubicacionMapsUrl.trim() : null,
   };
 
   if (config.id) {
