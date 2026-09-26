@@ -30,6 +30,7 @@ import { SesionActiva } from "./sesion-activa";
 import { SesionDetalle } from "./sesion-detalle";
 import { SesionEditor } from "./sesion-editor";
 import { BTN_ACCENT, BTN_GHOST, EmptyState, PacienteBadge, SectionCard } from "./ui";
+import { urlPublica } from "@/lib/url-publica";
 
 type Vista = "ficha" | "editar" | "sesion" | "editar-sesion";
 
@@ -133,7 +134,7 @@ export function PacienteExpediente({
       setDatosMsg(tokenError ?? "No se pudo generar el enlace.");
       return;
     }
-    const url = `${window.location.origin}/datos/${token}`;
+    const url = urlPublica(`/datos/${token}`);
     try {
       await navigator.clipboard.writeText(url);
       setCopiado(true);

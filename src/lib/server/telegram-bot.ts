@@ -1,4 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { enlaceWhatsApp, textoRecordatorioCita } from "@/lib/clinica/recordatorio";
 import { getStoredTokens, insertEvent, isGoogleConfigured } from "./google-calendar";
 import { getSupabaseAdmin } from "./supabase-admin";
 import {
@@ -90,7 +91,10 @@ export async function procesarUpdate(update: TelegramUpdate) {
   switch (nombre.toLowerCase()) {
     case "hoy":
     case "resumen":
-      await enviarMensaje(chatId, await construirResumenDiario(admin));
+      {
+        const resumen = await construirResumenDiario(admin);
+        await enviarMensaje(chatId, resumen.texto, { botones: resumen.botones });
+      }
       return;
     case "citas":
       await enviarMensaje(chatId, await textoCitas(admin));
@@ -193,14 +197,16 @@ type RawCita = {
   inicio: string;
   estado: string;
   modalidad: string | null;
+  motivo: string | null;
   contacto_nombre: string | null;
-  gestionesjj_pacientes: { nombre: string } | null;
+  contacto_telefono: string | null;
+  gestionesjj_pacientes: { nombre: string; telefono: string | null } | null;
 };
 
 async function citasEntre(admin: SupabaseClient, desdeIso: string, hastaIso: string) {
   const { data } = await admin
     .from("gestionesjj_citas")
-    .select("id,inicio,estado,modalidad,contacto_nombre,gestionesjj_pacientes(nombre)")
+    .select("id,inicio,estado,modalidad,motivo,contacto_nombre,contacto_telefono,gestionesjj_pacientes(nombre,telefono)")
     .gte("inicio", desdeIso)
     .lt("inicio", hastaIso)
     .in("estado", ["pendiente", "confirmada"])
@@ -211,6 +217,21 @@ async function citasEntre(admin: SupabaseClient, desdeIso: string, hastaIso: str
 
 function nombreCita(cita: RawCita) {
   return cita.gestionesjj_pacientes?.nombre ?? cita.contacto_nombre ?? "Paciente";
+}
+
+/** Boton de Telegram que abre WhatsApp con el recordatorio listo para el paciente. */
+function botonWhatsAppCita(cita: RawCita, etiqueta: string): BotonInline | null {
+  const telefono = cita.gestionesjj_pacientes?.telefono ?? cita.contacto_telefono;
+  if (!telefono) return null;
+  const fechaLarga = new Intl.DateTimeFormat("es-GT", {
+    timeZone: "America/Guatemala",
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  }).format(new Date(cita.inicio));
+  const mensaje = textoRecordatorioCita(nombreCita(cita), fechaLarga, hora(cita.inicio));
+  return { text: etiqueta, url: enlaceWhatsApp(telefono, mensaje) };
 }
 
 type RawItem = {
@@ -240,7 +261,7 @@ async function contar(consulta: PromiseLike<{ count: number | null }>) {
   return count ?? 0;
 }
 
-export async function construirResumenDiario(admin: SupabaseClient) {
+export async function construirResumenDiario(admin: SupabaseClient): Promise<{ texto: string; botones: BotonInline[][] }> {
   const hoy = fechaLocal();
   const manana = fechaLocal(1);
 
@@ -294,7 +315,61 @@ export async function construirResumenDiario(admin: SupabaseClient) {
   if (solicitudesCurso) avisos.push(`• ${solicitudesCurso} solicitud(es) de inscripción a cursos por revisar`);
   if (avisos.length) lineas.push("", "📬 <b>Por atender</b>", ...avisos);
 
-  return lineas.join("\n");
+  // Un boton por cita de hoy para mandarle el recordatorio al paciente por WhatsApp.
+  const botones = citas
+    .slice(0, 8)
+    .map((cita) => botonWhatsAppCita(cita, `📲 Recordar a ${nombreCita(cita).split(" ")[0]} (${hora(cita.inicio)})`))
+    .filter((boton): boton is BotonInline => boton !== null)
+    .map((boton) => [boton]);
+  if (botones.length) lineas.push("", "<i>Toca un botón para mandarle el recordatorio por WhatsApp.</i>");
+
+  return { texto: lineas.join("\n"), botones };
+}
+
+// ============================================================
+// Recordatorio antes de cada cita
+// ============================================================
+
+export const ANTICIPACION_RECORDATORIO_MIN = 60;
+
+/**
+ * Avisa al owner de las citas que empiezan dentro de la proxima hora. Lo
+ * dispara pg_cron cada 10 minutos (migracion 034). Cada cita se avisa una
+ * sola vez por horario: si se reprograma, se vuelve a avisar.
+ */
+export async function enviarRecordatoriosCitas(admin: SupabaseClient, config: TelegramConfig) {
+  if (!config.chatId || !config.preferencias.citas_recordatorio) return 0;
+
+  const ahora = Date.now();
+  const citas = await citasEntre(
+    admin,
+    new Date(ahora).toISOString(),
+    new Date(ahora + ANTICIPACION_RECORDATORIO_MIN * 60_000).toISOString(),
+  );
+
+  let enviados = 0;
+  for (const cita of citas) {
+    // Se registra antes de enviar: si dos ejecuciones se cruzan, solo una gana.
+    const { data: registrado } = await admin
+      .from("gestionesjj_telegram_recordatorios")
+      .upsert({ cita_id: cita.id, inicio: cita.inicio }, { onConflict: "cita_id,inicio", ignoreDuplicates: true })
+      .select("cita_id");
+    if (!registrado?.length) continue;
+
+    const minutos = Math.max(1, Math.round((new Date(cita.inicio).getTime() - ahora) / 60_000));
+    const texto = [
+      `⏰ <b>Cita en ${minutos} min</b> — ${esc(hora(cita.inicio))}`,
+      `👤 ${esc(nombreCita(cita))}${cita.modalidad === "virtual" ? " · 💻 virtual" : ""}${cita.estado === "pendiente" ? " · <i>por confirmar</i>" : ""}`,
+      cita.motivo ? `📝 ${esc(recortar(cita.motivo, 300))}` : null,
+    ]
+      .filter((linea) => linea !== null)
+      .join("\n");
+
+    const boton = botonWhatsAppCita(cita, "📲 Mandarle recordatorio por WhatsApp");
+    const res = await enviarMensaje(config.chatId, texto, boton ? { botones: [[boton]] } : undefined);
+    if (res.ok) enviados += 1;
+  }
+  return enviados;
 }
 
 // ============================================================
