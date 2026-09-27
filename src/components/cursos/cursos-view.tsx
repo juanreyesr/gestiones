@@ -2,6 +2,7 @@
 
 import { ChevronRight, GraduationCap } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
+import { fetchCurso } from "@/lib/cursos/cursos";
 import { fetchUniversidades } from "@/lib/cursos/universidades";
 import type { CursoImpartidoRow, SemanaRow, UniversidadRow } from "@/lib/cursos/types";
 import { CursoDetalle } from "./curso-detalle";
@@ -12,10 +13,17 @@ import { UniversidadesGrid } from "./universidades-grid";
 type EstadoNavegacion =
   | { nivel: "universidades" }
   | { nivel: "universidad"; universidad: UniversidadRow }
-  | { nivel: "curso"; universidad: UniversidadRow; curso: CursoImpartidoRow }
+  | { nivel: "curso"; universidad: UniversidadRow; curso: CursoImpartidoRow; abrirBandeja?: boolean }
   | { nivel: "semana"; universidad: UniversidadRow; curso: CursoImpartidoRow; semana: SemanaRow };
 
-export function CursosView() {
+export function CursosView({
+  entregasCursoId = null,
+  onEntregasAbiertas,
+}: {
+  /** Curso cuya bandeja de entregas hay que abrir (enlace /?entregas= del aviso de Telegram). */
+  entregasCursoId?: string | null;
+  onEntregasAbiertas?: () => void;
+} = {}) {
   const [universidades, setUniversidades] = useState<UniversidadRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -33,6 +41,25 @@ export function CursosView() {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- carga inicial de universidades al montar el modulo
     void cargarUniversidades();
   }, [cargarUniversidades]);
+
+  useEffect(() => {
+    if (!entregasCursoId || loading) return;
+    let cancelado = false;
+    void (async () => {
+      const { data: curso, error: cursoError } = await fetchCurso(entregasCursoId);
+      if (cancelado) return;
+      onEntregasAbiertas?.();
+      const universidad = curso ? universidades.find((u) => u.id === curso.universidad_id) : undefined;
+      if (!curso || !universidad) {
+        setError(cursoError ?? "No se encontró el curso del enlace.");
+        return;
+      }
+      setNav({ nivel: "curso", universidad, curso, abrirBandeja: true });
+    })();
+    return () => {
+      cancelado = true;
+    };
+  }, [entregasCursoId, loading, onEntregasAbiertas, universidades]);
 
   const breadcrumbItems: Array<{ label: string; onClick: () => void }> = [
     { label: "Universidades", onClick: () => setNav({ nivel: "universidades" }) },
@@ -102,7 +129,9 @@ export function CursosView() {
 
       {nav.nivel === "curso" ? (
         <CursoDetalle
+          abrirBandejaAlEntrar={nav.abrirBandeja}
           curso={nav.curso}
+          key={nav.curso.id}
           onOpenSemana={(semana) => setNav({ nivel: "semana", universidad: nav.universidad, curso: nav.curso, semana })}
           onVolver={() => setNav({ nivel: "universidad", universidad: nav.universidad })}
           universidad={nav.universidad}

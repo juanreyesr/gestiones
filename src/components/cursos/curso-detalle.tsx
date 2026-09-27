@@ -5,10 +5,12 @@ import type React from "react";
 import { useCallback, useEffect, useState } from "react";
 import { fetchCalificacionesDeCurso } from "@/lib/cursos/actividades";
 import { setAccesoEstudiantes, setAutoasignacion } from "@/lib/cursos/cursos";
+import { entregasSinNota, fetchEntregasDeCurso } from "@/lib/cursos/entregas";
 import { fetchEstudiantes } from "@/lib/cursos/estudiantes";
 import { fetchMensajesNoLeidosPorEstudiante } from "@/lib/cursos/mensajes";
 import type { CursoImpartidoRow, SemanaRow, UniversidadRow } from "@/lib/cursos/types";
 import { ESTADO_CURSO_LABELS } from "@/lib/cursos/types";
+import { BandejaEntregasModal } from "./bandeja-entregas-modal";
 import { CompartirAsignacionModal } from "./compartir-asignacion-modal";
 import { CursoEstudiantesTab } from "./curso-estudiantes-tab";
 import { CursoPlanificacionTab } from "./curso-planificacion-tab";
@@ -26,11 +28,14 @@ const ESTADO_CHIP: Record<string, string> = {
 };
 
 export function CursoDetalle({
+  abrirBandejaAlEntrar = false,
   curso,
   onOpenSemana,
   onVolver,
   universidad,
 }: {
+  /** Viene del enlace del aviso de Telegram: abre directo "Tareas por calificar". */
+  abrirBandejaAlEntrar?: boolean;
   curso: CursoImpartidoRow;
   onOpenSemana: (semana: SemanaRow) => void;
   onVolver: () => void;
@@ -45,19 +50,20 @@ export function CursoDetalle({
   const [compartirAbierto, setCompartirAbierto] = useState(false);
   const [mensajesNoLeidos, setMensajesNoLeidos] = useState(0);
   const [tareasPorCalificar, setTareasPorCalificar] = useState(0);
+  const [bandejaAbierta, setBandejaAbierta] = useState(abrirBandejaAlEntrar);
 
   const cargarPendientes = useCallback(async () => {
     const { data: estudiantes } = await fetchEstudiantes(curso.id);
-    const idsGlobales = estudiantes
-      .filter((e) => e.estado === "activo")
-      .map((e) => e.estudiante_id)
-      .filter((id): id is string => Boolean(id));
-    const [{ data: noLeidosPorEstudiante }, { data: calificaciones }] = await Promise.all([
+    const activos = estudiantes.filter((e) => e.estado === "activo");
+    const idsGlobales = activos.map((e) => e.estudiante_id).filter((id): id is string => Boolean(id));
+    const [{ data: noLeidosPorEstudiante }, { data: calificaciones }, { data: entregas }] = await Promise.all([
       fetchMensajesNoLeidosPorEstudiante(idsGlobales),
       fetchCalificacionesDeCurso(curso.id),
+      fetchEntregasDeCurso(curso.id),
     ]);
     setMensajesNoLeidos(Object.values(noLeidosPorEstudiante).reduce((total, n) => total + n, 0));
-    setTareasPorCalificar(calificaciones.filter((c) => c.entregado && c.nota === null).length);
+    // Archivos subidos por los estudiantes que aún no tienen nota (lo que llega por Telegram).
+    setTareasPorCalificar(entregasSinNota(entregas, calificaciones, activos).length);
   }, [curso.id]);
 
   useEffect(() => {
@@ -159,8 +165,8 @@ export function CursoDetalle({
           {tareasPorCalificar > 0 ? (
             <button
               className="relative flex items-center gap-2 border border-amber-300/40 bg-amber-300/10 px-4 py-2 text-sm font-semibold text-amber-100 hover:border-amber-300/70"
-              onClick={() => setTab("semanas")}
-              title="Ver tareas entregadas pendientes de calificar"
+              onClick={() => setBandejaAbierta(true)}
+              title="Ver y calificar las tareas entregadas"
               type="button"
             >
               <ClipboardCheck className="h-4 w-4" />
@@ -179,6 +185,17 @@ export function CursoDetalle({
       {tab === "estudiantes" ? <CursoEstudiantesTab cursoId={curso.id} cursoNombre={curso.nombre} /> : null}
       {tab === "planificacion" ? <CursoPlanificacionTab cursoId={curso.id} /> : null}
       {tab === "reporte" ? <CursoReporteTab curso={curso} universidad={universidad} /> : null}
+
+      {bandejaAbierta ? (
+        <BandejaEntregasModal
+          cursoId={curso.id}
+          onCambio={() => void cargarPendientes()}
+          onClose={() => {
+            setBandejaAbierta(false);
+            void cargarPendientes();
+          }}
+        />
+      ) : null}
 
       {compartirAbierto ? (
         <CompartirAsignacionModal cursoNombre={curso.nombre} onClose={() => setCompartirAbierto(false)} token={curso.autoasignacion_token} />

@@ -785,7 +785,7 @@ export function GestionesApp() {
    * evaluacion de ese curso con el docente ya cargado. Si hace falta iniciar
    * sesion, el parametro espera en la URL hasta que haya sesion y docentes.
    */
-  const supervisionEnlace = useSupervisionEnlace();
+  const supervisionEnlace = useParametroEnlace("supervision");
   useEffect(() => {
     if (!session || !supervisionEnlace.cursoId || !docentes.length) return;
     const cursoId = supervisionEnlace.cursoId;
@@ -803,6 +803,23 @@ export function GestionesApp() {
     handleCambiarArea("coordinacion");
     // eslint-disable-next-line react-hooks/exhaustive-deps -- solo reacciona a la llegada de sesion, docentes o enlace
   }, [session, docentes, supervisionEnlace.cursoId]);
+
+  /**
+   * Enlace del aviso de entrega por Telegram: /?entregas=<cursoId> abre
+   * Cursos en ese curso con la bandeja "Tareas por calificar" desplegada.
+   */
+  const entregasEnlace = useParametroEnlace("entregas");
+  const [entregasCursoId, setEntregasCursoId] = useState<string | null>(null);
+  useEffect(() => {
+    if (!session || !entregasEnlace.cursoId) return;
+    const cursoId = entregasEnlace.cursoId;
+    entregasEnlace.consumir();
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- abre la bandeja pedida por el enlace
+    setEntregasCursoId(cursoId);
+    handleCambiarArea("cursos");
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- solo reacciona a la llegada de sesion o enlace
+  }, [session, entregasEnlace.cursoId]);
+  const limpiarEntregasCursoId = useCallback(() => setEntregasCursoId(null), []);
 
   const areaActiva = activeArea ? (AREAS.find((item) => item.id === activeArea) ?? null) : null;
   const AreaActivaIcon = activeArea ? areaIcons[activeArea] : Sparkles;
@@ -964,7 +981,7 @@ export function GestionesApp() {
                     </div>
                   ) : activeArea === "cursos" ? (
                     <div className="border border-white/10 bg-slate-950/58 p-4 backdrop-blur-xl sm:p-5">
-                      <CursosView />
+                      <CursosView entregasCursoId={entregasCursoId} onEntregasAbiertas={limpiarEntregasCursoId} />
                     </div>
                   ) : activeArea === "recursos" ? (
                     <div className="border border-white/10 bg-slate-950/58 p-4 backdrop-blur-xl sm:p-5">
@@ -1187,20 +1204,20 @@ export function GestionesApp() {
   );
 }
 
-/** Lee (una vez) el parametro ?supervision= y permite quitarlo de la URL al usarlo. */
-function useSupervisionEnlace() {
+/** Lee (una vez) un parametro de enlace (?supervision=, ?entregas=) y permite quitarlo de la URL al usarlo. */
+function useParametroEnlace(parametro: string) {
   const [cursoId, setCursoId] = useState<string | null>(null);
   useEffect(() => {
-    const valor = new URLSearchParams(window.location.search).get("supervision");
+    const valor = new URLSearchParams(window.location.search).get(parametro);
     // eslint-disable-next-line react-hooks/set-state-in-effect -- la URL solo existe en el navegador
     if (valor) setCursoId(valor);
-  }, []);
+  }, [parametro]);
   const consumir = useCallback(() => {
     setCursoId(null);
     const url = new URL(window.location.href);
-    url.searchParams.delete("supervision");
+    url.searchParams.delete(parametro);
     window.history.replaceState(null, "", `${url.pathname}${url.search}${url.hash}`);
-  }, []);
+  }, [parametro]);
   return { cursoId, consumir };
 }
 

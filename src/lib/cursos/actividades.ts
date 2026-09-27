@@ -101,6 +101,18 @@ export async function fetchCalificaciones(actividadId: string) {
   return { data: (data ?? []) as CalificacionRow[], error: null };
 }
 
+/** Calificaciones de varias tareas a la vez (p. ej. todas las de una semana). */
+export async function fetchCalificacionesDeActividades(actividadIds: string[]) {
+  const supabase = getSupabaseClient();
+  if (!supabase) return { data: [] as CalificacionRow[], error: "Faltan las variables de Supabase." };
+  if (!actividadIds.length) return { data: [] as CalificacionRow[], error: null };
+
+  const { data, error } = await supabase.from("gestionesjj_curso_calificaciones").select("*").in("actividad_id", actividadIds);
+
+  if (error) return { data: [] as CalificacionRow[], error: error.message };
+  return { data: (data ?? []) as CalificacionRow[], error: null };
+}
+
 export async function upsertCalificacion(payload: {
   actividad_id: string;
   estudiante_id: string;

@@ -1,5 +1,5 @@
 import { getSupabaseAdmin } from "./supabase-admin";
-import { esc, isTelegramConfigured, notificar, recortar } from "./telegram";
+import { appUrl, esc, isTelegramConfigured, notificar, recortar } from "./telegram";
 import { buscarCoincidencia } from "@/lib/clinica/coincidencias";
 import { pacientesComparables } from "./reservas-google";
 import {
@@ -54,6 +54,8 @@ export async function avisarEntrega(input: {
     admin.from("gestionesjj_estudiantes").select("nombre").eq("id", input.estudianteId).maybeSingle(),
     admin.from("gestionesjj_cursos_impartidos").select("nombre").eq("id", input.cursoId).maybeSingle(),
   ]);
+  // Abre GestionesJJ directo en la bandeja "Tareas por calificar" de ese curso.
+  const enlace = appUrl(`/?entregas=${encodeURIComponent(input.cursoId)}`);
   await notificar(
     "estudiantes_entregas",
     [
@@ -64,6 +66,7 @@ export async function avisarEntrega(input: {
     ]
       .filter((linea) => linea !== null)
       .join("\n"),
+    enlace ? { botones: [[{ text: "📝 Revisar y calificar", url: enlace }]] } : undefined,
   );
 }
 

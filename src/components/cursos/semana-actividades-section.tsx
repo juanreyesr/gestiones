@@ -1,10 +1,17 @@
 "use client";
 
 import { ClipboardCheck, Eye, EyeOff, Pencil, Plus, Trash2, Upload } from "lucide-react";
-import { useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { ModalPortal } from "@/components/modal-portal";
-import { deleteActividad, insertActividad, setVisibilidadActividad, updateActividad } from "@/lib/cursos/actividades";
+import {
+  deleteActividad,
+  fetchCalificacionesDeActividades,
+  insertActividad,
+  setVisibilidadActividad,
+  updateActividad,
+} from "@/lib/cursos/actividades";
+import { entregasSinNota, fetchEntregasDeActividades } from "@/lib/cursos/entregas";
 import {
   TIPO_ACTIVIDAD_LABELS,
   formatearFechaLimite,
@@ -53,6 +60,31 @@ export function SemanaActividadesSection({
   const [error, setError] = useState("");
   const [calificando, setCalificando] = useState<ActividadRow | null>(null);
   const [cambiandoVisibilidad, setCambiandoVisibilidad] = useState<string | null>(null);
+  const [resumenEntregas, setResumenEntregas] = useState<Record<string, { total: number; sinNota: number }>>({});
+
+  const cargarResumenEntregas = useCallback(async () => {
+    const ids = actividades.filter((a) => a.entrega_habilitada).map((a) => a.id);
+    const [{ data: entregas }, { data: calificaciones }] = await Promise.all([
+      fetchEntregasDeActividades(ids),
+      fetchCalificacionesDeActividades(ids),
+    ]);
+    const activos = new Set(estudiantesActivos.map((e) => e.estudiante_id).filter(Boolean));
+    const deActivos = entregas.filter((e) => activos.has(e.estudiante_id));
+    const pendientes = entregasSinNota(deActivos, calificaciones, estudiantesActivos);
+    const resumen: Record<string, { total: number; sinNota: number }> = {};
+    for (const id of ids) {
+      resumen[id] = {
+        total: deActivos.filter((e) => e.actividad_id === id).length,
+        sinNota: pendientes.filter((e) => e.actividad_id === id).length,
+      };
+    }
+    setResumenEntregas(resumen);
+  }, [actividades, estudiantesActivos]);
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- cuenta entregas y pendientes al cargar las tareas de la semana
+    void cargarResumenEntregas();
+  }, [cargarResumenEntregas]);
 
   const handleCambiarVisibilidad = async (actividad: ActividadRow) => {
     const siguiente = VISIBILIDAD_SIGUIENTE[actividad.visible_estudiantes];
@@ -115,11 +147,32 @@ export function SemanaActividadesSection({
                     Entrega de archivo habilitada · {formatearFechaLimite(actividad.fecha_limite)}
                   </div>
                 ) : null}
+                {resumenEntregas[actividad.id] ? (
+                  <div className="mt-1 text-xs text-slate-300">
+                    📥 {resumenEntregas[actividad.id].total} de {estudiantesActivos.length} entregaron
+                    {resumenEntregas[actividad.id].sinNota > 0 ? (
+                      <span className="font-semibold text-amber-200"> · {resumenEntregas[actividad.id].sinNota} por calificar</span>
+                    ) : null}
+                  </div>
+                ) : null}
               </div>
               <div className="flex flex-wrap items-center gap-2">
-                <button className={BTN_GHOST} onClick={() => setCalificando(actividad)} type="button">
+                <button
+                  className={
+                    resumenEntregas[actividad.id]?.sinNota
+                      ? "inline-flex items-center gap-2 border border-amber-300/60 bg-amber-300/15 px-4 py-2 text-sm font-semibold text-amber-100 transition hover:border-amber-300"
+                      : BTN_GHOST
+                  }
+                  onClick={() => setCalificando(actividad)}
+                  type="button"
+                >
                   <ClipboardCheck className="h-4 w-4" />
-                  Calificar
+                  {resumenEntregas[actividad.id]?.total ? "Revisar entregas y calificar" : "Calificar"}
+                  {resumenEntregas[actividad.id]?.sinNota ? (
+                    <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-amber-300 px-1.5 text-xs font-bold text-slate-950">
+                      {resumenEntregas[actividad.id].sinNota}
+                    </span>
+                  ) : null}
                 </button>
                 <button
                   className={BTN_GHOST}
@@ -169,6 +222,7 @@ export function SemanaActividadesSection({
         <CalificarActividadModal
           actividad={calificando}
           estudiantes={estudiantesActivos}
+          onCambio={() => void cargarResumenEntregas()}
           onClose={() => setCalificando(null)}
         />
       ) : null}

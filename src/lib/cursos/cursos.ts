@@ -16,6 +16,15 @@ export async function fetchCursosPorUniversidad(universidadId: string) {
   return { data: (data ?? []) as CursoImpartidoRow[], error: null };
 }
 
+export async function fetchCurso(id: string) {
+  const supabase = getSupabaseClient();
+  if (!supabase) return { data: null as CursoImpartidoRow | null, error: "Faltan las variables de Supabase." };
+
+  const { data, error } = await supabase.from("gestionesjj_cursos_impartidos").select("*").eq("id", id).maybeSingle();
+  if (error) return { data: null as CursoImpartidoRow | null, error: error.message };
+  return { data: (data ?? null) as CursoImpartidoRow | null, error: null };
+}
+
 export async function fetchConteoCursosPorUniversidad() {
   const supabase = getSupabaseClient();
   if (!supabase) return { data: {} as Record<string, number>, error: "Faltan las variables de Supabase." };
