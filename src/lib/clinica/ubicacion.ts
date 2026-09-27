@@ -7,20 +7,35 @@
  * exacto; si no, ambos buscan por la direccion escrita.
  */
 
-export type UbicacionConsultorio = { direccion: string | null; mapsUrl: string | null };
+export type Coordenadas = { lat: string; lng: string };
 
-function coordenadas(mapsUrl: string | null) {
+export type UbicacionConsultorio = {
+  direccion: string | null;
+  mapsUrl: string | null;
+  /** Coordenadas ya resueltas (p. ej. de un enlace corto maps.app.goo.gl). */
+  coordenadas?: Coordenadas | null;
+};
+
+/** Coordenadas escritas dentro de un enlace largo de Google Maps (null si no trae). */
+export function coordenadasDeEnlace(mapsUrl: string | null): Coordenadas | null {
   if (!mapsUrl) return null;
+  const url = decodeURIComponent(mapsUrl);
   const match =
-    mapsUrl.match(/@(-?\d{1,2}\.\d+),(-?\d{1,3}\.\d+)/) ??
-    mapsUrl.match(/[?&](?:q|query|ll|destination)=(-?\d{1,2}\.\d+),\s*(-?\d{1,3}\.\d+)/);
+    url.match(/@(-?\d{1,2}\.\d+),\s*(-?\d{1,3}\.\d+)/) ??
+    url.match(/[?&](?:q|query|ll|destination)=(-?\d{1,2}\.\d+),\s*\+?(-?\d{1,3}\.\d+)/) ??
+    url.match(/\/maps\/(?:search|place|dir)\/(?:[^/]*\/)?(-?\d{1,2}\.\d+),\s*\+?(-?\d{1,3}\.\d+)/);
   return match ? { lat: match[1], lng: match[2] } : null;
 }
 
-export function enlacesUbicacion({ direccion, mapsUrl }: UbicacionConsultorio) {
+/** true para los enlaces cortos de Google Maps, que hay que abrir para conocer las coordenadas. */
+export function esEnlaceCortoMaps(mapsUrl: string | null) {
+  return Boolean(mapsUrl && /^https:\/\/(maps\.app\.goo\.gl|goo\.gl\/maps)\//.test(mapsUrl.trim()));
+}
+
+export function enlacesUbicacion({ direccion, mapsUrl, coordenadas }: UbicacionConsultorio) {
   const texto = (direccion ?? "").trim();
   if (!texto && !mapsUrl) return null;
-  const punto = coordenadas(mapsUrl);
+  const punto = coordenadas ?? coordenadasDeEnlace(mapsUrl);
   const google =
     mapsUrl || `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(punto ? `${punto.lat},${punto.lng}` : texto)}`;
   const waze = punto

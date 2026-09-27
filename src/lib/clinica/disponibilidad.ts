@@ -89,3 +89,18 @@ export async function guardarDisponibilidad(config: DisponibilidadConfig) {
   const { data, error } = await supabase.from("gestionesjj_disponibilidad").insert(payload).select("id").single();
   return { id: (data?.id as string | undefined) ?? null, error: error?.message ?? null };
 }
+
+/** Coordenadas del consultorio resueltas en el servidor (sirve para enlaces cortos de Maps). */
+export async function fetchCoordenadasConsultorio(): Promise<{ lat: string; lng: string } | null> {
+  const supabase = getSupabaseClient();
+  const { data } = (await supabase?.auth.getSession()) ?? { data: { session: null } };
+  const token = data.session?.access_token;
+  if (!token) return null;
+  try {
+    const response = await fetch("/api/clinica/ubicacion", { headers: { Authorization: `Bearer ${token}` } });
+    const json = (await response.json().catch(() => null)) as { coordenadas?: { lat: string; lng: string } | null } | null;
+    return json?.coordenadas ?? null;
+  } catch {
+    return null;
+  }
+}

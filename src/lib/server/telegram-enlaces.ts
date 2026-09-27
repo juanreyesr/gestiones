@@ -4,6 +4,7 @@ import { enlaceWhatsApp } from "@/lib/clinica/recordatorio";
 import { enlacesUbicacion, mensajeUbicacion, type UbicacionConsultorio } from "@/lib/clinica/ubicacion";
 import { paisDe } from "@/lib/paises";
 import { type BotonInline, appUrl, enviarMensaje, esc } from "./telegram";
+import { conCoordenadas } from "./ubicacion-maps";
 
 /**
  * Enlaces para compartir, pedidos desde Telegram:
@@ -189,7 +190,8 @@ export async function leerUbicacionConsultorio(admin: SupabaseClient): Promise<U
     .limit(1)
     .maybeSingle();
   const row = data as { direccion_consultorio?: string | null; ubicacion_maps_url?: string | null } | null;
-  return { direccion: row?.direccion_consultorio ?? null, mapsUrl: row?.ubicacion_maps_url ?? null };
+  // Con un enlace corto de Maps se resuelven las coordenadas para que Waze lleve al punto exacto.
+  return conCoordenadas({ direccion: row?.direccion_consultorio ?? null, mapsUrl: row?.ubicacion_maps_url ?? null });
 }
 
 /**

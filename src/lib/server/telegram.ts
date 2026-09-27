@@ -103,6 +103,8 @@ export const COMANDOS_BOT = [
   { command: "agendar", description: "Enlace de tu página de citas para enviar" },
   { command: "datos", description: "Enlace de datos de un paciente: /datos Ana" },
   { command: "ubicacion", description: "Dirección del consultorio con Maps y Waze" },
+  { command: "predicas", description: "Prédicas del mes para enviar: /predicas octubre" },
+  { command: "quienpredica", description: "Quién predica y cierra: /quienpredica domingo" },
   { command: "mensajes", description: "Mensajes de estudiantes sin leer" },
   { command: "ayuda", description: "Qué puedo hacer" },
 ];

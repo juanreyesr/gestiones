@@ -2,7 +2,7 @@
 
 import { CalendarCheck2, Copy, Link2, Plus, RefreshCw, Save, Unplug, X } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { fetchDisponibilidad, guardarDisponibilidad } from "@/lib/clinica/disponibilidad";
+import { fetchCoordenadasConsultorio, fetchDisponibilidad, guardarDisponibilidad } from "@/lib/clinica/disponibilidad";
 import {
   disconnectGoogle,
   getGoogleStatus,
@@ -10,7 +10,7 @@ import {
   type GoogleStatus,
 } from "@/lib/clinica/google-client";
 import { DIAS_SEMANA, previewSlotsSemana } from "@/lib/clinica/slots";
-import { enlacesUbicacion } from "@/lib/clinica/ubicacion";
+import { coordenadasDeEnlace, enlacesUbicacion, esEnlaceCortoMaps } from "@/lib/clinica/ubicacion";
 import type { DisponibilidadConfig, RangoHorario } from "@/lib/clinica/types";
 import { BTN_ACCENT, BTN_GHOST, BTN_PRIMARY, Field, SectionCard } from "./ui";
 import { urlPublica } from "@/lib/url-publica";
@@ -36,6 +36,13 @@ export function DisponibilidadConfigView() {
   const [google, setGoogle] = useState<GoogleStatus | null>(null);
   const [googleBusy, setGoogleBusy] = useState(false);
   const [googleError, setGoogleError] = useState("");
+  // Coordenadas resueltas en el servidor para el enlace de Maps guardado (los cortos no se leen en el navegador).
+  const [coordsGuardadas, setCoordsGuardadas] = useState<{ url: string; lat: string; lng: string } | null>(null);
+
+  const cargarCoordenadas = useCallback(async (url: string) => {
+    const coordenadas = url ? await fetchCoordenadasConsultorio() : null;
+    setCoordsGuardadas(coordenadas ? { url, ...coordenadas } : null);
+  }, []);
 
   const cargar = useCallback(async () => {
     setLoading(true);
@@ -44,7 +51,8 @@ export function DisponibilidadConfigView() {
     if (err) setError(err);
     setConfig(data);
     setGoogle(status);
-  }, []);
+    void cargarCoordenadas(data.ubicacionMapsUrl.trim());
+  }, [cargarCoordenadas]);
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- initial data load on mount
@@ -100,6 +108,7 @@ export function DisponibilidadConfigView() {
     }
     setConfig((prev) => (prev ? { ...prev, id } : prev));
     setMensaje("Configuración guardada.");
+    void cargarCoordenadas(config.ubicacionMapsUrl.trim());
   };
 
   const handleCopiar = async () => {
@@ -284,11 +293,20 @@ export function DisponibilidadConfigView() {
               <p className="text-xs font-semibold text-amber-300">El enlace debe empezar con https://</p>
             ) : null}
             {(() => {
-              const enlaces = enlacesUbicacion({
-                direccion: config.direccionConsultorio,
-                mapsUrl: config.ubicacionMapsUrl.trim().startsWith("https://") ? config.ubicacionMapsUrl.trim() : null,
-              });
+              const url = config.ubicacionMapsUrl.trim().startsWith("https://") ? config.ubicacionMapsUrl.trim() : null;
+              const coordenadas = coordenadasDeEnlace(url) ?? (coordsGuardadas && coordsGuardadas.url === url ? coordsGuardadas : null);
+              const enlaces = enlacesUbicacion({ direccion: config.direccionConsultorio, mapsUrl: url, coordenadas });
               return enlaces ? (
+                <div className="grid gap-2">
+                {coordenadas ? (
+                  <p className="text-xs font-semibold text-emerald-300">
+                    📍 Coordenadas exactas: {coordenadas.lat}, {coordenadas.lng} — Waze llevará a este punto.
+                  </p>
+                ) : url && esEnlaceCortoMaps(url) ? (
+                  <p className="text-xs text-slate-400">Guarda la configuración para detectar las coordenadas de este enlace.</p>
+                ) : (
+                  <p className="text-xs text-slate-400">Sin coordenadas: Waze buscará por la dirección escrita.</p>
+                )}
                 <div className="flex flex-wrap gap-2">
                   <a className={BTN_GHOST} href={enlaces.google} rel="noreferrer" target="_blank">
                     Probar Google Maps
@@ -296,6 +314,7 @@ export function DisponibilidadConfigView() {
                   <a className={BTN_GHOST} href={enlaces.waze} rel="noreferrer" target="_blank">
                     Probar Waze
                   </a>
+                </div>
                 </div>
               ) : null;
             })()}
