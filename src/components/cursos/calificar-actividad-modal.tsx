@@ -1,11 +1,18 @@
 "use client";
 
-import { Check, Download, Send, X } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
+import { Check, Download, Eye, Send, X } from "lucide-react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { ModalPortal } from "@/components/modal-portal";
 import { fetchCalificaciones, publicarCalificacionesPendientes, upsertCalificacion } from "@/lib/cursos/actividades";
-import { fetchEntregasDeActividad, urlFirmadaEntrega, type EntregaConArchivos } from "@/lib/cursos/entregas";
-import { TIPO_ACTIVIDAD_LABELS, formatearFechaHora, type ActividadRow, type CalificacionRow, type EstudianteRow } from "@/lib/cursos/types";
+import { abrirArchivoEntrega, fetchEntregasDeActividad, type EntregaConArchivos } from "@/lib/cursos/entregas";
+import {
+  TIPO_ACTIVIDAD_LABELS,
+  formatearFechaHora,
+  type ActividadRow,
+  type CalificacionRow,
+  type EntregaArchivoRow,
+  type EstudianteRow,
+} from "@/lib/cursos/types";
 import { BTN_GHOST, BTN_PRIMARY, ErrorBanner } from "./ui";
 
 type FilaCalificacion = { entregado: boolean; nota: string; comentario: string; publicado: boolean };
@@ -13,10 +20,13 @@ type FilaCalificacion = { entregado: boolean; nota: string; comentario: string; 
 export function CalificarActividadModal({
   actividad,
   estudiantes,
+  onCambio,
   onClose,
 }: {
   actividad: ActividadRow;
   estudiantes: EstudianteRow[];
+  /** Se llama al guardar o publicar, para refrescar contadores de pendientes. */
+  onCambio?: () => void;
   onClose: () => void;
 }) {
   const [filas, setFilas] = useState<Record<string, FilaCalificacion>>({});
@@ -26,27 +36,33 @@ export function CalificarActividadModal({
   const [guardandoId, setGuardandoId] = useState<string | null>(null);
   const [guardadoId, setGuardadoId] = useState<string | null>(null);
   const [publicando, setPublicando] = useState(false);
+  const [soloConEntrega, setSoloConEntrega] = useState(false);
 
   const cargar = useCallback(async () => {
     setLoading(true);
-    const [{ data, error: fetchError }, { data: entregasData }] = await Promise.all([
+    const [{ data, error: fetchError }, { data: entregasData, error: entregasError }] = await Promise.all([
       fetchCalificaciones(actividad.id),
       fetchEntregasDeActividad(actividad.id),
     ]);
     const porEstudiante = new Map<string, CalificacionRow>(data.map((item) => [item.estudiante_id, item]));
+    // Las entregas se guardan con el ID global del estudiante (no el de la
+    // inscripción al curso), así que se indexan por EstudianteRow.estudiante_id.
+    const entregasPorGlobal = Object.fromEntries(entregasData.map((entrega) => [entrega.estudiante_id, entrega]));
     const iniciales: Record<string, FilaCalificacion> = {};
     for (const estudiante of estudiantes) {
       const existente = porEstudiante.get(estudiante.id);
+      const entrego = Boolean(estudiante.estudiante_id && entregasPorGlobal[estudiante.estudiante_id]);
       iniciales[estudiante.id] = {
-        entregado: existente?.entregado ?? false,
+        entregado: existente?.entregado || entrego,
         nota: existente?.nota !== null && existente?.nota !== undefined ? String(existente.nota) : "",
         comentario: existente?.comentario ?? "",
         publicado: Boolean(existente?.publicado_en),
       };
     }
     setFilas(iniciales);
-    setEntregasPorEstudiante(Object.fromEntries(entregasData.map((entrega) => [entrega.estudiante_id, entrega])));
-    setError(fetchError ?? "");
+    setEntregasPorEstudiante(entregasPorGlobal);
+    setSoloConEntrega(entregasData.length > 0);
+    setError(fetchError ?? entregasError ?? "");
     setLoading(false);
   }, [actividad.id, estudiantes]);
 
@@ -86,6 +102,7 @@ export function CalificarActividadModal({
       return;
     }
     setGuardadoId(estudianteId);
+    onCambio?.();
     setTimeout(() => setGuardadoId((prev) => (prev === estudianteId ? null : prev)), 1500);
   };
 
@@ -97,13 +114,31 @@ export function CalificarActividadModal({
       setError(publicarError);
       return;
     }
+    onCambio?.();
     await cargar();
   };
 
-  const handleDescargarArchivo = async (path: string) => {
-    const { url } = await urlFirmadaEntrega(path);
-    if (url) window.open(url, "_blank", "noopener,noreferrer");
+  const handleArchivo = async (archivo: EntregaArchivoRow, modo: "ver" | "descargar") => {
+    const { error: archivoError } = await abrirArchivoEntrega(archivo, modo);
+    if (archivoError) setError(archivoError);
   };
+
+  const entregaDe = useCallback(
+    (estudiante: EstudianteRow) => (estudiante.estudiante_id ? entregasPorEstudiante[estudiante.estudiante_id] : undefined),
+    [entregasPorEstudiante],
+  );
+
+  // Primero quienes entregaron (lo más reciente arriba), luego el resto en orden alfabético.
+  const estudiantesOrdenados = useMemo(() => {
+    const conEntrega = estudiantes
+      .filter((e) => entregaDe(e))
+      .sort((a, b) => (entregaDe(b)?.entregado_en ?? "").localeCompare(entregaDe(a)?.entregado_en ?? ""));
+    const sinEntrega = estudiantes.filter((e) => !entregaDe(e));
+    return soloConEntrega ? conEntrega : [...conEntrega, ...sinEntrega];
+  }, [entregaDe, estudiantes, soloConEntrega]);
+
+  const totalEntregas = estudiantes.filter((e) => entregaDe(e)).length;
+  const entregasSinNota = estudiantes.filter((e) => entregaDe(e) && !filas[e.id]?.nota.trim()).length;
 
   const pendientesDePublicar = Object.values(filas).filter((fila) => !fila.publicado && fila.nota.trim()).length;
 
@@ -134,6 +169,26 @@ export function CalificarActividadModal({
 
           <ErrorBanner message={error} />
 
+          {!loading && actividad.entrega_habilitada ? (
+            <div className="mb-3 flex flex-wrap items-center justify-between gap-2 border border-white/10 bg-white/4 p-3 text-xs text-slate-300">
+              <span>
+                <b className="text-white">{totalEntregas}</b> de {estudiantes.length} entregaron
+                {entregasSinNota > 0 ? (
+                  <>
+                    {" "}
+                    · <b className="text-amber-200">{entregasSinNota}</b> sin nota
+                  </>
+                ) : null}
+              </span>
+              {totalEntregas > 0 ? (
+                <label className="flex items-center gap-2">
+                  <input checked={soloConEntrega} onChange={(event) => setSoloConEntrega(event.target.checked)} type="checkbox" />
+                  Mostrar solo quienes entregaron
+                </label>
+              ) : null}
+            </div>
+          ) : null}
+
           {!loading && pendientesDePublicar > 0 ? (
             <div className="mb-3 flex items-center justify-between border border-amber-300/40 bg-amber-300/10 p-3">
               <p className="text-xs text-amber-200">
@@ -153,10 +208,10 @@ export function CalificarActividadModal({
             <p className="text-sm text-slate-400">No hay estudiantes activos en este curso.</p>
           ) : (
             <div className="grid gap-3 overflow-y-auto">
-              {estudiantes.map((estudiante) => {
+              {estudiantesOrdenados.map((estudiante) => {
                 const fila = filas[estudiante.id];
                 if (!fila) return null;
-                const entrega = entregasPorEstudiante[estudiante.id];
+                const entrega = entregaDe(estudiante);
                 return (
                   <div className="border border-white/10 bg-white/6 p-3" key={estudiante.id}>
                     <div className="flex flex-wrap items-center justify-between gap-2">
@@ -198,18 +253,33 @@ export function CalificarActividadModal({
                           Entregó el {formatearFechaHora(entrega.entregado_en)}
                           {entrega.tardia ? " · Tardía" : ""}
                         </p>
+                        {entrega.comentario_estudiante ? (
+                          <p className="mt-1 italic text-slate-300">“{entrega.comentario_estudiante}”</p>
+                        ) : null}
                         {entrega.archivos.length ? (
-                          <div className="mt-1 flex flex-wrap gap-2">
+                          <div className="mt-1 grid gap-1.5">
                             {entrega.archivos.map((archivo) => (
-                              <button
-                                className="inline-flex items-center gap-1.5 border border-white/10 bg-white/8 px-2 py-1 text-[11px] font-semibold text-slate-200 hover:border-emerald-300/50"
-                                key={archivo.id}
-                                onClick={() => handleDescargarArchivo(archivo.archivo_path)}
-                                type="button"
-                              >
-                                <Download className="h-3 w-3" />
-                                {archivo.archivo_nombre ?? "Archivo"}
-                              </button>
+                              <div className="flex flex-wrap items-center gap-2" key={archivo.id}>
+                                <span className="min-w-0 flex-1 truncate text-[12px] text-slate-200" title={archivo.archivo_nombre ?? undefined}>
+                                  📎 {archivo.archivo_nombre ?? "Archivo"}
+                                </span>
+                                <button
+                                  className="inline-flex items-center gap-1.5 border border-emerald-300/40 bg-emerald-300/10 px-2 py-1 text-[11px] font-semibold text-emerald-100 hover:border-emerald-300/70"
+                                  onClick={() => handleArchivo(archivo, "ver")}
+                                  type="button"
+                                >
+                                  <Eye className="h-3 w-3" />
+                                  Ver
+                                </button>
+                                <button
+                                  className="inline-flex items-center gap-1.5 border border-white/10 bg-white/8 px-2 py-1 text-[11px] font-semibold text-slate-200 hover:border-emerald-300/50"
+                                  onClick={() => handleArchivo(archivo, "descargar")}
+                                  type="button"
+                                >
+                                  <Download className="h-3 w-3" />
+                                  Descargar
+                                </button>
+                              </div>
                             ))}
                           </div>
                         ) : null}
