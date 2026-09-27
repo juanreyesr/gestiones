@@ -7,7 +7,7 @@ import { formatoFechaHora, formatoHora } from "@/lib/clinica/slots";
 import { aprobarSolicitud, fetchSolicitudes, rechazarSolicitud } from "@/lib/clinica/solicitudes";
 import type { PacienteRow, SolicitudRow } from "@/lib/clinica/types";
 import { buscarCoincidencia } from "@/lib/clinica/coincidencias";
-import { fetchDisponibilidad } from "@/lib/clinica/disponibilidad";
+import { fetchCoordenadasConsultorio, fetchDisponibilidad } from "@/lib/clinica/disponibilidad";
 import { enlaceWhatsApp } from "@/lib/clinica/recordatorio";
 import { mensajeUbicacion, type UbicacionConsultorio } from "@/lib/clinica/ubicacion";
 import { ModalPortal } from "../modal-portal";
@@ -180,8 +180,10 @@ export function SolicitudesView({
 
   useEffect(() => {
     let vigente = true;
-    void fetchDisponibilidad().then(({ data }) => {
-      if (vigente) setUbicacion({ direccion: data.direccionConsultorio || null, mapsUrl: data.ubicacionMapsUrl || null });
+    void Promise.all([fetchDisponibilidad(), fetchCoordenadasConsultorio()]).then(([{ data }, coordenadas]) => {
+      if (vigente) {
+        setUbicacion({ direccion: data.direccionConsultorio || null, mapsUrl: data.ubicacionMapsUrl || null, coordenadas });
+      }
     });
     return () => {
       vigente = false;

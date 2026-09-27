@@ -5,6 +5,7 @@ import { mismaHoraQueConsultorio, nombreZona, PAIS_POR_DEFECTO, paisDe, paisPorC
 import { type EventoGoogle, getStoredTokens, insertEvent, isGoogleConfigured, listarEventos } from "./google-calendar";
 import { pacientesComparables, resolverReserva } from "./reservas-google";
 import { getSupabaseAdmin } from "./supabase-admin";
+import { enviarPredicasMes, enviarQuienPredica, pedidoDePredicas } from "./telegram-iglesia";
 import {
   botonUbicacion,
   buscarPacienteParaDatos,
@@ -92,6 +93,16 @@ export async function procesarUpdate(update: TelegramUpdate) {
   }
 
   const comando = texto.match(/^\/(\w+)(?:@\w+)?(?:\s+([\s\S]*))?$/);
+  // Predicas primero: "quien predica el martes" no debe caer en la agenda.
+  const predicas = comando ? null : pedidoDePredicas(texto);
+  if (predicas === "mes") {
+    await enviarPredicasMes(admin, chatId, texto);
+    return;
+  }
+  if (predicas === "dia") {
+    await enviarQuienPredica(admin, chatId, texto);
+    return;
+  }
   if (!comando && /\b(ubicacion|direccion|como llegar)\b/.test(texto.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, ""))) {
     await enviarUbicacion(admin, chatId);
     return;
@@ -156,6 +167,12 @@ export async function procesarUpdate(update: TelegramUpdate) {
       return;
     case "mensajes":
       await enviarMensajesSinLeer(admin, chatId);
+      return;
+    case "predicas":
+      await enviarPredicasMes(admin, chatId, argumento);
+      return;
+    case "quienpredica":
+      await enviarQuienPredica(admin, chatId, argumento);
       return;
     case "ayuda":
     case "help":
@@ -235,10 +252,13 @@ function textoAyuda() {
     "/datos <i>nombre</i> — enlace para que un paciente llene sus datos (con botón de WhatsApp a su número)",
     "/ubicacion — dirección del consultorio con Google Maps y Waze, lista para enviar",
     "/mensajes — mensajes de estudiantes sin leer",
+    "/predicas <i>mes</i> — calendario de prédicas listo para enviar por WhatsApp (ej. /predicas octubre)",
+    "/quienpredica <i>cuándo</i> — quién predica y quién cierra: <i>hoy, domingo, martes, fin de semana, 12/10</i>",
     "",
     "💬 Para contestarle a un estudiante, <b>responde</b> (desliza el mensaje) al aviso de su mensaje.",
     "📅 Las reservas de Calendly que lleguen a tu Google Calendar te las mando con botones para vincularlas a un paciente o crearlo.",
     "🗓 También puedes preguntar escribiendo normal: <i>¿qué tengo mañana?</i>, <i>¿tengo compromisos el viernes?</i>",
+    "⛪ O sobre la iglesia: <i>quiero las prédicas de octubre</i>, <i>¿quién predica este fin de semana?</i>, <i>¿quién predica el martes?</i>",
   ].join("\n");
 }
 
