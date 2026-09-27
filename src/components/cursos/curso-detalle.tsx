@@ -28,11 +28,14 @@ const ESTADO_CHIP: Record<string, string> = {
 };
 
 export function CursoDetalle({
+  abrirBandejaAlEntrar = false,
   curso,
   onOpenSemana,
   onVolver,
   universidad,
 }: {
+  /** Viene del enlace del aviso de Telegram: abre directo "Tareas por calificar". */
+  abrirBandejaAlEntrar?: boolean;
   curso: CursoImpartidoRow;
   onOpenSemana: (semana: SemanaRow) => void;
   onVolver: () => void;
@@ -47,7 +50,7 @@ export function CursoDetalle({
   const [compartirAbierto, setCompartirAbierto] = useState(false);
   const [mensajesNoLeidos, setMensajesNoLeidos] = useState(0);
   const [tareasPorCalificar, setTareasPorCalificar] = useState(0);
-  const [bandejaAbierta, setBandejaAbierta] = useState(false);
+  const [bandejaAbierta, setBandejaAbierta] = useState(abrirBandejaAlEntrar);
 
   const cargarPendientes = useCallback(async () => {
     const { data: estudiantes } = await fetchEstudiantes(curso.id);
