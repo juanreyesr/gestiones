@@ -1,6 +1,6 @@
 {
   "aulaURL": "/estudiante",
-  "bookingURL": null,
+  "bookingURL": "/agendar",
   "email": null,
   "whatsapp": null
 }

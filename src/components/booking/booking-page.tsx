@@ -1,6 +1,6 @@
 "use client";
 
-import { CalendarCheck2, CalendarDays, ChevronLeft, Clock, HeartPulse, Send } from "lucide-react";
+import { CalendarCheck2, CalendarDays, ChevronLeft, Clock, HeartPulse, Home, Send } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { agruparSlotsPorDia, claveDiaLocal, formatoFechaLarga, formatoHora, type SlotPublico } from "@/lib/clinica/slots";
 import {
@@ -138,6 +138,14 @@ export function BookingPage() {
   return (
     <main className="min-h-screen bg-white text-slate-900">
       <div className="mx-auto flex min-h-screen w-full max-w-2xl flex-col px-4 py-10 sm:py-14">
+        {/* Salida al sitio publico (paginas estaticas: <a> normal, no Link). */}
+        <a
+          className="mb-6 inline-flex items-center gap-1.5 self-start text-sm text-slate-400 transition hover:text-slate-700"
+          href="/es"
+        >
+          <Home className="h-4 w-4" />
+          Página principal
+        </a>
         <header className="mb-8 text-center">
           <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-emerald-50 text-emerald-600">
             <HeartPulse className="h-7 w-7" />
