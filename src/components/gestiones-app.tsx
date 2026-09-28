@@ -85,6 +85,7 @@ import { RecursosView } from "./recursos/recursos-view";
 import type { ReporteData } from "./reporte-printable";
 import { ReunionesView } from "./reuniones-view";
 import { SupervisionView, type IniciarSupervision } from "./supervision-view";
+import { ConfirmDialog } from "./confirm-dialog";
 import { TelegramModal } from "./telegram-modal";
 import { useBloquearAtras } from "@/lib/use-bloquear-atras";
 
@@ -153,8 +154,6 @@ type RawDocente = {
 };
 
 export function GestionesApp() {
-  // En moviles, "atras" no debe sacar al sitio publico: para eso esta el boton "Pagina principal".
-  useBloquearAtras();
   const [activeArea, setActiveArea] = useState<AreaId | null>(null);
   const [coordinacionView, setCoordinacionView] = useState<CoordinacionView>("resumen");
   const [alertasSeguimientos, setAlertasSeguimientos] = useState(0);
@@ -825,6 +824,14 @@ export function GestionesApp() {
   }, [session, entregasEnlace.cursoId]);
   const limpiarEntregasCursoId = useCallback(() => setEntregasCursoId(null), []);
 
+  // En moviles, "atras" no debe sacar al sitio publico (para eso esta el boton
+  // "Pagina principal"). Dentro de un area, "atras" ofrece volver al menu,
+  // con confirmacion porque salir del area descarta lo que no se haya guardado.
+  const [confirmarVolverMenu, setConfirmarVolverMenu] = useState(false);
+  useBloquearAtras(() => {
+    if (activeArea) setConfirmarVolverMenu(true);
+  });
+
   const areaActiva = activeArea ? (AREAS.find((item) => item.id === activeArea) ?? null) : null;
   const AreaActivaIcon = activeArea ? areaIcons[activeArea] : Sparkles;
 
@@ -1205,6 +1212,18 @@ export function GestionesApp() {
       />
 
       <TelegramModal onClose={() => setTelegramOpen(false)} open={telegramOpen} />
+
+      <ConfirmDialog
+        confirmLabel="Sí, volver al menú"
+        message="Lo que no hayas guardado en esta área se perderá."
+        onCancel={() => setConfirmarVolverMenu(false)}
+        onConfirm={() => {
+          setConfirmarVolverMenu(false);
+          handleCambiarArea(null);
+        }}
+        open={confirmarVolverMenu}
+        title="¿Volver al menú?"
+      />
     </>
   );
 }
