@@ -25,6 +25,7 @@ const DICCIONARIO: Record<Idioma, Record<string, string>> = {
     login_entrando: "Entrando...",
     login_entrar: "Entrar",
     login_volver: "Volver",
+    pagina_principal: "Página principal",
 
     // Mensajes centrales (carga, errores generales)
     central_no_disponible: "El servicio no está disponible en este momento.",
@@ -140,6 +141,7 @@ const DICCIONARIO: Record<Idioma, Record<string, string>> = {
     login_entrando: "Signing in...",
     login_entrar: "Sign in",
     login_volver: "Back",
+    pagina_principal: "Home page",
 
     central_no_disponible: "The service is not available right now.",
     central_cargando: "Loading...",
@@ -247,6 +249,7 @@ const DICCIONARIO: Record<Idioma, Record<string, string>> = {
     login_entrando: "Entrando...",
     login_entrar: "Entrar",
     login_volver: "Voltar",
+    pagina_principal: "Página inicial",
 
     central_no_disponible: "O serviço não está disponível no momento.",
     central_cargando: "Carregando...",

@@ -5,6 +5,7 @@ import { ModalPortal } from "./modal-portal";
 
 export function ConfirmDialog({
   busy,
+  confirmLabel = "Sí, borrar",
   message,
   onCancel,
   onConfirm,
@@ -12,6 +13,7 @@ export function ConfirmDialog({
   title,
 }: {
   busy?: boolean;
+  confirmLabel?: string;
   message: string;
   onCancel: () => void;
   onConfirm: () => void;
@@ -46,7 +48,7 @@ export function ConfirmDialog({
               onClick={onConfirm}
               type="button"
             >
-              {busy ? "Borrando..." : "Sí, borrar"}
+              {busy ? "Borrando..." : confirmLabel}
             </button>
           </div>
         </div>

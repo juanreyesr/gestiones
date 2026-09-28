@@ -27,6 +27,8 @@ Centro de gestion de pacientes y sesiones de terapia:
 
 ### Dominio publico
 
+La portada pública (`/` → `/es`) es el sitio web estático de `sitio-web/` (ver `sitio-web/README.md`); desde ahí se entra a `/estudiante` y `/admin`.
+
 La app responde en `www.juanjreyes.org` (dominio propio; `juanjreyes.org` redirige a `www`) y en `gestionesjj.vercel.app`. Define `NEXT_PUBLIC_APP_URL=https://www.juanjreyes.org`: los enlaces que se comparten (agendar, encuestas, QR de sesiones en vivo, asignacion a cursos, datos del paciente, resumen para jefatura) salen siempre con ese dominio aunque estes navegando desde el de Vercel (`src/lib/url-publica.ts`), y el webhook de Telegram se registra ahi al vincular.
 
 ### Configurar Google Calendar (opcional)

@@ -1,10 +1,10 @@
 "use client";
 
 import { GraduationCap } from "lucide-react";
-import Link from "next/link";
 import type React from "react";
 import { useState } from "react";
 import { loginEstudiante } from "@/lib/estudiante/estudiante-client";
+import { EnlacePaginaPrincipal } from "./enlace-pagina-principal";
 import { useIdioma } from "./idioma-context";
 import { SelectorIdioma } from "./selector-idioma";
 
@@ -76,9 +76,9 @@ export function LoginEstudianteForm() {
           </button>
         </form>
 
-        <Link className="mt-8 block text-center text-sm text-slate-400 hover:text-slate-600" href="/">
-          ← {t("login_volver")}
-        </Link>
+        <div className="mt-8 flex justify-center">
+          <EnlacePaginaPrincipal />
+        </div>
       </div>
     </div>
   );
