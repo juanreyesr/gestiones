@@ -3,6 +3,7 @@
 import {
   CalendarClock,
   CalendarDays,
+  CreditCard,
   ChevronDown,
   ChevronLeft,
   ChevronUp,
@@ -74,6 +75,7 @@ export function PacienteExpediente({
   const [iniciando, setIniciando] = useState(false);
   const [sesionAbierta, setSesionAbierta] = useState<string | null>(null);
   const [copiado, setCopiado] = useState(false);
+  const [pagoCopiado, setPagoCopiado] = useState<string | null>(null);
   const [datosMsg, setDatosMsg] = useState("");
   const [sesionEditando, setSesionEditando] = useState<SesionRow | null>(null);
 
@@ -143,6 +145,18 @@ export function PacienteExpediente({
     } catch {
       setDatosMsg(url);
     }
+  };
+
+  // Enlace corto /pagar -> enlace de pago de PayPal (PAYPAL_ENLACE_CONSULTA).
+  const handleCopiarEnlacePago = async () => {
+    const url = urlPublica("/pagar");
+    try {
+      await navigator.clipboard.writeText(url);
+      setPagoCopiado("¡Enlace copiado!");
+    } catch {
+      setPagoCopiado(url);
+    }
+    setTimeout(() => setPagoCopiado(null), 2500);
   };
 
   const handleReactivarDatos = async () => {
@@ -387,6 +401,20 @@ export function PacienteExpediente({
                 Consentimiento aceptado el {formatoFechaCorta(paciente.consentimientoAceptadoAt)}
               </p>
             ) : null}
+          </SectionCard>
+
+          <SectionCard title="Pago de la consulta">
+            <div className="grid gap-2">
+              <p className="text-sm leading-6 text-slate-300">
+                Envía este enlace para que el paciente pague con tarjeta o PayPal. Cuando el pago entre, te llega el aviso por Telegram.
+              </p>
+              <button className={BTN_GHOST} onClick={handleCopiarEnlacePago} type="button">
+                <CreditCard className="h-4 w-4" />
+                {pagoCopiado === "¡Enlace copiado!" ? pagoCopiado : "Copiar enlace de pago"}
+                {pagoCopiado ? null : <Copy className="h-3.5 w-3.5" />}
+              </button>
+              {pagoCopiado && pagoCopiado !== "¡Enlace copiado!" ? <p className="break-all text-xs text-slate-400">{pagoCopiado}</p> : null}
+            </div>
           </SectionCard>
 
           <SectionCard title="Compromisos y tareas pendientes">

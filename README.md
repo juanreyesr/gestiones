@@ -71,6 +71,20 @@ Un bot privado de Telegram que avisa de lo que pasa en la plataforma y deja actu
 
 Seguridad: el webhook rechaza toda peticion sin el header `X-Telegram-Bot-Api-Secret-Token` correcto; el codigo de vinculacion se guarda solo como SHA-256; las tablas `gestionesjj_telegram_config` y `gestionesjj_telegram_hilos` tienen RLS sin politicas (solo el servidor con service role las toca), y `gestionesjj_telegram_aprobar_solicitud` solo la puede ejecutar `service_role`. Si Telegram falla, la accion que origino el aviso no se ve afectada (los avisos se envian con `after()`, despues de responder).
 
+## Pagos de consultas con PayPal
+
+- `www.juanjreyes.org/pagar` redirige al enlace de pago de PayPal (`PAYPAL_ENLACE_CONSULTA`). Es lo que se comparte: desde Telegram con `/pago` (o escribiendo "enlace de pago") y desde el expediente del paciente con "Copiar enlace de pago".
+- Al pagar, PayPal regresa al paciente a `/pago/gracias` (Auto Return); el boton "Aceptar" lo lleva a la pagina principal.
+- El aviso por Telegram ("💳 Pago recibido por PayPal": monto, neto, nombre, correo, concepto) lo manda el webhook `/api/paypal/webhook` solo despues de verificar la firma con la API de PayPal. La pagina de gracias no avisa: cualquiera podria abrirla y el paciente puede no volver de PayPal. Se puede apagar en las preferencias de Telegram ("Pagos de consultas recibidos por PayPal").
+
+### Configurar PayPal
+
+1. En PayPal (cuenta Business) el enlace de pago de la consulta ya esta creado (`https://www.paypal.com/ncp/payment/H2EFVWPKMF49W`, el mismo ID del boton `H2EFVWPKMF49W`) y es el que usa `/pagar`; `PAYPAL_ENLACE_CONSULTA` solo hace falta si se cambia por otro. En "URL de la pagina de inicio" poner `https://www.juanjreyes.org` (es a donde lleva el logo dentro de PayPal).
+2. Activar el regreso automatico: **Configuracion de la cuenta > Pagos en el sitio web > Preferencias del sitio web > Retorno automatico: Activado**, con URL de retorno `https://www.juanjreyes.org/pago/gracias`.
+3. En [developer.paypal.com](https://developer.paypal.com) > Apps & Credentials (modo **Live**) crear una app REST y copiar `PAYPAL_CLIENT_ID` y `PAYPAL_CLIENT_SECRET`.
+4. En esa app agregar un **Webhook** con URL `https://www.juanjreyes.org/api/paypal/webhook` y los eventos `PAYMENT.CAPTURE.COMPLETED` y `PAYMENT.CAPTURE.REFUNDED`; copiar su ID a `PAYPAL_WEBHOOK_ID`.
+5. Cargar las variables en Vercel y volver a desplegar. Para probar con dinero ficticio usar credenciales Sandbox y `PAYPAL_ENV=sandbox`.
+
 ## Recordatorio de citas por WhatsApp (Clinica)
 
 Piloto con **WhatsApp Business Platform (Cloud API)** en modo coexistencia: el mismo numero de WhatsApp Business del telefono sigue funcionando para conversar y el sistema envia los recordatorios (`src/lib/server/whatsapp.ts`, `src/lib/server/whatsapp-citas.ts`, migracion `041`).

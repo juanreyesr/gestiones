@@ -10,6 +10,7 @@ import {
   botonUbicacion,
   buscarPacienteParaDatos,
   enviarEnlaceAgenda,
+  enviarEnlacePago,
   enviarEnlaceDatos,
   enviarUbicacion,
   leerUbicacionConsultorio,
@@ -112,6 +113,10 @@ export async function procesarUpdate(update: TelegramUpdate) {
     await enviarEnlaceAgenda(admin, chatId);
     return;
   }
+  if (pedido?.tipo === "pago") {
+    await enviarEnlacePago(chatId);
+    return;
+  }
   if (pedido?.tipo === "datos") {
     await buscarPacienteParaDatos(admin, chatId, pedido.nombre);
     return;
@@ -151,6 +156,11 @@ export async function procesarUpdate(update: TelegramUpdate) {
     case "enlace":
     case "link":
       await enviarEnlaceAgenda(admin, chatId);
+      return;
+    case "pago":
+    case "pagar":
+    case "paypal":
+      await enviarEnlacePago(chatId);
       return;
     case "datos":
     case "perfil":
@@ -249,6 +259,7 @@ function textoAyuda() {
     "/pendientes — pendientes vencidos y de los próximos 3 días, con botón ✅ Listo",
     "/nuevo <i>texto</i> — anota un pendiente nuevo",
     "/agendar — enlace de tu página de citas, listo para enviar",
+    "/pago — enlace de pago de la consulta (PayPal), listo para enviar",
     "/datos <i>nombre</i> — enlace para que un paciente llene sus datos (con botón de WhatsApp a su número)",
     "/ubicacion — dirección del consultorio con Google Maps y Waze, lista para enviar",
     "/mensajes — mensajes de estudiantes sin leer",

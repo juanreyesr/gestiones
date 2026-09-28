@@ -11,6 +11,7 @@ export type TipoNotificacion =
   | "estudiantes_entregas"
   | "cursos_solicitudes"
   | "encuestas_respuestas"
+  | "pagos_paypal"
   | "resumen_diario";
 
 export const NOTIFICACIONES: { id: TipoNotificacion; etiqueta: string; porDefecto: boolean }[] = [
@@ -23,6 +24,7 @@ export const NOTIFICACIONES: { id: TipoNotificacion; etiqueta: string; porDefect
   { id: "estudiantes_mensajes", etiqueta: "Mensajes de estudiantes", porDefecto: true },
   { id: "estudiantes_entregas", etiqueta: "Entregas de tareas", porDefecto: true },
   { id: "cursos_solicitudes", etiqueta: "Solicitudes de inscripción a cursos", porDefecto: true },
+  { id: "pagos_paypal", etiqueta: "Pagos de consultas recibidos por PayPal", porDefecto: true },
   { id: "encuestas_respuestas", etiqueta: "Respuestas de encuestas", porDefecto: false },
   { id: "resumen_diario", etiqueta: "Resumen diario (7:00 a. m.)", porDefecto: true },
 ];

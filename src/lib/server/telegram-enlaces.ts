@@ -4,11 +4,13 @@ import { enlaceWhatsApp } from "@/lib/clinica/recordatorio";
 import { enlacesUbicacion, mensajeUbicacion, type UbicacionConsultorio } from "@/lib/clinica/ubicacion";
 import { paisDe } from "@/lib/paises";
 import { type BotonInline, appUrl, enviarMensaje, esc } from "./telegram";
+import { enlacePagoConsulta } from "./paypal";
 import { conCoordenadas } from "./ubicacion-maps";
 
 /**
  * Enlaces para compartir, pedidos desde Telegram:
  *  - /agendar: la pagina publica de citas de la clinica.
+ *  - /pago: el enlace de pago de la consulta (www.juanjreyes.org/pagar).
  *  - /datos <nombre>: el formulario para que un paciente llene sus datos
  *    generales (mismo enlace que "Copiar enlace de datos" del expediente).
  * Cada respuesta trae un boton que abre WhatsApp con el mensaje listo.
@@ -38,6 +40,30 @@ export async function enviarEnlaceAgenda(admin: SupabaseClient, chatId: number) 
       "🔗 <b>Enlace para agendar cita</b>",
       url,
       activo ? null : "\n⚠️ El agendamiento público está <b>desactivado</b>: quien lo abra verá que no hay horarios. Actívalo en Clínica → Configuración.",
+      "\n<i>Mensaje listo para reenviar:</i>",
+      esc(mensaje),
+    ]
+      .filter((linea) => linea !== null)
+      .join("\n"),
+    { botones: [[compartir(mensaje)]] },
+  );
+}
+
+// ============================================================
+// Pago de la consulta (PayPal)
+// ============================================================
+
+export async function enviarEnlacePago(chatId: number) {
+  const url = `${base()}/pagar`;
+  const mensaje = `¡Hola! Puedes pagar tu consulta de forma segura con tarjeta o PayPal aquí: ${url}`;
+  await enviarMensaje(
+    chatId,
+    [
+      "💳 <b>Enlace de pago de la consulta</b>",
+      url,
+      enlacePagoConsulta()
+        ? null
+        : "\n⚠️ Falta configurar <code>PAYPAL_ENLACE_CONSULTA</code> en Vercel: por ahora el enlace abre la página de Consulta.",
       "\n<i>Mensaje listo para reenviar:</i>",
       esc(mensaje),
     ]
@@ -161,10 +187,11 @@ function sinTildes(texto: string) {
  * "pasame el link para agendar" → agenda; "enlace de datos de Ana Lopez" →
  * datos de "Ana Lopez". null si el mensaje no pide un enlace.
  */
-export function pedidoDeEnlace(texto: string): { tipo: "agenda" } | { tipo: "datos"; nombre: string } | null {
+export function pedidoDeEnlace(texto: string): { tipo: "agenda" } | { tipo: "pago" } | { tipo: "datos"; nombre: string } | null {
   const t = sinTildes(texto);
   if (!/\b(enlace|enlaces|link|links|liga|url|formulario)\b/.test(t)) return null;
 
+  if (/\b(pago|pagos|pagar|paypal|cobro|cobrar)\b/.test(t)) return { tipo: "pago" };
   if (/\b(datos|perfil|ficha|expediente)\b/.test(t)) {
     // El nombre es lo que viene despues de la palabra clave, sin preposiciones ni articulos:
     // "enlace de datos de Ana Lopez", "ficha de Pedro", "sus datos Ana", "datos para la paciente Luisa".
