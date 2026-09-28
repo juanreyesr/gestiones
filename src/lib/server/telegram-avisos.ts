@@ -1,6 +1,7 @@
 import { getSupabaseAdmin } from "./supabase-admin";
 import { appUrl, esc, isTelegramConfigured, notificar, recortar } from "./telegram";
 import { buscarCoincidencia } from "@/lib/clinica/coincidencias";
+import type { AvisoPago } from "./paypal";
 import { pacientesComparables } from "./reservas-google";
 import {
   botonesSolicitudCita,
@@ -111,4 +112,25 @@ export async function avisarRespuestaEncuesta(token: string, expectativa: string
       .filter((linea) => linea !== null)
       .join("\n"),
   );
+}
+
+export async function avisarPago(aviso: AvisoPago) {
+  const lineas =
+    aviso.tipo === "completado"
+      ? [
+          "💳 <b>Pago recibido por PayPal</b>",
+          aviso.monto ? `Monto: <b>${esc(aviso.monto)}</b>${aviso.neto ? ` (neto ${esc(aviso.neto)})` : ""}` : null,
+          aviso.pagador ? `De: ${esc(aviso.pagador)}` : null,
+          aviso.correo ? `Correo: ${esc(aviso.correo)}` : null,
+          aviso.concepto ? `Concepto: ${esc(aviso.concepto)}` : null,
+          aviso.captureId ? `<i>Transacción ${esc(aviso.captureId)}</i>` : null,
+        ]
+      : [
+          "↩️ <b>Reembolso de PayPal</b>",
+          aviso.monto ? `Monto reembolsado: <b>${esc(aviso.monto)}</b>` : null,
+          aviso.captureId ? `<i>Transacción ${esc(aviso.captureId)}</i>` : null,
+        ];
+  await notificar("pagos_paypal", lineas.filter((linea) => linea !== null).join("\n"), {
+    botones: [[{ text: "Ver en PayPal", url: "https://www.paypal.com/activities" }]],
+  });
 }

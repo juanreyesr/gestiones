@@ -101,6 +101,7 @@ export const COMANDOS_BOT = [
   { command: "pendientes", description: "Pendientes vencidos y próximos" },
   { command: "nuevo", description: "Crear un pendiente: /nuevo texto" },
   { command: "agendar", description: "Enlace de tu página de citas para enviar" },
+  { command: "pago", description: "Enlace de pago de la consulta (PayPal)" },
   { command: "datos", description: "Enlace de datos de un paciente: /datos Ana" },
   { command: "ubicacion", description: "Dirección del consultorio con Maps y Waze" },
   { command: "predicas", description: "Prédicas del mes para enviar: /predicas octubre" },
