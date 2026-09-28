@@ -10,5 +10,5 @@ contiene todo el contenido y los estilos y genera las páginas directamente en `
 - Rutas (ver `next.config.ts`): `/` redirige a `/es`; `/es/<seccion>` y `/en/<seccion>` se
   sirven desde `public/<idioma>/<seccion>/index.html`. Las URLs con barra final redirigen a la
   versión sin barra.
-- Accesos a la app: "Acceso administrativo" → `/admin`; "Aula virtual" (en Programas de
-  formación) → `/estudiante`. Son rutas relativas, funcionan en cualquier dominio de la app.
+- Accesos a la app (menú superior): "Aula virtual" → `/estudiante` (también en Programas de
+  formación) y "Acceso administrativo" → `/admin`. Son rutas relativas, funcionan en cualquier dominio.
