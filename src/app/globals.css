@@ -69,6 +69,17 @@ body {
   overflow-x: hidden;
 }
 
+/* iOS Safari hace zoom al enfocar un campo con letra menor a 16px y la
+   pagina queda ampliada (parece desbordada). En pantallas pequenas los
+   campos usan 16px; fuera de @layer para ganarle a las utilidades text-*. */
+@media (max-width: 767px) {
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]),
+  select,
+  textarea {
+    font-size: 16px;
+  }
+}
+
 @layer base {
   html {
     -webkit-tap-highlight-color: transparent;

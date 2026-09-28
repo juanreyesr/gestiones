@@ -171,7 +171,7 @@ export function TemasPanel({
             ) : null}
           </div>
         ) : (
-          <div className="border border-white/10">
+          <div className="overflow-x-auto border border-white/10">
             <table className="w-full text-sm">
               <thead className="bg-white/6 text-[11px] uppercase tracking-wide text-slate-500">
                 <tr>
@@ -183,7 +183,7 @@ export function TemasPanel({
                 {filas.map((fila) => (
                   <tr className="border-t border-white/8" key={fila.mes}>
                     <td className="px-3 py-2 font-semibold text-slate-300">{MESES_LABEL[fila.mes - 1]}</td>
-                    <td className={`px-3 py-2 ${fila.tema.trim() ? "text-slate-100" : "text-slate-600 italic"}`}>
+                    <td className={`break-words px-3 py-2 ${fila.tema.trim() ? "text-slate-100" : "text-slate-600 italic"}`}>
                       {fila.tema.trim() || "Sin definir"}
                     </td>
                   </tr>
