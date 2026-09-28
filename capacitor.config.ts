@@ -9,7 +9,7 @@ import type { CapacitorConfig } from "@capacitor/cli";
  */
 const config: CapacitorConfig = {
   appId: "org.juanjreyes.gestiones",
-  appName: "GestionesJJ",
+  appName: "Juan J. Reyes",
   webDir: "capacitor/www",
   server: {
     url: "https://www.juanjreyes.org",
