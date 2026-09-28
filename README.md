@@ -85,6 +85,16 @@ Seguridad: el webhook rechaza toda peticion sin el header `X-Telegram-Bot-Api-Se
 4. En esa app agregar un **Webhook** con URL `https://www.juanjreyes.org/api/paypal/webhook` y los eventos `PAYMENT.CAPTURE.COMPLETED` y `PAYMENT.CAPTURE.REFUNDED`; copiar su ID a `PAYPAL_WEBHOOK_ID`.
 5. Cargar las variables en Vercel y volver a desplegar. Para probar con dinero ficticio usar credenciales Sandbox y `PAYPAL_ENV=sandbox`.
 
+## App movil (Capacitor)
+
+GestionesJJ tambien existe como app nativa para Android e iPhone (`android/` e `ios/`, Capacitor 8). La app abre `https://www.juanjreyes.org/admin` (ver `capacitor.config.ts`): carga la version publicada en Vercel, asi que cada cambio que se despliega aparece en la app sin compilarla de nuevo. Solo hay que recompilar si cambia `capacitor.config.ts`, el icono o se agregan plugins nativos.
+
+- `pnpm cap:sync` copia la configuracion y `capacitor/www` (pantalla sin conexion) a los proyectos nativos.
+- Android: `pnpm cap:android` abre Android Studio (Windows, Mac o Linux) → Run para probar en el celular, o Build → Generate Signed App Bundle/APK para instalar.
+- iPhone: `pnpm cap:ios` abre Xcode (solo Mac) → elegir el equipo de firma (cuenta Apple Developer) → Run, o Product → Archive para TestFlight.
+- Icono y pantalla de inicio: se generan desde `assets/logo.png` con `npx @capacitor/assets generate`.
+- Los dominios distintos de juanjreyes.org (PayPal, WhatsApp, Google) se abren fuera de la app. La conexion con Google Calendar debe hacerse desde el navegador: Google no permite iniciar sesion dentro de apps con WebView.
+
 ## Recordatorio de citas por WhatsApp (Clinica)
 
 Piloto con **WhatsApp Business Platform (Cloud API)** en modo coexistencia: el mismo numero de WhatsApp Business del telefono sigue funcionando para conversar y el sistema envia los recordatorios (`src/lib/server/whatsapp.ts`, `src/lib/server/whatsapp-citas.ts`, migracion `041`).

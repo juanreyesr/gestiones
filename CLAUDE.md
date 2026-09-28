@@ -13,3 +13,4 @@
 - Sitio público estático: se genera con `node sitio-web/build.mjs` hacia `public/es` y `public/en`; no editar esos HTML a mano (ver `sitio-web/README.md`).
 - `/admin` (GestionesJJ) y `/estudiante` (Aula virtual) bloquean el "atrás" del navegador (`src/lib/use-bloquear-atras.ts`); la salida al sitio es el botón "Página principal".
 - Pagos: `/pagar` → enlace de PayPal; `/pago/gracias`; aviso por Telegram desde `/api/paypal/webhook` (ver README, "Pagos de consultas con PayPal").
+- App móvil: Capacitor 8 (`android/`, `ios/`, `capacitor.config.ts`); abre `https://www.juanjreyes.org/admin` en un WebView. Tras cambiar la config o el ícono: `pnpm cap:sync`.
