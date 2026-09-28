@@ -16,6 +16,7 @@ import {
   Download,
   GraduationCap,
   HeartPulse,
+  Home,
   KeyRound,
   ListChecks,
   LockKeyhole,
@@ -85,6 +86,7 @@ import type { ReporteData } from "./reporte-printable";
 import { ReunionesView } from "./reuniones-view";
 import { SupervisionView, type IniciarSupervision } from "./supervision-view";
 import { TelegramModal } from "./telegram-modal";
+import { useBloquearAtras } from "@/lib/use-bloquear-atras";
 
 const ALLOWED_EMAIL = "lic.juanreyesr@gmail.com";
 
@@ -151,6 +153,8 @@ type RawDocente = {
 };
 
 export function GestionesApp() {
+  // En moviles, "atras" no debe sacar al sitio publico: para eso esta el boton "Pagina principal".
+  useBloquearAtras();
   const [activeArea, setActiveArea] = useState<AreaId | null>(null);
   const [coordinacionView, setCoordinacionView] = useState<CoordinacionView>("resumen");
   const [alertasSeguimientos, setAlertasSeguimientos] = useState(0);
@@ -859,6 +863,7 @@ export function GestionesApp() {
                       Menu
                     </button>
                   ) : null}
+                  <BotonPaginaPrincipal />
                   <span className="inline-flex items-center gap-2 rounded-full border border-emerald-300/30 bg-emerald-300/10 px-3 py-1 text-xs font-semibold text-emerald-100">
                     <Sparkles className="h-3.5 w-3.5" />
                     GestionesJJ
@@ -1279,9 +1284,26 @@ function LoginGate(props: {
           <p className="mt-3 text-xs text-slate-400">
             {isSupabaseConfigured ? props.authMessage || "Supabase listo para autenticar." : "Pendiente: variables de Supabase."}
           </p>
+          <div className="mt-5">
+            <BotonPaginaPrincipal />
+          </div>
         </div>
       </section>
     </main>
+  );
+}
+
+/** Salida al sitio publico (el "atras" del navegador esta bloqueado en /admin). */
+function BotonPaginaPrincipal() {
+  return (
+    <a
+      className="inline-flex items-center gap-1 rounded-full border border-white/12 bg-white/8 py-1 pl-2 pr-2.5 text-xs font-semibold text-slate-300 transition hover:border-emerald-300/50 hover:text-white"
+      href="/es"
+      title="Ir a la página principal del sitio"
+    >
+      <Home className="h-3.5 w-3.5" />
+      Página principal
+    </a>
   );
 }
 

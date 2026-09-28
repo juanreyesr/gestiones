@@ -1,0 +1,26 @@
+"use client";
+
+import { useEffect } from "react";
+
+const MARCA = "bloqueoAtras";
+
+/**
+ * Evita que el boton/gesto "atras" del navegador (sobre todo en moviles) saque
+ * al usuario de la app hacia la pagina publica. Se agrega una entrada extra al
+ * historial en la misma URL; cuando "atras" la consume, se vuelve a poner y el
+ * usuario se queda donde estaba. Para salir al sitio publico se usa el boton
+ * "Pagina principal".
+ */
+export function useBloquearAtras() {
+  useEffect(() => {
+    // Solo una entrada extra aunque el componente se monte de nuevo (recarga, HMR).
+    if (!window.history.state?.[MARCA]) {
+      window.history.pushState({ [MARCA]: true }, "");
+    }
+    const alVolver = () => {
+      window.history.pushState({ [MARCA]: true }, "");
+    };
+    window.addEventListener("popstate", alVolver);
+    return () => window.removeEventListener("popstate", alVolver);
+  }, []);
+}

@@ -13,6 +13,7 @@ import {
 import { CambiarContrasenaModal } from "./cambiar-contrasena-modal";
 import { ChatModal } from "./chat-modal";
 import { CursoEstudianteDetalle } from "./curso-estudiante-detalle";
+import { EnlacePaginaPrincipal } from "./enlace-pagina-principal";
 import { useIdioma } from "./idioma-context";
 import { NotificacionesModal } from "./notificaciones-modal";
 import { PerfilModal } from "./perfil-modal";
@@ -66,9 +67,12 @@ export function PanelEstudiante({
   return (
     <div className="min-h-screen bg-white text-slate-900">
       <header className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 px-4 py-4 sm:px-10">
-        <div className="flex items-center gap-2 text-slate-500">
-          <GraduationCap className="h-5 w-5" />
-          <span className="text-sm font-medium">GestionesJJ</span>
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-slate-500">
+          <div className="flex items-center gap-2">
+            <GraduationCap className="h-5 w-5" />
+            <span className="text-sm font-medium">GestionesJJ</span>
+          </div>
+          <EnlacePaginaPrincipal className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-500 transition hover:border-slate-400 hover:text-slate-800" />
         </div>
         <div className="flex flex-wrap items-center justify-end gap-2 sm:gap-4">
           <div className="min-w-0 text-right">

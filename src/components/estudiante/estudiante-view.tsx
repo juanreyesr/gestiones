@@ -1,7 +1,6 @@
 "use client";
 
 import type { Session } from "@supabase/supabase-js";
-import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import {
   fetchMiPerfil,
@@ -11,11 +10,15 @@ import {
   type MiPerfil,
 } from "@/lib/estudiante/estudiante-client";
 import { getSupabaseClient, isSupabaseConfigured } from "@/lib/supabase";
+import { useBloquearAtras } from "@/lib/use-bloquear-atras";
+import { EnlacePaginaPrincipal } from "./enlace-pagina-principal";
 import { IdiomaProvider, useIdioma } from "./idioma-context";
 import { LoginEstudianteForm } from "./login-estudiante-form";
 import { PanelEstudiante } from "./panel-estudiante";
 
 export function EstudianteView() {
+  // En moviles, "atras" no debe sacar al sitio publico: para eso esta el enlace "Pagina principal".
+  useBloquearAtras();
   return (
     <IdiomaProvider>
       <EstudianteViewInterna />
@@ -107,9 +110,7 @@ function MensajeCentral({ conSalir, texto }: { conSalir?: boolean; texto: string
           {t("central_salir_otra_cuenta")}
         </button>
       ) : (
-        <Link className="text-sm text-slate-400 hover:text-slate-600" href="/">
-          ← {t("central_volver")}
-        </Link>
+        <EnlacePaginaPrincipal />
       )}
     </div>
   );
