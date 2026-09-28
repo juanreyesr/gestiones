@@ -1,6 +1,7 @@
 "use client";
 
-import { CalendarCheck2, CalendarDays, ChevronLeft, Clock, HeartPulse, Home, Send } from "lucide-react";
+import { CalendarCheck2, CalendarDays, ChevronLeft, Clock, Home, Send } from "lucide-react";
+import Image from "next/image";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { agruparSlotsPorDia, claveDiaLocal, formatoFechaLarga, formatoHora, type SlotPublico } from "@/lib/clinica/slots";
 import {
@@ -12,6 +13,36 @@ import {
   ZONA_CONSULTORIO,
   zonaDelNavegador,
 } from "@/lib/paises";
+
+/** "martes, 29 de septiembre de 2026" -> "Martes, 29 de septiembre de 2026". */
+function fechaLargaTitulo(iso: string) {
+  const texto = formatoFechaLarga(iso);
+  return texto.charAt(0).toUpperCase() + texto.slice(1);
+}
+
+/**
+ * Dias de lunes a viernes desde hoy hasta el ultimo dia con horarios, mas los
+ * dias con horarios que caigan en fin de semana. Los que no tienen horarios
+ * se muestran como "Lleno" para que se vea que la agenda existe pero esta ocupada.
+ */
+function diasDelCalendario(conHorarios: string[]) {
+  if (conHorarios.length === 0) return [];
+  const ultimo = conHorarios[conHorarios.length - 1];
+  const dias = new Set(conHorarios);
+  const cursor = new Date();
+  cursor.setHours(12, 0, 0, 0);
+  while (claveDiaLocal(cursor) <= ultimo) {
+    const diaSemana = cursor.getDay();
+    if (diaSemana >= 1 && diaSemana <= 5) dias.add(claveDiaLocal(cursor));
+    cursor.setDate(cursor.getDate() + 1);
+  }
+  return Array.from(dias).sort();
+}
+
+function isoDeClave(clave: string) {
+  const [y, m, d] = clave.split("-").map(Number);
+  return new Date(y, m - 1, d, 12).toISOString();
+}
 
 function horaEnGuatemala(iso: string) {
   return new Intl.DateTimeFormat("es-GT", { timeZone: ZONA_CONSULTORIO, hour: "numeric", minute: "2-digit" }).format(new Date(iso));
@@ -76,7 +107,7 @@ export function BookingPage() {
   }, [cargar]);
 
   const porDia = useMemo(() => agruparSlotsPorDia(slots), [slots]);
-  const dias = useMemo(() => Array.from(porDia.keys()).sort(), [porDia]);
+  const dias = useMemo(() => diasDelCalendario(Array.from(porDia.keys()).sort()), [porDia]);
 
   const datosCompletos =
     Boolean(slotElegido) &&
@@ -147,9 +178,14 @@ export function BookingPage() {
           Página principal
         </a>
         <header className="mb-8 text-center">
-          <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-emerald-50 text-emerald-600">
-            <HeartPulse className="h-7 w-7" />
-          </div>
+          <Image
+            alt="Juan J. Reyes"
+            className="mx-auto mb-4 h-24 w-24"
+            height={96}
+            priority
+            src="/assets/logo-juanjreyes.png"
+            width={96}
+          />
           <h1 className="text-2xl font-semibold text-slate-900 sm:text-3xl">Agendar una cita</h1>
           <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-slate-500">
             Elige el día y la hora que mejor te convenga. Tu solicitud será confirmada personalmente.
@@ -187,22 +223,30 @@ export function BookingPage() {
                 <div className="grid gap-2 sm:grid-cols-2">
                   {dias.map((dia) => {
                     const slotsDia = porDia.get(dia) ?? [];
+                    const lleno = slotsDia.length === 0;
                     return (
                       <button
                         key={dia}
-                        className="flex items-center justify-between gap-3 rounded-lg border border-slate-200 bg-white p-4 text-left transition hover:border-emerald-300 hover:bg-emerald-50/50"
+                        className="flex items-center justify-between gap-3 rounded-lg border border-slate-200 bg-white p-4 text-left transition enabled:hover:border-emerald-300 enabled:hover:bg-emerald-50/50 disabled:cursor-not-allowed disabled:bg-slate-50"
+                        disabled={lleno}
                         onClick={() => {
                           setDiaElegido(dia);
                           setPaso("hora");
                         }}
                         type="button"
                       >
-                        <span className="text-sm font-semibold capitalize text-slate-900">
-                          {formatoFechaLarga(slotsDia[0].inicio)}
+                        <span className={`text-sm font-semibold ${lleno ? "text-slate-400" : "text-slate-900"}`}>
+                          {fechaLargaTitulo(lleno ? isoDeClave(dia) : slotsDia[0].inicio)}
                         </span>
-                        <span className="shrink-0 rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-semibold text-emerald-700">
-                          {slotsDia.length} {slotsDia.length === 1 ? "horario" : "horarios"}
-                        </span>
+                        {lleno ? (
+                          <span className="shrink-0 rounded-full bg-slate-100 px-2 py-0.5 text-xs font-semibold text-slate-500">
+                            Lleno
+                          </span>
+                        ) : (
+                          <span className="shrink-0 rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-semibold text-emerald-700">
+                            {slotsDia.length} {slotsDia.length === 1 ? "horario" : "horarios"}
+                          </span>
+                        )}
                       </button>
                     );
                   })}
@@ -223,7 +267,7 @@ export function BookingPage() {
               </button>
               <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-500">
                 2 · Elige la hora ·{" "}
-                <span className="capitalize text-slate-900">{formatoFechaLarga((porDia.get(diaElegido) ?? [])[0]?.inicio ?? "")}</span>
+                <span className="text-slate-900">{fechaLargaTitulo((porDia.get(diaElegido) ?? [])[0]?.inicio ?? isoDeClave(diaElegido))}</span>
               </h2>
               <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
                 {(porDia.get(diaElegido) ?? []).map((slot) => (
@@ -265,7 +309,7 @@ export function BookingPage() {
               </button>
               <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-500">3 · Tus datos</h2>
               <div className="rounded-lg bg-emerald-50 p-3 text-sm text-emerald-700">
-                <span className="capitalize">{formatoFechaLarga(slotElegido.inicio)}</span> · {formatoHora(slotElegido.inicio)}
+                <span>{fechaLargaTitulo(slotElegido.inicio)}</span> · {formatoHora(slotElegido.inicio)}
                 {!mismaHoraQueConsultorio(zonaVisitante, slotElegido.inicio) ? (
                   <span className="block text-xs text-emerald-800/80">
                     Tu hora ({nombreZona(zonaVisitante)}). En Guatemala serán las {horaEnGuatemala(slotElegido.inicio)}.
@@ -451,7 +495,7 @@ export function BookingPage() {
               </div>
               <p className="text-lg font-semibold text-slate-900">¡Solicitud enviada!</p>
               <p className="mx-auto max-w-sm text-sm leading-6 text-slate-600">
-                Tu cita para el <span className="capitalize">{formatoFechaLarga(slotElegido.inicio)}</span> a las{" "}
+                Tu cita para el <span>{formatoFechaLarga(slotElegido.inicio)}</span> a las{" "}
                 {formatoHora(slotElegido.inicio)} quedó pendiente de confirmación. Recibirás la confirmación por
                 teléfono o correo.
               </p>
