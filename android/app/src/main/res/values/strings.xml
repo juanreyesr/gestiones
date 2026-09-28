@@ -1,7 +1,7 @@
 <?xml version='1.0' encoding='utf-8'?>
 <resources>
-    <string name="app_name">GestionesJJ</string>
-    <string name="title_activity_main">GestionesJJ</string>
+    <string name="app_name">Juan J. Reyes</string>
+    <string name="title_activity_main">Juan J. Reyes</string>
     <string name="package_name">org.juanjreyes.gestiones</string>
     <string name="custom_url_scheme">org.juanjreyes.gestiones</string>
 </resources>
