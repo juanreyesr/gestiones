@@ -1,0 +1,5 @@
+# Proyectos nativos de Capacitor: no se usan en el despliegue web.
+# (Con "/" inicial para no excluir public/assets.)
+/android
+/ios
+/assets
