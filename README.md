@@ -87,7 +87,7 @@ Seguridad: el webhook rechaza toda peticion sin el header `X-Telegram-Bot-Api-Se
 
 ## App movil (Capacitor)
 
-GestionesJJ tambien existe como app nativa para Android e iPhone (`android/` e `ios/`, Capacitor 8). La app abre `https://www.juanjreyes.org/admin` (ver `capacitor.config.ts`): carga la version publicada en Vercel, asi que cada cambio que se despliega aparece en la app sin compilarla de nuevo. Solo hay que recompilar si cambia `capacitor.config.ts`, el icono o se agregan plugins nativos.
+GestionesJJ tambien existe como app nativa para Android e iPhone (`android/` e `ios/`, Capacitor 8). La app abre `https://www.juanjreyes.org` (sitio completo: paginas, Aula virtual, agenda, pagos y `/admin`; ver `capacitor.config.ts`): carga la version publicada en Vercel, asi que cada cambio que se despliega aparece en la app sin compilarla de nuevo. Solo hay que recompilar si cambia `capacitor.config.ts`, el icono o se agregan plugins nativos.
 
 - `pnpm cap:sync` copia la configuracion y `capacitor/www` (pantalla sin conexion) a los proyectos nativos.
 - Android: `pnpm cap:android` abre Android Studio (Windows, Mac o Linux) → Run para probar en el celular, o Build → Generate Signed App Bundle/APK para instalar.
