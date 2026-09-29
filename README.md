@@ -101,6 +101,8 @@ Piloto con **WhatsApp Business Platform (Cloud API)** en modo coexistencia: el m
 
 - **Recordatorio 24 h antes** de cada cita pendiente o confirmada (el cron de cada 10 minutos de la migracion `034`), en la hora del paciente, con botones **Confirmo** / **Necesito reprogramar**. Citas agendadas con menos de 2 h no se recuerdan. Cada cita se recuerda una vez por horario (si se reprograma, se vuelve a recordar).
 - **Respuestas** (webhook `/api/whatsapp/webhook`): *Confirmo* marca la cita como confirmada, responde "¡Gracias!" al paciente y avisa por Telegram; *Reprogramar* responde al paciente y avisa por Telegram con boton para escribirle. Solo cuenta la respuesta del mismo numero al que se envio. Si un envio falla, llega aviso por Telegram con el error.
+- **Reintento**: si WhatsApp rechaza el envio (p. ej. la plantilla aun no esta aprobada), se reintenta cada 30 min mientras falten mas de 2 h para la cita; por Telegram se avisa el primer fallo y el envio exitoso del reintento. Los mensajes que salieron pero no se entregaron no se reintentan.
+- **Prueba**: `/probarwhatsapp numero` en el bot manda la plantilla a ese numero (distinto al del consultorio) con botones de prueba; al tocar *Confirmo* llega "Respuesta de prueba recibida" a Telegram, lo que confirma tambien el webhook. No toca ninguna cita.
 - **Por paciente**: casilla "Enviarle recordatorio automatico por WhatsApp" en su ficha (activada por defecto). En la agenda, el detalle de la cita muestra si el recordatorio se envio, entrego o leyo y que respondio el paciente.
 - Tabla `gestionesjj_whatsapp_mensajes` (solo lectura para el owner; escribe el servidor).
 

@@ -5,6 +5,7 @@ import { mismaHoraQueConsultorio, nombreZona, PAIS_POR_DEFECTO, paisDe, paisPorC
 import { type EventoGoogle, getStoredTokens, insertEvent, isGoogleConfigured, listarEventos } from "./google-calendar";
 import { pacientesComparables, resolverReserva } from "./reservas-google";
 import { getSupabaseAdmin } from "./supabase-admin";
+import { enviarPruebaWhatsApp } from "./whatsapp-citas";
 import { enviarPredicasMes, enviarQuienPredica, pedidoDePredicas } from "./telegram-iglesia";
 import {
   botonUbicacion,
@@ -178,6 +179,9 @@ export async function procesarUpdate(update: TelegramUpdate) {
     case "mensajes":
       await enviarMensajesSinLeer(admin, chatId);
       return;
+    case "probarwhatsapp":
+      await probarWhatsApp(chatId, argumento, config.chatNombre);
+      return;
     case "predicas":
       await enviarPredicasMes(admin, chatId, argumento);
       return;
@@ -249,6 +253,29 @@ async function procesarStart(admin: SupabaseClient, config: TelegramConfig | nul
   );
 }
 
+async function probarWhatsApp(chatId: number, argumento: string, chatNombre: string | null) {
+  const telefono = argumento.trim();
+  if (!telefono) {
+    await enviarMensaje(
+      chatId,
+      "🧪 Escribe el número al que mando la prueba, por ejemplo:\n/probarwhatsapp 5555 1234\n/probarwhatsapp +1 305 555 1234\n\n<i>Usa un número distinto al del consultorio: WhatsApp no deja que un número se escriba a sí mismo.</i>",
+    );
+    return;
+  }
+  const res = await enviarPruebaWhatsApp(telefono, chatNombre ?? "Hola");
+  if (res.ok) {
+    await enviarMensaje(
+      chatId,
+      `✅ <b>Recordatorio de prueba enviado</b> a +${esc(res.numero)}.\nToca <b>Confirmo</b> en ese WhatsApp: si te llega aquí «Respuesta de prueba recibida», las confirmaciones de los pacientes funcionan completas.`,
+    );
+    return;
+  }
+  const pista = /132001|does not exist/i.test(res.error)
+    ? "\n\nLa plantilla no se encuentra: revisa que esté <b>aprobada</b> y que el nombre (WHATSAPP_TEMPLATE_CITA) y el idioma (WHATSAPP_TEMPLATE_IDIOMA, p. ej. es o es_MX) coincidan exactamente."
+    : "";
+  await enviarMensaje(chatId, `❌ <b>No se pudo enviar la prueba</b>${res.numero ? ` a +${esc(res.numero)}` : ""}\n<i>${esc(res.error)}</i>${pista}`);
+}
+
 function textoAyuda() {
   return [
     "<b>Lo que puedo hacer</b>",
@@ -263,6 +290,7 @@ function textoAyuda() {
     "/datos <i>nombre</i> — enlace para que un paciente llene sus datos (con botón de WhatsApp a su número)",
     "/ubicacion — dirección del consultorio con Google Maps y Waze, lista para enviar",
     "/mensajes — mensajes de estudiantes sin leer",
+    "/probarwhatsapp <i>número</i> — te mando el recordatorio de WhatsApp de prueba a ese número (otro distinto al del consultorio)",
     "/predicas <i>mes</i> — calendario de prédicas listo para enviar por WhatsApp (ej. /predicas octubre)",
     "/quienpredica <i>cuándo</i> — quién predica y quién cierra: <i>hoy, domingo, martes, fin de semana, 12/10</i>",
     "",

@@ -104,6 +104,7 @@ export const COMANDOS_BOT = [
   { command: "pago", description: "Enlace de pago de la consulta (PayPal)" },
   { command: "datos", description: "Enlace de datos de un paciente: /datos Ana" },
   { command: "ubicacion", description: "Dirección del consultorio con Maps y Waze" },
+  { command: "probarwhatsapp", description: "Probar el recordatorio de WhatsApp: /probarwhatsapp número" },
   { command: "predicas", description: "Prédicas del mes para enviar: /predicas octubre" },
   { command: "quienpredica", description: "Quién predica y cierra: /quienpredica domingo" },
   { command: "mensajes", description: "Mensajes de estudiantes sin leer" },
