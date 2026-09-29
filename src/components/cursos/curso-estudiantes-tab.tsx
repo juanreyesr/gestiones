@@ -552,14 +552,14 @@ function DarAccesoModal({
     <ModalPortal>
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4" onClick={onClose}>
         <div
-          className="w-full max-w-sm border border-white/10 bg-slate-950 p-5"
+          className="flex max-h-[85vh] w-full max-w-sm flex-col border border-white/10 bg-slate-950 p-5"
           onClick={(event) => event.stopPropagation()}
         >
           <h3 className="mb-1 text-lg font-semibold text-white">Dar acceso a {estudiante.nombre}</h3>
           <p className="mb-4 text-xs text-slate-400">
             Si este correo ya tiene acceso en otro curso, se usará su misma cuenta.
           </p>
-          <div className="grid gap-3">
+          <div className="grid gap-3 overflow-y-auto">
             <Field label="Correo (será su usuario)">
               <input className="field" onChange={(event) => setCorreo(event.target.value)} value={correo} />
             </Field>
@@ -667,13 +667,15 @@ function RetirarModal({
     <ModalPortal>
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4" onClick={onClose}>
         <div
-          className="w-full max-w-sm border border-white/10 bg-slate-950 p-5"
+          className="flex max-h-[85vh] w-full max-w-sm flex-col border border-white/10 bg-slate-950 p-5"
           onClick={(event) => event.stopPropagation()}
         >
           <h3 className="mb-3 text-lg font-semibold text-white">Retirar a {estudiante.nombre}</h3>
-          <Field label="Nota (opcional)">
-            <textarea className="field" onChange={(event) => setNota(event.target.value)} rows={2} value={nota} />
-          </Field>
+          <div className="overflow-y-auto">
+            <Field label="Nota (opcional)">
+              <textarea className="field" onChange={(event) => setNota(event.target.value)} rows={2} value={nota} />
+            </Field>
+          </div>
           <ErrorBanner message={error} />
           <div className="mt-5 flex justify-end gap-3">
             <button className={BTN_GHOST} onClick={onClose} type="button">
@@ -727,11 +729,11 @@ function EditarEstudianteModal({
     <ModalPortal>
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4" onClick={onClose}>
         <div
-          className="w-full max-w-sm border border-white/10 bg-slate-950 p-5"
+          className="flex max-h-[85vh] w-full max-w-sm flex-col border border-white/10 bg-slate-950 p-5"
           onClick={(event) => event.stopPropagation()}
         >
           <h3 className="mb-4 text-lg font-semibold text-white">Editar estudiante</h3>
-          <div className="grid gap-3">
+          <div className="grid gap-3 overflow-y-auto">
             <Field label="Nombre">
               <input className="field" onChange={(event) => setNombre(event.target.value)} value={nombre} />
             </Field>

@@ -220,11 +220,11 @@ function SemanaModal({
     <ModalPortal>
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4" onClick={onClose}>
         <div
-          className="w-full max-w-md border border-white/10 bg-slate-950 p-5"
+          className="flex max-h-[85vh] w-full max-w-md flex-col border border-white/10 bg-slate-950 p-5"
           onClick={(event) => event.stopPropagation()}
         >
           <h3 className="mb-4 text-lg font-semibold text-white">{semana ? "Editar semana" : "Nueva semana"}</h3>
-          <div className="grid gap-3">
+          <div className="grid gap-3 overflow-y-auto">
             <Field label="Número">
               <input
                 className="field"
