@@ -7,6 +7,12 @@ import { enviarPlantilla, enviarTexto, isWhatsAppConfigured, type WebhookWhatsAp
 export const HORAS_ANTES_WHATSAPP = 24;
 /** Citas agendadas con menos anticipacion que esto no reciben recordatorio (ya estan frescas). */
 const MINIMO_HORAS_ANTES = 2;
+/**
+ * Un envio que WhatsApp rechazo (plantilla aun sin aprobar, numero mal
+ * configurado...) se reintenta cada tanto mientras la cita siga en la ventana.
+ * Los que fallaron despues de salir (sin entrega) no se reintentan.
+ */
+const MINUTOS_ENTRE_REINTENTOS = 30;
 
 type RawCitaWhatsApp = {
   id: string;
@@ -80,7 +86,22 @@ export async function enviarRecordatoriosWhatsApp(admin: SupabaseClient, config:
       .from("gestionesjj_whatsapp_mensajes")
       .upsert({ cita_id: cita.id, inicio: cita.inicio, telefono: numero }, { onConflict: "cita_id,inicio", ignoreDuplicates: true })
       .select("id");
-    const registroId = (registro as Array<{ id: string }> | null)?.[0]?.id;
+    let registroId = (registro as Array<{ id: string }> | null)?.[0]?.id;
+    let reintento = false;
+    if (!registroId) {
+      // Ya habia registro: solo se toma de nuevo si WhatsApp rechazo el envio hace rato.
+      const { data: previo } = await admin
+        .from("gestionesjj_whatsapp_mensajes")
+        .update({ estado: "enviando", error: null, telefono: numero })
+        .eq("cita_id", cita.id)
+        .eq("inicio", cita.inicio)
+        .eq("estado", "fallido")
+        .is("wa_message_id", null)
+        .lt("updated_at", new Date(ahora - MINUTOS_ENTRE_REINTENTOS * 60_000).toISOString())
+        .select("id");
+      registroId = (previo as Array<{ id: string }> | null)?.[0]?.id;
+      reintento = true;
+    }
     if (!registroId) continue;
 
     const res = await enviarPlantilla({
@@ -93,12 +114,19 @@ export async function enviarRecordatoriosWhatsApp(admin: SupabaseClient, config:
     if (res.ok) {
       enviados += 1;
       await admin.from("gestionesjj_whatsapp_mensajes").update({ wa_message_id: res.id, estado: "enviado" }).eq("id", registroId);
-    } else {
-      await admin.from("gestionesjj_whatsapp_mensajes").update({ estado: "fallido", error: res.error }).eq("id", registroId);
-      if (config?.chatId) {
+      if (reintento && config?.chatId) {
         await enviarMensaje(
           config.chatId,
-          `⚠️ <b>No se envió el recordatorio de WhatsApp</b>\n👤 ${esc(nombre || "Paciente")} · ${esc(fechaHora(cita.inicio))}\n<i>${esc(res.error)}</i>`,
+          `✅ <b>Recordatorio de WhatsApp enviado</b> (reintento)\n👤 ${esc(nombre || "Paciente")} · ${esc(fechaHora(cita.inicio))}`,
+        );
+      }
+    } else {
+      await admin.from("gestionesjj_whatsapp_mensajes").update({ estado: "fallido", error: res.error }).eq("id", registroId);
+      // Se avisa solo la primera vez; los reintentos fallidos no llenan el chat.
+      if (!reintento && config?.chatId) {
+        await enviarMensaje(
+          config.chatId,
+          `⚠️ <b>No se envió el recordatorio de WhatsApp</b>\n👤 ${esc(nombre || "Paciente")} · ${esc(fechaHora(cita.inicio))}\n<i>${esc(res.error)}</i>\n\nLo reintento cada ${MINUTOS_ENTRE_REINTENTOS} min hasta ${MINIMO_HORAS_ANTES} h antes de la cita. Puedes probar la plantilla con /probarwhatsapp.`,
         );
       }
     }
@@ -147,6 +175,11 @@ export async function procesarWebhookWhatsApp(admin: SupabaseClient, cuerpo: Web
 
       for (const mensaje of value.messages ?? []) {
         const payload = mensaje.button?.payload ?? mensaje.interactive?.button_reply?.id ?? "";
+        const prueba = /^prueba:(confirmar|reprogramar)$/i.exec(payload);
+        if (prueba) {
+          await procesarRespuestaPrueba(prueba[1].toLowerCase(), mensaje.from);
+          continue;
+        }
         const coincide = /^(confirmar|reprogramar):([0-9a-f-]{36})$/i.exec(payload);
         if (!coincide) continue; // Cualquier otro mensaje se atiende desde la app de WhatsApp.
         await procesarRespuesta(admin, coincide[1].toLowerCase() as "confirmar" | "reprogramar", coincide[2], mensaje.from);
@@ -195,5 +228,37 @@ async function procesarRespuesta(admin: SupabaseClient, accion: "confirmar" | "r
     "whatsapp_respuestas",
     `🔁 <b>${esc(nombre || "Paciente")} pide reprogramar</b>\n📅 ${esc(fechaHora(cita.inicio))}\n<i>La cita sigue en la agenda hasta que la muevas.</i>`,
     { botones: [[{ text: "💬 Escribirle por WhatsApp", url: `https://wa.me/${registro.telefono}` }]] },
+  );
+}
+
+// ============================================================
+// Prueba desde Telegram (/probarwhatsapp)
+// ============================================================
+
+/**
+ * Envia la plantilla de recordatorio a un numero para probarla sin esperar a
+ * una cita real. Los botones llevan payload "prueba:..." para que la
+ * respuesta confirme tambien que el webhook funciona, sin tocar ninguna cita.
+ */
+export async function enviarPruebaWhatsApp(telefono: string, nombre: string) {
+  if (!isWhatsAppConfigured()) return { ok: false as const, error: "WhatsApp no está configurado en el servidor (faltan variables en Vercel)." };
+  const numero = telefonoInternacional(telefono, paisDe({ telefono }));
+  if (numero.length < 8) return { ok: false as const, error: "Ese número no parece válido." };
+  const manana = new Date(Date.now() + 86_400_000);
+  manana.setUTCHours(16, 0, 0, 0); // 10:00 a. m. en Guatemala
+  const res = await enviarPlantilla({
+    telefono: numero,
+    plantilla: process.env.WHATSAPP_TEMPLATE_CITA as string,
+    cuerpo: parametrosRecordatorio(nombre, manana.toISOString(), ZONA_CONSULTORIO),
+    payloadsBotones: ["prueba:confirmar", "prueba:reprogramar"],
+  });
+  return res.ok ? { ok: true as const, numero } : { ok: false as const, error: res.error, numero };
+}
+
+async function procesarRespuestaPrueba(accion: string, remitente: string) {
+  await enviarTexto(remitente, "✅ Prueba recibida: los botones del recordatorio funcionan.");
+  await notificar(
+    "whatsapp_respuestas",
+    `🧪 <b>Respuesta de prueba recibida</b>\nTocaste «${accion === "confirmar" ? "Confirmo" : "Necesito reprogramar"}» desde +${esc(remitente)}. El webhook de WhatsApp funciona: las confirmaciones de los pacientes llegarán aquí.`,
   );
 }
