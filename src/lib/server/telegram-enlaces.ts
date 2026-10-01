@@ -260,3 +260,44 @@ export async function enviarUbicacion(admin: SupabaseClient, chatId: number) {
     ],
   });
 }
+
+// ============================================================
+// Compromisos y tareas de la sesion, listos para reenviar al paciente
+// ============================================================
+
+export function textoTareasPaciente(nombre: string, compromisos: string[], tareas: string[]) {
+  const primerNombre = nombre.split(" ")[0];
+  const lista = (items: string[]) => items.map((item) => `• ${item}`).join("\n");
+  return [
+    `Hola ${primerNombre}, te comparto lo que acordamos en nuestra sesión:`,
+    compromisos.length ? `\n*Compromisos*\n${lista(compromisos)}` : null,
+    tareas.length ? `\n*Tareas para la próxima sesión*\n${lista(tareas)}` : null,
+    "\nCualquier duda me escribes. ¡Ánimo!",
+  ]
+    .filter((linea) => linea !== null)
+    .join("\n");
+}
+
+/**
+ * Manda por Telegram (al owner) los compromisos y tareas de la sesion con un
+ * boton que abre WhatsApp con el mensaje listo para el paciente.
+ */
+export async function enviarTareasPorTelegram(
+  admin: SupabaseClient,
+  chatId: number,
+  pacienteId: string,
+  compromisos: string[],
+  tareas: string[],
+) {
+  const { data } = await admin.from("gestionesjj_pacientes").select(COLUMNAS).eq("id", pacienteId).maybeSingle();
+  const paciente = data as PacienteEnlace | null;
+  if (!paciente) return { error: "No se encontró el paciente." };
+
+  const mensaje = textoTareasPaciente(paciente.nombre, compromisos, tareas);
+  const res = await enviarMensaje(
+    chatId,
+    [`📝 <b>Compromisos y tareas para ${esc(paciente.nombre)}</b>`, "", "<i>Mensaje listo para reenviar:</i>", esc(mensaje)].join("\n"),
+    { botones: [[compartir(mensaje, paciente.telefono, paisDe({ pais: paciente.pais, telefono: paciente.telefono }))]] },
+  );
+  return { error: res.ok ? null : "Telegram no aceptó el mensaje." };
+}

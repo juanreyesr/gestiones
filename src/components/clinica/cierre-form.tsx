@@ -1,8 +1,8 @@
 "use client";
 
-import { CheckCheck, Plus, Sparkles, X } from "lucide-react";
+import { CheckCheck, Lightbulb, Plus, Send, Sparkles, X } from "lucide-react";
 import { useState } from "react";
-import { generarResumenIA } from "@/lib/clinica/ai-client";
+import { enviarTareasAlPaciente, generarResumenIA, generarSugerenciasIA } from "@/lib/clinica/ai-client";
 import type { CompromisoRow, ResumenOrigen, SesionModalidad } from "@/lib/clinica/types";
 import { BTN_ACCENT, BTN_GHOST, BTN_PRIMARY, Field } from "./ui";
 
@@ -61,9 +61,16 @@ function ListaEditable({
   );
 }
 
+const TIPO_PROPUESTA: Record<"tecnica" | "terapia" | "evaluacion", string> = {
+  tecnica: "Técnica",
+  terapia: "Terapia",
+  evaluacion: "Evaluación",
+};
+
 export function CierreForm({
   modalidad,
   notas,
+  pacienteId,
   onGuardar,
   onVolver,
   pendientes,
@@ -73,6 +80,7 @@ export function CierreForm({
 }: {
   modalidad: SesionModalidad | null;
   notas: string;
+  pacienteId: string;
   onGuardar: (values: CierreValues) => void;
   onVolver: () => void;
   pendientes: CompromisoRow[];
@@ -80,12 +88,18 @@ export function CierreForm({
   saving: boolean;
   tema: string | null;
 }) {
-  const [resumen, setResumen] = useState("");
+  // El resumen arranca con las notas de la sesión: es más rápido borrar lo innecesario que reescribir.
+  const [resumen, setResumen] = useState(notas.trim());
   const [seguimiento, setSeguimiento] = useState("");
   const [compromisos, setCompromisos] = useState<string[]>([]);
   const [tareas, setTareas] = useState<string[]>([]);
   const [origen, setOrigen] = useState<ResumenOrigen>("manual");
-  const [seguimientoIds, setSeguimientoIds] = useState<Set<string>>(new Set());
+  // Lo pendiente arranca marcado: solo se desmarca lo que ya no se seguirá trabajando.
+  const [seguimientoIds, setSeguimientoIds] = useState<Set<string>>(() => new Set(pendientes.map((item) => item.id)));
+  const [sugiriendo, setSugiriendo] = useState(false);
+  const [sugerenciasMsg, setSugerenciasMsg] = useState("");
+  const [enviando, setEnviando] = useState(false);
+  const [envioMsg, setEnvioMsg] = useState<{ ok: boolean; texto: string } | null>(null);
   const [generando, setGenerando] = useState(false);
   const [iaNoConfigurada, setIaNoConfigurada] = useState(false);
   const [iaError, setIaError] = useState("");
@@ -125,6 +139,68 @@ export function CierreForm({
     setCompromisos(data.compromisos.length > 0 ? data.compromisos : []);
     setTareas(data.tareas.length > 0 ? data.tareas : []);
     setOrigen("ia");
+  };
+
+  const handleSugerencias = async () => {
+    if (sugiriendo) return;
+    setSugiriendo(true);
+    setSugerenciasMsg("");
+    const { data, noConfigurado, error: sugError } = await generarSugerenciasIA({
+      notas,
+      resumen,
+      tema,
+      modalidad,
+      resumenAnterior,
+    });
+    setSugiriendo(false);
+    if (noConfigurado) {
+      setIaNoConfigurada(true);
+      return;
+    }
+    if (sugError || !data) {
+      setSugerenciasMsg(sugError ?? "No se pudieron generar sugerencias.");
+      return;
+    }
+    const propuestas = data.propuestas.length
+      ? `Propuestas (IA):\n${data.propuestas
+          .map((p) => `- ${TIPO_PROPUESTA[p.tipo] ?? "Propuesta"}: ${p.nombre} — ${p.justificacion}`)
+          .join("\n")}`
+      : "";
+    const bloque = [data.seguimiento.trim(), propuestas].filter(Boolean).join("\n\n");
+    setSeguimiento((prev) => (prev.trim() ? `${prev.trim()}\n\n${bloque}` : bloque));
+    setSugerenciasMsg("Sugerencias agregadas abajo: edita o borra lo que no quieras conservar.");
+  };
+
+  // Compromisos y tareas nuevos + los pendientes que siguen marcados.
+  const listaParaPaciente = () => {
+    const vigentes = pendientes.filter((item) => seguimientoIds.has(item.id));
+    return {
+      compromisos: [
+        ...compromisos.map((item) => item.trim()).filter(Boolean),
+        ...vigentes.filter((item) => item.tipo === "compromiso").map((item) => item.descripcion),
+      ],
+      tareas: [
+        ...tareas.map((item) => item.trim()).filter(Boolean),
+        ...vigentes.filter((item) => item.tipo === "tarea").map((item) => item.descripcion),
+      ],
+    };
+  };
+
+  const handleEnviarPaciente = async () => {
+    const lista = listaParaPaciente();
+    if (lista.compromisos.length === 0 && lista.tareas.length === 0) {
+      setEnvioMsg({ ok: false, texto: "Agrega al menos un compromiso o una tarea." });
+      return;
+    }
+    setEnviando(true);
+    setEnvioMsg(null);
+    const { error: envError } = await enviarTareasAlPaciente(pacienteId, lista.compromisos, lista.tareas);
+    setEnviando(false);
+    setEnvioMsg(
+      envError
+        ? { ok: false, texto: envError }
+        : { ok: true, texto: "Enviado a tu Telegram: toca el botón de WhatsApp para reenviárselo al paciente." },
+    );
   };
 
   const handleGuardar = () => {
@@ -176,20 +252,40 @@ export function CierreForm({
             setResumen(event.target.value);
           }}
           placeholder="¿Qué se trabajó hoy? Principales temas, avances y observaciones."
-          rows={6}
+          rows={Math.min(16, Math.max(6, resumen.split("\n").length + 2))}
           value={resumen}
         />
       </Field>
+      {origen === "manual" && notas.trim() ? (
+        <p className="-mt-2 text-xs text-slate-500">
+          Precargado con tus notas de la sesión: borra lo innecesario y deja lo relevante.
+        </p>
+      ) : null}
 
-      <Field label="Aspectos a dar seguimiento">
+      <div className="grid gap-1.5">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <span className="text-xs font-semibold uppercase text-slate-400">Aspectos a dar seguimiento</span>
+          {!iaNoConfigurada ? (
+            <button
+              className="inline-flex items-center gap-1.5 border border-sky-300/40 bg-sky-300/10 px-3 py-1.5 text-xs font-semibold text-sky-200 transition hover:bg-sky-300/20 disabled:opacity-50"
+              disabled={sugiriendo || (notas.trim().length === 0 && resumen.trim().length === 0)}
+              onClick={() => void handleSugerencias()}
+              type="button"
+            >
+              <Lightbulb className="h-3.5 w-3.5" />
+              {sugiriendo ? "Pensando..." : "Sugerir seguimiento y técnicas (IA)"}
+            </button>
+          ) : null}
+        </div>
         <textarea
           className="field resize-y"
           onChange={(event) => setSeguimiento(event.target.value)}
           placeholder="Puntos que conviene retomar o vigilar en próximas sesiones."
-          rows={3}
+          rows={seguimiento.length > 200 ? 8 : 3}
           value={seguimiento}
         />
-      </Field>
+        {sugerenciasMsg ? <p className="text-xs text-sky-200">{sugerenciasMsg}</p> : null}
+      </div>
 
       <div className="grid gap-4 sm:grid-cols-2">
         <ListaEditable
@@ -213,8 +309,8 @@ export function CierreForm({
               Dar seguimiento a lo pendiente
             </span>
             <p className="mt-0.5 text-xs leading-5 text-slate-500">
-              Marca los compromisos o tareas de la sesión anterior que sigan vigentes: se trasladarán a esta
-              sesión para continuar dándoles seguimiento, sin volver a escribirlos.
+              Vienen marcados: desmarca solo lo que ya no quieras seguir trabajando. Lo marcado pasa a esta
+              sesión para continuar dándole seguimiento, sin volver a escribirlo.
             </p>
           </div>
           <ul className="grid gap-2">
@@ -239,6 +335,28 @@ export function CierreForm({
           </ul>
         </div>
       ) : null}
+
+      <div className="grid gap-2 border border-emerald-300/30 bg-emerald-300/6 p-4">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <span className="text-xs font-semibold uppercase text-slate-300">Enviar al paciente</span>
+          <button
+            className="inline-flex items-center gap-1.5 border border-emerald-300/50 bg-emerald-300/10 px-3 py-1.5 text-sm font-semibold text-emerald-200 transition hover:bg-emerald-300/20 disabled:opacity-50"
+            disabled={enviando}
+            onClick={() => void handleEnviarPaciente()}
+            type="button"
+          >
+            <Send className="h-4 w-4" />
+            {enviando ? "Enviando..." : "Enviar compromisos y tareas"}
+          </button>
+        </div>
+        <p className="text-xs leading-5 text-slate-400">
+          Te llega a Telegram el mensaje listo, con un botón para reenviarlo al paciente por WhatsApp. Incluye los
+          compromisos y tareas nuevos y los pendientes que sigan marcados.
+        </p>
+        {envioMsg ? (
+          <p className={`text-xs ${envioMsg.ok ? "text-emerald-300" : "text-red-300"}`}>{envioMsg.texto}</p>
+        ) : null}
+      </div>
 
       {error ? <div className="border border-red-400/40 bg-red-400/10 p-3 text-sm text-red-200">{error}</div> : null}
 

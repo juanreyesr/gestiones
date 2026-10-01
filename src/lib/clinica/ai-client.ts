@@ -15,7 +15,7 @@ export type GenerarResumenInput = {
   resumenAnterior: string | null;
 };
 
-async function getAccessToken() {
+export async function getAccessToken() {
   const supabase = getSupabaseClient();
   if (!supabase) return null;
   const { data } = await supabase.auth.getSession();
@@ -55,5 +55,57 @@ export async function generarResumenIA(input: GenerarResumenInput) {
       noConfigurado: false,
       error: "Error de conexión al generar el resumen. Escríbelo manualmente.",
     };
+  }
+}
+
+export type PropuestaClinica = { tipo: "tecnica" | "terapia" | "evaluacion"; nombre: string; justificacion: string };
+export type SugerenciasGeneradas = { seguimiento: string; propuestas: PropuestaClinica[] };
+
+/** Sugerencias de seguimiento y de técnicas/terapias/evaluaciones para la sesión (a pedido). */
+export async function generarSugerenciasIA(input: GenerarResumenInput & { resumen: string }) {
+  const token = await getAccessToken();
+  if (!token) {
+    return { data: null as SugerenciasGeneradas | null, noConfigurado: false, error: "Sesión no válida. Vuelve a iniciar." };
+  }
+  try {
+    const response = await fetch("/api/ai/resumen", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ ...input, modo: "sugerencias" }),
+    });
+    if (response.status === 503) {
+      return { data: null as SugerenciasGeneradas | null, noConfigurado: true, error: null };
+    }
+    if (!response.ok) {
+      const body = (await response.json().catch(() => null)) as { error?: string } | null;
+      return {
+        data: null as SugerenciasGeneradas | null,
+        noConfigurado: false,
+        error: body?.error ?? "No se pudieron generar sugerencias.",
+      };
+    }
+    return { data: (await response.json()) as SugerenciasGeneradas, noConfigurado: false, error: null };
+  } catch {
+    return { data: null as SugerenciasGeneradas | null, noConfigurado: false, error: "Error de conexión al pedir sugerencias." };
+  }
+}
+
+/** Manda a Telegram los compromisos y tareas con un botón para reenviarlos al paciente por WhatsApp. */
+export async function enviarTareasAlPaciente(pacienteId: string, compromisos: string[], tareas: string[]) {
+  const token = await getAccessToken();
+  if (!token) return { error: "Sesión no válida. Vuelve a iniciar." };
+  try {
+    const response = await fetch("/api/clinica/enviar-tareas", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ pacienteId, compromisos, tareas }),
+    });
+    if (!response.ok) {
+      const body = (await response.json().catch(() => null)) as { error?: string } | null;
+      return { error: body?.error ?? "No se pudo enviar a Telegram." };
+    }
+    return { error: null };
+  } catch {
+    return { error: "Error de conexión al enviar a Telegram." };
   }
 }
