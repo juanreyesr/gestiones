@@ -449,7 +449,7 @@ export async function construirResumenDiario(admin: SupabaseClient): Promise<{ t
 
   const pagos = bloquePendientesPago(sinPagar, 4);
   if (pagos.pacientes > 0) {
-    lineas.push("", `💵 <b>Pendientes de pago</b> — ${pagos.pacientes} paciente(s), ${sinPagar.length} cita(s) → /pagos`);
+    lineas.push("", `💵 <b>Pendientes de pago</b> — ${pagos.pacientes} paciente(s), ${sinPagar.length} cita(s), ${esc(pagos.total)} → /pagos`);
     lineas.push(...pagos.lineas.slice(0, 8));
   }
 
@@ -867,7 +867,7 @@ async function enviarPendientesPago(admin: SupabaseClient, chatId: number) {
   await enviarMensaje(
     chatId,
     [
-      `💵 <b>Pendientes de pago</b> — ${pagos.pacientes} paciente(s), ${citas.length} cita(s)`,
+      `💵 <b>Pendientes de pago</b> — ${pagos.pacientes} paciente(s), ${citas.length} cita(s), total ${esc(pagos.total)}`,
       "",
       ...pagos.lineas,
       "",

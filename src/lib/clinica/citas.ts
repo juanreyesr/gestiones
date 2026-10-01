@@ -1,5 +1,5 @@
 import { getSupabaseClient } from "@/lib/supabase";
-import type { CitaEstado, CitaModalidad, CitaRow, GcalSyncStatus } from "./types";
+import type { CitaEstado, CitaModalidad, CitaRow, GcalSyncStatus, Moneda } from "./types";
 
 type RawCita = {
   id: string;
@@ -19,11 +19,13 @@ type RawCita = {
   gcal_sync_status: GcalSyncStatus | null;
   pagada: boolean | null;
   pagada_at: string | null;
+  monto: number | string | null;
+  moneda: Moneda | null;
   gestionesjj_pacientes?: { nombre: string } | null;
 };
 
 const CITA_COLUMNS =
-  "id,paciente_id,contacto_nombre,contacto_telefono,contacto_email,inicio,fin,estado,origen,modalidad,motivo,notas,motivo_estado,gcal_event_id,gcal_sync_status,pagada,pagada_at,gestionesjj_pacientes(nombre)";
+  "id,paciente_id,contacto_nombre,contacto_telefono,contacto_email,inicio,fin,estado,origen,modalidad,motivo,notas,motivo_estado,gcal_event_id,gcal_sync_status,pagada,pagada_at,monto,moneda,gestionesjj_pacientes(nombre)";
 
 function mapCita(row: RawCita): CitaRow {
   return {
@@ -45,6 +47,8 @@ function mapCita(row: RawCita): CitaRow {
     gcalSyncStatus: row.gcal_sync_status,
     pagada: row.pagada ?? false,
     pagadaAt: row.pagada_at,
+    monto: row.monto === null || row.monto === undefined ? null : Number(row.monto),
+    moneda: row.moneda,
   };
 }
 
@@ -184,6 +188,37 @@ export async function fetchCitasSinCerrar() {
     .in("estado", ["pendiente", "confirmada"])
     .lt("fin", new Date().toISOString())
     .order("inicio");
+
+  if (error) return { data: [] as CitaRow[], error: error.message };
+  return { data: ((data ?? []) as unknown as RawCita[]).map(mapCita), error: null };
+}
+
+/** Cambia el monto de una cita puntual (descuento, sesion mas larga, etc.). */
+export async function actualizarMontoCita(id: string, monto: number | null, moneda: Moneda) {
+  const supabase = getSupabaseClient();
+  if (!supabase) return { error: "Faltan las variables de Supabase." };
+  const { error } = await supabase
+    .from("gestionesjj_citas")
+    .update({ monto, moneda: monto === null ? null : moneda })
+    .eq("id", id);
+  return { error: error?.message ?? null };
+}
+
+/** Citas marcadas como pagadas desde el inicio del mes en curso (lo cobrado del mes). */
+export async function fetchCobradasDelMes() {
+  const supabase = getSupabaseClient();
+  if (!supabase) return { data: [] as CitaRow[], error: "Faltan las variables de Supabase." };
+
+  const inicioMes = new Date();
+  inicioMes.setDate(1);
+  inicioMes.setHours(0, 0, 0, 0);
+
+  const { data, error } = await supabase
+    .from("gestionesjj_citas")
+    .select(CITA_COLUMNS)
+    .eq("pagada", true)
+    .gte("pagada_at", inicioMes.toISOString())
+    .order("pagada_at");
 
   if (error) return { data: [] as CitaRow[], error: error.message };
   return { data: ((data ?? []) as unknown as RawCita[]).map(mapCita), error: null };

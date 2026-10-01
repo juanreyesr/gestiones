@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { buscarCoincidencia } from "@/lib/clinica/coincidencias";
+import { totalPorMoneda } from "@/lib/clinica/dinero";
 import type { AvisoPago } from "./paypal";
 import { pacientesComparables } from "./reservas-google";
 import { type BotonInline, esc, fechaHora, fechaLocal, inicioDiaIso } from "./telegram";
@@ -19,10 +20,17 @@ type RawCitaPago = {
   estado: string;
   paciente_id: string | null;
   contacto_nombre: string | null;
+  monto: number | string | null;
+  moneda: "GTQ" | "USD" | null;
   gestionesjj_pacientes: { nombre: string } | null;
 };
 
-const COLUMNAS = "id,inicio,estado,paciente_id,contacto_nombre,gestionesjj_pacientes(nombre)";
+const COLUMNAS = "id,inicio,estado,paciente_id,contacto_nombre,monto,moneda,gestionesjj_pacientes(nombre)";
+
+/** Montos de las citas para sumar (null = cita sin monto). */
+function montos(citas: RawCitaPago[]) {
+  return citas.map((cita) => ({ monto: cita.monto === null ? null : Number(cita.monto), moneda: cita.moneda }));
+}
 
 function nombreDe(cita: RawCitaPago) {
   return cita.gestionesjj_pacientes?.nombre ?? cita.contacto_nombre ?? "Paciente";
@@ -171,14 +179,16 @@ export function bloquePendientesPago(citas: RawCitaPago[], maxBotones = 6) {
     grupo.citas.push(cita);
     grupos.set(clave, grupo);
   }
-  const lineas = Array.from(grupos.values()).map(
-    (grupo) =>
-      `• ${esc(grupo.nombre)} — ${grupo.citas.length} cita(s): ${grupo.citas.map((cita) => esc(fechaCorta(cita.inicio))).join(", ")}`,
-  );
+  const lineas = Array.from(grupos.values()).map((grupo) => {
+    const conMonto = grupo.citas.some((cita) => cita.monto !== null);
+    return `• ${esc(grupo.nombre)} — ${grupo.citas.length} cita(s)${conMonto ? `, debe <b>${esc(totalPorMoneda(montos(grupo.citas)))}</b>` : ""}: ${grupo.citas
+      .map((cita) => esc(fechaCorta(cita.inicio)))
+      .join(", ")}`;
+  });
   const botones = citas.slice(0, maxBotones).map((cita) => [
     { text: `✅ Pagada: ${nombreDe(cita).split(" ")[0]} (${fechaCorta(cita.inicio)})`, callback_data: `pag:ok:${cita.id}` },
   ]);
-  return { pacientes: grupos.size, lineas, botones };
+  return { pacientes: grupos.size, lineas, botones, total: totalPorMoneda(montos(citas)) };
 }
 
 /** Marca (o desmarca) una cita como pagada desde un boton de Telegram. */

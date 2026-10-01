@@ -12,7 +12,7 @@ import {
 import { formatoFechaLarga, formatoHora } from "@/lib/clinica/slots";
 import { ConfirmDialog } from "../confirm-dialog";
 import { CierreForm, type CierreValues } from "./cierre-form";
-import { CitasSinPagarAviso } from "./pagos";
+import { CitasSinPagarAviso, TarifaEditor } from "./pagos";
 import { BTN_PRIMARY, SectionCard } from "./ui";
 
 export function SesionActiva({
@@ -161,6 +161,7 @@ export function SesionActiva({
         {error ? <div className="border border-red-400/40 bg-red-400/10 p-3 text-sm text-red-200">{error}</div> : null}
 
         <CitasSinPagarAviso citas={citasSinPagar} onChanged={onPagoCambiado} />
+        {paciente.tarifa === null ? <TarifaEditor aviso onSaved={onPagoCambiado} paciente={paciente} /> : null}
 
         <div className="grid gap-4 lg:grid-cols-2">
           <button
@@ -328,6 +329,7 @@ export function SesionActiva({
 
         <aside className="grid content-start gap-4">
           <CitasSinPagarAviso citas={citasSinPagar} onChanged={onPagoCambiado} />
+          {paciente.tarifa === null ? <TarifaEditor aviso onSaved={onPagoCambiado} paciente={paciente} /> : null}
           <SectionCard title="Compromisos y tareas previos">
             {pendientes.length === 0 ? (
               <p className="text-sm text-slate-400">No hay compromisos ni tareas pendientes.</p>

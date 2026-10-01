@@ -1,5 +1,5 @@
 import { getSupabaseClient } from "@/lib/supabase";
-import type { HijoInfo, PacienteEstado, PacientePayload, PacienteRow } from "./types";
+import type { HijoInfo, Moneda, PacienteEstado, PacientePayload, PacienteRow } from "./types";
 
 type RawPaciente = {
   id: string;
@@ -36,10 +36,12 @@ type RawPaciente = {
   datos_completados_at: string | null;
   consentimiento_aceptado_at: string | null;
   whatsapp_recordatorios: boolean | null;
+  tarifa: number | string | null;
+  tarifa_moneda: Moneda | null;
 };
 
 const PACIENTE_COLUMNS =
-  "id,nombre,telefono,email,pais,zona_horaria,fecha_nacimiento,genero,ocupacion,escolaridad,estado_civil,direccion,emergencia_nombre,emergencia_telefono,emergencia_relacion,motivo_consulta,antecedentes_medicos,antecedentes_psicologicos,antecedentes_familiares,medicacion_actual,referido_por,notas_generales,tiene_hijos,hijos,vive_solo,convive_con,convive_otros,horario_trabajo,estado,created_at,datos_token,datos_completados_at,consentimiento_aceptado_at,whatsapp_recordatorios";
+  "id,nombre,telefono,email,pais,zona_horaria,fecha_nacimiento,genero,ocupacion,escolaridad,estado_civil,direccion,emergencia_nombre,emergencia_telefono,emergencia_relacion,motivo_consulta,antecedentes_medicos,antecedentes_psicologicos,antecedentes_familiares,medicacion_actual,referido_por,notas_generales,tiene_hijos,hijos,vive_solo,convive_con,convive_otros,horario_trabajo,estado,created_at,datos_token,datos_completados_at,consentimiento_aceptado_at,whatsapp_recordatorios,tarifa,tarifa_moneda";
 
 function mapPaciente(row: RawPaciente): PacienteRow {
   return {
@@ -77,6 +79,8 @@ function mapPaciente(row: RawPaciente): PacienteRow {
     datosCompletadosAt: row.datos_completados_at,
     consentimientoAceptadoAt: row.consentimiento_aceptado_at,
     whatsappRecordatorios: row.whatsapp_recordatorios ?? true,
+    tarifa: row.tarifa === null || row.tarifa === undefined ? null : Number(row.tarifa),
+    tarifaMoneda: row.tarifa_moneda ?? "GTQ",
   };
 }
 
@@ -151,4 +155,31 @@ export async function reactivarDatos(id: string) {
     .update({ datos_completados_at: null })
     .eq("id", id);
   return { error: error?.message ?? null };
+}
+
+/**
+ * Define (o cambia) la tarifa por sesion del paciente. Las citas ya atendidas o
+ * pagadas que aun no tienen monto toman esta tarifa; las que ya tienen monto no
+ * cambian (asi el historial de cobros se conserva).
+ */
+export async function actualizarTarifa(pacienteId: string, tarifa: number | null, moneda: Moneda) {
+  const supabase = getSupabaseClient();
+  if (!supabase) return { error: "Faltan las variables de Supabase." };
+
+  const { error } = await supabase
+    .from("gestionesjj_pacientes")
+    .update({ tarifa, tarifa_moneda: moneda })
+    .eq("id", pacienteId);
+  if (error) return { error: error.message };
+
+  if (tarifa !== null) {
+    const { error: citasError } = await supabase
+      .from("gestionesjj_citas")
+      .update({ monto: tarifa, moneda })
+      .eq("paciente_id", pacienteId)
+      .is("monto", null)
+      .or("estado.eq.completada,pagada.eq.true");
+    if (citasError) return { error: citasError.message };
+  }
+  return { error: null };
 }
