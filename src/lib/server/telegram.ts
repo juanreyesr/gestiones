@@ -99,6 +99,7 @@ export const COMANDOS_BOT = [
   { command: "citas", description: "Citas de los próximos 7 días" },
   { command: "solicitudes", description: "Solicitudes de cita por aprobar" },
   { command: "pendientes", description: "Pendientes vencidos y próximos" },
+  { command: "pagos", description: "Citas sin pagar, con botón para marcarlas pagadas" },
   { command: "nuevo", description: "Crear un pendiente: /nuevo texto" },
   { command: "agendar", description: "Enlace de tu página de citas para enviar" },
   { command: "pago", description: "Enlace de pago de la consulta (PayPal)" },
