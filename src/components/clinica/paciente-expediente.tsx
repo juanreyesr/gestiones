@@ -26,7 +26,7 @@ import { exportarExpedientePdf } from "@/lib/clinica/expediente-pdf";
 import { fetchSesionEnCurso, fetchSesionesDePaciente, iniciarSesion, vincularCitaASesion } from "@/lib/clinica/sesiones";
 import { claveDiaLocal, formatoFechaCorta, formatoFechaHora } from "@/lib/clinica/slots";
 import type { CitaRow, CompromisoRow, PacienteRow, SesionRow } from "@/lib/clinica/types";
-import { CitasSinPagarAviso, PagadaCheckbox } from "./pagos";
+import { CitasSinPagarAviso, PagadaCheckbox, TarifaEditor } from "./pagos";
 import { PacienteForm } from "./paciente-form";
 import { SesionActiva } from "./sesion-activa";
 import { SesionDetalle } from "./sesion-detalle";
@@ -442,6 +442,12 @@ export function PacienteExpediente({
 
           <SectionCard title="Pago de la consulta">
             <div className="grid gap-2">
+              <TarifaEditor
+                key={`${paciente.tarifa}-${paciente.tarifaMoneda}`}
+                onSaved={() => void cargar()}
+                paciente={paciente}
+              />
+              <div className="border-t border-white/10" />
               <p className="text-sm leading-6 text-slate-300">
                 Envía este enlace para que el paciente pague con tarjeta o PayPal. Cuando el pago entre, te llega el aviso por Telegram.
               </p>

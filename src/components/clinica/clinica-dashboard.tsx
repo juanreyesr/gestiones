@@ -3,11 +3,18 @@
 import { CalendarDays, Check, ChevronRight, CircleDollarSign, Clock, Inbox, Users } from "lucide-react";
 import type React from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { cambiarEstadoCita, fetchCitas, fetchCitasSinCerrar, fetchCitasSinPagar } from "@/lib/clinica/citas";
+import {
+  cambiarEstadoCita,
+  fetchCitas,
+  fetchCitasSinCerrar,
+  fetchCitasSinPagar,
+  fetchCobradasDelMes,
+} from "@/lib/clinica/citas";
+import { totalPorMoneda } from "@/lib/clinica/dinero";
 import { syncCitaConGoogle } from "@/lib/clinica/google-client";
 import { formatoFechaHora, formatoHora } from "@/lib/clinica/slots";
 import type { CitaEstado, CitaRow, PacienteRow } from "@/lib/clinica/types";
-import { PagadaCheckbox } from "./pagos";
+import { MontoCita, PagadaCheckbox } from "./pagos";
 import { CitaBadge, EmptyState, Metric, SectionCard } from "./ui";
 
 export function ClinicaDashboard({
@@ -26,6 +33,7 @@ export function ClinicaDashboard({
   const [citasHoy, setCitasHoy] = useState<CitaRow[]>([]);
   const [sinPagar, setSinPagar] = useState<CitaRow[]>([]);
   const [sinCerrar, setSinCerrar] = useState<CitaRow[]>([]);
+  const [cobradasMes, setCobradasMes] = useState<CitaRow[]>([]);
   const [error, setError] = useState("");
   const agendaRef = useRef<HTMLDivElement>(null);
   const pagosRef = useRef<HTMLDivElement>(null);
@@ -40,10 +48,11 @@ export function ClinicaDashboard({
     const finDia = new Date(inicioDia);
     finDia.setDate(finDia.getDate() + 1);
 
-    const [citasRes, sinPagarRes, sinCerrarRes] = await Promise.all([
+    const [citasRes, sinPagarRes, sinCerrarRes, cobradasRes] = await Promise.all([
       fetchCitas(inicioDia.toISOString(), finDia.toISOString()),
       fetchCitasSinPagar(),
       fetchCitasSinCerrar(),
+      fetchCobradasDelMes(),
     ]);
 
     if (citasRes.error) {
@@ -54,6 +63,7 @@ export function ClinicaDashboard({
     setCitasHoy(citasRes.data);
     setSinPagar(sinPagarRes.data);
     setSinCerrar(sinCerrarRes.data);
+    setCobradasMes(cobradasRes.data);
   }, []);
 
   useEffect(() => {
@@ -64,6 +74,10 @@ export function ClinicaDashboard({
   const activas = useMemo(
     () => citasHoy.filter((cita) => cita.estado === "pendiente" || cita.estado === "confirmada"),
     [citasHoy]
+  );
+  const sinMonto = useMemo(
+    () => [...sinPagar, ...cobradasMes].filter((cita) => cita.monto === null).length,
+    [sinPagar, cobradasMes]
   );
   const pacientesActivos = useMemo(() => pacientes.filter((paciente) => paciente.estado === "activo"), [pacientes]);
 
@@ -122,7 +136,7 @@ export function ClinicaDashboard({
           value={String(pacientesActivos.length)}
         />
         <Metric
-          detail={sinPagar.length === 1 ? "1 cita sin pagar" : `${sinPagar.length} citas sin pagar`}
+          detail={`${sinPagar.length === 1 ? "1 cita" : `${sinPagar.length} citas`} · ${totalPorMoneda(sinPagar)}`}
           icon={CircleDollarSign}
           onClick={() => irA(pagosRef)}
           title="Pendientes de pago"
@@ -193,6 +207,32 @@ export function ClinicaDashboard({
           </ul>
         </div>
       ) : null}
+
+      <SectionCard title={`Cobros de ${new Intl.DateTimeFormat("es-GT", { month: "long" }).format(new Date())}`}>
+        <div className="grid gap-3 sm:grid-cols-3">
+          <div>
+            <div className="text-xs font-semibold uppercase text-slate-400">Cobrado este mes</div>
+            <div className="mt-1 text-xl font-semibold text-emerald-200">{totalPorMoneda(cobradasMes)}</div>
+            <div className="text-xs text-slate-500">
+              {cobradasMes.length === 1 ? "1 cita pagada" : `${cobradasMes.length} citas pagadas`}
+            </div>
+          </div>
+          <button className="text-left" onClick={() => irA(pagosRef)} type="button">
+            <div className="text-xs font-semibold uppercase text-slate-400">Por cobrar</div>
+            <div className="mt-1 text-xl font-semibold text-amber-200">{totalPorMoneda(sinPagar)}</div>
+            <div className="text-xs text-slate-500">
+              {sinPagar.length === 1 ? "1 cita sin pagar" : `${sinPagar.length} citas sin pagar`}
+            </div>
+          </button>
+          <div>
+            <div className="text-xs font-semibold uppercase text-slate-400">Sin monto</div>
+            <div className="mt-1 text-xl font-semibold text-white">{sinMonto}</div>
+            <div className="text-xs text-slate-500">
+              {sinMonto > 0 ? "define la tarifa en el expediente del paciente" : "todas las citas tienen monto"}
+            </div>
+          </div>
+        </div>
+      </SectionCard>
 
       <div className="grid gap-4 xl:grid-cols-2">
         <div className="scroll-mt-4" ref={agendaRef}>
@@ -277,10 +317,16 @@ export function ClinicaDashboard({
                     ) : (
                       <div className="text-sm font-semibold text-white">{grupo.nombre}</div>
                     )}
+                    {grupo.citas.some((cita) => cita.monto !== null) ? (
+                      <div className="mt-0.5 text-xs text-amber-200">Debe {totalPorMoneda(grupo.citas)}</div>
+                    ) : null}
                     <ul className="mt-2 grid gap-1.5">
                       {grupo.citas.map((cita) => (
                         <li key={cita.id} className="flex flex-wrap items-center justify-between gap-2 text-xs text-slate-300">
-                          <span>{formatoFechaHora(cita.inicio)}</span>
+                          <span className="flex flex-wrap items-center gap-2">
+                            {formatoFechaHora(cita.inicio)}
+                            <MontoCita key={`${cita.id}-${cita.monto}-${cita.moneda}`} cita={cita} onChanged={() => void cargar()} />
+                          </span>
                           <PagadaCheckbox cita={cita} label="Marcar pagada" onChanged={() => void cargar()} />
                         </li>
                       ))}

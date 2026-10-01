@@ -22,6 +22,8 @@ export const CONVIVE_OPCIONES = [
   "Otros",
 ] as const;
 
+export type Moneda = "GTQ" | "USD";
+
 export type PacienteRow = {
   id: string;
   nombre: string;
@@ -60,6 +62,9 @@ export type PacienteRow = {
   consentimientoAceptadoAt: string | null;
   /** Recibe el recordatorio automatico de WhatsApp 24 h antes de cada cita. */
   whatsappRecordatorios: boolean;
+  /** Tarifa por sesion de este paciente (null = sin definir). */
+  tarifa: number | null;
+  tarifaMoneda: Moneda;
 };
 
 export type PacientePayload = {
@@ -140,6 +145,9 @@ export type CitaRow = {
   gcalSyncStatus: GcalSyncStatus | null;
   pagada: boolean;
   pagadaAt: string | null;
+  /** Monto de la cita; se copia de la tarifa del paciente al atenderla o pagarla. */
+  monto: number | null;
+  moneda: Moneda | null;
 };
 
 export type SolicitudRow = {

@@ -23,7 +23,7 @@ import type { CitaEstado, CitaRow, PacienteRow } from "@/lib/clinica/types";
 import { ConfirmDialog } from "../confirm-dialog";
 import { ModalPortal } from "../modal-portal";
 import { CitaForm } from "./cita-form";
-import { PagadaCheckbox } from "./pagos";
+import { MontoCita, PagadaCheckbox } from "./pagos";
 import { BTN_GHOST, BTN_PRIMARY, CITA_BADGES, CitaBadge, EmptyState, Field } from "./ui";
 
 function MotivoEstadoModal({
@@ -152,7 +152,10 @@ function CitaDetalleModal({
             <div className="flex flex-col items-end gap-2">
               <CitaBadge estado={cita.estado} />
               {cita.estado !== "cancelada" && cita.estado !== "no_asistio" ? (
-                <PagadaCheckbox cita={cita} onChanged={onPagoCambiado} />
+                <>
+                  <PagadaCheckbox cita={cita} onChanged={onPagoCambiado} />
+                  {cita.estado === "completada" || cita.pagada ? <MontoCita key={`${cita.id}-${cita.monto}-${cita.moneda}`} cita={cita} onChanged={onPagoCambiado} /> : null}
+                </>
               ) : null}
             </div>
           </div>
