@@ -205,7 +205,7 @@ export async function finalizarSesion(input: FinalizarSesionInput) {
       .from("gestionesjj_citas")
       .update({ estado: "completada" })
       .eq("id", input.citaId)
-      .eq("estado", "confirmada");
+      .in("estado", ["pendiente", "confirmada"]);
   }
 
   return { error: null };
@@ -347,4 +347,12 @@ export async function editarSesion(sesionId: string, pacienteId: string, input: 
 
   const syncErr = await syncCompromisos(supabase, sesionId, pacienteId, input.compromisos, input.tareas);
   return { error: syncErr };
+}
+
+/** Asocia una sesion en curso a su cita, para marcarla como atendida al finalizar. */
+export async function vincularCitaASesion(sesionId: string, citaId: string) {
+  const supabase = getSupabaseClient();
+  if (!supabase) return { error: "Faltan las variables de Supabase." };
+  const { error } = await supabase.from("gestionesjj_sesiones").update({ cita_id: citaId }).eq("id", sesionId);
+  return { error: error?.message ?? null };
 }

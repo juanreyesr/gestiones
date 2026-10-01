@@ -2,7 +2,7 @@
 
 import { ArrowRight, History, MessageCircleQuestion, NotebookPen, Sparkles, Trash2 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type { CompromisoRow, PacienteRow, SesionModalidad, SesionRow } from "@/lib/clinica/types";
+import type { CitaRow, CompromisoRow, PacienteRow, SesionModalidad, SesionRow } from "@/lib/clinica/types";
 import {
   descartarSesion,
   finalizarSesion,
@@ -12,19 +12,24 @@ import {
 import { formatoFechaLarga, formatoHora } from "@/lib/clinica/slots";
 import { ConfirmDialog } from "../confirm-dialog";
 import { CierreForm, type CierreValues } from "./cierre-form";
+import { CitasSinPagarAviso } from "./pagos";
 import { BTN_PRIMARY, SectionCard } from "./ui";
 
 export function SesionActiva({
+  citasSinPagar,
   compromisosPendientes,
   onFinalizada,
   onDescartada,
+  onPagoCambiado,
   paciente,
   sesion,
   sesionAnterior,
 }: {
+  citasSinPagar: CitaRow[];
   compromisosPendientes: CompromisoRow[];
   onFinalizada: () => void;
   onDescartada: () => void;
+  onPagoCambiado: () => void;
   paciente: PacienteRow;
   sesion: SesionRow;
   sesionAnterior: SesionRow | null;
@@ -154,6 +159,8 @@ export function SesionActiva({
         </header>
 
         {error ? <div className="border border-red-400/40 bg-red-400/10 p-3 text-sm text-red-200">{error}</div> : null}
+
+        <CitasSinPagarAviso citas={citasSinPagar} onChanged={onPagoCambiado} />
 
         <div className="grid gap-4 lg:grid-cols-2">
           <button
@@ -320,6 +327,7 @@ export function SesionActiva({
         </div>
 
         <aside className="grid content-start gap-4">
+          <CitasSinPagarAviso citas={citasSinPagar} onChanged={onPagoCambiado} />
           <SectionCard title="Compromisos y tareas previos">
             {pendientes.length === 0 ? (
               <p className="text-sm text-slate-400">No hay compromisos ni tareas pendientes.</p>

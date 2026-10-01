@@ -19,13 +19,14 @@ import {
   Mail,
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { fetchProximaCitaDePaciente } from "@/lib/clinica/citas";
+import { fetchCitasSinPagar, fetchProximaCitaDePaciente } from "@/lib/clinica/citas";
 import { fetchCompromisosPendientes } from "@/lib/clinica/compromisos";
 import { ensureDatosToken, fetchPaciente, reactivarDatos } from "@/lib/clinica/pacientes";
 import { exportarExpedientePdf } from "@/lib/clinica/expediente-pdf";
-import { fetchSesionEnCurso, fetchSesionesDePaciente, iniciarSesion } from "@/lib/clinica/sesiones";
-import { formatoFechaCorta, formatoFechaHora } from "@/lib/clinica/slots";
+import { fetchSesionEnCurso, fetchSesionesDePaciente, iniciarSesion, vincularCitaASesion } from "@/lib/clinica/sesiones";
+import { claveDiaLocal, formatoFechaCorta, formatoFechaHora } from "@/lib/clinica/slots";
 import type { CitaRow, CompromisoRow, PacienteRow, SesionRow } from "@/lib/clinica/types";
+import { CitasSinPagarAviso, PagadaCheckbox } from "./pagos";
 import { PacienteForm } from "./paciente-form";
 import { SesionActiva } from "./sesion-activa";
 import { SesionDetalle } from "./sesion-detalle";
@@ -69,6 +70,7 @@ export function PacienteExpediente({
   const [sesionEnCurso, setSesionEnCurso] = useState<SesionRow | null>(null);
   const [compromisos, setCompromisos] = useState<CompromisoRow[]>([]);
   const [proximaCita, setProximaCita] = useState<CitaRow | null>(null);
+  const [citasSinPagar, setCitasSinPagar] = useState<CitaRow[]>([]);
   const [vista, setVista] = useState<Vista>("ficha");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -81,12 +83,13 @@ export function PacienteExpediente({
 
   const cargar = useCallback(async () => {
     setLoading(true);
-    const [pacienteRes, sesionesRes, enCursoRes, compromisosRes, citaRes] = await Promise.all([
+    const [pacienteRes, sesionesRes, enCursoRes, compromisosRes, citaRes, sinPagarRes] = await Promise.all([
       fetchPaciente(pacienteId),
       fetchSesionesDePaciente(pacienteId),
       fetchSesionEnCurso(pacienteId),
       fetchCompromisosPendientes(pacienteId),
       fetchProximaCitaDePaciente(pacienteId),
+      fetchCitasSinPagar(pacienteId),
     ]);
     setLoading(false);
 
@@ -100,6 +103,7 @@ export function PacienteExpediente({
     setSesionEnCurso(enCursoRes.data);
     setCompromisos(compromisosRes.data);
     setProximaCita(citaRes.data);
+    setCitasSinPagar(sinPagarRes.data);
   }, [pacienteId]);
 
   useEffect(() => {
@@ -108,17 +112,26 @@ export function PacienteExpediente({
   }, [cargar]);
 
   const sesionAnterior = useMemo(() => sesiones[0] ?? null, [sesiones]);
+  // El botón general solo liga la sesión a la cita si esta es de hoy.
+  const citaDeHoy =
+    proximaCita && claveDiaLocal(new Date(proximaCita.inicio)) === claveDiaLocal(new Date()) ? proximaCita : null;
   const anios = paciente ? edad(paciente.fechaNacimiento) : null;
 
-  const handleIniciarSesion = async () => {
+  // Abre (o continúa) la sesión; si se indica la cita, la sesión queda ligada a ella
+  // y, al guardar la sesión, la cita se marca como atendida (completada).
+  const handleIniciarSesion = async (cita: CitaRow | null = citaDeHoy) => {
     if (iniciando) return;
     setIniciando(true);
     if (sesionEnCurso) {
+      if (cita && !sesionEnCurso.citaId) {
+        await vincularCitaASesion(sesionEnCurso.id, cita.id);
+        await cargar();
+      }
       setVista("sesion");
       setIniciando(false);
       return;
     }
-    const { id, error: startError } = await iniciarSesion(pacienteId, proximaCita?.id ?? null);
+    const { id, error: startError } = await iniciarSesion(pacienteId, cita?.id ?? null);
     setIniciando(false);
     if (startError || !id) {
       setError(startError ?? "No se pudo iniciar la sesión.");
@@ -188,7 +201,9 @@ export function PacienteExpediente({
   if (vista === "sesion" && sesionEnCurso) {
     return (
       <SesionActiva
+        citasSinPagar={citasSinPagar}
         compromisosPendientes={compromisos}
+        onPagoCambiado={() => void cargar()}
         onDescartada={() => {
           setVista("ficha");
           void cargar();
@@ -272,9 +287,31 @@ export function PacienteExpediente({
             <span className="text-slate-500">Registro: {formatoFechaCorta(paciente.createdAt)}</span>
           </div>
           {proximaCita ? (
-            <div className="mt-3 inline-flex items-center gap-2 border border-emerald-300/40 bg-emerald-300/10 px-3 py-1.5 text-sm text-emerald-200">
-              <CalendarDays className="h-4 w-4" />
-              Próxima cita: {formatoFechaHora(proximaCita.inicio)}
+            <div className="mt-3 flex flex-wrap items-center gap-2">
+              <button
+                className="inline-flex items-center gap-2 border border-emerald-300/40 bg-emerald-300/10 px-3 py-1.5 text-left text-sm text-emerald-200 transition hover:bg-emerald-300/20 disabled:opacity-60"
+                disabled={iniciando}
+                onClick={() => void handleIniciarSesion(proximaCita)}
+                title="Abrir la sesión de esta cita"
+                type="button"
+              >
+                <CalendarDays className="h-4 w-4 shrink-0" />
+                <span>
+                  {new Date(proximaCita.inicio) <= new Date() ? "Cita de hoy" : "Próxima cita"}:{" "}
+                  {formatoFechaHora(proximaCita.inicio)}
+                </span>
+                <Play className="h-3.5 w-3.5 shrink-0" />
+              </button>
+              <PagadaCheckbox
+                key={`${proximaCita.id}-${proximaCita.pagada}`}
+                cita={proximaCita}
+                onChanged={() => void cargar()}
+              />
+            </div>
+          ) : null}
+          {citasSinPagar.length > 0 ? (
+            <div className="mt-3">
+              <CitasSinPagarAviso citas={citasSinPagar} onChanged={() => void cargar()} />
             </div>
           ) : null}
         </div>
@@ -298,7 +335,7 @@ export function PacienteExpediente({
             <CalendarClock className="h-4 w-4" />
             Agregar sesión anterior
           </button>
-          <button className={BTN_ACCENT} disabled={iniciando} onClick={handleIniciarSesion} type="button">
+          <button className={BTN_ACCENT} disabled={iniciando} onClick={() => void handleIniciarSesion()} type="button">
             <Play className="h-4 w-4" />
             {sesionEnCurso ? "Continuar sesión en curso" : "Iniciar sesión"}
           </button>

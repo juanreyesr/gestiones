@@ -23,6 +23,7 @@ import type { CitaEstado, CitaRow, PacienteRow } from "@/lib/clinica/types";
 import { ConfirmDialog } from "../confirm-dialog";
 import { ModalPortal } from "../modal-portal";
 import { CitaForm } from "./cita-form";
+import { PagadaCheckbox } from "./pagos";
 import { BTN_GHOST, BTN_PRIMARY, CITA_BADGES, CitaBadge, EmptyState, Field } from "./ui";
 
 function MotivoEstadoModal({
@@ -121,6 +122,7 @@ function CitaDetalleModal({
   onCerrar,
   onEditar,
   onEliminar,
+  onPagoCambiado,
 }: {
   cita: CitaRow;
   contacto: { telefono: string | null; email: string | null; nombre: string | null; pais?: string | null; zonaHoraria?: string | null };
@@ -129,6 +131,7 @@ function CitaDetalleModal({
   onCerrar: () => void;
   onEditar: () => void;
   onEliminar: () => void;
+  onPagoCambiado: () => void;
 }) {
   const nombre = cita.pacienteNombre ?? cita.contactoNombre ?? "Sin nombre";
   const activa = cita.estado === "pendiente" || cita.estado === "confirmada";
@@ -146,7 +149,12 @@ function CitaDetalleModal({
               <h3 className="text-lg font-semibold text-white">{nombre}</h3>
               <p className="mt-1 text-sm text-slate-300">{formatoFechaHora(cita.inicio)} – {formatoHora(cita.fin)}</p>
             </div>
-            <CitaBadge estado={cita.estado} />
+            <div className="flex flex-col items-end gap-2">
+              <CitaBadge estado={cita.estado} />
+              {cita.estado !== "cancelada" && cita.estado !== "no_asistio" ? (
+                <PagadaCheckbox cita={cita} onChanged={onPagoCambiado} />
+              ) : null}
+            </div>
           </div>
 
           <div className="grid gap-2 text-sm text-slate-300">
@@ -596,6 +604,7 @@ export function AgendaView({ pacientes }: { pacientes: PacienteRow[] }) {
             setFormAbierto(true);
           }}
           onEliminar={() => setEliminando(detalle)}
+          onPagoCambiado={() => void cargar()}
         />
       ) : null}
 

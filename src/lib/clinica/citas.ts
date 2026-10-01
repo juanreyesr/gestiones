@@ -17,11 +17,13 @@ type RawCita = {
   motivo_estado: string | null;
   gcal_event_id: string | null;
   gcal_sync_status: GcalSyncStatus | null;
+  pagada: boolean | null;
+  pagada_at: string | null;
   gestionesjj_pacientes?: { nombre: string } | null;
 };
 
 const CITA_COLUMNS =
-  "id,paciente_id,contacto_nombre,contacto_telefono,contacto_email,inicio,fin,estado,origen,modalidad,motivo,notas,motivo_estado,gcal_event_id,gcal_sync_status,gestionesjj_pacientes(nombre)";
+  "id,paciente_id,contacto_nombre,contacto_telefono,contacto_email,inicio,fin,estado,origen,modalidad,motivo,notas,motivo_estado,gcal_event_id,gcal_sync_status,pagada,pagada_at,gestionesjj_pacientes(nombre)";
 
 function mapCita(row: RawCita): CitaRow {
   return {
@@ -41,6 +43,8 @@ function mapCita(row: RawCita): CitaRow {
     motivoEstado: row.motivo_estado,
     gcalEventId: row.gcal_event_id,
     gcalSyncStatus: row.gcal_sync_status,
+    pagada: row.pagada ?? false,
+    pagadaAt: row.pagada_at,
   };
 }
 
@@ -66,16 +70,23 @@ export async function fetchCitas(desdeIso: string, hastaIso: string) {
   return { data: ((data ?? []) as unknown as RawCita[]).map(mapCita), error: null };
 }
 
+/**
+ * Cita activa (pendiente/confirmada) mas cercana del paciente: incluye la de hoy
+ * aunque ya haya empezado, para poder abrir su sesion durante la consulta.
+ */
 export async function fetchProximaCitaDePaciente(pacienteId: string) {
   const supabase = getSupabaseClient();
   if (!supabase) return { data: null as CitaRow | null, error: "Faltan las variables de Supabase." };
+
+  const inicioDia = new Date();
+  inicioDia.setHours(0, 0, 0, 0);
 
   const { data, error } = await supabase
     .from("gestionesjj_citas")
     .select(CITA_COLUMNS)
     .eq("paciente_id", pacienteId)
     .in("estado", ["pendiente", "confirmada"])
-    .gte("inicio", new Date().toISOString())
+    .gte("inicio", inicioDia.toISOString())
     .order("inicio")
     .limit(1)
     .maybeSingle();
@@ -130,5 +141,34 @@ export async function eliminarCita(id: string) {
   const supabase = getSupabaseClient();
   if (!supabase) return { error: "Faltan las variables de Supabase." };
   const { error } = await supabase.from("gestionesjj_citas").delete().eq("id", id);
+  return { error: error?.message ?? null };
+}
+
+/** Citas atendidas (completadas) que aun no se marcan como pagadas; de un paciente o de todos. */
+export async function fetchCitasSinPagar(pacienteId?: string) {
+  const supabase = getSupabaseClient();
+  if (!supabase) return { data: [] as CitaRow[], error: "Faltan las variables de Supabase." };
+
+  let query = supabase
+    .from("gestionesjj_citas")
+    .select(CITA_COLUMNS)
+    .eq("estado", "completada")
+    .eq("pagada", false)
+    .order("inicio");
+  if (pacienteId) query = query.eq("paciente_id", pacienteId);
+
+  const { data, error } = await query;
+  if (error) return { data: [] as CitaRow[], error: error.message };
+  return { data: ((data ?? []) as unknown as RawCita[]).map(mapCita), error: null };
+}
+
+export async function marcarCitaPagada(id: string, pagada: boolean) {
+  const supabase = getSupabaseClient();
+  if (!supabase) return { error: "Faltan las variables de Supabase." };
+
+  const { error } = await supabase
+    .from("gestionesjj_citas")
+    .update({ pagada, pagada_at: pagada ? new Date().toISOString() : null })
+    .eq("id", id);
   return { error: error?.message ?? null };
 }
