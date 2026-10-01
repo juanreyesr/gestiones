@@ -245,6 +245,7 @@ export function SesionActiva({
           modalidad={modalidad}
           notas={notas}
           onGuardar={handleGuardarCierre}
+          pacienteId={paciente.id}
           onVolver={() => setEnCierre(false)}
           pendientes={pendientes.filter((item) => !cumplidosIds.has(item.id))}
           resumenAnterior={sesionAnterior?.resumen ?? null}
