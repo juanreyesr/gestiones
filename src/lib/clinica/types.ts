@@ -138,6 +138,8 @@ export type CitaRow = {
   motivoEstado: string | null;
   gcalEventId: string | null;
   gcalSyncStatus: GcalSyncStatus | null;
+  pagada: boolean;
+  pagadaAt: string | null;
 };
 
 export type SolicitudRow = {

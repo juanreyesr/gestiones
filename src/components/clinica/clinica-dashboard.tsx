@@ -1,28 +1,37 @@
 "use client";
 
-import { CalendarDays, Check, ClipboardList, Inbox, Users } from "lucide-react";
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { cambiarEstadoCita, fetchCitas } from "@/lib/clinica/citas";
-import { fetchCompromisosPendientes, type CompromisoPendiente } from "@/lib/clinica/compromisos";
+import { CalendarDays, Check, ChevronRight, CircleDollarSign, Inbox, Users } from "lucide-react";
+import type React from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { cambiarEstadoCita, fetchCitas, fetchCitasSinPagar } from "@/lib/clinica/citas";
 import { syncCitaConGoogle } from "@/lib/clinica/google-client";
-import { formatoHora } from "@/lib/clinica/slots";
+import { formatoFechaHora, formatoHora } from "@/lib/clinica/slots";
 import type { CitaRow, PacienteRow } from "@/lib/clinica/types";
+import { PagadaCheckbox } from "./pagos";
 import { CitaBadge, EmptyState, Metric, SectionCard } from "./ui";
 
 export function ClinicaDashboard({
+  onIrAPacientes,
   onIrASolicitudes,
   onOpenPaciente,
   pacientes,
   solicitudesPendientes,
 }: {
+  onIrAPacientes: () => void;
   onIrASolicitudes: () => void;
   onOpenPaciente: (pacienteId: string) => void;
   pacientes: PacienteRow[];
   solicitudesPendientes: number;
 }) {
   const [citasHoy, setCitasHoy] = useState<CitaRow[]>([]);
-  const [pendientes, setPendientes] = useState<CompromisoPendiente[]>([]);
+  const [sinPagar, setSinPagar] = useState<CitaRow[]>([]);
   const [error, setError] = useState("");
+  const agendaRef = useRef<HTMLDivElement>(null);
+  const pagosRef = useRef<HTMLDivElement>(null);
+
+  const irA = (ref: React.RefObject<HTMLDivElement | null>) => {
+    ref.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
 
   const cargar = useCallback(async () => {
     const inicioDia = new Date();
@@ -30,9 +39,9 @@ export function ClinicaDashboard({
     const finDia = new Date(inicioDia);
     finDia.setDate(finDia.getDate() + 1);
 
-    const [citasRes, compromisosRes] = await Promise.all([
+    const [citasRes, sinPagarRes] = await Promise.all([
       fetchCitas(inicioDia.toISOString(), finDia.toISOString()),
-      fetchCompromisosPendientes(),
+      fetchCitasSinPagar(),
     ]);
 
     if (citasRes.error) {
@@ -41,7 +50,7 @@ export function ClinicaDashboard({
     }
     setError("");
     setCitasHoy(citasRes.data);
-    setPendientes(compromisosRes.data);
+    setSinPagar(sinPagarRes.data);
   }, []);
 
   useEffect(() => {
@@ -55,15 +64,21 @@ export function ClinicaDashboard({
   );
   const pacientesActivos = useMemo(() => pacientes.filter((paciente) => paciente.estado === "activo"), [pacientes]);
 
-  const tareasPorPaciente = useMemo(() => {
-    const grupos = new Map<string, { nombre: string; items: CompromisoPendiente[] }>();
-    for (const item of pendientes) {
-      const grupo = grupos.get(item.pacienteId) ?? { nombre: item.pacienteNombre ?? "Paciente", items: [] };
-      grupo.items.push(item);
-      grupos.set(item.pacienteId, grupo);
+  // Pacientes con alguna cita atendida sin pagar (agrupadas por paciente).
+  const pagosPorPaciente = useMemo(() => {
+    const grupos = new Map<string, { pacienteId: string | null; nombre: string; citas: CitaRow[] }>();
+    for (const cita of sinPagar) {
+      const clave = cita.pacienteId ?? `contacto:${cita.contactoNombre ?? cita.id}`;
+      const grupo = grupos.get(clave) ?? {
+        pacienteId: cita.pacienteId,
+        nombre: cita.pacienteNombre ?? cita.contactoNombre ?? "Sin nombre",
+        citas: [],
+      };
+      grupo.citas.push(cita);
+      grupos.set(clave, grupo);
     }
     return Array.from(grupos.entries());
-  }, [pendientes]);
+  }, [sinPagar]);
 
   const handleCompletar = async (cita: CitaRow) => {
     const { error: err } = await cambiarEstadoCita(cita.id, "completada");
@@ -83,21 +98,30 @@ export function ClinicaDashboard({
         <Metric
           detail={activas.length === 1 ? "cita activa" : "citas activas"}
           icon={CalendarDays}
+          onClick={() => irA(agendaRef)}
           title="Citas de hoy"
           value={String(activas.length)}
         />
         <Metric
-          detail={solicitudesPendientes === 1 ? "por aprobar" : "por aprobar"}
+          detail="por aprobar"
           icon={Inbox}
+          onClick={onIrASolicitudes}
           title="Solicitudes"
           value={String(solicitudesPendientes)}
         />
-        <Metric detail="en tratamiento" icon={Users} title="Pacientes activos" value={String(pacientesActivos.length)} />
         <Metric
-          detail="compromisos y tareas"
-          icon={ClipboardList}
-          title="Pendientes"
-          value={String(pendientes.length)}
+          detail="en tratamiento"
+          icon={Users}
+          onClick={onIrAPacientes}
+          title="Pacientes activos"
+          value={String(pacientesActivos.length)}
+        />
+        <Metric
+          detail={sinPagar.length === 1 ? "1 cita sin pagar" : `${sinPagar.length} citas sin pagar`}
+          icon={CircleDollarSign}
+          onClick={() => irA(pagosRef)}
+          title="Pendientes de pago"
+          value={String(pagosPorPaciente.length)}
         />
       </div>
 
@@ -116,71 +140,102 @@ export function ClinicaDashboard({
       ) : null}
 
       <div className="grid gap-4 xl:grid-cols-2">
-        <SectionCard title="Agenda de hoy">
-          {citasHoy.length === 0 ? (
-            <EmptyState>No tienes citas programadas para hoy.</EmptyState>
-          ) : (
-            <div className="grid gap-2">
-              {citasHoy.map((cita) => (
-                <div
-                  key={cita.id}
-                  className="flex flex-wrap items-center justify-between gap-3 border border-white/10 bg-white/4 p-3"
-                >
-                  <div className="min-w-0">
-                    <div className="text-sm font-semibold text-white">
-                      {formatoHora(cita.inicio)} · {cita.pacienteNombre ?? cita.contactoNombre ?? "Sin nombre"}
+        <div className="scroll-mt-4" ref={agendaRef}>
+          <SectionCard title="Agenda de hoy">
+            {citasHoy.length === 0 ? (
+              <EmptyState>No tienes citas programadas para hoy.</EmptyState>
+            ) : (
+              <div className="grid gap-2">
+                {citasHoy.map((cita) => {
+                  const nombre = cita.pacienteNombre ?? cita.contactoNombre ?? "Sin nombre";
+                  const conPago = cita.estado !== "cancelada" && cita.estado !== "no_asistio";
+                  return (
+                    <div
+                      key={cita.id}
+                      className="flex flex-wrap items-center justify-between gap-3 border border-white/10 bg-white/4 p-3"
+                    >
+                      {cita.pacienteId ? (
+                        <button
+                          className="group min-w-0 text-left"
+                          onClick={() => onOpenPaciente(cita.pacienteId as string)}
+                          title="Abrir expediente y sesión"
+                          type="button"
+                        >
+                          <span className="flex items-center gap-1 text-sm font-semibold text-white group-hover:text-emerald-200">
+                            {formatoHora(cita.inicio)} · {nombre}
+                            <ChevronRight className="h-4 w-4 text-emerald-300" />
+                          </span>
+                          {cita.motivo ? (
+                            <span className="mt-0.5 block truncate text-xs text-slate-400">{cita.motivo}</span>
+                          ) : null}
+                        </button>
+                      ) : (
+                        <div className="min-w-0">
+                          <div className="text-sm font-semibold text-white">
+                            {formatoHora(cita.inicio)} · {nombre}
+                          </div>
+                          {cita.motivo ? <div className="mt-0.5 truncate text-xs text-slate-400">{cita.motivo}</div> : null}
+                        </div>
+                      )}
+                      <div className="flex flex-wrap items-center gap-2">
+                        <CitaBadge estado={cita.estado} />
+                        {conPago ? (
+                          <PagadaCheckbox key={`${cita.id}-${cita.pagada}`} cita={cita} onChanged={() => void cargar()} />
+                        ) : null}
+                        {cita.estado === "confirmada" ? (
+                          <button
+                            aria-label="Marcar completada"
+                            className="border border-sky-300/40 bg-sky-300/10 p-1.5 text-sky-200 transition hover:bg-sky-300/20"
+                            onClick={() => handleCompletar(cita)}
+                            title="Marcar completada"
+                            type="button"
+                          >
+                            <Check className="h-4 w-4" />
+                          </button>
+                        ) : null}
+                      </div>
                     </div>
-                    {cita.motivo ? <div className="mt-0.5 truncate text-xs text-slate-400">{cita.motivo}</div> : null}
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <CitaBadge estado={cita.estado} />
-                    {cita.estado === "confirmada" ? (
+                  );
+                })}
+              </div>
+            )}
+          </SectionCard>
+        </div>
+
+        <div className="scroll-mt-4" ref={pagosRef}>
+          <SectionCard title="Pendientes de pago">
+            {pagosPorPaciente.length === 0 ? (
+              <EmptyState>Todas las citas atendidas están pagadas.</EmptyState>
+            ) : (
+              <div className="grid gap-3">
+                {pagosPorPaciente.map(([clave, grupo]) => (
+                  <div key={clave} className="border border-white/10 bg-white/4 p-3">
+                    {grupo.pacienteId ? (
                       <button
-                        aria-label="Marcar completada"
-                        className="border border-sky-300/40 bg-sky-300/10 p-1.5 text-sky-200 transition hover:bg-sky-300/20"
-                        onClick={() => handleCompletar(cita)}
-                        title="Marcar completada"
+                        className="flex items-center gap-1 text-left text-sm font-semibold text-white transition hover:text-emerald-200"
+                        onClick={() => onOpenPaciente(grupo.pacienteId as string)}
                         type="button"
                       >
-                        <Check className="h-4 w-4" />
+                        {grupo.nombre}
+                        <ChevronRight className="h-4 w-4 text-emerald-300" />
                       </button>
-                    ) : null}
+                    ) : (
+                      <div className="text-sm font-semibold text-white">{grupo.nombre}</div>
+                    )}
+                    <ul className="mt-2 grid gap-1.5">
+                      {grupo.citas.map((cita) => (
+                        <li key={cita.id} className="flex flex-wrap items-center justify-between gap-2 text-xs text-slate-300">
+                          <span>{formatoFechaHora(cita.inicio)}</span>
+                          <PagadaCheckbox cita={cita} label="Marcar pagada" onChanged={() => void cargar()} />
+                        </li>
+                      ))}
+                    </ul>
                   </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </SectionCard>
-
-        <SectionCard title="Compromisos y tareas por paciente">
-          {tareasPorPaciente.length === 0 ? (
-            <EmptyState>No hay compromisos ni tareas pendientes.</EmptyState>
-          ) : (
-            <div className="grid gap-3">
-              {tareasPorPaciente.map(([pacienteId, grupo]) => (
-                <button
-                  key={pacienteId}
-                  className="border border-white/10 bg-white/4 p-3 text-left transition hover:border-emerald-300/40"
-                  onClick={() => onOpenPaciente(pacienteId)}
-                  type="button"
-                >
-                  <div className="text-sm font-semibold text-white">{grupo.nombre}</div>
-                  <ul className="mt-1.5 grid gap-1">
-                    {grupo.items.slice(0, 3).map((item) => (
-                      <li key={item.id} className="flex items-start gap-2 text-xs leading-5 text-slate-300">
-                        <ClipboardList className="mt-0.5 h-3.5 w-3.5 shrink-0 text-amber-300" />
-                        {item.descripcion}
-                      </li>
-                    ))}
-                    {grupo.items.length > 3 ? (
-                      <li className="text-xs text-slate-500">y {grupo.items.length - 3} más...</li>
-                    ) : null}
-                  </ul>
-                </button>
-              ))}
-            </div>
-          )}
-        </SectionCard>
+                ))}
+              </div>
+            )}
+          </SectionCard>
+        </div>
       </div>
     </div>
   );

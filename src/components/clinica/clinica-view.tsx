@@ -116,6 +116,10 @@ export function ClinicaView() {
 
       {tab === "dashboard" ? (
         <ClinicaDashboard
+          onIrAPacientes={() => {
+            setPacientesScreen({ view: "lista" });
+            setTab("pacientes");
+          }}
           onIrASolicitudes={() => setTab("solicitudes")}
           onOpenPaciente={openPaciente}
           pacientes={pacientes}

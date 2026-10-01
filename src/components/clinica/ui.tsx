@@ -44,24 +44,42 @@ export function SectionCard({
 export function Metric({
   detail,
   icon: Icon,
+  onClick,
   title,
   value,
 }: {
   detail: string;
   icon: React.ComponentType<{ className?: string }>;
+  /** Si se indica, la tarjeta funciona como acceso directo. */
+  onClick?: () => void;
   title: string;
   value: string;
 }) {
-  return (
-    <div className="border border-white/10 bg-white/8 p-4 backdrop-blur-xl">
+  const contenido = (
+    <>
       <div className="mb-3 flex items-center justify-between">
         <span className="text-xs font-semibold uppercase text-slate-400">{title}</span>
         <Icon className="h-4 w-4 text-emerald-300" />
       </div>
       <div className="text-3xl font-semibold text-white">{value}</div>
-      <div className="mt-1 text-sm text-slate-300">{detail}</div>
-    </div>
+      <div className="mt-1 flex items-center justify-between gap-2 text-sm text-slate-300">
+        <span>{detail}</span>
+        {onClick ? <span className="text-xs font-semibold text-emerald-300">Ver →</span> : null}
+      </div>
+    </>
   );
+  if (onClick) {
+    return (
+      <button
+        className="border border-white/10 bg-white/8 p-4 text-left backdrop-blur-xl transition hover:border-emerald-300/50 hover:bg-white/10 active:scale-[0.99]"
+        onClick={onClick}
+        type="button"
+      >
+        {contenido}
+      </button>
+    );
+  }
+  return <div className="border border-white/10 bg-white/8 p-4 backdrop-blur-xl">{contenido}</div>;
 }
 
 export function EmptyState({ children }: { children: React.ReactNode }) {
