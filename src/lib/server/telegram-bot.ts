@@ -3,6 +3,7 @@ import { buscarCoincidencia, type Coincidencia } from "@/lib/clinica/coincidenci
 import { enlaceWhatsApp, textoRecordatorioCita } from "@/lib/clinica/recordatorio";
 import { mismaHoraQueConsultorio, nombreZona, PAIS_POR_DEFECTO, paisDe, paisPorCodigo, zonaDe } from "@/lib/paises";
 import { type EventoGoogle, getStoredTokens, insertEvent, isGoogleConfigured, listarEventos } from "./google-calendar";
+import { bloquePendientesPago, citasSinPagar, contarCitasSinCerrar, marcarPagadaDesdeTelegram } from "./pagos-citas";
 import { pacientesComparables, resolverReserva } from "./reservas-google";
 import { getSupabaseAdmin } from "./supabase-admin";
 import { enviarPruebaWhatsApp } from "./whatsapp-citas";
@@ -173,6 +174,10 @@ export async function procesarUpdate(update: TelegramUpdate) {
     case "pendientes":
       await enviarPendientes(admin, chatId);
       return;
+    case "pagos":
+    case "cobros":
+      await enviarPendientesPago(admin, chatId);
+      return;
     case "nuevo":
       await enviarMensaje(chatId, await crearPendiente(admin, config, argumento.trim()));
       return;
@@ -289,6 +294,7 @@ function textoAyuda() {
     "/pago — enlace de pago de la consulta (PayPal), listo para enviar",
     "/datos <i>nombre</i> — enlace para que un paciente llene sus datos (con botón de WhatsApp a su número)",
     "/ubicacion — dirección del consultorio con Google Maps y Waze, lista para enviar",
+    "/pagos — pacientes con citas sin pagar, con botón para marcarlas pagadas",
     "/mensajes — mensajes de estudiantes sin leer",
     "/probarwhatsapp <i>número</i> — te mando el recordatorio de WhatsApp de prueba a ese número (otro distinto al del consultorio)",
     "/predicas <i>mes</i> — calendario de prédicas listo para enviar por WhatsApp (ej. /predicas octubre)",
@@ -389,7 +395,7 @@ export async function construirResumenDiario(admin: SupabaseClient): Promise<{ t
   const hoy = fechaLocal();
   const manana = fechaLocal(1);
 
-  const [citas, pendientes, solicitudesCita, mensajes, solicitudesCurso] = await Promise.all([
+  const [citas, pendientes, solicitudesCita, mensajes, solicitudesCurso, sinPagar, sinCerrar] = await Promise.all([
     citasEntre(admin, inicioDiaIso(hoy), inicioDiaIso(manana)),
     pendientesProximos(admin, hoy),
     contar(
@@ -409,6 +415,8 @@ export async function construirResumenDiario(admin: SupabaseClient): Promise<{ t
     contar(
       admin.from("gestionesjj_curso_solicitudes").select("id", { count: "exact", head: true }).eq("estado", "pendiente"),
     ),
+    citasSinPagar(admin),
+    contarCitasSinCerrar(admin),
   ]);
 
   const fechaTexto = new Intl.DateTimeFormat("es-GT", {
@@ -439,7 +447,14 @@ export async function construirResumenDiario(admin: SupabaseClient): Promise<{ t
     lineas.push(`• ${item.fecha_limite! < hoy ? "🔴" : "🟠"} ${esc(item.titulo)}`);
   }
 
+  const pagos = bloquePendientesPago(sinPagar, 4);
+  if (pagos.pacientes > 0) {
+    lineas.push("", `💵 <b>Pendientes de pago</b> — ${pagos.pacientes} paciente(s), ${sinPagar.length} cita(s) → /pagos`);
+    lineas.push(...pagos.lineas.slice(0, 8));
+  }
+
   const avisos: string[] = [];
+  if (sinCerrar) avisos.push(`• ${sinCerrar} cita(s) pasadas sin cerrar: márcalas atendidas o no asistió en la Clínica`);
   if (solicitudesCita) avisos.push(`• ${solicitudesCita} solicitud(es) de cita por aprobar → /solicitudes`);
   if (mensajes) avisos.push(`• ${mensajes} mensaje(s) de estudiantes sin leer → /mensajes`);
   if (solicitudesCurso) avisos.push(`• ${solicitudesCurso} solicitud(es) de inscripción a cursos por revisar`);
@@ -453,7 +468,7 @@ export async function construirResumenDiario(admin: SupabaseClient): Promise<{ t
     .map((boton) => [boton]);
   if (botones.length) lineas.push("", "<i>Toca un botón para mandarle el recordatorio por WhatsApp.</i>");
 
-  return { texto: lineas.join("\n"), botones };
+  return { texto: lineas.join("\n"), botones: [...botones, ...pagos.botones] };
 }
 
 // ============================================================
@@ -842,6 +857,26 @@ async function sincronizarCitaGoogle(admin: SupabaseClient, citaId: string) {
 
 const PRIORIDAD_ICONO: Record<string, string> = { critica: "‼️", alta: "❗", media: "", baja: "", sin_definir: "" };
 
+async function enviarPendientesPago(admin: SupabaseClient, chatId: number) {
+  const citas = await citasSinPagar(admin);
+  if (citas.length === 0) {
+    await enviarMensaje(chatId, "💵 No hay pendientes de pago: todas las citas atendidas están pagadas.");
+    return;
+  }
+  const pagos = bloquePendientesPago(citas, 10);
+  await enviarMensaje(
+    chatId,
+    [
+      `💵 <b>Pendientes de pago</b> — ${pagos.pacientes} paciente(s), ${citas.length} cita(s)`,
+      "",
+      ...pagos.lineas,
+      "",
+      "<i>Toca un botón para marcar la cita como pagada.</i>",
+    ].join("\n"),
+    { botones: pagos.botones },
+  );
+}
+
 async function enviarPendientes(admin: SupabaseClient, chatId: number) {
   const hoy = fechaLocal();
   const items = (await pendientesProximos(admin, fechaLocal(3))).slice(0, 15);
@@ -1105,6 +1140,18 @@ async function procesarCallback(admin: SupabaseClient, query: CallbackQuery) {
   if (ambito === "dat" && id && (accion === "ve" || accion === "re")) {
     await responder(accion === "re" ? "Enlace reabierto." : "Enviando enlace...");
     await enviarEnlaceDatos(admin, chatId, id, accion === "re");
+    return;
+  }
+
+  if (ambito === "pag" && (accion === "ok" || accion === "no") && id) {
+    const pagada = accion === "ok";
+    const cita = await marcarPagadaDesdeTelegram(admin, id, pagada);
+    if (!cita) {
+      await responder("No se encontró la cita.");
+      return;
+    }
+    await responder((pagada ? `Pagada: ${cita}` : `Sin pagar: ${cita}`).slice(0, 190));
+    await enviarMensaje(chatId, pagada ? `✅ Marcada como pagada: <b>${esc(cita)}</b>` : `↩️ Desmarcada, queda sin pagar: <b>${esc(cita)}</b>`);
     return;
   }
 

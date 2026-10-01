@@ -172,3 +172,19 @@ export async function marcarCitaPagada(id: string, pagada: boolean) {
     .eq("id", id);
   return { error: error?.message ?? null };
 }
+
+/** Citas que ya terminaron pero siguen pendientes/confirmadas: falta marcar si se atendieron. */
+export async function fetchCitasSinCerrar() {
+  const supabase = getSupabaseClient();
+  if (!supabase) return { data: [] as CitaRow[], error: "Faltan las variables de Supabase." };
+
+  const { data, error } = await supabase
+    .from("gestionesjj_citas")
+    .select(CITA_COLUMNS)
+    .in("estado", ["pendiente", "confirmada"])
+    .lt("fin", new Date().toISOString())
+    .order("inicio");
+
+  if (error) return { data: [] as CitaRow[], error: error.message };
+  return { data: ((data ?? []) as unknown as RawCita[]).map(mapCita), error: null };
+}

@@ -76,6 +76,8 @@ Seguridad: el webhook rechaza toda peticion sin el header `X-Telegram-Bot-Api-Se
 - `www.juanjreyes.org/pagar` redirige al enlace de pago de PayPal (`PAYPAL_ENLACE_CONSULTA`). Es lo que se comparte: desde Telegram con `/pago` (o escribiendo "enlace de pago") y desde el expediente del paciente con "Copiar enlace de pago".
 - Al pagar, PayPal regresa al paciente a `/pago/gracias` (Auto Return); el boton "Aceptar" lo lleva a la pagina principal.
 - El aviso por Telegram ("💳 Pago recibido por PayPal": monto, neto, nombre, correo, concepto) lo manda el webhook `/api/paypal/webhook` solo despues de verificar la firma con la API de PayPal. La pagina de gracias no avisa: cualquiera podria abrirla y el paciente puede no volver de PayPal. Se puede apagar en las preferencias de Telegram ("Pagos de consultas recibidos por PayPal").
+- **Pago aplicado a la cita** (`src/lib/server/pagos-citas.ts`, migraciones `042` y `043`): el webhook identifica al paciente (correo y luego nombre identico) y marca como pagada su cita atendida sin pagar mas antigua; si no debe nada, la proxima cita activa (pago por adelantado). Guarda el ID de la captura en `pago_referencia` (un reintento del webhook no se aplica dos veces) y un reembolso la deja otra vez sin pagar. El aviso de Telegram dice a que cita se aplico y trae el boton "No era esta cita (desmarcar)"; si no identifica al paciente, lo dice para marcarla a mano.
+- **Pendientes de pago**: una cita completada con `pagada = false`. Se ven y se marcan en la Clinica (Inicio, Agenda, expediente y sesion), en Telegram con `/pagos` (boton "✅ Pagada" por cita) y en el resumen diario.
 
 ### Configurar PayPal
 

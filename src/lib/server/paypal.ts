@@ -23,6 +23,8 @@ export type AvisoPago = {
   monto: string | null;
   neto: string | null;
   captureId: string | null;
+  /** En un reembolso: ID de la captura (pago) original que se reembolsa. */
+  capturaOriginalId: string | null;
   pagador: string | null;
   correo: string | null;
   concepto: string | null;
@@ -128,12 +130,16 @@ export async function avisoDeEvento(evento: EventoPayPal, token: string): Promis
   const orderId = (recurso.supplementary_data as { related_ids?: { order_id?: string } } | undefined)?.related_ids?.order_id;
   const orden = orderId ? await datosDeOrden(token, orderId) : null;
   const desglose = recurso.seller_receivable_breakdown as { net_amount?: unknown } | undefined;
+  // El reembolso enlaza su captura original con rel "up" (.../v2/payments/captures/<id>).
+  const enlaces = (recurso.links as { rel?: string; href?: string }[] | undefined) ?? [];
+  const capturaOriginalId = enlaces.find((enlace) => enlace.rel === "up")?.href?.match(/\/captures\/([^/?]+)/)?.[1] ?? null;
 
   return {
     tipo,
     monto: montoTexto(recurso.amount),
     neto: tipo === "completado" ? montoTexto(desglose?.net_amount) : null,
     captureId: typeof recurso.id === "string" ? recurso.id : null,
+    capturaOriginalId: tipo === "reembolsado" ? capturaOriginalId : null,
     pagador: orden?.nombre ?? null,
     correo: orden?.correo ?? null,
     concepto: orden?.concepto ?? null,

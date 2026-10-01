@@ -1,6 +1,7 @@
 import { getSupabaseAdmin } from "./supabase-admin";
 import { appUrl, esc, isTelegramConfigured, notificar, recortar } from "./telegram";
 import { buscarCoincidencia } from "@/lib/clinica/coincidencias";
+import type { ResultadoPago } from "./pagos-citas";
 import type { AvisoPago } from "./paypal";
 import { pacientesComparables } from "./reservas-google";
 import {
@@ -114,7 +115,7 @@ export async function avisarRespuestaEncuesta(token: string, expectativa: string
   );
 }
 
-export async function avisarPago(aviso: AvisoPago) {
+export async function avisarPago(aviso: AvisoPago, resultado: ResultadoPago | null = null) {
   const lineas =
     aviso.tipo === "completado"
       ? [
@@ -130,7 +131,8 @@ export async function avisarPago(aviso: AvisoPago) {
           aviso.monto ? `Monto reembolsado: <b>${esc(aviso.monto)}</b>` : null,
           aviso.captureId ? `<i>Transacción ${esc(aviso.captureId)}</i>` : null,
         ];
+  if (resultado) lineas.push("", resultado.linea);
   await notificar("pagos_paypal", lineas.filter((linea) => linea !== null).join("\n"), {
-    botones: [[{ text: "Ver en PayPal", url: "https://www.paypal.com/activities" }]],
+    botones: [...(resultado?.botones ?? []), [{ text: "Ver en PayPal", url: "https://www.paypal.com/activities" }]],
   });
 }
