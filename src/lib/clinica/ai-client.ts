@@ -1,5 +1,5 @@
 import { getSupabaseClient } from "@/lib/supabase";
-import type { SesionModalidad } from "./types";
+import type { PropuestaClinica, SesionModalidad } from "./types";
 
 export type ResumenGenerado = {
   resumen: string;
@@ -58,7 +58,6 @@ export async function generarResumenIA(input: GenerarResumenInput) {
   }
 }
 
-export type PropuestaClinica = { tipo: "tecnica" | "terapia" | "evaluacion"; nombre: string; justificacion: string };
 export type SugerenciasGeneradas = { seguimiento: string; propuestas: PropuestaClinica[] };
 
 /** Sugerencias de seguimiento y de técnicas/terapias/evaluaciones para la sesión (a pedido). */

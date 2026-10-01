@@ -117,6 +117,7 @@ export function SesionActiva({
       tareas: values.tareas,
       compromisosCumplidosIds: Array.from(cumplidosIds),
       seguimientoIds: values.seguimientoIds,
+      propuestasIa: values.propuestasIa,
     });
     setSaving(false);
     if (finError) {

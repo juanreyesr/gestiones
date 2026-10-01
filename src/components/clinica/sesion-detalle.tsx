@@ -1,6 +1,6 @@
 "use client";
 
-import { CheckCircle2, ChevronDown, ChevronUp, Circle, NotebookPen, Sparkles } from "lucide-react";
+import { CheckCircle2, ChevronDown, ChevronUp, Circle, Lightbulb, NotebookPen, Sparkles } from "lucide-react";
 import { useState } from "react";
 import type { SesionRow } from "@/lib/clinica/types";
 import { formatoFechaLarga, formatoHora } from "@/lib/clinica/slots";
@@ -46,6 +46,26 @@ export function SesionDetalle({ sesion }: { sesion: SesionRow }) {
         <div>
           <div className="text-xs font-semibold uppercase text-slate-400">Aspectos a dar seguimiento</div>
           <p className="mt-1 whitespace-pre-wrap text-sm leading-6 text-slate-200">{sesion.seguimiento}</p>
+        </div>
+      ) : null}
+
+      {sesion.propuestasIa.length > 0 ? (
+        <div>
+          <div className="flex items-center gap-1.5 text-xs font-semibold uppercase text-slate-400">
+            <Lightbulb className="h-3.5 w-3.5 text-sky-300" />
+            Propuestas de la IA
+          </div>
+          <ul className="mt-1 grid gap-1.5">
+            {sesion.propuestasIa.map((propuesta, index) => (
+              <li key={index} className="text-sm leading-6 text-slate-200">
+                <span className="mr-1.5 text-[11px] font-semibold uppercase tracking-wide text-sky-300">
+                  {propuesta.tipo === "tecnica" ? "Técnica" : propuesta.tipo === "terapia" ? "Terapia" : "Evaluación"}
+                </span>
+                <b className="font-semibold text-white">{propuesta.nombre}</b>
+                {propuesta.justificacion ? <span className="text-slate-400"> — {propuesta.justificacion}</span> : null}
+              </li>
+            ))}
+          </ul>
         </div>
       ) : null}
 

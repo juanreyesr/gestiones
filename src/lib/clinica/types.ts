@@ -110,6 +110,9 @@ export type CompromisoRow = {
   orden: number;
 };
 
+/** Propuesta clinica sugerida por la IA y guardada en el historial de la sesion. */
+export type PropuestaClinica = { tipo: "tecnica" | "terapia" | "evaluacion"; nombre: string; justificacion: string };
+
 export type SesionRow = {
   id: string;
   pacienteId: string;
@@ -124,6 +127,7 @@ export type SesionRow = {
   iniciadaAt: string;
   finalizadaAt: string | null;
   compromisos: CompromisoRow[];
+  propuestasIa: PropuestaClinica[];
 };
 
 export type CitaRow = {
