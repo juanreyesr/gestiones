@@ -3,7 +3,7 @@
 import { CheckCheck, Lightbulb, Plus, Send, Sparkles, X } from "lucide-react";
 import { useState } from "react";
 import { enviarTareasAlPaciente, generarResumenIA, generarSugerenciasIA } from "@/lib/clinica/ai-client";
-import type { CompromisoRow, ResumenOrigen, SesionModalidad } from "@/lib/clinica/types";
+import type { CompromisoRow, PropuestaClinica, ResumenOrigen, SesionModalidad } from "@/lib/clinica/types";
 import { BTN_ACCENT, BTN_GHOST, BTN_PRIMARY, Field } from "./ui";
 
 export type CierreValues = {
@@ -13,6 +13,7 @@ export type CierreValues = {
   tareas: string[];
   resumenOrigen: ResumenOrigen;
   seguimientoIds: string[];
+  propuestasIa: PropuestaClinica[];
 };
 
 function ListaEditable({
@@ -97,6 +98,8 @@ export function CierreForm({
   // Lo pendiente arranca marcado: solo se desmarca lo que ya no se seguirá trabajando.
   const [seguimientoIds, setSeguimientoIds] = useState<Set<string>>(() => new Set(pendientes.map((item) => item.id)));
   const [sugiriendo, setSugiriendo] = useState(false);
+  // Propuestas de la IA: llegan marcadas y las marcadas se guardan en el historial de la sesión.
+  const [propuestas, setPropuestas] = useState<Array<PropuestaClinica & { guardar: boolean }>>([]);
   const [sugerenciasMsg, setSugerenciasMsg] = useState("");
   const [enviando, setEnviando] = useState(false);
   const [envioMsg, setEnvioMsg] = useState<{ ok: boolean; texto: string } | null>(null);
@@ -161,14 +164,12 @@ export function CierreForm({
       setSugerenciasMsg(sugError ?? "No se pudieron generar sugerencias.");
       return;
     }
-    const propuestas = data.propuestas.length
-      ? `Propuestas (IA):\n${data.propuestas
-          .map((p) => `- ${TIPO_PROPUESTA[p.tipo] ?? "Propuesta"}: ${p.nombre} — ${p.justificacion}`)
-          .join("\n")}`
-      : "";
-    const bloque = [data.seguimiento.trim(), propuestas].filter(Boolean).join("\n\n");
-    setSeguimiento((prev) => (prev.trim() ? `${prev.trim()}\n\n${bloque}` : bloque));
-    setSugerenciasMsg("Sugerencias agregadas abajo: edita o borra lo que no quieras conservar.");
+    const bloque = data.seguimiento.trim();
+    if (bloque) setSeguimiento((prev) => (prev.trim() ? `${prev.trim()}\n\n${bloque}` : bloque));
+    setPropuestas((prev) => [...prev, ...data.propuestas.map((p) => ({ ...p, guardar: true }))]);
+    setSugerenciasMsg(
+      "Seguimiento agregado al campo y propuestas listadas abajo: desmarca las que no quieras guardar en el historial.",
+    );
   };
 
   // Compromisos y tareas nuevos + los pendientes que siguen marcados.
@@ -216,6 +217,7 @@ export function CierreForm({
       tareas: tareas.map((item) => item.trim()).filter(Boolean),
       resumenOrigen: origen,
       seguimientoIds: Array.from(seguimientoIds),
+      propuestasIa: propuestas.filter((p) => p.guardar).map((p) => ({ tipo: p.tipo, nombre: p.nombre, justificacion: p.justificacion })),
     });
   };
 
@@ -286,6 +288,42 @@ export function CierreForm({
         />
         {sugerenciasMsg ? <p className="text-xs text-sky-200">{sugerenciasMsg}</p> : null}
       </div>
+
+      {propuestas.length > 0 ? (
+        <div className="grid gap-2 border border-sky-300/30 bg-sky-300/6 p-4">
+          <div>
+            <span className="text-xs font-semibold uppercase text-slate-300">Propuestas de la IA</span>
+            <p className="mt-0.5 text-xs leading-5 text-slate-400">
+              Las marcadas se guardan en el historial de esta sesión. Son sugerencias para tu criterio clínico.
+            </p>
+          </div>
+          <ul className="grid gap-2">
+            {propuestas.map((propuesta, index) => (
+              <li key={`${propuesta.nombre}-${index}`}>
+                <label className="flex cursor-pointer items-start gap-2.5 border border-white/10 bg-white/4 p-2.5 transition hover:border-sky-300/40">
+                  <input
+                    checked={propuesta.guardar}
+                    className="mt-1 h-4 w-4 accent-sky-300"
+                    onChange={() =>
+                      setPropuestas((prev) => prev.map((p, i) => (i === index ? { ...p, guardar: !p.guardar } : p)))
+                    }
+                    type="checkbox"
+                  />
+                  <span>
+                    <span className="block text-sm font-semibold leading-5 text-slate-100">
+                      <span className="mr-1.5 text-[11px] font-semibold uppercase tracking-wide text-sky-300">
+                        {TIPO_PROPUESTA[propuesta.tipo] ?? "Propuesta"}
+                      </span>
+                      {propuesta.nombre}
+                    </span>
+                    <span className="mt-0.5 block text-xs leading-5 text-slate-400">{propuesta.justificacion}</span>
+                  </span>
+                </label>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
 
       <div className="grid gap-4 sm:grid-cols-2">
         <ListaEditable

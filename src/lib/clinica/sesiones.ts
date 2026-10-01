@@ -1,5 +1,5 @@
 import { getSupabaseClient } from "@/lib/supabase";
-import type { CompromisoRow, CompromisoTipo, ResumenOrigen, SesionModalidad, SesionRow } from "./types";
+import type { CompromisoRow, CompromisoTipo, PropuestaClinica, ResumenOrigen, SesionModalidad, SesionRow } from "./types";
 
 type RawCompromiso = {
   id: string;
@@ -25,11 +25,12 @@ type RawSesion = {
   resumen_origen: ResumenOrigen | null;
   iniciada_at: string;
   finalizada_at: string | null;
+  propuestas_ia?: PropuestaClinica[] | null;
   gestionesjj_compromisos?: RawCompromiso[];
 };
 
 const SESION_COLUMNS =
-  "id,paciente_id,cita_id,estado,modalidad,tema,notas,resumen,seguimiento,resumen_origen,iniciada_at,finalizada_at";
+  "id,paciente_id,cita_id,estado,modalidad,tema,notas,resumen,seguimiento,resumen_origen,iniciada_at,finalizada_at,propuestas_ia";
 
 export function mapCompromiso(row: RawCompromiso): CompromisoRow {
   return {
@@ -59,6 +60,7 @@ function mapSesion(row: RawSesion): SesionRow {
     resumen: row.resumen,
     seguimiento: row.seguimiento,
     resumenOrigen: row.resumen_origen,
+    propuestasIa: Array.isArray(row.propuestas_ia) ? row.propuestas_ia : [],
     iniciadaAt: row.iniciada_at,
     finalizadaAt: row.finalizada_at,
     compromisos,
@@ -140,6 +142,8 @@ export type FinalizarSesionInput = {
   tareas: string[];
   compromisosCumplidosIds: string[];
   seguimientoIds: string[];
+  /** Propuestas de la IA que se guardan en el historial de la sesion. */
+  propuestasIa: PropuestaClinica[];
 };
 
 export async function finalizarSesion(input: FinalizarSesionInput) {
@@ -154,6 +158,7 @@ export async function finalizarSesion(input: FinalizarSesionInput) {
       resumen: input.resumen,
       seguimiento: input.seguimiento,
       resumen_origen: input.resumenOrigen,
+      propuestas_ia: input.propuestasIa,
       notas: input.notas,
     })
     .eq("id", input.sesionId);
