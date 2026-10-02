@@ -1,13 +1,14 @@
 "use client";
 
-import { ClipboardCheck, Download, Eye, X } from "lucide-react";
+import { ClipboardCheck, X } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { ModalPortal } from "@/components/modal-portal";
 import { fetchCalificacionesDeCurso } from "@/lib/cursos/actividades";
-import { abrirArchivoEntrega, entregasSinNota, fetchEntregasDeCurso, type EntregaDeCurso } from "@/lib/cursos/entregas";
+import { entregasSinNota, fetchEntregasDeCurso, type EntregaDeCurso } from "@/lib/cursos/entregas";
 import { fetchEstudiantes } from "@/lib/cursos/estudiantes";
-import { formatearFechaHora, type ActividadRow, type EntregaArchivoRow, type EstudianteRow } from "@/lib/cursos/types";
+import { formatearFechaHora, type ActividadRow, type EstudianteRow } from "@/lib/cursos/types";
 import { CalificarActividadModal } from "./calificar-actividad-modal";
+import { ArchivoEntregaFila } from "./archivo-entrega-fila";
 import { BTN_PRIMARY, ErrorBanner } from "./ui";
 
 type Grupo = { actividad: EntregaDeCurso["actividad"]; entregas: EntregaDeCurso[] };
@@ -66,11 +67,6 @@ export function BandejaEntregasModal({
         a.actividad.titulo.localeCompare(b.actividad.titulo),
     );
   }, [pendientes]);
-
-  const handleArchivo = async (archivo: EntregaArchivoRow, modo: "ver" | "descargar") => {
-    const { error: archivoError } = await abrirArchivoEntrega(archivo, modo);
-    if (archivoError) setError(archivoError);
-  };
 
   return (
     <ModalPortal>
@@ -131,27 +127,7 @@ export function BandejaEntregasModal({
                           </span>
                         </p>
                         {entrega.archivos.map((archivo) => (
-                          <div className="mt-1 flex flex-wrap items-center gap-2" key={archivo.id}>
-                            <span className="min-w-0 flex-1 truncate text-slate-300" title={archivo.archivo_nombre ?? undefined}>
-                              📎 {archivo.archivo_nombre ?? "Archivo"}
-                            </span>
-                            <button
-                              className="inline-flex items-center gap-1.5 border border-emerald-300/40 bg-emerald-300/10 px-2 py-1 text-[11px] font-semibold text-emerald-100 hover:border-emerald-300/70"
-                              onClick={() => handleArchivo(archivo, "ver")}
-                              type="button"
-                            >
-                              <Eye className="h-3 w-3" />
-                              Ver
-                            </button>
-                            <button
-                              className="inline-flex items-center gap-1.5 border border-white/10 bg-white/8 px-2 py-1 text-[11px] font-semibold text-slate-200 hover:border-emerald-300/50"
-                              onClick={() => handleArchivo(archivo, "descargar")}
-                              type="button"
-                            >
-                              <Download className="h-3 w-3" />
-                              Descargar
-                            </button>
-                          </div>
+                          <ArchivoEntregaFila archivo={archivo} key={archivo.id} onError={setError} />
                         ))}
                       </div>
                     ))}

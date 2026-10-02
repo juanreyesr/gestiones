@@ -123,6 +123,16 @@ export async function urlFirmadaEntrega(path: string, opciones: { expiresSeconds
   return { url: data?.signedUrl ?? null, error: null };
 }
 
+const EXTENSIONES_AUDIO = ["webm", "ogg", "oga", "opus", "m4a", "mp4", "aac", "mp3", "wav"];
+
+/** True si el archivo es una nota de voz / audio (por tipo MIME o extensión). */
+export function esAudioEntrega(archivo: Pick<EntregaArchivoRow, "archivo_mime" | "archivo_nombre">) {
+  if (archivo.archivo_mime?.startsWith("audio/")) return true;
+  const extension = (archivo.archivo_nombre ?? "").split(".").pop()?.toLowerCase() ?? "";
+  // .mp4/.webm también pueden ser video; si el MIME dice video, no es nota de voz.
+  return !archivo.archivo_mime?.startsWith("video/") && EXTENSIONES_AUDIO.includes(extension);
+}
+
 /**
  * Abre (o descarga) un archivo de entrega. La pestaña se abre ANTES de pedir
  * la URL firmada: si se abriera después del await, el navegador (sobre todo

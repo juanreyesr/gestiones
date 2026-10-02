@@ -264,22 +264,44 @@ async function getAuthToken() {
   return data.session?.access_token ?? null;
 }
 
+/**
+ * Sube un archivo (documento, imagen o nota de voz) para una tarea. El archivo
+ * va directo del navegador a Storage con un permiso firmado: si pasara por la
+ * función de Vercel se cortaría en ~4.5 MB (un audio largo o un PDF pesado).
+ *   1) /entrega/preparar valida la tarea y entrega el permiso de subida.
+ *   2) Se sube el archivo a Storage.
+ *   3) /entrega/confirmar verifica el archivo y registra la entrega.
+ */
 export async function subirEntrega(actividadId: string, archivo: File): Promise<{ tardia: boolean | null; error: string | null }> {
   const token = await getAuthToken();
   if (!token) return { tardia: null, error: "Sesión no válida. Vuelve a iniciar." };
+  const supabase = getSupabaseClient();
+  if (!supabase) return { tardia: null, error: "El servicio no está disponible." };
 
-  const formData = new FormData();
-  formData.append("actividadId", actividadId);
-  formData.append("archivo", archivo);
-
+  const headers = { "Content-Type": "application/json", Authorization: `Bearer ${token}` };
   try {
-    const response = await fetch("/api/estudiante/entrega/subir", {
+    const preparar = await fetch("/api/estudiante/entrega/preparar", {
       method: "POST",
-      headers: { Authorization: `Bearer ${token}` },
-      body: formData,
+      headers,
+      body: JSON.stringify({ actividadId, nombre: archivo.name, tamano: archivo.size }),
     });
-    const json = (await response.json().catch(() => null)) as { tardia?: boolean; error?: string } | null;
-    if (!response.ok) return { tardia: null, error: json?.error ?? "No se pudo subir el archivo." };
+    const permiso = (await preparar.json().catch(() => null)) as { path?: string; token?: string; error?: string } | null;
+    if (!preparar.ok || !permiso?.path || !permiso.token) {
+      return { tardia: null, error: permiso?.error ?? "No se pudo subir el archivo." };
+    }
+
+    const { error: uploadError } = await supabase.storage
+      .from("gestionesjj-entregas")
+      .uploadToSignedUrl(permiso.path, permiso.token, archivo, { contentType: archivo.type || undefined });
+    if (uploadError) return { tardia: null, error: "No se pudo subir el archivo. Revisa tu conexión e intenta de nuevo." };
+
+    const confirmar = await fetch("/api/estudiante/entrega/confirmar", {
+      method: "POST",
+      headers,
+      body: JSON.stringify({ actividadId, path: permiso.path, nombre: archivo.name, mime: archivo.type || null }),
+    });
+    const json = (await confirmar.json().catch(() => null)) as { tardia?: boolean; error?: string } | null;
+    if (!confirmar.ok) return { tardia: null, error: json?.error ?? "No se pudo registrar la entrega." };
     return { tardia: json?.tardia ?? false, error: null };
   } catch {
     return { tardia: null, error: "Error de conexión." };
