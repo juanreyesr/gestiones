@@ -63,6 +63,11 @@ export function SesionDetalle({ sesion }: { sesion: SesionRow }) {
                 </span>
                 <b className="font-semibold text-white">{propuesta.nombre}</b>
                 {propuesta.justificacion ? <span className="text-slate-400"> — {propuesta.justificacion}</span> : null}
+                {propuesta.estado === "aplicada" ? (
+                  <span className="ml-1.5 text-[11px] font-semibold uppercase text-emerald-300">· Aplicada</span>
+                ) : propuesta.estado === "descartada" ? (
+                  <span className="ml-1.5 text-[11px] font-semibold uppercase text-slate-500">· Descartada</span>
+                ) : null}
               </li>
             ))}
           </ul>

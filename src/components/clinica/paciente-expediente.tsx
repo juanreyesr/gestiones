@@ -28,6 +28,7 @@ import { claveDiaLocal, formatoFechaCorta, formatoFechaHora } from "@/lib/clinic
 import type { CitaRow, CompromisoRow, PacienteRow, SesionRow } from "@/lib/clinica/types";
 import { CitasSinPagarAviso, PagadaCheckbox, TarifaEditor } from "./pagos";
 import { PacienteForm } from "./paciente-form";
+import { PlanTratamiento } from "./plan-tratamiento";
 import { SesionActiva } from "./sesion-activa";
 import { SesionDetalle } from "./sesion-detalle";
 import { SesionEditor } from "./sesion-editor";
@@ -344,6 +345,7 @@ export function PacienteExpediente({
 
       <div className="grid gap-4 xl:grid-cols-[1fr_340px]">
         <div className="grid content-start gap-4">
+          <PlanTratamiento onCambio={() => void cargar()} sesiones={sesiones} />
           <SectionCard title={`Historial de sesiones (${sesiones.length})`}>
             {sesiones.length === 0 ? (
               <p className="text-sm text-slate-400">

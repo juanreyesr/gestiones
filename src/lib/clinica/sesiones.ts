@@ -361,3 +361,11 @@ export async function vincularCitaASesion(sesionId: string, citaId: string) {
   const { error } = await supabase.from("gestionesjj_sesiones").update({ cita_id: citaId }).eq("id", sesionId);
   return { error: error?.message ?? null };
 }
+
+/** Guarda las propuestas de la IA de una sesion (p. ej. al marcarlas aplicadas en el plan de tratamiento). */
+export async function actualizarPropuestasSesion(sesionId: string, propuestas: PropuestaClinica[]) {
+  const supabase = getSupabaseClient();
+  if (!supabase) return { error: "Faltan las variables de Supabase." };
+  const { error } = await supabase.from("gestionesjj_sesiones").update({ propuestas_ia: propuestas }).eq("id", sesionId);
+  return { error: error?.message ?? null };
+}
