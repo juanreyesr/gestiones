@@ -1,6 +1,15 @@
 import crypto from "node:crypto";
 import { after, NextResponse } from "next/server";
 import { requireEstudiante } from "@/lib/server/auth";
+import {
+  BUCKET_ENTREGAS,
+  UUID_RE,
+  carpetaEntrega,
+  nombreSeguro,
+  registrarEntrega,
+  validarArchivo,
+  validarTareaParaEntrega,
+} from "@/lib/server/entregas";
 import { rateLimit, rateLimitResponse } from "@/lib/server/rate-limit";
 import { getSupabaseAdmin } from "@/lib/server/supabase-admin";
 import { avisarEntrega } from "@/lib/server/telegram-avisos";
@@ -8,26 +17,11 @@ import { avisarEntrega } from "@/lib/server/telegram-avisos";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-const BUCKET = "gestionesjj-entregas";
-const UUID_RE = /^[0-9a-f-]{36}$/i;
-const MAX_BYTES = 20 * 1024 * 1024; // 20 MB por archivo
-const EXTENSIONES_PERMITIDAS = ["pdf", "doc", "docx", "ppt", "pptx", "xls", "xlsx", "jpg", "jpeg", "png", "zip"];
-
-function extensionDe(nombre: string): string {
-  const partes = nombre.split(".");
-  return partes.length > 1 ? partes[partes.length - 1].toLowerCase() : "";
-}
-
-function nombreSeguro(nombre: string): string {
-  return nombre.replace(/[^a-zA-Z0-9._-]+/g, "_").slice(-140);
-}
-
 /**
- * El estudiante sube un archivo para una tarea. Revalida todo server-side
- * (nunca confía en lo que ya se le mostró en pantalla): inscripción activa,
- * acceso del curso, semana habilitada, visibilidad de la tarea y que la
- * entrega esté habilitada. La entrega tardía se acepta y solo se marca; el
- * docente decide si penaliza al calificar.
+ * El estudiante sube un archivo para una tarea dentro del request. Solo sirve
+ * para archivos chicos (Vercel corta el cuerpo en ~4.5 MB); la plataforma usa
+ * /entrega/preparar + /entrega/confirmar. Se conserva por compatibilidad con
+ * pestañas abiertas antes del cambio.
  */
 export async function POST(request: Request) {
   if (!rateLimit(request, { key: "estudiante-entrega-subir", limit: 20, windowMs: 60_000 })) {
@@ -49,112 +43,46 @@ export async function POST(request: Request) {
   if (typeof actividadId !== "string" || !UUID_RE.test(actividadId)) {
     return NextResponse.json({ error: "Solicitud inválida." }, { status: 422 });
   }
-  if (!(archivo instanceof File) || archivo.size === 0) {
+  if (!(archivo instanceof File)) {
     return NextResponse.json({ error: "Selecciona un archivo." }, { status: 422 });
   }
-  if (archivo.size > MAX_BYTES) {
-    return NextResponse.json({ error: "El archivo no puede pesar más de 20 MB." }, { status: 422 });
-  }
-  const extension = extensionDe(archivo.name);
-  if (!EXTENSIONES_PERMITIDAS.includes(extension)) {
-    return NextResponse.json(
-      { error: `Tipo de archivo no permitido. Usa: ${EXTENSIONES_PERMITIDAS.join(", ")}.` },
-      { status: 422 },
-    );
-  }
+  const errorArchivo = validarArchivo(archivo.name, archivo.size);
+  if (errorArchivo) return NextResponse.json({ error: errorArchivo }, { status: 422 });
 
-  const { data: actividad, error: actividadError } = await admin
-    .from("gestionesjj_curso_actividades")
-    .select("semana_id, entrega_habilitada, fecha_limite, visible_estudiantes")
-    .eq("id", actividadId)
-    .maybeSingle();
-  if (actividadError || !actividad || !actividad.entrega_habilitada || actividad.visible_estudiantes === "oculto") {
-    return NextResponse.json({ error: "No se encontró la tarea." }, { status: 404 });
-  }
+  const tarea = await validarTareaParaEntrega(admin, actividadId, auth.estudianteId);
+  if (!tarea.ok) return NextResponse.json({ error: tarea.error }, { status: tarea.status });
 
-  const { data: semana, error: semanaError } = await admin
-    .from("gestionesjj_curso_semanas")
-    .select("curso_id, habilitado_estudiantes")
-    .eq("id", actividad.semana_id)
-    .maybeSingle();
-  if (semanaError || !semana || !semana.habilitado_estudiantes) {
-    return NextResponse.json({ error: "No se encontró la tarea." }, { status: 404 });
-  }
-
-  const { data: curso, error: cursoError } = await admin
-    .from("gestionesjj_cursos_impartidos")
-    .select("acceso_estudiantes")
-    .eq("id", semana.curso_id)
-    .maybeSingle();
-  if (cursoError || !curso || !curso.acceso_estudiantes) {
-    return NextResponse.json({ error: "No se encontró la tarea." }, { status: 404 });
-  }
-
-  const { data: inscripcion, error: inscripcionError } = await admin
-    .from("gestionesjj_curso_estudiantes")
-    .select("id")
-    .eq("curso_id", semana.curso_id)
-    .eq("estudiante_id", auth.estudianteId)
-    .eq("estado", "activo")
-    .maybeSingle();
-  if (inscripcionError || !inscripcion) {
-    return NextResponse.json({ error: "No se encontró la tarea." }, { status: 404 });
-  }
-
-  const ahora = new Date();
-  const tardia = Boolean(actividad.fecha_limite && ahora > new Date(actividad.fecha_limite));
-
-  const { data: entregaExistente } = await admin
-    .from("gestionesjj_curso_entregas")
-    .select("id")
-    .eq("actividad_id", actividadId)
-    .eq("estudiante_id", auth.estudianteId)
-    .maybeSingle();
-
-  let entregaId = entregaExistente?.id as string | undefined;
-  if (entregaId) {
-    const { error: updateError } = await admin
-      .from("gestionesjj_curso_entregas")
-      .update({ entregado_en: ahora.toISOString(), tardia, updated_at: ahora.toISOString() })
-      .eq("id", entregaId);
-    if (updateError) return NextResponse.json({ error: updateError.message }, { status: 500 });
-  } else {
-    const { data: nuevaEntrega, error: insertError } = await admin
-      .from("gestionesjj_curso_entregas")
-      .insert({ actividad_id: actividadId, estudiante_id: auth.estudianteId, entregado_en: ahora.toISOString(), tardia })
-      .select("id")
-      .single();
-    if (insertError || !nuevaEntrega) {
-      return NextResponse.json({ error: insertError?.message ?? "No se pudo registrar la entrega." }, { status: 500 });
-    }
-    entregaId = nuevaEntrega.id as string;
-  }
-
-  const path = `entregas/${actividadId}/${auth.estudianteId}/${crypto.randomUUID()}-${nombreSeguro(archivo.name)}`;
-  const { error: uploadError } = await admin.storage.from(BUCKET).upload(path, archivo, {
+  const path = `${carpetaEntrega(actividadId, auth.estudianteId)}/${crypto.randomUUID()}-${nombreSeguro(archivo.name)}`;
+  const { error: uploadError } = await admin.storage.from(BUCKET_ENTREGAS).upload(path, archivo, {
     contentType: archivo.type || undefined,
   });
   if (uploadError) {
     return NextResponse.json({ error: "No se pudo subir el archivo." }, { status: 500 });
   }
 
-  const { error: archivoError } = await admin.from("gestionesjj_curso_entrega_archivos").insert({
-    entrega_id: entregaId,
-    archivo_path: path,
-    archivo_nombre: archivo.name,
-    archivo_mime: archivo.type || null,
+  const registro = await registrarEntrega(admin, {
+    actividadId,
+    estudianteId: auth.estudianteId,
+    fechaLimite: tarea.fechaLimite,
+    path,
+    nombre: archivo.name,
+    mime: archivo.type || null,
   });
-  if (archivoError) {
-    await admin.storage.from(BUCKET).remove([path]);
-    return NextResponse.json({ error: archivoError.message }, { status: 500 });
+  if (!registro.ok) {
+    await admin.storage.from(BUCKET_ENTREGAS).remove([path]);
+    return NextResponse.json({ error: registro.error }, { status: registro.status });
   }
 
-  const cursoId = semana.curso_id as string;
+  const { cursoId } = tarea;
   after(() =>
-    avisarEntrega({ actividadId, estudianteId: auth.estudianteId, cursoId, archivoNombre: archivo.name, tardia }).catch(
-      () => undefined,
-    ),
+    avisarEntrega({
+      actividadId,
+      estudianteId: auth.estudianteId,
+      cursoId,
+      archivoNombre: archivo.name,
+      tardia: registro.tardia,
+    }).catch(() => undefined),
   );
 
-  return NextResponse.json({ ok: true, tardia });
+  return NextResponse.json({ ok: true, tardia: registro.tardia });
 }

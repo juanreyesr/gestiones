@@ -85,7 +85,7 @@ export function CursoEstudianteDetalle({ curso, onVolver }: { curso: MiCurso; on
     setSubiendoTareaId(null);
     if (subirError) {
       setError(subirError);
-      return;
+      return false;
     }
     setError("");
     // Recarga las tareas de todas las semanas cargadas para reflejar la entrega nueva.
@@ -95,6 +95,7 @@ export function CursoEstudianteDetalle({ curso, onVolver }: { curso: MiCurso; on
       setTareasPorSemana((prev) => ({ ...prev, [semanaId]: tareasData }));
     }
     setArchivosPorTarea((prev) => Object.fromEntries(Object.entries(prev).filter(([id]) => id !== tarea.id)));
+    return true;
   }, [tareasPorSemana]);
 
   const handleVerMisArchivos = useCallback(async (tareaId: string) => {

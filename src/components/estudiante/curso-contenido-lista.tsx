@@ -6,6 +6,7 @@ import { useState } from "react";
 import type { Idioma } from "@/lib/cursos/types";
 import { formatearFecha, formatearFechaHora, formatearFechaLimite } from "@/lib/cursos/types";
 import { descripcionEnIdioma, traducir } from "@/lib/estudiante/i18n";
+import { GrabadorNotaVoz } from "./grabador-nota-voz";
 
 const MAX_BYTES_ENTREGA = 20 * 1024 * 1024; // 20 MB, igual que valida el servidor
 
@@ -47,7 +48,8 @@ export type ArchivoPropioVista = { id: string; nombre: string | null };
 type TareasConfig = {
   porSemana: Record<string, TareaEstudianteVista[] | undefined>;
   subiendoTareaId?: string | null;
-  onSubirArchivo?: (tarea: TareaEstudianteVista, archivo: File) => void | Promise<void>;
+  /** Devuelve false si la subida falló (p. ej. para conservar una nota de voz y reintentar). */
+  onSubirArchivo?: (tarea: TareaEstudianteVista, archivo: File) => void | Promise<void | boolean>;
   archivosPorTarea?: Record<string, ArchivoPropioVista[] | undefined>;
   onVerMisArchivos?: (tareaId: string) => void | Promise<void>;
   onDescargarArchivoPropio?: (archivo: ArchivoPropioVista) => void | Promise<void>;
@@ -283,7 +285,7 @@ function TareaItem({
           ) : null}
 
           {tarea.entregaHabilitada ? (
-            <div className="mt-2 flex flex-wrap items-center gap-2">
+            <div className="mt-2 flex flex-wrap items-start gap-2">
               {onSubirArchivo ? (
                 <div className="flex flex-col gap-1">
                   <label className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-semibold text-slate-600 hover:border-slate-400">
@@ -294,6 +296,13 @@ function TareaItem({
                   <span className="text-[11px] text-slate-400">{t("tarea_archivo_max")}</span>
                   {errorArchivo ? <span className="text-[11px] font-semibold text-red-600">{errorArchivo}</span> : null}
                 </div>
+              ) : null}
+              {onSubirArchivo ? (
+                <GrabadorNotaVoz
+                  disabled={subiendo}
+                  idioma={idioma}
+                  onEnviar={async (archivo) => (await onSubirArchivo(tarea, archivo)) !== false}
+                />
               ) : null}
               {tarea.miEntregadoEn ? (
                 <button
