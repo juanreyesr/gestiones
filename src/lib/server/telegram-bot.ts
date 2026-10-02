@@ -19,6 +19,15 @@ import {
   pedidoDeEnlace,
 } from "./telegram-enlaces";
 import {
+  descartarBorrador,
+  enviarListaProgramados,
+  iniciarProgramacion,
+  leerBorrador,
+  pideProgramarMensaje,
+  procesarCallbackProgramar,
+  responderBorrador,
+} from "./telegram-mensajes";
+import {
   type BotonInline,
   type TelegramConfig,
   comparaSeguro,
@@ -86,6 +95,21 @@ export async function procesarUpdate(update: TelegramUpdate) {
 
   const chatId = config.chatId;
 
+  // Programar un mensaje (/programar): mientras hay uno en curso, lo que se
+  // escribe es la respuesta al paso. Otro comando lo descarta.
+  if (!texto.startsWith("/") && !mensaje.reply_to_message) {
+    const borrador = await leerBorrador(admin, chatId);
+    if (borrador) {
+      await responderBorrador(admin, chatId, borrador, texto);
+      return;
+    }
+    if (pideProgramarMensaje(texto)) {
+      // "programa un mensaje a 4000-1234": el numero ya viene.
+      await iniciarProgramacion(admin, chatId, texto.match(/\+?\d[\d\s().-]{6,}\d/)?.[0] ?? "");
+      return;
+    }
+  }
+
   // Responder a un aviso de mensaje de estudiante = contestarle.
   if (mensaje.reply_to_message && texto && !texto.startsWith("/")) {
     const respondido = await responderHilo(admin, config, mensaje.reply_to_message.message_id, texto);
@@ -136,7 +160,20 @@ export async function procesarUpdate(update: TelegramUpdate) {
   }
 
   const [, nombre, argumento = ""] = comando;
-  switch (nombre.toLowerCase()) {
+  const orden = nombre.toLowerCase();
+  if (orden === "cancelar") {
+    const habia = await descartarBorrador(admin, chatId);
+    await enviarMensaje(chatId, habia ? "❌ Programación cancelada. Nada se guardó." : "No había nada en curso que cancelar.");
+    return;
+  }
+  if (orden !== "programar") await descartarBorrador(admin, chatId);
+  switch (orden) {
+    case "programar":
+      await iniciarProgramacion(admin, chatId, argumento);
+      return;
+    case "programados":
+      await enviarListaProgramados(admin, chatId);
+      return;
     case "hoy":
     case "resumen":
       {
@@ -290,6 +327,8 @@ function textoAyuda() {
     "/solicitudes — solicitudes de cita con botones para aprobar o rechazar",
     "/pendientes — pendientes vencidos y de los próximos 3 días, con botón ✅ Listo",
     "/nuevo <i>texto</i> — anota un pendiente nuevo",
+    "/programar — programa un mensaje de WhatsApp: te pregunto el número, el mensaje y la hora, y a esa hora te llega con el botón para enviarlo",
+    "/programados — mensajes programados pendientes, con botón para cancelar",
     "/agendar — enlace de tu página de citas, listo para enviar",
     "/pago — enlace de pago de la consulta (PayPal), listo para enviar",
     "/datos <i>nombre</i> — enlace para que un paciente llene sus datos (con botón de WhatsApp a su número)",
@@ -1062,6 +1101,11 @@ async function procesarCallback(admin: SupabaseClient, query: CallbackQuery) {
 
   const [ambito, accion, id] = (query.data ?? "").split(":");
   const messageId = query.message!.message_id;
+
+  if (ambito === "mpr") {
+    await procesarCallbackProgramar(admin, config, chatId, messageId, accion, id, responder);
+    return;
+  }
 
   if (ambito === "sol" && id) {
     const { data: sol } = await admin
