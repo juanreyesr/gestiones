@@ -155,7 +155,7 @@ export async function exportarExpedientePdf(paciente: PacienteRow, sesiones: Ses
     if (compromisos.length) paragraph(`Compromisos: ${compromisos.map((c) => c.descripcion).join("; ")}`);
     if (tareas.length) paragraph(`Tareas: ${tareas.map((c) => c.descripcion).join("; ")}`);
     if (sesion.propuestasIa.length) {
-      paragraph(`Propuestas (IA): ${sesion.propuestasIa.map((p) => `${p.nombre} (${p.justificacion})`).join("; ")}`);
+      paragraph(`Propuestas (IA): ${sesion.propuestasIa.map((p) => `${p.nombre} (${p.justificacion})${p.estado === "aplicada" ? " [aplicada]" : p.estado === "descartada" ? " [descartada]" : ""}`).join("; ")}`);
     }
     y += 8;
   });

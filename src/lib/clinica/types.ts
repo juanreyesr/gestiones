@@ -111,7 +111,15 @@ export type CompromisoRow = {
 };
 
 /** Propuesta clinica sugerida por la IA y guardada en el historial de la sesion. */
-export type PropuestaClinica = { tipo: "tecnica" | "terapia" | "evaluacion"; nombre: string; justificacion: string };
+export type PropuestaClinica = {
+  tipo: "tecnica" | "terapia" | "evaluacion";
+  nombre: string;
+  justificacion: string;
+  /** Seguimiento en el plan de tratamiento (sin valor = pendiente). */
+  estado?: "pendiente" | "aplicada" | "descartada";
+  /** Fecha (ISO) en que se marco como aplicada o descartada. */
+  estadoAt?: string | null;
+};
 
 export type SesionRow = {
   id: string;
