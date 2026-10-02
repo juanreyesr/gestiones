@@ -1,6 +1,6 @@
 "use client";
 
-import { Archive, ArchiveRestore, LayoutDashboard, ListChecks, Pencil, Plus, Trash2 } from "lucide-react";
+import { Archive, ArchiveRestore, LayoutDashboard, ListChecks, MessageSquareText, Pencil, Plus, Trash2 } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { hoyISO } from "@/lib/fechas";
@@ -13,6 +13,7 @@ import {
 } from "@/lib/pendientes/tableros";
 import { COLORES_TABLERO, type TableroRow } from "@/lib/pendientes/types";
 import { BTN_GHOST, BTN_PRIMARY, EmptyState, ErrorBanner, Field, INPUT, Modal } from "@/components/ui-comun";
+import { MensajesProgramados } from "./mensajes-programados";
 import { TableroDetalle } from "./tablero-detalle";
 
 export function PendientesView() {
@@ -24,6 +25,7 @@ export function PendientesView() {
   const [formulario, setFormulario] = useState<TableroRow | "nuevo" | null>(null);
   const [aEliminar, setAEliminar] = useState<TableroRow | null>(null);
   const [verArchivados, setVerArchivados] = useState(false);
+  const [seccion, setSeccion] = useState<"tableros" | "mensajes">("tableros");
 
   const cargar = useCallback(async () => {
     setCargando(true);
@@ -77,107 +79,137 @@ export function PendientesView() {
           <ListChecks className="h-5 w-5 text-emerald-200" />
           Gestión de pendientes
         </h3>
-        <div className="ml-auto flex items-center gap-2">
-          <button className={BTN_GHOST} onClick={() => setVerArchivados((previo) => !previo)} type="button">
-            {verArchivados ? <ArchiveRestore className="h-4 w-4" /> : <Archive className="h-4 w-4" />}
-            {verArchivados ? "Ver activos" : "Archivados"}
-          </button>
-          <button className={BTN_PRIMARY} onClick={() => setFormulario("nuevo")} type="button">
-            <Plus className="h-4 w-4" />
-            Nuevo tablero
-          </button>
-        </div>
+        {seccion === "tableros" ? (
+          <div className="ml-auto flex items-center gap-2">
+            <button className={BTN_GHOST} onClick={() => setVerArchivados((previo) => !previo)} type="button">
+              {verArchivados ? <ArchiveRestore className="h-4 w-4" /> : <Archive className="h-4 w-4" />}
+              {verArchivados ? "Ver activos" : "Archivados"}
+            </button>
+            <button className={BTN_PRIMARY} onClick={() => setFormulario("nuevo")} type="button">
+              <Plus className="h-4 w-4" />
+              Nuevo tablero
+            </button>
+          </div>
+        ) : null}
       </div>
 
-      <p className="text-sm text-slate-400">
-        Cada tablero agrupa los pendientes de un frente de trabajo: un ministerio, un proyecto o el mes en curso.
-        Dentro puedes verlos como tabla, kanban, calendario o cronograma.
-      </p>
+      <div className="flex gap-1 border-b border-white/10">
+        {(
+          [
+            { id: "tableros", titulo: "Tableros", icono: LayoutDashboard },
+            { id: "mensajes", titulo: "Mensajes programados", icono: MessageSquareText },
+          ] as const
+        ).map(({ id, titulo, icono: Icono }) => (
+          <button
+            className={`-mb-px flex items-center gap-2 border-b-2 px-3 py-2 text-sm font-semibold transition ${
+              seccion === id ? "border-emerald-300 text-white" : "border-transparent text-slate-400 hover:text-slate-200"
+            }`}
+            key={id}
+            onClick={() => setSeccion(id)}
+            type="button"
+          >
+            <Icono className="h-4 w-4" />
+            {titulo}
+          </button>
+        ))}
+      </div>
 
-      <ErrorBanner message={error} />
-
-      {cargando ? (
-        <p className="text-sm text-slate-300">Cargando tableros...</p>
-      ) : visibles.length ? (
-        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-          {visibles.map((tablero) => {
-            const datos = resumen[tablero.id] ?? { total: 0, listos: 0, vencidos: 0 };
-            const progreso = datos.total ? Math.round((datos.listos / datos.total) * 100) : 0;
-
-            return (
-              <article
-                className="group relative cursor-pointer border border-white/10 bg-white/8 p-4 backdrop-blur-xl transition hover:border-emerald-300/50 hover:bg-white/12"
-                key={tablero.id}
-                onClick={() => setAbierto(tablero.id)}
-              >
-                <div className="absolute right-3 top-3 flex gap-1.5 opacity-0 transition group-hover:opacity-100">
-                  <button
-                    className="flex h-7 w-7 items-center justify-center border border-white/10 bg-slate-950/80 text-slate-200 hover:border-emerald-300/50"
-                    onClick={(evento) => {
-                      evento.stopPropagation();
-                      setFormulario(tablero);
-                    }}
-                    title="Editar tablero"
-                    type="button"
-                  >
-                    <Pencil className="h-3.5 w-3.5" />
-                  </button>
-                  <button
-                    className="flex h-7 w-7 items-center justify-center border border-white/10 bg-slate-950/80 text-slate-200 hover:border-emerald-300/50"
-                    onClick={async (evento) => {
-                      evento.stopPropagation();
-                      await updateTablero(tablero.id, { archivado: !tablero.archivado });
-                      await cargar();
-                    }}
-                    title={tablero.archivado ? "Restaurar tablero" : "Archivar tablero"}
-                    type="button"
-                  >
-                    {tablero.archivado ? <ArchiveRestore className="h-3.5 w-3.5" /> : <Archive className="h-3.5 w-3.5" />}
-                  </button>
-                  <button
-                    className="flex h-7 w-7 items-center justify-center border border-red-400/30 bg-slate-950/80 text-red-200 hover:border-red-300"
-                    onClick={(evento) => {
-                      evento.stopPropagation();
-                      setAEliminar(tablero);
-                    }}
-                    title="Eliminar tablero"
-                    type="button"
-                  >
-                    <Trash2 className="h-3.5 w-3.5" />
-                  </button>
-                </div>
-
-                <div className="mb-3 h-1.5 w-12" style={{ backgroundColor: tablero.color }} />
-                <h4 className="pr-24 text-base font-semibold text-white">{tablero.nombre}</h4>
-                {tablero.descripcion ? (
-                  <p className="mt-1 line-clamp-2 text-sm text-slate-400">{tablero.descripcion}</p>
-                ) : null}
-
-                <div className="mt-4 flex items-center gap-3 text-xs font-semibold">
-                  <span className="text-slate-300">{datos.total} pendientes</span>
-                  <span className="text-emerald-300">{datos.listos} listos</span>
-                  {datos.vencidos ? <span className="text-red-300">{datos.vencidos} vencidos</span> : null}
-                </div>
-
-                <div className="mt-2 h-1.5 w-full overflow-hidden bg-white/10">
-                  <div className="h-full bg-emerald-400" style={{ width: `${progreso}%` }} />
-                </div>
-              </article>
-            );
-          })}
-        </div>
+      {seccion === "mensajes" ? (
+        <MensajesProgramados />
       ) : (
-        <EmptyState>
-          {verArchivados ? (
-            "No hay tableros archivados."
+        <>
+          <p className="text-sm text-slate-400">
+            Cada tablero agrupa los pendientes de un frente de trabajo: un ministerio, un proyecto o el mes en curso.
+            Dentro puedes verlos como tabla, kanban, calendario o cronograma.
+          </p>
+
+          <ErrorBanner message={error} />
+
+          {cargando ? (
+            <p className="text-sm text-slate-300">Cargando tableros...</p>
+          ) : visibles.length ? (
+            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+              {visibles.map((tablero) => {
+                const datos = resumen[tablero.id] ?? { total: 0, listos: 0, vencidos: 0 };
+                const progreso = datos.total ? Math.round((datos.listos / datos.total) * 100) : 0;
+
+                return (
+                  <article
+                    className="group relative cursor-pointer border border-white/10 bg-white/8 p-4 backdrop-blur-xl transition hover:border-emerald-300/50 hover:bg-white/12"
+                    key={tablero.id}
+                    onClick={() => setAbierto(tablero.id)}
+                  >
+                    <div className="absolute right-3 top-3 flex gap-1.5 opacity-0 transition group-hover:opacity-100">
+                      <button
+                        className="flex h-7 w-7 items-center justify-center border border-white/10 bg-slate-950/80 text-slate-200 hover:border-emerald-300/50"
+                        onClick={(evento) => {
+                          evento.stopPropagation();
+                          setFormulario(tablero);
+                        }}
+                        title="Editar tablero"
+                        type="button"
+                      >
+                        <Pencil className="h-3.5 w-3.5" />
+                      </button>
+                      <button
+                        className="flex h-7 w-7 items-center justify-center border border-white/10 bg-slate-950/80 text-slate-200 hover:border-emerald-300/50"
+                        onClick={async (evento) => {
+                          evento.stopPropagation();
+                          await updateTablero(tablero.id, { archivado: !tablero.archivado });
+                          await cargar();
+                        }}
+                        title={tablero.archivado ? "Restaurar tablero" : "Archivar tablero"}
+                        type="button"
+                      >
+                        {tablero.archivado ? <ArchiveRestore className="h-3.5 w-3.5" /> : <Archive className="h-3.5 w-3.5" />}
+                      </button>
+                      <button
+                        className="flex h-7 w-7 items-center justify-center border border-red-400/30 bg-slate-950/80 text-red-200 hover:border-red-300"
+                        onClick={(evento) => {
+                          evento.stopPropagation();
+                          setAEliminar(tablero);
+                        }}
+                        title="Eliminar tablero"
+                        type="button"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+
+                    <div className="mb-3 h-1.5 w-12" style={{ backgroundColor: tablero.color }} />
+                    <h4 className="pr-24 text-base font-semibold text-white">{tablero.nombre}</h4>
+                    {tablero.descripcion ? (
+                      <p className="mt-1 line-clamp-2 text-sm text-slate-400">{tablero.descripcion}</p>
+                    ) : null}
+
+                    <div className="mt-4 flex items-center gap-3 text-xs font-semibold">
+                      <span className="text-slate-300">{datos.total} pendientes</span>
+                      <span className="text-emerald-300">{datos.listos} listos</span>
+                      {datos.vencidos ? <span className="text-red-300">{datos.vencidos} vencidos</span> : null}
+                    </div>
+
+                    <div className="mt-2 h-1.5 w-full overflow-hidden bg-white/10">
+                      <div className="h-full bg-emerald-400" style={{ width: `${progreso}%` }} />
+                    </div>
+                  </article>
+                );
+              })}
+            </div>
           ) : (
-            <>
-              <LayoutDashboard className="mx-auto mb-2 h-6 w-6 text-slate-500" />
-              Todavía no hay tableros. Crea el primero (por ejemplo &quot;Ministerio de jóvenes&quot;) y empieza a
-              cargar pendientes.
-            </>
+            <EmptyState>
+              {verArchivados ? (
+                "No hay tableros archivados."
+              ) : (
+                <>
+                  <LayoutDashboard className="mx-auto mb-2 h-6 w-6 text-slate-500" />
+                  Todavía no hay tableros. Crea el primero (por ejemplo &quot;Ministerio de jóvenes&quot;) y empieza a
+                  cargar pendientes.
+                </>
+              )}
+            </EmptyState>
           )}
-        </EmptyState>
+
+        </>
       )}
 
       {formulario ? (
