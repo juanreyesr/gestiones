@@ -54,6 +54,8 @@ export type DocenteAviso = {
   docenteId: string;
   nombre: string;
   telefono: string | null;
+  /** Como saludarlo ("querida Elly"); null = primer nombre. */
+  trato: string | null;
   pendientes: string[];
   /** Entrego todos sus cursos a mas tardar el dia limite. */
   puntual: boolean;
@@ -62,7 +64,7 @@ export type DocenteAviso = {
 
 /** Agrupa los cursos por docente (un solo mensaje por docente aunque tenga varios cursos). */
 export function agruparPorDocente(
-  filas: Array<CursoAviso & { docenteId: string; nombre: string; telefono: string | null }>,
+  filas: Array<CursoAviso & { docenteId: string; nombre: string; telefono: string | null; trato?: string | null }>,
   fechaLimite: string,
 ): DocenteAviso[] {
   const porDocente = new Map<string, DocenteAviso>();
@@ -71,6 +73,7 @@ export function agruparPorDocente(
       docenteId: fila.docenteId,
       nombre: fila.nombre,
       telefono: fila.telefono,
+      trato: fila.trato ?? null,
       pendientes: [],
       puntual: true,
       cursos: [],
@@ -105,10 +108,29 @@ function queEvaluacion(tipo: TipoEvaluacion, cursos: string[]) {
   return `las evaluaciones ${tipo === "parcial" ? "parciales" : "finales"} de los cursos:\n${cursos.map((c) => `• *${c}*`).join("\n")}\n`;
 }
 
-const FIRMA = "M.A. Juan Reyes";
+/** "¡Buenos días" / "¡Buenas tardes" / "¡Buenas noches" segun la hora (0-23) en Guatemala. */
+export function saludoPorHora(hora: number) {
+  if (hora >= 5 && hora < 12) return "Buenos días";
+  if (hora >= 12 && hora < 19) return "Buenas tardes";
+  return "Buenas noches";
+}
+
+/** Hora actual en Guatemala (0-23). */
+export function horaGuatemala(fecha = new Date()) {
+  return Number(
+    new Intl.DateTimeFormat("en-US", { timeZone: "America/Guatemala", hour: "numeric", hourCycle: "h23" }).format(fecha),
+  );
+}
+
+/**
+ * Como se le habla al docente en el saludo ("querida Elly", "estimada Lcda. Corado"),
+ * definido en su perfil. Sin trato se usa su primer nombre.
+ */
+const comoSaludar = (trato: string | null | undefined, nombre: string) => trato?.trim() || primerNombre(nombre);
 
 export function mensajeRecordatorio(input: {
   nombre: string;
+  trato?: string | null;
   tipo: TipoEvaluacion;
   cursos: string[];
   fechaLimite: string;
@@ -116,48 +138,52 @@ export function mensajeRecordatorio(input: {
 }) {
   const que = queEvaluacion(input.tipo, input.cursos);
   const una = input.cursos.length === 1;
+  const saludo = `¡Hola, ${comoSaludar(input.trato, input.nombre)}! 😊`;
   if (input.ocasion !== "lunes") {
     const cuando =
       input.ocasion === "limite"
         ? `hoy ${fechaEnTexto(input.fechaLimite)} es la fecha límite`
         : `el ${fechaEnTexto(input.fechaLimite)} es la fecha límite`;
     return [
-      `¡Hola, ${primerNombre(input.nombre)}! 😊 Espero que estés muy bien.`,
+      `${saludo} Espero que estés muy bien.`,
       "",
-      `Te escribo para recordarte que ${cuando} para entregar ${que}`.trimEnd() + (una ? "." : ""),
+      `Te escribo para recordar que ${cuando} para entregar ${que}`.trimEnd() + (una ? "." : ""),
       "",
       `Si ya ${una ? "la tienes lista" : "las tienes listas"}, compártemel${una ? "a" : "as"} cuando puedas. Cualquier duda, con gusto te apoyo.`,
       "",
       "¡Muchas gracias! 🙌",
-      FIRMA,
     ].join("\n");
   }
   return [
-    `¡Hola, ${primerNombre(input.nombre)}! 😊 Feliz inicio de semana.`,
+    `${saludo} Feliz inicio de semana.`,
     "",
     una
-      ? `Te escribo para recordarte que aún tengo pendiente ${que}, cuya fecha límite fue el ${fechaEnTexto(input.fechaLimite)}.`
-      : `Te escribo para recordarte que aún tengo pendientes ${que.trimEnd()}
-
-Su fecha límite fue el ${fechaEnTexto(input.fechaLimite)}.`,
+      ? `Te escribo para recordar que aún tengo pendiente ${que}, cuya fecha límite fue el ${fechaEnTexto(input.fechaLimite)}.`
+      : `Te escribo para recordar que aún tengo pendientes ${que.trimEnd()}\n\nSu fecha límite fue el ${fechaEnTexto(input.fechaLimite)}.`,
     "",
     `¿Me ${una ? "la" : "las"} podrías enviar a la brevedad? Así podré revisar${una ? "la" : "las"} y enviarte la retroalimentación a tiempo. Si tienes algún inconveniente, avísame y lo vemos juntos.`,
     "",
-    "¡Gracias por tu apoyo! 🙌",
-    FIRMA,
+    "¡Muchas gracias! 🙌",
   ].join("\n");
 }
 
-export function mensajeFelicitacion(input: { nombre: string; tipo: TipoEvaluacion; cursos: string[] }) {
+export function mensajeFelicitacion(input: {
+  trato?: string | null;
+  tipo: TipoEvaluacion;
+  cursos: string[];
+  /** Hora en Guatemala (0-23) para el saludo; por defecto, la actual. */
+  hora?: number;
+}) {
+  const saludo = saludoPorHora(input.hora ?? horaGuatemala());
+  const trato = input.trato?.trim();
   return [
-    `¡Hola, ${primerNombre(input.nombre)}! 🎉`,
+    `¡${saludo}${trato ? `, ${trato}` : ""}! 🎉`,
     "",
     `Quiero felicitarte por entregar a tiempo ${queEvaluacion(input.tipo, input.cursos)}`.trimEnd() +
       (input.cursos.length === 1 ? "." : ""),
     "",
-    "Tu puntualidad muestra tu compromiso con tus estudiantes y con la carrera, y de verdad se agradece.",
+    "Esa puntualidad muestra el compromiso con los estudiantes y con la facultad, lo que nos ayuda a gestionar bien todo en equipo.",
     "",
-    "¡Gracias por tu excelente trabajo! 👏",
-    FIRMA,
+    "¡Gracias por ese excelente trabajo! 👏",
   ].join("\n");
 }

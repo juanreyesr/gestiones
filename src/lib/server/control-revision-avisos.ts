@@ -31,7 +31,7 @@ type RawCurso = {
   anio: number;
   trimestre: number;
   docente_id: string | null;
-  gestionesjj_docentes: { nombre: string; telefono: string | null } | null;
+  gestionesjj_docentes: { nombre: string; telefono: string | null; trato: string | null } | null;
 };
 
 type RawFila = { curso_id: string; estado_entrega: "Pendiente" | "Entregado"; fecha_recepcion: string | null };
@@ -62,7 +62,7 @@ export async function enviarAvisosPeriodo(
   const [resCursos, resFilas] = await Promise.all([
     admin
       .from("gestionesjj_cursos")
-      .select("id,nombre,activo,virtual,anio,trimestre,docente_id,gestionesjj_docentes(nombre,telefono)")
+      .select("id,nombre,activo,virtual,anio,trimestre,docente_id,gestionesjj_docentes(nombre,telefono,trato)")
       .eq("anio", periodo.anio)
       .eq("trimestre", periodo.trimestre),
     admin
@@ -90,6 +90,7 @@ export async function enviarAvisosPeriodo(
         docenteId: c.docente_id as string,
         nombre: c.gestionesjj_docentes?.nombre ?? "Docente",
         telefono: c.gestionesjj_docentes?.telefono ?? null,
+        trato: c.gestionesjj_docentes?.trato ?? null,
         curso: c.nombre,
         estado: estado?.estado_entrega ?? ("Pendiente" as const),
         fechaRecepcion: estado?.fecha_recepcion ?? null,
@@ -130,6 +131,7 @@ export async function enviarAvisosPeriodo(
   for (const d of pendientes) {
     const mensaje = mensajeRecordatorio({
       nombre: d.nombre,
+      trato: d.trato,
       tipo: periodo.tipo,
       cursos: d.pendientes,
       fechaLimite: periodo.fecha_limite,
@@ -146,7 +148,7 @@ export async function enviarAvisosPeriodo(
   }
 
   for (const d of puntuales) {
-    const mensaje = mensajeFelicitacion({ nombre: d.nombre, tipo: periodo.tipo, cursos: d.cursos });
+    const mensaje = mensajeFelicitacion({ trato: d.trato, tipo: periodo.tipo, cursos: d.cursos });
     const res = await enviarConBoton(
       chatId,
       `🎉 <b>${esc(d.nombre)}</b>\nEntregó a tiempo: ${esc(d.cursos.join(", "))}`,

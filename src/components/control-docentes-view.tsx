@@ -15,11 +15,12 @@ type FormState = {
   codigo: string;
   correo: string;
   telefono: string;
+  trato: string;
   femenino: boolean;
   activo: boolean;
 };
 
-const FORM_VACIO: FormState = { nombre: "", codigo: "", correo: "", telefono: "", femenino: false, activo: true };
+const FORM_VACIO: FormState = { nombre: "", codigo: "", correo: "", telefono: "", trato: "", femenino: false, activo: true };
 
 export function ControlDocentesView({ onDocentesChanged }: { onDocentesChanged?: () => void }) {
   const [docentes, setDocentes] = useState<DocenteAdminRow[]>([]);
@@ -73,6 +74,7 @@ export function ControlDocentesView({ onDocentesChanged }: { onDocentesChanged?:
       codigo: docente.codigo ?? "",
       correo: docente.correo ?? "",
       telefono: docente.telefono ?? "",
+      trato: docente.trato ?? "",
       femenino: docente.femenino,
       activo: docente.activo,
     });
@@ -97,6 +99,7 @@ export function ControlDocentesView({ onDocentesChanged }: { onDocentesChanged?:
       codigo: form.codigo.trim() || null,
       correo: form.correo.trim() || null,
       telefono: form.telefono.trim() || null,
+      trato: form.trato.trim() || null,
       femenino: form.femenino,
       activo: form.activo,
     };
@@ -123,6 +126,7 @@ export function ControlDocentesView({ onDocentesChanged }: { onDocentesChanged?:
       codigo: docente.codigo,
       correo: docente.correo,
       telefono: docente.telefono,
+      trato: docente.trato,
       femenino: docente.femenino,
       activo: nuevoActivo,
     });
@@ -196,6 +200,22 @@ export function ControlDocentesView({ onDocentesChanged }: { onDocentesChanged?:
             </Field>
           </div>
 
+          <div className="mt-3">
+            <Field label="Trato en los mensajes">
+              <input
+                className="field"
+                maxLength={60}
+                onChange={(event) => setForm((current) => ({ ...current, trato: event.target.value }))}
+                placeholder="Ej.: querida Elly · estimada Lcda. Corado"
+                value={form.trato}
+              />
+            </Field>
+            <p className="mt-1 text-xs text-slate-400">
+              Va después del saludo en los recordatorios y felicitaciones por WhatsApp: &quot;¡Buenos días, querida
+              Elly!&quot;. Si lo dejas vacío se usa su primer nombre.
+            </p>
+          </div>
+
           <div className="mt-3 flex flex-wrap items-center gap-5">
             <label className="flex items-center gap-2 text-sm text-slate-200">
               <input
@@ -263,6 +283,7 @@ export function ControlDocentesView({ onDocentesChanged }: { onDocentesChanged?:
                 </div>
                 <p className="mt-1 text-xs text-slate-400">
                   ID: {docente.codigo || "-"} · Correo: {docente.correo || "-"} · Telefono: {docente.telefono || "-"}
+                  {docente.trato ? ` · Trato: ${docente.trato}` : ""}
                 </p>
               </div>
 
