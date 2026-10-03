@@ -217,7 +217,7 @@ export async function guardarFilaRevision(clave: Clave, cursoId: string, estado:
 }
 
 /** Manda a Telegram, en el momento, los avisos del periodo (un mensaje por docente con boton de WhatsApp). */
-export async function enviarAvisosTelegram(clave: Clave) {
+export async function enviarAvisosTelegram(clave: Clave, docentes?: string[]) {
   const supabase = getSupabaseClient();
   if (!supabase) return { enviados: 0, error: "Faltan las variables de Supabase." };
   const { data } = await supabase.auth.getSession();
@@ -227,7 +227,7 @@ export async function enviarAvisosTelegram(clave: Clave) {
     const response = await fetch("/api/telegram/control-revision", {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-      body: JSON.stringify(clave),
+      body: JSON.stringify({ ...clave, docentes }),
     });
     const body = (await response.json().catch(() => null)) as { enviados?: number; error?: string } | null;
     if (!response.ok) return { enviados: 0, error: body?.error ?? "No se pudo enviar a Telegram." };

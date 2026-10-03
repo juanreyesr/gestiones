@@ -26,6 +26,7 @@ import { fetchDocentesAdmin, type DocenteAdminRow } from "@/lib/docentes-admin";
 import { currentTrimestre } from "@/lib/evaluacion-helpers";
 import { formatoLargo, hoyISO } from "@/lib/fechas";
 import { entraAlControl, lunesSiguiente } from "@/lib/control-revision-mensajes";
+import { AvisosTelegramModal } from "./control-revision-avisos-modal";
 import { BTN_GHOST, BTN_PRIMARY, EmptyState, ErrorBanner, Field, INPUT } from "./ui-comun";
 
 type Fila = FilaControlExcel & { cursoId: string; docenteId: string; numero: number };
@@ -81,6 +82,7 @@ export function ControlRevisionView() {
   const [cargando, setCargando] = useState(true);
   const [exportando, setExportando] = useState(false);
   const [avisando, setAvisando] = useState(false);
+  const [eligiendoAvisos, setEligiendoAvisos] = useState(false);
   const [avisoMensaje, setAvisoMensaje] = useState("");
   const [error, setError] = useState("");
 
@@ -219,14 +221,24 @@ export function ControlRevisionView() {
     }
   };
 
-  const handleAvisar = async () => {
-    if (avisando) return;
+  /** Envia los avisos a los docentes elegidos en la ventana; true si salieron bien. */
+  const handleAvisar = async (docentesElegidos: string[]) => {
+    if (avisando) return false;
     setAvisando(true);
     setAvisoMensaje("");
-    const res = await enviarAvisosTelegram(clave);
+    setError("");
+    const res = await enviarAvisosTelegram(clave, docentesElegidos);
     setAvisando(false);
-    if (res.error) setError(res.error);
-    else setAvisoMensaje(res.enviados ? `Listo: ${res.enviados} mensajes enviados a Telegram.` : "No hay nada que avisar.");
+    if (res.error) {
+      setError(res.error);
+      return false;
+    }
+    setAvisoMensaje(
+      res.enviados
+        ? `Listo: ${res.enviados} mensaje${res.enviados === 1 ? "" : "s"} enviado${res.enviados === 1 ? "" : "s"} a Telegram.`
+        : "No hay nada que avisar a esos docentes.",
+    );
+    return true;
   };
 
   const tipoTexto = tipo === "parcial" ? "parciales" : "finales";
@@ -253,7 +265,7 @@ export function ControlRevisionView() {
           <button
             className={BTN_GHOST}
             disabled={avisando || !fechaLimite || !filas.length}
-            onClick={handleAvisar}
+            onClick={() => setEligiendoAvisos(true)}
             title="Manda a Telegram un mensaje por docente con el botón de WhatsApp: recordatorio o felicitación"
             type="button"
           >
@@ -342,6 +354,22 @@ export function ControlRevisionView() {
           />
         </Field>
       </div>
+
+      {eligiendoAvisos && fechaLimite ? (
+        <AvisosTelegramModal
+          fechaLimite={fechaLimite}
+          filas={filas.map((f) => ({
+            docenteId: f.docenteId,
+            docente: f.docente,
+            curso: f.curso,
+            estado: f.estado.estado_entrega,
+            fechaRecepcion: f.estado.fecha_recepcion,
+          }))}
+          onCerrar={() => setEligiendoAvisos(false)}
+          onEnviar={handleAvisar}
+          preseleccion={docenteSel ? [docenteSel] : []}
+        />
+      ) : null}
 
       <ErrorBanner message={error} />
       {avisoMensaje ? (

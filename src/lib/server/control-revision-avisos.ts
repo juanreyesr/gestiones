@@ -71,6 +71,8 @@ export async function enviarAvisosPeriodo(
   periodo: Pick<RawPeriodo, "anio" | "trimestre" | "tipo" | "fecha_limite">,
   ocasion: OcasionAviso,
   felicitar = ocasion !== "lunes",
+  /** Solo estos docentes (seguimiento individual desde la vista); sin lista, todos. */
+  soloDocentes?: string[],
 ) {
   const [resCursos, resFilas] = await Promise.all([
     admin
@@ -110,7 +112,12 @@ export async function enviarAvisosPeriodo(
       };
     });
 
-  const docentes = agruparPorDocente(filas, periodo.fecha_limite);
+  const todos = agruparPorDocente(filas, periodo.fecha_limite);
+  const elegidos = soloDocentes ? new Set(soloDocentes) : null;
+  const docentes = elegidos ? todos.filter((d) => elegidos.has(d.docenteId)) : todos;
+  // El resumen solo tiene sentido cuando el aviso va a todos; para uno o
+  // algunos docentes salen directo sus mensajes.
+  const conResumen = !elegidos || docentes.length === todos.length;
   const pendientes = docentes.filter((d) => d.pendientes.length);
   const puntuales = felicitar ? docentes.filter((d) => d.puntual) : [];
   if (!pendientes.length && !puntuales.length) return { enviados: 0, error: null };
@@ -137,9 +144,11 @@ export async function enviarAvisosPeriodo(
   ].join("\n");
 
   let enviados = 0;
-  const resumen = await enviarMensaje(chatId, encabezado);
-  if (!resumen.ok) return { enviados, error: resumen.error };
-  enviados += 1;
+  if (conResumen) {
+    const resumen = await enviarMensaje(chatId, encabezado);
+    if (!resumen.ok) return { enviados, error: resumen.error };
+    enviados += 1;
+  }
 
   for (const d of pendientes) {
     const mensaje = mensajeRecordatorio({

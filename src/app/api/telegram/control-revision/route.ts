@@ -46,12 +46,27 @@ export async function POST(request: Request) {
     return NextResponse.json({ status: "ok", enviados });
   }
 
-  const body = (await request.json().catch(() => null)) as { anio?: number; trimestre?: number; tipo?: string } | null;
+  const body = (await request.json().catch(() => null)) as {
+    anio?: number;
+    trimestre?: number;
+    tipo?: string;
+    docentes?: unknown;
+  } | null;
   const anio = Number(body?.anio);
   const trimestre = Number(body?.trimestre);
   const tipo = body?.tipo;
   if (!Number.isInteger(anio) || ![1, 2, 3].includes(trimestre) || (tipo !== "parcial" && tipo !== "final")) {
     return NextResponse.json({ error: "Periodo no válido." }, { status: 400 });
+  }
+  // Docentes elegidos en la vista; sin lista se avisa a todos.
+  const docentes =
+    body?.docentes === undefined
+      ? undefined
+      : Array.isArray(body.docentes) && body.docentes.every((d) => typeof d === "string")
+        ? (body.docentes as string[])
+        : null;
+  if (docentes === null || (docentes && !docentes.length)) {
+    return NextResponse.json({ error: "Elige al menos un docente." }, { status: 400 });
   }
 
   const { data: periodo } = await admin
@@ -66,7 +81,7 @@ export async function POST(request: Request) {
 
   const fila = periodo as { anio: number; trimestre: number; tipo: TipoEvaluacion; fecha_limite: string };
   const ocasion = ocasionPara(fila.fecha_limite, fechaLocal());
-  const res = await enviarAvisosPeriodo(admin, config.chatId, fila, ocasion, true);
+  const res = await enviarAvisosPeriodo(admin, config.chatId, fila, ocasion, true, docentes);
   if (res.error) return NextResponse.json({ error: res.error }, { status: 502 });
   return NextResponse.json({ status: "ok", enviados: res.enviados });
 }
