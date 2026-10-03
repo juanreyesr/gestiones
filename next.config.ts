@@ -19,6 +19,8 @@ const nextConfig: NextConfig = {
     // Commit del despliegue: AvisoVersionNueva lo compara con /api/version para
     // ofrecer recargar las pestañas que quedaron con una versión anterior.
     NEXT_PUBLIC_VERSION_APP: process.env.VERCEL_GIT_COMMIT_SHA ?? "dev",
+    // production | preview | development: en producción, "Actualizar" lleva al dominio oficial.
+    NEXT_PUBLIC_ENTORNO_APP: process.env.VERCEL_ENV ?? "development",
   },
   async redirects() {
     return [{ source: "/", destination: "/es", permanent: false }];
