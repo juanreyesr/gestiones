@@ -187,3 +187,28 @@ export function mensajeFelicitacion(input: {
     "¡Gracias por ese excelente trabajo! 👏",
   ].join("\n");
 }
+
+/**
+ * Para quien entrego todo pero despues de la fecha limite: agradece la entrega
+ * y cierra su seguimiento, sin mencionar la puntualidad.
+ */
+export function mensajeAgradecimiento(input: {
+  trato?: string | null;
+  tipo: TipoEvaluacion;
+  cursos: string[];
+  /** Hora en Guatemala (0-23) para el saludo; por defecto, la actual. */
+  hora?: number;
+}) {
+  const saludo = saludoPorHora(input.hora ?? horaGuatemala());
+  const trato = input.trato?.trim();
+  const una = input.cursos.length === 1;
+  return [
+    `¡${saludo}${trato ? `, ${trato}` : ""}! 🙌`,
+    "",
+    `Muchas gracias por entregar ${queEvaluacion(input.tipo, input.cursos)}`.trimEnd() + (una ? "." : ""),
+    "",
+    `Ya ${una ? "la tengo" : "las tengo"} para revisión y pronto te compartiré la retroalimentación.`,
+    "",
+    "¡Gracias por tu trabajo y compromiso! 👏",
+  ].join("\n");
+}
