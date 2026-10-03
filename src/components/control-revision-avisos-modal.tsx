@@ -14,12 +14,12 @@ export type FilaAviso = {
   fechaRecepcion: string | null;
 };
 
-type Clase = "recordatorio" | "felicitacion" | "sin-mensaje";
+type Clase = "recordatorio" | "felicitacion" | "agradecimiento";
 
 /** Que mensaje le tocaria al docente si se le avisa ahora (misma regla que el servidor). */
 function claseDe(d: DocenteAviso): Clase {
   if (d.pendientes.length) return "recordatorio";
-  return d.puntual ? "felicitacion" : "sin-mensaje";
+  return d.puntual ? "felicitacion" : "agradecimiento";
 }
 
 const ETIQUETAS: Record<Clase, { texto: (d: DocenteAviso) => string; clase: string }> = {
@@ -28,7 +28,7 @@ const ETIQUETAS: Record<Clase, { texto: (d: DocenteAviso) => string; clase: stri
     clase: "text-amber-200",
   },
   felicitacion: { texto: () => "Felicitación · entregó todo a tiempo", clase: "text-emerald-200" },
-  "sin-mensaje": { texto: () => "Sin mensaje · entregó después de la fecha límite", clase: "text-slate-500" },
+  agradecimiento: { texto: () => "Agradecimiento · entregó después de la fecha límite", clase: "text-sky-200" },
 };
 
 /**
@@ -64,9 +64,8 @@ export function AvisosTelegramModal({
       ),
     [filas, fechaLimite],
   );
-  const conMensaje = docentes.filter((d) => claseDe(d) !== "sin-mensaje");
   const [elegidos, setElegidos] = useState<Set<string>>(
-    () => new Set(preseleccion.filter((id) => conMensaje.some((d) => d.docenteId === id))),
+    () => new Set(preseleccion.filter((id) => docentes.some((d) => d.docenteId === id))),
   );
   const [enviando, setEnviando] = useState(false);
 
@@ -108,7 +107,7 @@ export function AvisosTelegramModal({
           </div>
 
           <div className="flex flex-wrap gap-2 border-b border-white/10 px-4 py-2 text-xs font-semibold">
-            <button className="text-slate-300 hover:text-white" onClick={() => elegir(conMensaje)} type="button">
+            <button className="text-slate-300 hover:text-white" onClick={() => elegir(docentes)} type="button">
               Todos
             </button>
             <span className="text-slate-600">·</span>
@@ -136,19 +135,15 @@ export function AvisosTelegramModal({
           <div className="grid gap-1 overflow-y-auto p-2">
             {docentes.map((d) => {
               const clase = claseDe(d);
-              const deshabilitado = clase === "sin-mensaje";
               const etiqueta = ETIQUETAS[clase];
               return (
                 <label
                   key={d.docenteId}
-                  className={`flex items-start gap-3 px-2 py-2 ${
-                    deshabilitado ? "cursor-not-allowed opacity-60" : "cursor-pointer hover:bg-white/5"
-                  }`}
+                  className="flex cursor-pointer items-start gap-3 px-2 py-2 hover:bg-white/5"
                 >
                   <input
                     checked={elegidos.has(d.docenteId)}
                     className="mt-1"
-                    disabled={deshabilitado}
                     onChange={() => alternar(d.docenteId)}
                     type="checkbox"
                   />

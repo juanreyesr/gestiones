@@ -14,6 +14,8 @@ export type DatosFelicitacion = {
   trato: string | null;
   tipo: TipoEvaluacion;
   cursos: string[];
+  /** Felicitacion (a tiempo) o agradecimiento (entrego tarde); sin dato, felicitacion. */
+  clase?: "felicitacion" | "agradecimiento";
   /** Vencimiento (ms desde epoch): el enlace deja de servir a los 60 dias. */
   vence: number;
 };
@@ -50,6 +52,7 @@ export function leerFelicitacion(d: string | null, s: string | null): DatosFelic
     if (typeof datos.vence !== "number" || datos.vence < Date.now()) return null;
     if (datos.tipo !== "parcial" && datos.tipo !== "final") return null;
     if (!Array.isArray(datos.cursos) || !datos.cursos.every((c) => typeof c === "string")) return null;
+    if (datos.clase !== undefined && datos.clase !== "felicitacion" && datos.clase !== "agradecimiento") return null;
     return datos;
   } catch {
     return null;

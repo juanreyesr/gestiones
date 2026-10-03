@@ -5,6 +5,7 @@ import {
   entraAlControl,
   fechaEnTexto,
   lunesSiguiente,
+  mensajeAgradecimiento,
   mensajeFelicitacion,
   mensajeRecordatorio,
   nombreCorto,
@@ -120,7 +121,9 @@ export async function enviarAvisosPeriodo(
   const conResumen = !elegidos || docentes.length === todos.length;
   const pendientes = docentes.filter((d) => d.pendientes.length);
   const puntuales = felicitar ? docentes.filter((d) => d.puntual) : [];
-  if (!pendientes.length && !puntuales.length) return { enviados: 0, error: null };
+  // Entregaron todo pero despues de la fecha limite: agradecimiento sin puntualidad.
+  const tardios = felicitar ? docentes.filter((d) => !d.pendientes.length && !d.puntual) : [];
+  if (!pendientes.length && !puntuales.length && !tardios.length) return { enviados: 0, error: null };
 
   const tipoTexto = periodo.tipo === "parcial" ? "parcial" : "final";
   const encabezado = [
@@ -138,6 +141,9 @@ export async function enviarAvisosPeriodo(
       : "✅ <b>Todos los docentes entregaron.</b>",
     ...(puntuales.length
       ? ["", `🎉 <b>Entregaron a tiempo (${puntuales.length})</b>\n${puntuales.map((d) => `• ${esc(nombreCorto(d.nombre))}`).join("\n")}`]
+      : []),
+    ...(tardios.length
+      ? ["", `🙌 <b>Entregaron después de la fecha límite (${tardios.length})</b>\n${tardios.map((d) => `• ${esc(nombreCorto(d.nombre))}`).join("\n")}`]
       : []),
     "",
     "<i>Abajo va un mensaje por docente con el botón de WhatsApp listo.</i>",
@@ -179,6 +185,19 @@ export async function enviarAvisosPeriodo(
       d.telefono,
       mensaje,
       urlFelicitacion({ telefono: d.telefono, trato: d.trato, tipo: periodo.tipo, cursos: d.cursos }),
+    );
+    if (res.ok) enviados += 1;
+  }
+
+  for (const d of tardios) {
+    const mensaje = mensajeAgradecimiento({ trato: d.trato, tipo: periodo.tipo, cursos: d.cursos });
+    const res = await enviarConBoton(
+      chatId,
+      `🙌 <b>${esc(d.nombre)}</b>\nEntregó después de la fecha límite: ${esc(d.cursos.join(", "))}`,
+      "📲 Enviar agradecimiento por WhatsApp",
+      d.telefono,
+      mensaje,
+      urlFelicitacion({ telefono: d.telefono, trato: d.trato, tipo: periodo.tipo, cursos: d.cursos, clase: "agradecimiento" }),
     );
     if (res.ok) enviados += 1;
   }

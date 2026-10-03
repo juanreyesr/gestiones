@@ -1,13 +1,13 @@
 import { NextResponse } from "next/server";
 import { enlaceWhatsApp } from "@/lib/clinica/recordatorio";
-import { horaGuatemala, mensajeFelicitacion } from "@/lib/control-revision-mensajes";
+import { horaGuatemala, mensajeAgradecimiento, mensajeFelicitacion } from "@/lib/control-revision-mensajes";
 import { leerFelicitacion } from "@/lib/server/enlace-felicitacion";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 /**
- * Boton "Enviar felicitación por WhatsApp" del aviso de Telegram: arma el
+ * Botones "Enviar felicitación / agradecimiento por WhatsApp" del aviso de Telegram: arma el
  * mensaje con el saludo de la hora en que se toca (Buenos días / tardes /
  * noches) y redirige a WhatsApp. Solo acepta enlaces firmados por el servidor
  * (src/lib/server/enlace-felicitacion.ts).
@@ -21,7 +21,8 @@ export async function GET(request: Request) {
       headers: { "Content-Type": "text/plain; charset=utf-8" },
     });
   }
-  const mensaje = mensajeFelicitacion({ trato: datos.trato, tipo: datos.tipo, cursos: datos.cursos, hora: horaGuatemala() });
+  const entrada = { trato: datos.trato, tipo: datos.tipo, cursos: datos.cursos, hora: horaGuatemala() };
+  const mensaje = datos.clase === "agradecimiento" ? mensajeAgradecimiento(entrada) : mensajeFelicitacion(entrada);
   return NextResponse.redirect(enlaceWhatsApp(datos.telefono, mensaje), {
     status: 302,
     headers: { "Cache-Control": "no-store" },
