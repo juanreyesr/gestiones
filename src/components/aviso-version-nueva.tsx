@@ -5,7 +5,26 @@ import { useEffect, useState } from "react";
 
 // Commit con el que se compiló esta pestaña (lo fija next.config.ts en el build).
 const VERSION_CARGADA = process.env.NEXT_PUBLIC_VERSION_APP ?? "dev";
+const ENTORNO = process.env.NEXT_PUBLIC_ENTORNO_APP ?? "development";
+const DOMINIO_OFICIAL = (process.env.NEXT_PUBLIC_APP_URL || "https://www.juanjreyes.org").replace(/\/+$/, "");
 const CADA_MS = 5 * 60 * 1000;
+
+/**
+ * A dónde lleva "Actualizar": la misma página (p. ej. /estudiante) en el
+ * dominio oficial. Si el estudiante entró por gestionesjj.vercel.app, pasa a
+ * www.juanjreyes.org; en las vistas previas de Vercel se queda donde está.
+ */
+function destinoActualizar() {
+  const { hash, origin, pathname, search } = window.location;
+  if (ENTORNO !== "production" || origin === DOMINIO_OFICIAL) return null;
+  return `${DOMINIO_OFICIAL}${pathname}${search}${hash}`;
+}
+
+function actualizar() {
+  const destino = destinoActualizar();
+  if (destino) window.location.replace(destino);
+  else window.location.reload();
+}
 
 const TEXTOS = {
   es: { mensaje: "Hay una versión nueva de la plataforma.", boton: "Actualizar", cerrar: "Más tarde" },
@@ -62,12 +81,17 @@ export function AvisoVersionNueva() {
   const t = TEXTOS[idiomaNavegador()];
 
   return (
-    <div className="fixed inset-x-0 bottom-4 z-[100] flex justify-center px-4" role="status">
-      <div className="flex flex-wrap items-center gap-3 rounded-xl border border-emerald-300 bg-white px-4 py-3 text-sm text-slate-800 shadow-lg">
-        <span className="font-medium">{t.mensaje}</span>
+    // En celular ocupa todo el ancho y respeta la barra inferior del iPhone (safe-area).
+    <div
+      className="fixed inset-x-0 bottom-0 z-[100] flex justify-center px-3 pt-3 sm:bottom-4 sm:px-4 sm:pt-0"
+      role="status"
+      style={{ paddingBottom: "max(0.75rem, env(safe-area-inset-bottom))" }}
+    >
+      <div className="flex w-full items-center gap-3 rounded-xl border border-emerald-300 bg-white px-4 py-3 text-sm text-slate-800 shadow-lg sm:w-auto">
+        <span className="min-w-0 flex-1 font-medium">{t.mensaje}</span>
         <button
-          className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-700"
-          onClick={() => window.location.reload()}
+          className="inline-flex shrink-0 items-center gap-1.5 rounded-lg bg-emerald-600 px-3 py-2 text-sm font-semibold text-white hover:bg-emerald-700"
+          onClick={actualizar}
           type="button"
         >
           <RefreshCw className="h-3.5 w-3.5" />
@@ -75,7 +99,7 @@ export function AvisoVersionNueva() {
         </button>
         <button
           aria-label={t.cerrar}
-          className="inline-flex h-7 w-7 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100"
+          className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100"
           onClick={() => setOculto(true)}
           title={t.cerrar}
           type="button"
