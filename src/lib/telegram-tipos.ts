@@ -6,6 +6,7 @@ export type TipoNotificacion =
   | "citas_recordatorio"
   | "google_recordatorio"
   | "supervision_recordatorio"
+  | "control_revision_avisos"
   | "whatsapp_respuestas"
   | "estudiantes_mensajes"
   | "estudiantes_entregas"
@@ -20,6 +21,11 @@ export const NOTIFICACIONES: { id: TipoNotificacion; etiqueta: string; porDefect
   { id: "citas_recordatorio", etiqueta: "Recordatorio 1 hora antes de cada cita", porDefecto: true },
   { id: "google_recordatorio", etiqueta: "Aviso 1 hora antes de mis compromisos de Google Calendar", porDefecto: true },
   { id: "supervision_recordatorio", etiqueta: "Recordatorio 5 minutos antes de cada supervisión docente", porDefecto: true },
+  {
+    id: "control_revision_avisos",
+    etiqueta: "Control de revisión: evaluaciones pendientes y felicitaciones (7:00 p. m. del día límite y lunes siguiente)",
+    porDefecto: true,
+  },
   { id: "whatsapp_respuestas", etiqueta: "Respuestas de pacientes al recordatorio de WhatsApp (confirmar / reprogramar)", porDefecto: true },
   { id: "estudiantes_mensajes", etiqueta: "Mensajes de estudiantes", porDefecto: true },
   { id: "estudiantes_entregas", etiqueta: "Entregas de tareas", porDefecto: true },
