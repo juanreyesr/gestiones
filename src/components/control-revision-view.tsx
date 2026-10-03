@@ -1,11 +1,12 @@
 "use client";
 
-import { CalendarClock, CheckCircle2, ClipboardCheck, Download, FileCheck2, RefreshCw } from "lucide-react";
+import { CalendarClock, CheckCircle2, ClipboardCheck, Download, FileCheck2, RefreshCw, Send } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { TRIMESTRES, type CarreraRow, type Trimestre } from "@/data/evaluacion";
 import {
   aplicarCambio,
   CAMPUS_POR_DEFECTO,
+  enviarAvisosTelegram,
   ESTADO_VACIO,
   fetchFechaLimite,
   fetchFilasRevision,
@@ -24,7 +25,7 @@ import { fetchCarreras, fetchCursosAdmin, type CursoAdminRow } from "@/lib/curso
 import { fetchDocentesAdmin, type DocenteAdminRow } from "@/lib/docentes-admin";
 import { currentTrimestre } from "@/lib/evaluacion-helpers";
 import { formatoLargo, hoyISO } from "@/lib/fechas";
-import { esCursoDelCoordinador } from "@/lib/supervision";
+import { entraAlControl, lunesSiguiente } from "@/lib/control-revision-mensajes";
 import { BTN_GHOST, BTN_PRIMARY, EmptyState, ErrorBanner, Field, INPUT } from "./ui-comun";
 
 type Fila = FilaControlExcel & { cursoId: string };
@@ -77,6 +78,8 @@ export function ControlRevisionView() {
   const [fechaInicial, setFechaInicial] = useState("");
   const [cargando, setCargando] = useState(true);
   const [exportando, setExportando] = useState(false);
+  const [avisando, setAvisando] = useState(false);
+  const [avisoMensaje, setAvisoMensaje] = useState("");
   const [error, setError] = useState("");
 
   const clave = useMemo(() => ({ anio, trimestre, tipo }), [anio, trimestre, tipo]);
@@ -108,11 +111,9 @@ export function ControlRevisionView() {
   /** Cursos presenciales del periodo con docente asignado (sin los virtuales ni los propios del coordinador). */
   const cursosPeriodo = useMemo(() => {
     const docentesPorId = new Map(docentes.map((d) => [d.id, d]));
-    return cursos.filter((c) => {
-      if (!c.activo || c.virtual || c.anio !== anio || c.trimestre !== trimestre || !c.docenteId) return false;
-      const nombre = docentesPorId.get(c.docenteId)?.nombre ?? c.docenteNombre;
-      return !esCursoDelCoordinador(nombre);
-    });
+    return cursos.filter((c) =>
+      entraAlControl(c, anio, trimestre, (c.docenteId && docentesPorId.get(c.docenteId)?.nombre) || c.docenteNombre),
+    );
   }, [cursos, docentes, anio, trimestre]);
 
   const carrerasPeriodo = useMemo(() => {
@@ -192,6 +193,16 @@ export function ControlRevisionView() {
     }
   };
 
+  const handleAvisar = async () => {
+    if (avisando) return;
+    setAvisando(true);
+    setAvisoMensaje("");
+    const res = await enviarAvisosTelegram(clave);
+    setAvisando(false);
+    if (res.error) setError(res.error);
+    else setAvisoMensaje(res.enviados ? `Listo: ${res.enviados} mensajes enviados a Telegram.` : "No hay nada que avisar.");
+  };
+
   const tipoTexto = tipo === "parcial" ? "parciales" : "finales";
 
   return (
@@ -212,6 +223,16 @@ export function ControlRevisionView() {
           <button className={BTN_GHOST} disabled={cargando} onClick={cargar} type="button">
             <RefreshCw className={`h-4 w-4 ${cargando ? "animate-spin" : ""}`} />
             Actualizar
+          </button>
+          <button
+            className={BTN_GHOST}
+            disabled={avisando || !fechaLimite || !filas.length}
+            onClick={handleAvisar}
+            title="Manda a Telegram un mensaje por docente con el botón de WhatsApp: recordatorio o felicitación"
+            type="button"
+          >
+            <Send className="h-4 w-4" />
+            {avisando ? "Enviando..." : "Avisos a Telegram"}
           </button>
           <button
             className={BTN_PRIMARY}
@@ -270,6 +291,9 @@ export function ControlRevisionView() {
       </div>
 
       <ErrorBanner message={error} />
+      {avisoMensaje ? (
+        <p className="border border-emerald-300/30 bg-emerald-300/10 p-3 text-sm text-emerald-100">{avisoMensaje}</p>
+      ) : null}
 
       {cargando ? (
         <EmptyState>Cargando el control del periodo...</EmptyState>
@@ -310,8 +334,12 @@ export function ControlRevisionView() {
       ) : (
         <>
           <div className="flex flex-wrap gap-2 text-xs font-semibold">
-            <span className="border border-white/10 bg-white/6 px-3 py-1.5 text-slate-200">
-              Fecha límite: {formatoLargo(fechaLimite)}
+            <span
+              className="border border-white/10 bg-white/6 px-3 py-1.5 text-slate-200"
+              title="A las 7:00 p. m. de la fecha límite y del lunes siguiente llega a Telegram el aviso por docente"
+            >
+              Fecha límite: {formatoLargo(fechaLimite)} · avisos 7:00 p. m. de ese día y del lunes{" "}
+              {formatoLargo(lunesSiguiente(fechaLimite))}
             </span>
             <span className="inline-flex items-center gap-1.5 border border-emerald-300/30 bg-emerald-300/10 px-3 py-1.5 text-emerald-100">
               <FileCheck2 className="h-3.5 w-3.5" />
