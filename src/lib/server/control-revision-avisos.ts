@@ -11,6 +11,7 @@ import {
   type OcasionAviso,
 } from "@/lib/control-revision-mensajes";
 import { enlaceWhatsApp, telefonoWhatsApp } from "@/lib/clinica/recordatorio";
+import { urlFelicitacion } from "./enlace-felicitacion";
 import { enviarMensaje, esc, fechaLocal, type TelegramConfig } from "./telegram";
 
 type RawPeriodo = {
@@ -36,9 +37,21 @@ type RawCurso = {
 
 type RawFila = { curso_id: string; estado_entrega: "Pendiente" | "Entregado"; fecha_recepcion: string | null };
 
-/** Manda un mensaje con boton de WhatsApp; si la URL es muy larga, abre el chat sin texto. */
-async function enviarConBoton(chatId: number, texto: string, etiqueta: string, telefono: string | null, mensaje: string) {
-  const res = await enviarMensaje(chatId, texto, { botones: [[{ text: etiqueta, url: enlaceWhatsApp(telefono, mensaje) }]] });
+/**
+ * Manda un mensaje con boton de WhatsApp; si la URL es muy larga, abre el chat
+ * sin texto. `url` reemplaza el enlace directo (p. ej. el firmado de la felicitacion).
+ */
+async function enviarConBoton(
+  chatId: number,
+  texto: string,
+  etiqueta: string,
+  telefono: string | null,
+  mensaje: string,
+  url?: string | null,
+) {
+  const res = await enviarMensaje(chatId, texto, {
+    botones: [[{ text: etiqueta, url: url ?? enlaceWhatsApp(telefono, mensaje) }]],
+  });
   if (res.ok) return res;
   const numero = telefonoWhatsApp(telefono);
   return enviarMensaje(chatId, `${texto}\n\n<i>Copia el mensaje y pégalo en el chat:</i>\n\n${esc(mensaje)}`, {
@@ -148,6 +161,7 @@ export async function enviarAvisosPeriodo(
   }
 
   for (const d of puntuales) {
+    // El saludo (Buenos días / tardes / noches) se calcula al tocar el boton.
     const mensaje = mensajeFelicitacion({ trato: d.trato, tipo: periodo.tipo, cursos: d.cursos });
     const res = await enviarConBoton(
       chatId,
@@ -155,6 +169,7 @@ export async function enviarAvisosPeriodo(
       "📲 Enviar felicitación por WhatsApp",
       d.telefono,
       mensaje,
+      urlFelicitacion({ telefono: d.telefono, trato: d.trato, tipo: periodo.tipo, cursos: d.cursos }),
     );
     if (res.ok) enviados += 1;
   }
