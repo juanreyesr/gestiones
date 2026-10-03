@@ -195,6 +195,16 @@ Mide, año contra año, por que los estudiantes de primer ingreso eligieron la u
 
 La migracion de este modulo esta en `supabase/migrations/013_gestionesjj_encuestas_estudiantiles.sql`. El flujo publico (consultar campaña, responder) pasa por RPCs `SECURITY DEFINER`, igual que el resto de flujos publicos de la app; no requiere `SUPABASE_SECRET_KEY`.
 
+## Control de revision de evaluaciones (dentro de Coordinacion)
+
+Reproduce el formato institucional "Control revisión evaluaciones de docentes" (`src/lib/control-revision.ts`, vista `src/components/control-revision-view.tsx`, migracion `048`):
+
+- Se elige año, trimestre (por defecto el activo), evaluacion **parcial** o **final** y carrera. Se precargan los cursos presenciales activos del trimestre con docente asignado (sin los virtuales ni los del coordinador), con campus "Presencial Chimaltenango" (editable).
+- La primera vez que se abre un periodo pide la **fecha limite de entrega**, que se aplica a todas sus filas.
+- **Entregado** inicia la revision: revisor "M.A. Juan Reyes", fecha de recepcion de hoy, revision y retroalimentacion "En proceso", version corregida "Pendiente", version final "No", formato oficial y punteo "Sí", y contenidos, instrucciones, aplicacion y rubrica "En revisión". Revisado, Enviada y Recibida ponen la fecha de hoy en su columna. Aprobar la version final pone la fecha de aprobacion y pasa lo que esta "En revisión" a "Sí" (la rubrica a "OK"). Todas las fechas se pueden corregir.
+- La columna de contenidos dice "hasta semana 6" en parciales y "hasta semana 12" en finales.
+- **Descargar Excel** genera el mismo formato con lo llenado hasta ese momento (fechas dd/mm/aaaa).
+
 ## Programacion de supervisiones (dentro de Coordinacion)
 
 Planifica y mide las supervisiones de clase del trimestre (`src/lib/supervision.ts`, vista `src/components/supervision-view.tsx`):

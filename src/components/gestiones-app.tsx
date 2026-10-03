@@ -12,6 +12,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Church,
+  ClipboardCheck,
   ClipboardList,
   Download,
   GraduationCap,
@@ -73,6 +74,7 @@ import { CodigoKioscoModal } from "./codigo-kiosco-modal";
 import { ConsultasView } from "./consultas-view";
 import { ControlCursosView } from "./control-cursos-view";
 import { ControlDocentesView } from "./control-docentes-view";
+import { ControlRevisionView } from "./control-revision-view";
 import { CursosView } from "./cursos/cursos-view";
 import { EmailDraftModal } from "./email-draft-modal";
 import { EncuestasView } from "./encuestas/encuestas-view";
@@ -94,7 +96,17 @@ const ALLOWED_EMAIL = "lic.juanreyesr@gmail.com";
 type Scores = Record<number, number>;
 type AreaId = (typeof AREAS)[number]["id"];
 type Entrevistas = Record<1 | 2, Record<number, number>>;
-type CoordinacionView = "resumen" | "nueva" | "informe" | "control" | "presentacion" | "reuniones" | "docentes" | "encuestas" | "supervision";
+type CoordinacionView =
+  | "resumen"
+  | "nueva"
+  | "informe"
+  | "control"
+  | "presentacion"
+  | "reuniones"
+  | "docentes"
+  | "encuestas"
+  | "supervision"
+  | "revision";
 
 const areaIcons: Record<AreaId, React.ComponentType<{ className?: string }>> = {
   iglesia: Church,
@@ -1075,6 +1087,12 @@ export function GestionesApp() {
                         </div>
                       ) : null}
 
+                      {coordinacionView === "revision" ? (
+                        <div className="border border-white/10 bg-slate-950/58 p-4 backdrop-blur-xl sm:p-5">
+                          <ControlRevisionView />
+                        </div>
+                      ) : null}
+
                       {coordinacionView === "nueva" ? (
                         <div className="grid gap-5 xl:grid-cols-[1fr_360px]">
                           <div className="border border-white/10 bg-slate-950/58 p-4 backdrop-blur-xl sm:p-5">
@@ -1410,6 +1428,7 @@ function CoordinacionTabs({
     { value: "docentes", label: "Control de docentes", corto: "Docentes", icon: UserRoundCog },
     { value: "encuestas", label: "Encuesta estudiantil", corto: "Encuesta", icon: ClipboardList },
     { value: "supervision", label: "Programación de supervisiones", corto: "Supervisión", icon: CalendarCheck2 },
+    { value: "revision", label: "Control de revisión", corto: "Revisión", icon: ClipboardCheck },
   ];
 
   const tiraRef = useRef<HTMLDivElement | null>(null);
