@@ -15,6 +15,11 @@ const securityHeaders = [
 const idiomasSitio = ["es", "en"];
 
 const nextConfig: NextConfig = {
+  env: {
+    // Commit del despliegue: AvisoVersionNueva lo compara con /api/version para
+    // ofrecer recargar las pestañas que quedaron con una versión anterior.
+    NEXT_PUBLIC_VERSION_APP: process.env.VERCEL_GIT_COMMIT_SHA ?? "dev",
+  },
   async redirects() {
     return [{ source: "/", destination: "/es", permanent: false }];
   },
