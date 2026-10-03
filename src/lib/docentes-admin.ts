@@ -6,6 +6,8 @@ export type DocenteAdminRow = {
   correo: string | null;
   telefono: string | null;
   codigo: string | null;
+  /** Como se le saluda en los mensajes ("querida Elly", "estimada Lcda. Corado"). */
+  trato: string | null;
   femenino: boolean;
   activo: boolean;
 };
@@ -16,7 +18,7 @@ export async function fetchDocentesAdmin() {
 
   const { data, error } = await supabase
     .from("gestionesjj_docentes")
-    .select("id,nombre,correo,telefono,codigo,femenino,activo")
+    .select("id,nombre,correo,telefono,codigo,trato,femenino,activo")
     .order("nombre");
 
   if (error) return { data: [] as DocenteAdminRow[], error: error.message };
@@ -28,6 +30,7 @@ export type DocenteAdminPayload = {
   correo: string | null;
   telefono: string | null;
   codigo: string | null;
+  trato: string | null;
   femenino: boolean;
   activo: boolean;
 };
