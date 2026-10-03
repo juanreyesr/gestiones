@@ -5,6 +5,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { TRIMESTRES, type CarreraRow, type Trimestre } from "@/data/evaluacion";
 import {
   aplicarCambio,
+  CAMPUS_POR_DEFECTO,
   ESTADO_VACIO,
   fetchFechaLimite,
   fetchFilasRevision,
@@ -12,6 +13,7 @@ import {
   guardarFilaRevision,
   OPCIONES,
   TIPOS_EVALUACION,
+  tituloContenidos,
   type CampoFecha,
   type CampoOpcion,
   type EstadoRevision,
@@ -52,7 +54,7 @@ const COLUMNAS_OPCION: Array<{ campo: CampoOpcion | CampoFecha; titulo: string; 
   { campo: "fecha_version_corregida", titulo: "Fecha versión corregida", ancho: "w-32" },
   { campo: "version_final_aprobada", titulo: "Versión final aprobada", ancho: "w-20" },
   { campo: "fecha_aprobacion", titulo: "Fecha aprobación", ancho: "w-32" },
-  { campo: "contenidos_semana6", titulo: "Contenidos hasta semana 6", ancho: "w-28" },
+  { campo: "contenidos_semana6", titulo: "Contenidos hasta semana", ancho: "w-28" },
   { campo: "formato_oficial", titulo: "Formato oficial", ancho: "w-20" },
   { campo: "punteo_100", titulo: "Punteo total = 100", ancho: "w-20" },
   { campo: "instrucciones_claras", titulo: "Instrucciones y ponderación claras", ancho: "w-28" },
@@ -103,11 +105,11 @@ export function ControlRevisionView() {
     cargar();
   }, [cargar]);
 
-  /** Cursos del periodo con docente asignado (sin los cursos propios del coordinador). */
+  /** Cursos presenciales del periodo con docente asignado (sin los virtuales ni los propios del coordinador). */
   const cursosPeriodo = useMemo(() => {
     const docentesPorId = new Map(docentes.map((d) => [d.id, d]));
     return cursos.filter((c) => {
-      if (!c.activo || c.anio !== anio || c.trimestre !== trimestre || !c.docenteId) return false;
+      if (!c.activo || c.virtual || c.anio !== anio || c.trimestre !== trimestre || !c.docenteId) return false;
       const nombre = docentesPorId.get(c.docenteId)?.nombre ?? c.docenteNombre;
       return !esCursoDelCoordinador(nombre);
     });
@@ -134,7 +136,7 @@ export function ControlRevisionView() {
         const estado = estados.get(c.id) ?? ESTADO_VACIO;
         return {
           cursoId: c.id,
-          campus: estado.campus ?? (c.virtual ? "Virtual" : "Presencial"),
+          campus: estado.campus ?? CAMPUS_POR_DEFECTO,
           carrera: nombreCarrera.get(c.carreraId) ?? "",
           curso: c.nombre,
           docente: docente?.nombre ?? c.docenteNombre ?? "",
@@ -285,7 +287,7 @@ export function ControlRevisionView() {
           </p>
           <p className="text-sm text-slate-300">
             Indica la fecha límite de entrega: se cargará en todas las filas de esta evaluación ({cursosPeriodo.length}{" "}
-            cursos con docente asignado). Después se puede cambiar arriba.
+            cursos presenciales con docente asignado). Después se puede cambiar arriba.
           </p>
           <div className="flex flex-wrap items-end gap-2">
             <input
@@ -348,7 +350,7 @@ export function ControlRevisionView() {
                   <th className="px-2 py-2">Revisor / coordinador</th>
                   {COLUMNAS_OPCION.slice(2).map((col) => (
                     <th key={col.campo} className="max-w-32 px-2 py-2 whitespace-normal">
-                      {col.titulo}
+                      {col.campo === "contenidos_semana6" ? tituloContenidos(tipo) : col.titulo}
                     </th>
                   ))}
                   <th className="px-2 py-2">Observaciones / seguimiento</th>
@@ -436,7 +438,7 @@ export function ControlRevisionView() {
             </table>
           </div>
           <p className="text-xs text-slate-500">
-            Se listan los cursos activos del trimestre con docente asignado (sin tus cursos propios). Al aprobar la versión
+            Se listan los cursos presenciales activos del trimestre con docente asignado (sin los virtuales ni tus cursos propios). Al aprobar la versión
             final, lo que esté &quot;En revisión&quot; pasa a &quot;Sí&quot; y la rúbrica a &quot;OK&quot;; cada columna
             también se puede aprobar por separado.
           </p>

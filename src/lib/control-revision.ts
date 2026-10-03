@@ -15,6 +15,11 @@ export const TIPOS_EVALUACION: Array<{ value: TipoEvaluacion; label: string }> =
 ];
 
 export const REVISOR = "M.A. Juan Reyes";
+export const CAMPUS_POR_DEFECTO = "Presencial Chimaltenango";
+
+/** Rotulo de la columna de contenidos: el parcial cubre hasta la semana 6 y el final hasta la 12. */
+export const tituloContenidos = (tipo: TipoEvaluacion) =>
+  `Contenidos hasta semana ${tipo === "parcial" ? 6 : 12}`;
 
 export const OPCIONES = {
   estado_entrega: ["Pendiente", "Entregado"],

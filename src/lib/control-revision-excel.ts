@@ -1,5 +1,5 @@
 import type { Trimestre } from "@/data/evaluacion";
-import type { EstadoRevision, TipoEvaluacion } from "@/lib/control-revision";
+import { tituloContenidos, type EstadoRevision, type TipoEvaluacion } from "@/lib/control-revision";
 
 // Reproduce el formato institucional "Control revisión evaluaciones de
 // docentes": franja ADMINISTRATIVO (amarilla) y PEDAGÓGICO (naranja), encabezado
@@ -17,7 +17,7 @@ export type FilaControlExcel = {
 
 type Columna = { titulo: string; ancho: number; valor: (f: FilaControlExcel, limite: string) => string | null; fecha?: boolean };
 
-export const COLUMNAS_ADMINISTRATIVO: Columna[] = [
+const COLUMNAS_ADMINISTRATIVO: Columna[] = [
   { titulo: "Campus / modalidad", ancho: 16, valor: (f) => f.campus },
   { titulo: "Carrera", ancho: 30, valor: (f) => f.carrera },
   { titulo: "Curso", ancho: 30, valor: (f) => f.curso },
@@ -37,8 +37,8 @@ export const COLUMNAS_ADMINISTRATIVO: Columna[] = [
   { titulo: "Fecha aprobación", ancho: 13, valor: (f) => f.estado.fecha_aprobacion, fecha: true },
 ];
 
-export const COLUMNAS_PEDAGOGICO: Columna[] = [
-  { titulo: "Contenidos hasta semana 6", ancho: 13, valor: (f) => f.estado.contenidos_semana6 },
+const columnasPedagogico = (tipo: TipoEvaluacion): Columna[] => [
+  { titulo: tituloContenidos(tipo), ancho: 13, valor: (f) => f.estado.contenidos_semana6 },
   { titulo: "Formato oficial", ancho: 11, valor: (f) => f.estado.formato_oficial },
   { titulo: "Punteo total = 100", ancho: 11, valor: (f) => f.estado.punteo_100 },
   { titulo: "Instrucciones y ponderación claras", ancho: 14, valor: (f) => f.estado.instrucciones_claras },
@@ -91,9 +91,10 @@ export async function construirLibroControlRevision(input: ControlRevisionExcelI
     pageSetup: { orientation: "landscape", paperSize: 9, fitToPage: true, fitToWidth: 1, fitToHeight: 0 },
   });
 
-  const columnas = [...COLUMNAS_ADMINISTRATIVO, ...COLUMNAS_PEDAGOGICO];
+  const pedagogico = columnasPedagogico(input.tipo);
+  const columnas = [...COLUMNAS_ADMINISTRATIVO, ...pedagogico];
   const totalAdmin = 1 + COLUMNAS_ADMINISTRATIVO.length;
-  const total = totalAdmin + COLUMNAS_PEDAGOGICO.length;
+  const total = totalAdmin + pedagogico.length;
   hoja.columns = [{ width: 5 }, ...columnas.map((c) => ({ width: c.ancho }))];
 
   // Fila 1: franjas de seccion.
