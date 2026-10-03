@@ -28,7 +28,7 @@ import { formatoLargo, hoyISO } from "@/lib/fechas";
 import { entraAlControl, lunesSiguiente } from "@/lib/control-revision-mensajes";
 import { BTN_GHOST, BTN_PRIMARY, EmptyState, ErrorBanner, Field, INPUT } from "./ui-comun";
 
-type Fila = FilaControlExcel & { cursoId: string };
+type Fila = FilaControlExcel & { cursoId: string; docenteId: string; numero: number };
 
 const VERDES = new Set(["Entregado", "Revisado", "Enviada", "Recibida", "Sí", "OK"]);
 const AMBAR = new Set(["Pendiente", "En proceso", "En revisión"]);
@@ -70,6 +70,8 @@ export function ControlRevisionView() {
   const [trimestre, setTrimestre] = useState<Trimestre>(() => currentTrimestre());
   const [tipo, setTipo] = useState<TipoEvaluacion>("parcial");
   const [carreraId, setCarreraId] = useState("");
+  const [docenteFiltro, setDocenteFiltro] = useState("");
+  const [cursoFiltro, setCursoFiltro] = useState("");
   const [cursos, setCursos] = useState<CursoAdminRow[]>([]);
   const [carreras, setCarreras] = useState<CarreraRow[]>([]);
   const [docentes, setDocentes] = useState<DocenteAdminRow[]>([]);
@@ -132,11 +134,13 @@ export function ControlRevisionView() {
           a.anioCarrera - b.anioCarrera ||
           a.nombre.localeCompare(b.nombre),
       )
-      .map((c) => {
+      .map((c, i) => {
         const docente = c.docenteId ? docentesPorId.get(c.docenteId) : undefined;
         const estado = estados.get(c.id) ?? ESTADO_VACIO;
         return {
           cursoId: c.id,
+          docenteId: c.docenteId ?? "",
+          numero: i + 1,
           campus: estado.campus ?? CAMPUS_POR_DEFECTO,
           carrera: nombreCarrera.get(c.carreraId) ?? "",
           curso: c.nombre,
@@ -147,14 +151,36 @@ export function ControlRevisionView() {
       });
   }, [cursosPeriodo, carreraId, docentes, carreras, estados]);
 
+  /** Opciones de los filtros: los docentes del listado y los cursos del docente elegido. */
+  const opcionesDocente = useMemo(() => {
+    const mapa = new Map(filas.map((f) => [f.docenteId, f.docente]));
+    return [...mapa].map(([id, nombre]) => ({ id, nombre })).sort((a, b) => a.nombre.localeCompare(b.nombre));
+  }, [filas]);
+  // Un filtro que ya no aplica (otro periodo o carrera) se ignora en lugar de vaciar la tabla.
+  const docenteSel = opcionesDocente.some((d) => d.id === docenteFiltro) ? docenteFiltro : "";
+  const opcionesCurso = useMemo(
+    () =>
+      filas
+        .filter((f) => !docenteSel || f.docenteId === docenteSel)
+        .map((f) => ({ id: f.cursoId, nombre: f.curso }))
+        .sort((a, b) => a.nombre.localeCompare(b.nombre)),
+    [filas, docenteSel],
+  );
+  const cursoSel = opcionesCurso.some((c) => c.id === cursoFiltro) ? cursoFiltro : "";
+
+  const visibles = useMemo(
+    () => filas.filter((f) => (!docenteSel || f.docenteId === docenteSel) && (!cursoSel || f.cursoId === cursoSel)),
+    [filas, docenteSel, cursoSel],
+  );
+
   const resumen = useMemo(
     () => ({
-      total: filas.length,
-      entregadas: filas.filter((f) => f.estado.estado_entrega === "Entregado").length,
-      revisadas: filas.filter((f) => f.estado.estatus_revision === "Revisado").length,
-      aprobadas: filas.filter((f) => f.estado.version_final_aprobada === "Sí").length,
+      total: visibles.length,
+      entregadas: visibles.filter((f) => f.estado.estado_entrega === "Entregado").length,
+      revisadas: visibles.filter((f) => f.estado.estatus_revision === "Revisado").length,
+      aprobadas: visibles.filter((f) => f.estado.version_final_aprobada === "Sí").length,
     }),
-    [filas],
+    [visibles],
   );
 
   const cambiar = (cursoId: string, campo: Parameters<typeof aplicarCambio>[1], valor: string | null) => {
@@ -246,7 +272,7 @@ export function ControlRevisionView() {
         </div>
       </div>
 
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <Field label="Año">
           <input className={INPUT} min={2024} type="number" value={anio} onChange={(e) => setAnio(Number(e.target.value))} />
         </Field>
@@ -273,6 +299,33 @@ export function ControlRevisionView() {
           <select className={INPUT} value={carreraId} onChange={(e) => setCarreraId(e.target.value)}>
             <option value="">Todas las carreras</option>
             {carrerasPeriodo.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.nombre}
+              </option>
+            ))}
+          </select>
+        </Field>
+        <Field label="Docente">
+          <select
+            className={INPUT}
+            value={docenteSel}
+            onChange={(e) => {
+              setDocenteFiltro(e.target.value);
+              setCursoFiltro("");
+            }}
+          >
+            <option value="">Todos los docentes</option>
+            {opcionesDocente.map((d) => (
+              <option key={d.id} value={d.id}>
+                {d.nombre}
+              </option>
+            ))}
+          </select>
+        </Field>
+        <Field label="Curso">
+          <select className={INPUT} value={cursoSel} onChange={(e) => setCursoFiltro(e.target.value)}>
+            <option value="">{docenteSel ? "Todos sus cursos" : "Todos los cursos"}</option>
+            {opcionesCurso.map((c) => (
               <option key={c.id} value={c.id}>
                 {c.nombre}
               </option>
@@ -344,6 +397,7 @@ export function ControlRevisionView() {
             <span className="inline-flex items-center gap-1.5 border border-emerald-300/30 bg-emerald-300/10 px-3 py-1.5 text-emerald-100">
               <FileCheck2 className="h-3.5 w-3.5" />
               Entregadas {resumen.entregadas} de {resumen.total}
+              {docenteSel || cursoSel ? " (filtro)" : ""}
             </span>
             <span className="border border-sky-300/30 bg-sky-300/10 px-3 py-1.5 text-sky-100">
               Revisadas {resumen.revisadas}
@@ -352,6 +406,18 @@ export function ControlRevisionView() {
               <CheckCircle2 className="h-3.5 w-3.5" />
               Aprobadas {resumen.aprobadas}
             </span>
+            {docenteSel || cursoSel ? (
+              <button
+                className="border border-white/15 bg-white/6 px-3 py-1.5 text-slate-200 transition hover:border-white/40"
+                onClick={() => {
+                  setDocenteFiltro("");
+                  setCursoFiltro("");
+                }}
+                type="button"
+              >
+                Quitar filtros
+              </button>
+            ) : null}
           </div>
 
           <div className="overflow-x-auto border border-white/10">
@@ -385,7 +451,7 @@ export function ControlRevisionView() {
                 </tr>
               </thead>
               <tbody>
-                {filas.map((fila, i) => {
+                {visibles.map((fila, i) => {
                   const entregado = fila.estado.estado_entrega === "Entregado";
                   const celdaOpcion = (campo: CampoOpcion | CampoFecha, ancho: string) => {
                     const valor = fila.estado[campo];
@@ -422,7 +488,7 @@ export function ControlRevisionView() {
                   };
                   return (
                     <tr key={fila.cursoId} className={i % 2 === 0 ? "bg-white/[0.03]" : ""}>
-                      <td className={`${CELDA} sticky left-0 z-10 bg-slate-950 text-center font-semibold`}>{i + 1}</td>
+                      <td className={`${CELDA} sticky left-0 z-10 bg-slate-950 text-center font-semibold`}>{fila.numero}</td>
                       <td className={CELDA}>
                         <input
                           key={`${fila.cursoId}-${fila.campus}`}
