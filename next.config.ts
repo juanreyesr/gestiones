@@ -23,7 +23,19 @@ const nextConfig: NextConfig = {
     NEXT_PUBLIC_ENTORNO_APP: process.env.VERCEL_ENV ?? "development",
   },
   async redirects() {
-    return [{ source: "/", destination: "/es", permanent: false }];
+    return [
+      // Quien entre por la dirección de Vercel (p. ej. gestionesjj.vercel.app/estudiante)
+      // pasa a la misma página en el dominio oficial. Va primero para que "/" también
+      // salte al dominio oficial. No toca /api (webhooks de Telegram, PayPal, WhatsApp y
+      // el callback de Google) ni /_next (archivos de la app).
+      {
+        source: "/:ruta((?!api/|_next/).*)",
+        has: [{ type: "host", value: "gestionesjj.vercel.app" }],
+        destination: "https://www.juanjreyes.org/:ruta",
+        permanent: false,
+      },
+      { source: "/", destination: "/es", permanent: false },
+    ];
   },
   async rewrites() {
     return idiomasSitio.flatMap((idioma) => [
