@@ -70,7 +70,9 @@ export function PanelEstudiante({
         <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-slate-500">
           <div className="flex items-center gap-2">
             <GraduationCap className="h-5 w-5" />
-            <span className="text-sm font-medium">GestionesJJ</span>
+            {/* Nombre completo si hay espacio (tablet/computadora); corto en celular. */}
+            <span className="hidden text-sm font-medium sm:inline">{t("panel_marca")}</span>
+            <span className="text-sm font-medium sm:hidden">{t("panel_marca_corta")}</span>
           </div>
           <EnlacePaginaPrincipal className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-500 transition hover:border-slate-400 hover:text-slate-800" />
         </div>

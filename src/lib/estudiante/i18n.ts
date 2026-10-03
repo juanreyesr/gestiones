@@ -37,6 +37,8 @@ const DICCIONARIO: Record<Idioma, Record<string, string>> = {
 
     // Panel principal
     panel_saludo: "Hola",
+    panel_marca: "Aula virtual estudiantes",
+    panel_marca_corta: "Aula virtual",
     panel_cambiar_contrasena: "Cambiar mi contraseña",
     panel_salir: "Salir",
     panel_chat_titulo: "Chatear con tu docente",
@@ -165,6 +167,8 @@ const DICCIONARIO: Record<Idioma, Record<string, string>> = {
     central_volver: "Back",
 
     panel_saludo: "Hi",
+    panel_marca: "Student virtual classroom",
+    panel_marca_corta: "Virtual classroom",
     panel_cambiar_contrasena: "Change my password",
     panel_salir: "Sign out",
     panel_chat_titulo: "Chat with your teacher",
@@ -287,6 +291,8 @@ const DICCIONARIO: Record<Idioma, Record<string, string>> = {
     central_volver: "Voltar",
 
     panel_saludo: "Olá",
+    panel_marca: "Sala de aula virtual para estudantes",
+    panel_marca_corta: "Sala de aula virtual",
     panel_cambiar_contrasena: "Alterar minha senha",
     panel_salir: "Sair",
     panel_chat_titulo: "Conversar com seu professor",

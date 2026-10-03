@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { EstudianteView } from "@/components/estudiante/estudiante-view";
 
 export const metadata: Metadata = {
-  title: "Acceso a estudiantes · GestionesJJ",
+  title: "Aula virtual estudiantes",
   robots: { index: false },
 };
 
