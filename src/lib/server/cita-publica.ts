@@ -198,3 +198,21 @@ export function archivoIcs(cita: CitaPublica) {
   ].filter((l): l is string => l !== null);
   return `${lineas.join("\r\n")}\r\n`;
 }
+
+// ---------------------------------------------------------------------------
+// Rechazo
+// ---------------------------------------------------------------------------
+
+/** Mensaje de WhatsApp al rechazar una solicitud (editable antes de enviarlo). */
+export function mensajeRechazo(nombre: string) {
+  const primerNombre = nombre.trim().split(/\s+/)[0] ?? "";
+  return [
+    `${primerNombre ? `${primerNombre}, l` : "L"}amentablemente para la cita que has solicitado no me es posible atenderla en ese horario por duplicidad de citas que el sistema no registró bien.`,
+    "",
+    `Por favor selecciona un nuevo horario aquí: ${base()}/agendar`,
+    "",
+    "Muchas gracias y perdón por los inconvenientes.",
+  ].join("\n");
+}
+
+export const enlaceRechazo = (nombre: string, telefono: string | null) => enlaceWhatsApp(telefono, mensajeRechazo(nombre));
