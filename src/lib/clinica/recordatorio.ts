@@ -10,7 +10,7 @@ export function telefonoWhatsApp(telefono: string | null | undefined, pais?: str
   return telefonoInternacional(telefono, pais);
 }
 
-function formatear(inicioIso: string, zona: string) {
+export function formatear(inicioIso: string, zona: string) {
   const fecha = new Intl.DateTimeFormat("es-GT", {
     timeZone: zona,
     weekday: "long",
