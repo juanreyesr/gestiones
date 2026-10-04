@@ -2,6 +2,7 @@
 
 import { RefreshCw, X } from "lucide-react";
 import { useEffect, useState } from "react";
+import { HOST_RESPALDO, respaldoActivo } from "@/lib/dominio-respaldo";
 
 // Commit con el que se compiló esta pestaña (lo fija next.config.ts en el build).
 const VERSION_CARGADA = process.env.NEXT_PUBLIC_VERSION_APP ?? "dev";
@@ -12,11 +13,14 @@ const CADA_MS = 5 * 60 * 1000;
 /**
  * A dónde lleva "Actualizar": la misma página (p. ej. /estudiante) en el
  * dominio oficial. Si el estudiante entró por gestionesjj.vercel.app, pasa a
- * www.juanjreyes.org; en las vistas previas de Vercel se queda donde está.
+ * www.juanjreyes.org (salvo durante el periodo de respaldo, en el que esa
+ * dirección sigue sirviendo el sitio para redes que bloquean el dominio nuevo);
+ * en las vistas previas de Vercel se queda donde está.
  */
 function destinoActualizar() {
-  const { hash, origin, pathname, search } = window.location;
+  const { hash, host, origin, pathname, search } = window.location;
   if (ENTORNO !== "production" || origin === DOMINIO_OFICIAL) return null;
+  if (host === HOST_RESPALDO && respaldoActivo()) return null;
   return `${DOMINIO_OFICIAL}${pathname}${search}${hash}`;
 }
 

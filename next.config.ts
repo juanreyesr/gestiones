@@ -24,16 +24,8 @@ const nextConfig: NextConfig = {
   },
   async redirects() {
     return [
-      // Quien entre por la dirección de Vercel (p. ej. gestionesjj.vercel.app/estudiante)
-      // pasa a la misma página en el dominio oficial. Va primero para que "/" también
-      // salte al dominio oficial. No toca /api (webhooks de Telegram, PayPal, WhatsApp y
-      // el callback de Google) ni /_next (archivos de la app).
-      {
-        source: "/:ruta((?!api/|_next/).*)",
-        has: [{ type: "host", value: "gestionesjj.vercel.app" }],
-        destination: "https://www.juanjreyes.org/:ruta",
-        permanent: false,
-      },
+      // La dirección de Vercel (gestionesjj.vercel.app) se redirige al dominio
+      // oficial en src/proxy.ts, con un periodo de respaldo que vence solo.
       { source: "/", destination: "/es", permanent: false },
     ];
   },
