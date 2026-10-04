@@ -4,6 +4,7 @@ import {
   HORARIOS_DOMINGO,
   HORARIO_MARTES,
   type AsignacionPredicaRow,
+  type BitacoraPredicaRow,
   type CierrePersonaRow,
   type HorarioPredica,
   type MesPredicasRow,
@@ -228,6 +229,22 @@ export async function fetchAsignaciones(mesId: string) {
 
   if (error) return { data: [] as AsignacionPredicaRow[], error: error.message };
   return { data: (data ?? []) as AsignacionPredicaRow[], error: null };
+}
+
+/** Los cambios del mes hechos desde CCI Chimaltenango, del mas reciente al mas viejo. */
+export async function fetchBitacora(mesId: string) {
+  const supabase = getSupabaseClient();
+  if (!supabase) return { data: [] as BitacoraPredicaRow[], error: SIN_SUPABASE };
+
+  const { data, error } = await supabase
+    .from("gestionesjj_iglesia_predicas_bitacora")
+    .select("*")
+    .eq("mes_id", mesId)
+    .order("created_at", { ascending: false })
+    .limit(50);
+
+  if (error) return { data: [] as BitacoraPredicaRow[], error: error.message };
+  return { data: (data ?? []) as BitacoraPredicaRow[], error: null };
 }
 
 export type AsignacionEditable = Partial<

@@ -5,6 +5,7 @@ import {
   Check,
   ClipboardList,
   FileSpreadsheet,
+  History,
   ListOrdered,
   Loader2,
   Plus,
@@ -23,6 +24,7 @@ import {
   deleteMes,
   deletePredicador,
   fetchAsignaciones,
+  fetchBitacora,
   fetchCierresPersonas,
   fetchMeses,
   fetchPredicadores,
@@ -43,6 +45,7 @@ import {
   MESES_LABEL,
   mesLabel,
   type AsignacionPredicaRow,
+  type BitacoraPredicaRow,
   type CierrePersonaRow,
   type MesPredicasRow,
   type PredicadorRow,
@@ -64,6 +67,7 @@ export function PredicasView() {
   const [temas, setTemas] = useState<TemaAnioRow[]>([]);
   const [uso, setUso] = useState<Record<string, number>>({});
   const [asignaciones, setAsignaciones] = useState<AsignacionPredicaRow[]>([]);
+  const [bitacora, setBitacora] = useState<BitacoraPredicaRow[]>([]);
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState("");
   const [guardado, setGuardado] = useState<Guardado>("limpio");
@@ -121,8 +125,9 @@ export function PredicasView() {
 
   /** Refresca el calendario del mes sin tocar lo que se este escribiendo arriba. */
   const recargarAsignaciones = useCallback(async (mesId: string) => {
-    const { data, error: fetchError } = await fetchAsignaciones(mesId);
+    const [{ data, error: fetchError }, cambios] = await Promise.all([fetchAsignaciones(mesId), fetchBitacora(mesId)]);
     setAsignaciones(data);
+    setBitacora(cambios.data);
     if (fetchError) setError(fetchError);
   }, []);
 
@@ -146,6 +151,7 @@ export function PredicasView() {
       mesCargado.current = null;
       // eslint-disable-next-line react-hooks/set-state-in-effect -- sin mes activo no hay calendario que mostrar
       setAsignaciones([]);
+      setBitacora([]);
       return;
     }
 
@@ -575,6 +581,8 @@ export function PredicasView() {
               value={instrucciones}
             />
           </Field>
+
+          <BitacoraCci cambios={bitacora} />
         </>
       )}
 
@@ -654,6 +662,49 @@ export function PredicasView() {
         title="Eliminar mes"
       />
     </div>
+  );
+}
+
+const FECHA_HORA_CAMBIO = new Intl.DateTimeFormat("es-GT", {
+  day: "numeric",
+  hour: "numeric",
+  minute: "2-digit",
+  month: "short",
+  timeZone: "America/Guatemala",
+});
+
+/**
+ * Los cierres que asigno la superadministracion de CCI Chimaltenango. El
+ * calendario de arriba ya los muestra (es la misma fila); esto dice quien los
+ * cambio y cuando, para que un cierre nuevo no aparezca "de la nada".
+ */
+function BitacoraCci({ cambios }: { cambios: BitacoraPredicaRow[] }) {
+  return (
+    <section className="border border-white/10 bg-slate-950/40 p-3">
+      <p className="flex items-center gap-2 text-sm font-semibold text-slate-100">
+        <History className="h-4 w-4 text-emerald-200" />
+        Bitácora: cierres asignados desde CCI Chimaltenango
+      </p>
+      {cambios.length ? (
+        <ul className="mt-2 grid gap-1.5 text-xs text-slate-300">
+          {cambios.map((cambio) => (
+            <li key={cambio.id}>
+              <span className="text-slate-500">{FECHA_HORA_CAMBIO.format(new Date(cambio.created_at))}</span>
+              {" · "}
+              {formatoCompleto(cambio.fecha)} ({HORARIO_LABEL[cambio.horario] ?? cambio.horario}): cierre{" "}
+              <strong className="text-slate-100">{cambio.valor_nuevo ?? "sin asignar"}</strong>
+              {cambio.valor_anterior ? <span className="text-slate-500"> (antes: {cambio.valor_anterior})</span> : null}
+              {cambio.autor ? <span className="text-slate-400"> · {cambio.autor}</span> : null}
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p className="mt-1.5 text-xs text-slate-500">
+          Este mes no se ha asignado ningún cierre desde CCI. Cuando la superadministración de CCI asigne uno, aparece
+          aquí y en el calendario de arriba.
+        </p>
+      )}
+    </section>
   );
 }
 
