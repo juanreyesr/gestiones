@@ -203,16 +203,52 @@ export function archivoIcs(cita: CitaPublica) {
 // Rechazo
 // ---------------------------------------------------------------------------
 
+export type MotivoRechazo = "duplicidad" | "horario" | "modalidad" | "imprevisto" | "otro";
+
+/** Motivos predefinidos: etiqueta del boton y razon que va en el mensaje. */
+export const MOTIVOS_RECHAZO: { clave: MotivoRechazo; etiqueta: string }[] = [
+  { clave: "duplicidad", etiqueta: "Duplicidad de citas" },
+  { clave: "horario", etiqueta: "Fuera de mi horario" },
+  { clave: "modalidad", etiqueta: "No atiendo esa modalidad" },
+  { clave: "imprevisto", etiqueta: "Imprevisto de agenda" },
+  { clave: "otro", etiqueta: "Otro motivo (escribirlo)" },
+];
+
+function razonRechazo(motivo: MotivoRechazo, modalidad?: string | null) {
+  switch (motivo) {
+    case "duplicidad":
+      return "en ese horario por duplicidad de citas que el sistema no registró bien";
+    case "horario":
+      return "en ese horario porque está fuera de mi horario de atención";
+    case "modalidad":
+      return modalidad === "virtual" || modalidad === "presencial"
+        ? `en ese horario en modalidad ${modalidad}`
+        : "en ese horario en la modalidad que elegiste";
+    case "imprevisto":
+      return "en ese horario por un imprevisto en mi agenda";
+    case "otro":
+      return "en ese horario porque (escribe aquí el motivo)";
+  }
+}
+
 /** Mensaje de WhatsApp al rechazar una solicitud (editable antes de enviarlo). */
-export function mensajeRechazo(nombre: string) {
+export function mensajeRechazo(nombre: string, motivo: MotivoRechazo = "duplicidad", modalidad?: string | null) {
   const primerNombre = nombre.trim().split(/\s+/)[0] ?? "";
+  const razon = razonRechazo(motivo, modalidad);
+  const otraModalidad = modalidad === "virtual" ? "presencial" : modalidad === "presencial" ? "virtual" : null;
   return [
-    `${primerNombre ? `${primerNombre}, l` : "L"}amentablemente para la cita que has solicitado no me es posible atenderla en ese horario por duplicidad de citas que el sistema no registró bien.`,
+    `${primerNombre ? `${primerNombre}, l` : "L"}amentablemente para la cita que has solicitado no me es posible atenderla ${razon}.`,
     "",
-    `Por favor selecciona un nuevo horario aquí: ${base()}/agendar`,
+    motivo === "modalidad" && otraModalidad
+      ? `Por favor selecciona un nuevo horario en modalidad ${otraModalidad} aquí: ${base()}/agendar`
+      : `Por favor selecciona un nuevo horario aquí: ${base()}/agendar`,
     "",
     "Muchas gracias y perdón por los inconvenientes.",
   ].join("\n");
 }
 
-export const enlaceRechazo = (nombre: string, telefono: string | null) => enlaceWhatsApp(telefono, mensajeRechazo(nombre));
+/** Un boton de WhatsApp por motivo, con el mensaje ya armado. */
+export const botonesRechazo = (sol: { nombre: string; telefono: string | null; modalidad?: string | null }) =>
+  MOTIVOS_RECHAZO.map((m) => [
+    { text: `📲 ${m.etiqueta}`, url: enlaceWhatsApp(sol.telefono, mensajeRechazo(sol.nombre, m.clave, sol.modalidad)) },
+  ]);
