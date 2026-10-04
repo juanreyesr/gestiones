@@ -1,5 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { enlaceRechazo, tokenCita, urlConfirmarPorWhatsApp } from "./cita-publica";
+import { botonesRechazo, tokenCita, urlConfirmarPorWhatsApp } from "./cita-publica";
 import { buscarCitaParaConfirmar, enviarConfirmacionCita, pedidoDeConfirmacion } from "./telegram-confirmar-cita";
 import { buscarCoincidencia, type Coincidencia } from "@/lib/clinica/coincidencias";
 import { enlaceWhatsApp, textoRecordatorioCita } from "@/lib/clinica/recordatorio";
@@ -1183,11 +1183,13 @@ async function procesarCallback(admin: SupabaseClient, query: CallbackQuery) {
         return;
       }
       await responder("Solicitud rechazada.");
-      // Mensaje de rechazo listo para WhatsApp (se puede editar antes de enviarlo).
-      const s = sol as RawSolicitud;
-      await editarMensaje(chatId, messageId, `${base}\n\n❌ <b>Rechazada</b>`, [
-        [{ text: "📲 Enviar mensaje de rechazo por WhatsApp", url: enlaceRechazo(s.nombre, s.telefono) }],
-      ]);
+      // Un boton de WhatsApp por motivo; el mensaje se puede editar antes de enviarlo.
+      await editarMensaje(
+        chatId,
+        messageId,
+        `${base}\n\n❌ <b>Rechazada</b>\n📲 Elige el motivo para avisarle por WhatsApp:`,
+        botonesRechazo(sol as RawSolicitud),
+      );
       return;
     }
   }
