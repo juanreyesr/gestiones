@@ -29,7 +29,7 @@ Centro de gestion de pacientes y sesiones de terapia:
 
 La portada pública (`/` → `/es`) es el sitio web estático de `sitio-web/` (ver `sitio-web/README.md`); desde ahí se entra a `/estudiante` y `/admin`.
 
-**Icono y accesos directos**: el icono de la firma (`assets/icono-app.png`) sale en la pestaña y al crear un acceso directo o "Agregar a pantalla de inicio" (`public/favicon.ico`, `public/icons/`, `public/apple-touch-icon.png` y `public/manifest.webmanifest`, enlazados en `src/app/layout.tsx` y en el `<head>` del sitio estático). El manifiesto no fija `start_url`: el acceso directo abre la pagina desde la que se creo (por ejemplo `/admin`). Para regenerarlos desde otra imagen: ImageMagick (circulo con esquinas transparentes para `icon-*`/favicon, fondo negro para `apple-touch-icon` y `icon-maskable-512` con margen).
+**Icono y accesos directos**: el icono de la firma (`assets/icono-app.png`) sale en la pestaña y al crear un acceso directo o "Agregar a pantalla de inicio" (`public/favicon.ico`, `public/icons/`, `public/apple-touch-icon.png` y `public/manifest.webmanifest`, enlazados en `src/app/layout.tsx` y en el `<head>` del sitio estático). El manifiesto no fija `start_url`: el acceso directo abre la pagina desde la que se creo (por ejemplo `/admin`). Para regenerarlos: `bash assets/generar-iconos.sh` (tambien genera los de la app movil).
 
 La app responde en `www.juanjreyes.org` (dominio propio; `juanjreyes.org` redirige a `www`) y en `gestionesjj.vercel.app`. Define `NEXT_PUBLIC_APP_URL=https://www.juanjreyes.org`: los enlaces que se comparten (agendar, encuestas, QR de sesiones en vivo, asignacion a cursos, datos del paciente, resumen para jefatura) salen siempre con ese dominio aunque estes navegando desde el de Vercel (`src/lib/url-publica.ts`), y el webhook de Telegram se registra ahi al vincular.
 
@@ -98,7 +98,7 @@ El sitio tambien existe como app nativa "Juan J. Reyes" para Android e iPhone (`
 - `pnpm cap:sync` copia la configuracion y `capacitor/www` (pantalla sin conexion) a los proyectos nativos.
 - Android: `pnpm cap:android` abre Android Studio (Windows, Mac o Linux) → Run para probar en el celular, o Build → Generate Signed App Bundle/APK para instalar.
 - iPhone: `pnpm cap:ios` abre Xcode (solo Mac) → elegir el equipo de firma (cuenta Apple Developer) → Run, o Product → Archive para TestFlight.
-- Icono y pantalla de inicio: se generan desde `assets/logo.png` con `npx @capacitor/assets generate`.
+- Icono: la firma (`assets/icono-app.png`). `bash assets/generar-iconos.sh` (ImageMagick) regenera los iconos de Android (clasicos y adaptativo: fondo negro y el circulo con margen para cualquier mascara), iOS (1024 px sin transparencia) y web; luego `pnpm cap:sync` y recompilar. La pantalla de inicio (splash) sigue saliendo de `assets/logo.png` con `npx @capacitor/assets generate` (ojo: ese comando tambien reescribe los iconos; despues correr de nuevo `generar-iconos.sh`).
 - Los dominios distintos de juanjreyes.org (PayPal, WhatsApp, Google) se abren fuera de la app. La conexion con Google Calendar debe hacerse desde el navegador: Google no permite iniciar sesion dentro de apps con WebView.
 
 ## Recordatorio de citas por WhatsApp (Clinica)
