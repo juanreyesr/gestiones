@@ -47,11 +47,50 @@ export async function enviarConfirmacionCita(admin: SupabaseClient, chatId: numb
   });
 }
 
-/** /confirmar <nombre>: proximas citas del paciente (o la mas reciente si no tiene proximas). */
+const sinTildes = (texto: string) => texto.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+
+/**
+ * Lenguaje natural: "confirmar Victoria", "confírmale la cita a Victoria por
+ * WhatsApp", "confirma la cita de Ana López". Devuelve el nombre ("" si no lo
+ * trae) o null si el mensaje no es un pedido de confirmacion.
+ */
+export function pedidoDeConfirmacion(texto: string): string | null {
+  const limpio = texto.replace(/[¿?¡!.,]/g, " ").replace(/\s+/g, " ").trim();
+  const inicio = sinTildes(limpio).match(/^(?:por favor\s+)?(?:confirmar(?:le)?|confirma(?:le)?|confirmacion(?:es)?)\b/);
+  if (!inicio) return null;
+  return limpio
+    .slice(inicio[0].length)
+    .replace(/\s+por\s+(?:whatsapp|wasap|whats)\b.*$/i, "")
+    .replace(/^(?:\s*\b(?:la|las|su|sus|cita|citas|de|del|a|al|el|paciente|para|proxima|próxima)\b)+/i, "")
+    .trim();
+}
+
+/** Sin nombre: proximas citas (pendientes o confirmadas) para elegir con un toque. */
+async function listarProximasCitas(admin: SupabaseClient, chatId: number) {
+  const { data } = await admin
+    .from("gestionesjj_citas")
+    .select("id,inicio,estado,modalidad,contacto_nombre,gestionesjj_pacientes(nombre)")
+    .gte("inicio", new Date(Date.now() - 2 * 3_600_000).toISOString())
+    .in("estado", ["pendiente", "confirmada"])
+    .order("inicio", { ascending: true })
+    .limit(8);
+  const citas = (data ?? []) as unknown as RawCita[];
+  if (!citas.length) {
+    await enviarMensaje(chatId, "No tienes citas próximas pendientes ni confirmadas.");
+    return;
+  }
+  await enviarMensaje(chatId, "¿A quién le confirmo su cita? Elige una (o escribe: confirmar <i>nombre</i>).", {
+    botones: citas.map((c) => [
+      { text: `${nombreDe(c).split(" ").slice(0, 2).join(" ")} · ${fechaHora(c.inicio)}`.slice(0, 60), callback_data: `cc:ok:${c.id}` },
+    ]),
+  });
+}
+
+/** "confirmar <nombre>": proximas citas del paciente (o la mas reciente si no tiene proximas). */
 export async function buscarCitaParaConfirmar(admin: SupabaseClient, chatId: number, busqueda: string) {
   const termino = normalizarNombre(busqueda);
   if (!termino) {
-    await enviarMensaje(chatId, "¿De qué paciente? Escríbelo después del comando, por ejemplo:\n/confirmar Victoria");
+    await listarProximasCitas(admin, chatId);
     return;
   }
 

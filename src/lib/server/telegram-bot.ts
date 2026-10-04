@@ -1,6 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { tokenCita, urlConfirmarPorWhatsApp } from "./cita-publica";
-import { buscarCitaParaConfirmar, enviarConfirmacionCita } from "./telegram-confirmar-cita";
+import { buscarCitaParaConfirmar, enviarConfirmacionCita, pedidoDeConfirmacion } from "./telegram-confirmar-cita";
 import { buscarCoincidencia, type Coincidencia } from "@/lib/clinica/coincidencias";
 import { enlaceWhatsApp, textoRecordatorioCita } from "@/lib/clinica/recordatorio";
 import { mismaHoraQueConsultorio, nombreZona, PAIS_POR_DEFECTO, paisDe, paisPorCodigo, zonaDe } from "@/lib/paises";
@@ -130,6 +130,12 @@ export async function procesarUpdate(update: TelegramUpdate) {
   }
   if (predicas === "dia") {
     await enviarQuienPredica(admin, chatId, texto);
+    return;
+  }
+  // "confirmar Victoria", "confírmale la cita a Ana por WhatsApp".
+  const confirmacion = comando ? null : pedidoDeConfirmacion(texto);
+  if (confirmacion !== null) {
+    await buscarCitaParaConfirmar(admin, chatId, confirmacion);
     return;
   }
   if (!comando && /\b(ubicacion|direccion|como llegar)\b/.test(texto.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, ""))) {
@@ -337,7 +343,7 @@ function textoAyuda() {
     "/agendar — enlace de tu página de citas, listo para enviar",
     "/pago — enlace de pago de la consulta (PayPal), listo para enviar",
     "/datos <i>nombre</i> — enlace para que un paciente llene sus datos (con botón de WhatsApp a su número)",
-    "/confirmar <i>nombre</i> — botón para confirmarle por WhatsApp su próxima cita (con enlace para agregarla a su calendario)",
+    "/confirmar <i>nombre</i> — botón para confirmarle por WhatsApp su próxima cita (con enlace para agregarla a su calendario). También: <i>confirmar Victoria</i>; sin nombre te muestro las próximas citas",
     "/ubicacion — dirección del consultorio con Google Maps y Waze, lista para enviar",
     "/pagos — pacientes con citas sin pagar, con botón para marcarlas pagadas",
     "/mensajes — mensajes de estudiantes sin leer",
@@ -348,6 +354,7 @@ function textoAyuda() {
     "💬 Para contestarle a un estudiante, <b>responde</b> (desliza el mensaje) al aviso de su mensaje.",
     "📅 Las reservas de Calendly que lleguen a tu Google Calendar te las mando con botones para vincularlas a un paciente o crearlo.",
     "🗓 También puedes preguntar escribiendo normal: <i>¿qué tengo mañana?</i>, <i>¿tengo compromisos el viernes?</i>",
+    "📲 Para confirmarle su cita a un paciente: <i>confirmar Victoria</i> o <i>confírmale la cita a Ana</i>.",
     "⛪ O sobre la iglesia: <i>quiero las prédicas de octubre</i>, <i>¿quién predica este fin de semana?</i>, <i>¿quién predica el martes?</i>",
   ].join("\n");
 }
