@@ -1,4 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { tokenCita, urlConfirmarPorWhatsApp } from "./cita-publica";
 import { buscarCoincidencia, type Coincidencia } from "@/lib/clinica/coincidencias";
 import { enlaceWhatsApp, textoRecordatorioCita } from "@/lib/clinica/recordatorio";
 import { mismaHoraQueConsultorio, nombreZona, PAIS_POR_DEFECTO, paisDe, paisPorCodigo, zonaDe } from "@/lib/paises";
@@ -1142,11 +1143,17 @@ async function procesarCallback(admin: SupabaseClient, query: CallbackQuery) {
         return;
       }
       await responder("Cita aprobada.");
+      // Boton para confirmarle la cita al paciente por WhatsApp (el mensaje se
+      // arma al tocarlo, con enlace para agregarla a su calendario).
+      const token = citaId ? tokenCita(citaId as string) : null;
+      const confirmar: BotonInline[][] = token
+        ? [[{ text: "📲 Confirmarle la cita por WhatsApp", url: urlConfirmarPorWhatsApp(token) }]]
+        : [];
       await editarMensaje(
         chatId,
         messageId,
         `${base}\n\n✅ <b>Aprobada</b>${paciente ? ` en el expediente de ${esc(paciente.nombre)}` : " — paciente nuevo creado"}. Ya está en tu agenda.`,
-        ubicacion,
+        [...confirmar, ...ubicacion],
       );
       if (citaId) await sincronizarCitaGoogle(admin, citaId as string).catch(() => undefined);
       return;
