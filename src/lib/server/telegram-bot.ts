@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { tokenCita, urlConfirmarPorWhatsApp } from "./cita-publica";
+import { buscarCitaParaConfirmar, enviarConfirmacionCita } from "./telegram-confirmar-cita";
 import { buscarCoincidencia, type Coincidencia } from "@/lib/clinica/coincidencias";
 import { enlaceWhatsApp, textoRecordatorioCita } from "@/lib/clinica/recordatorio";
 import { mismaHoraQueConsultorio, nombreZona, PAIS_POR_DEFECTO, paisDe, paisPorCodigo, zonaDe } from "@/lib/paises";
@@ -206,6 +207,9 @@ export async function procesarUpdate(update: TelegramUpdate) {
     case "perfil":
       await buscarPacienteParaDatos(admin, chatId, argumento);
       return;
+    case "confirmar":
+      await buscarCitaParaConfirmar(admin, chatId, argumento);
+      return;
     case "solicitudes":
       await enviarSolicitudes(admin, chatId);
       return;
@@ -333,6 +337,7 @@ function textoAyuda() {
     "/agendar — enlace de tu página de citas, listo para enviar",
     "/pago — enlace de pago de la consulta (PayPal), listo para enviar",
     "/datos <i>nombre</i> — enlace para que un paciente llene sus datos (con botón de WhatsApp a su número)",
+    "/confirmar <i>nombre</i> — botón para confirmarle por WhatsApp su próxima cita (con enlace para agregarla a su calendario)",
     "/ubicacion — dirección del consultorio con Google Maps y Waze, lista para enviar",
     "/pagos — pacientes con citas sin pagar, con botón para marcarlas pagadas",
     "/mensajes — mensajes de estudiantes sin leer",
@@ -1185,6 +1190,12 @@ async function procesarCallback(admin: SupabaseClient, query: CallbackQuery) {
     const resultado = await resolverReserva(admin, config.ownerId, id, accionReserva, { config });
     await responder((resultado.ok ? resultado.mensaje : resultado.error).slice(0, 190));
     if (!resultado.ok) await enviarMensaje(chatId, `⚠️ ${esc(resultado.error)}`, { responderA: messageId });
+    return;
+  }
+
+  if (ambito === "cc" && accion === "ok" && id) {
+    await responder("Enviando...");
+    await enviarConfirmacionCita(admin, chatId, id);
     return;
   }
 
