@@ -11,17 +11,19 @@ import {
 } from "@/lib/estudiante/estudiante-client";
 import { getSupabaseClient, isSupabaseConfigured } from "@/lib/supabase";
 import { useBloquearAtras } from "@/lib/use-bloquear-atras";
-import { EnlacePaginaPrincipal } from "./enlace-pagina-principal";
+import { pedirSalidaPortada } from "@/components/confirmar-portada";
+import { ConfirmarPortadaEstudiante, EnlacePaginaPrincipal } from "./enlace-pagina-principal";
 import { IdiomaProvider, useIdioma } from "./idioma-context";
 import { LoginEstudianteForm } from "./login-estudiante-form";
 import { PanelEstudiante } from "./panel-estudiante";
 
 export function EstudianteView() {
-  // En moviles, "atras" no debe sacar al sitio publico: para eso esta el enlace "Pagina principal".
-  useBloquearAtras();
+  // En moviles, "atras" no saca al sitio publico: pregunta si se quiere volver a la portada.
+  useBloquearAtras(pedirSalidaPortada);
   return (
     <IdiomaProvider>
       <EstudianteViewInterna />
+      <ConfirmarPortadaEstudiante />
     </IdiomaProvider>
   );
 }
