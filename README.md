@@ -29,6 +29,8 @@ Centro de gestion de pacientes y sesiones de terapia:
 
 La portada pública (`/` → `/es`) es el sitio web estático de `sitio-web/` (ver `sitio-web/README.md`); desde ahí se entra a `/estudiante` y `/admin`.
 
+**Icono y accesos directos**: el icono de la firma (`assets/icono-app.png`) sale en la pestaña y al crear un acceso directo o "Agregar a pantalla de inicio" (`public/favicon.ico`, `public/icons/`, `public/apple-touch-icon.png` y `public/manifest.webmanifest`, enlazados en `src/app/layout.tsx` y en el `<head>` del sitio estático). El manifiesto no fija `start_url`: el acceso directo abre la pagina desde la que se creo (por ejemplo `/admin`). Para regenerarlos desde otra imagen: ImageMagick (circulo con esquinas transparentes para `icon-*`/favicon, fondo negro para `apple-touch-icon` y `icon-maskable-512` con margen).
+
 La app responde en `www.juanjreyes.org` (dominio propio; `juanjreyes.org` redirige a `www`) y en `gestionesjj.vercel.app`. Define `NEXT_PUBLIC_APP_URL=https://www.juanjreyes.org`: los enlaces que se comparten (agendar, encuestas, QR de sesiones en vivo, asignacion a cursos, datos del paciente, resumen para jefatura) salen siempre con ese dominio aunque estes navegando desde el de Vercel (`src/lib/url-publica.ts`), y el webhook de Telegram se registra ahi al vincular.
 
 ### Configurar Google Calendar (opcional)
