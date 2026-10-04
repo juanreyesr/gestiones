@@ -360,6 +360,25 @@ export type AsignacionPredicaRow = {
   updated_at: string;
 };
 
+/**
+ * Un cambio del calendario hecho desde fuera de esta pantalla. Hoy solo los
+ * cierres que asigna la superadministracion de CCI Chimaltenango (comparten la
+ * base): migracion 051 y `cci_chimaltenango_set_sunday_closing`.
+ */
+export type BitacoraPredicaRow = {
+  id: string;
+  mes_id: string;
+  asignacion_id: string | null;
+  fecha: string;
+  horario: HorarioPredica;
+  campo: "cierre";
+  valor_anterior: string | null;
+  valor_nuevo: string | null;
+  origen: "gestiones" | "cci";
+  autor: string | null;
+  created_at: string;
+};
+
 export const MESES_LABEL = [
   "Enero",
   "Febrero",
