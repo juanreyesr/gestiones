@@ -252,6 +252,7 @@ Arma el calendario mensual de predicadores. Cada domingo tiene tres celebracione
 - **Texto para enviar**: genera el calendario en el mismo formato plano que se comparte por mensaje (Domingo N con sus tres predicadores, Martes N con predica y cierre, tema e instrucciones), editable antes de copiarlo, con boton de copiar y de descargar `.txt`.
 - **Autoguardado**: cada cambio se guarda solo y todo sigue editable.
 - **Exportar a Excel**: el calendario con el mes y el tema en el encabezado, una fila por celebracion agrupada por fecha, las instrucciones extra al pie y una hoja de resumen con cuantas predicas y cierres lleva cada persona (los invitados aparecen marcados como tales).
+- **Integracion con CCI Chimaltenango**: el sistema de la iglesia (comparte este proyecto de Supabase) lee este calendario sin copiarlo. Un mes aparece alla, en "Predicas del mes" y en su bot de Telegram, en cuanto todas sus celebraciones tienen predicador, y se actualiza solo con cada cambio. Aqui se llenan los **predicadores**; alla los superadministradores asignan los **cierres**, que se ven en este mismo calendario. Cada cierre asignado desde CCI queda en la **Bitacora** al pie del mes (quien, cuando y el valor anterior). Tabla: `gestionesjj_iglesia_predicas_bitacora` (migracion `051`), solo lectura para la cuenta duena; la escribe la funcion `cci_chimaltenango_set_sunday_closing` del otro sistema.
 
 ### Protocolos para actividades
 
