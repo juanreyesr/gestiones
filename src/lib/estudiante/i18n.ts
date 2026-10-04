@@ -26,6 +26,10 @@ const DICCIONARIO: Record<Idioma, Record<string, string>> = {
     login_entrar: "Entrar",
     login_volver: "Volver",
     pagina_principal: "Página principal",
+    portada_titulo: "¿Quieres regresar a la página de portada?",
+    portada_texto: "Saldrás del Aula virtual. Lo que no hayas guardado se perderá.",
+    portada_si: "Sí, ir a la portada",
+    portada_no: "No, quedarme aquí",
 
     // Mensajes centrales (carga, errores generales)
     central_no_disponible: "El servicio no está disponible en este momento.",
@@ -158,6 +162,10 @@ const DICCIONARIO: Record<Idioma, Record<string, string>> = {
     login_entrar: "Sign in",
     login_volver: "Back",
     pagina_principal: "Home page",
+    portada_titulo: "Do you want to go back to the home page?",
+    portada_texto: "You will leave the Virtual classroom. Anything not saved will be lost.",
+    portada_si: "Yes, go to the home page",
+    portada_no: "No, stay here",
 
     central_no_disponible: "The service is not available right now.",
     central_cargando: "Loading...",
@@ -282,6 +290,10 @@ const DICCIONARIO: Record<Idioma, Record<string, string>> = {
     login_entrar: "Entrar",
     login_volver: "Voltar",
     pagina_principal: "Página inicial",
+    portada_titulo: "Quer voltar para a página inicial?",
+    portada_texto: "Você sairá da Sala de aula virtual. O que não foi salvo será perdido.",
+    portada_si: "Sim, ir para a página inicial",
+    portada_no: "Não, ficar aqui",
 
     central_no_disponible: "O serviço não está disponível no momento.",
     central_cargando: "Carregando...",

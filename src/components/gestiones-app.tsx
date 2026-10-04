@@ -90,6 +90,7 @@ import { SupervisionView, type IniciarSupervision } from "./supervision-view";
 import { ConfirmDialog } from "./confirm-dialog";
 import { TelegramModal } from "./telegram-modal";
 import { useBloquearAtras } from "@/lib/use-bloquear-atras";
+import { ConfirmarPortada, pedirSalidaPortada } from "./confirmar-portada";
 
 const ALLOWED_EMAIL = "lic.juanreyesr@gmail.com";
 
@@ -842,6 +843,7 @@ export function GestionesApp() {
   const [confirmarVolverMenu, setConfirmarVolverMenu] = useState(false);
   useBloquearAtras(() => {
     if (activeArea) setConfirmarVolverMenu(true);
+    else pedirSalidaPortada();
   });
 
   const areaActiva = activeArea ? (AREAS.find((item) => item.id === activeArea) ?? null) : null;
@@ -849,7 +851,9 @@ export function GestionesApp() {
 
   if (!session) {
     return (
-      <LoginGate
+      <>
+        <ConfirmarPortada />
+        <LoginGate
         authLoading={authLoading}
         authMessage={authMessage}
         email={email}
@@ -857,12 +861,14 @@ export function GestionesApp() {
         password={password}
         setEmail={setEmail}
         setPassword={setPassword}
-      />
+        />
+      </>
     );
   }
 
   return (
     <>
+      <ConfirmarPortada />
       <main className="min-h-screen bg-[#060c17] text-slate-50 print-hidden">
         <section className="relative min-h-screen overflow-x-clip">
           <div className="relative z-10 mx-auto flex min-h-screen w-full max-w-7xl flex-col gap-6 px-4 py-5 sm:px-6 lg:px-8">
@@ -1330,12 +1336,16 @@ function LoginGate(props: {
   );
 }
 
-/** Salida al sitio publico (el "atras" del navegador esta bloqueado en /admin). */
+/** Salida al sitio publico, con confirmacion (el "atras" del navegador esta bloqueado en /admin). */
 function BotonPaginaPrincipal() {
   return (
     <a
       className="inline-flex items-center gap-1 rounded-full border border-white/12 bg-white/8 py-1 pl-2 pr-2.5 text-xs font-semibold text-slate-300 transition hover:border-emerald-300/50 hover:text-white"
       href="/es"
+      onClick={(event) => {
+        event.preventDefault();
+        pedirSalidaPortada();
+      }}
       title="Ir a la página principal del sitio"
     >
       <Home className="h-3.5 w-3.5" />
