@@ -1,4 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { tokenCita, urlConfirmarPorWhatsApp } from "./cita-publica";
 import { buscarCoincidencia, type Coincidencia, type PacienteComparable } from "@/lib/clinica/coincidencias";
 import { parsearReserva } from "@/lib/clinica/reserva-google";
 import { inferirPais, PAIS_POR_DEFECTO, paisPorCodigo } from "@/lib/paises";
@@ -359,10 +360,14 @@ export async function resolverReserva(
     const mensaje = pacienteCreado
       ? `Paciente creado: ${pacienteNombre}. La cita ya está en tu agenda.`
       : `Cita agregada al expediente de ${pacienteNombre}.`;
+    // Boton para confirmarle la cita al paciente por WhatsApp, igual que al
+    // aprobar una solicitud de /agendar (src/lib/server/cita-publica.ts).
+    const token = tokenCita(cita.id as string);
     await actualizarTelegram(
       reserva,
       opciones.config,
       pacienteCreado ? `➕ <b>Paciente creado</b>: ${esc(pacienteNombre)}` : `✅ <b>Vinculada a ${esc(pacienteNombre)}</b>`,
+      token ? [[{ text: "📲 Confirmarle la cita por WhatsApp", url: urlConfirmarPorWhatsApp(token) }]] : undefined,
     );
     return { ok: true, mensaje, citaId: cita.id as string, pacienteId };
   } catch {
@@ -370,8 +375,13 @@ export async function resolverReserva(
   }
 }
 
-/** Deja el mensaje de Telegram de la reserva sin botones y con el resultado. */
-async function actualizarTelegram(reserva: ReservaRow, config: TelegramConfig | null | undefined, resultado: string) {
+/** Deja el mensaje de Telegram de la reserva con el resultado (y, si los hay, los botones nuevos). */
+async function actualizarTelegram(
+  reserva: ReservaRow,
+  config: TelegramConfig | null | undefined,
+  resultado: string,
+  botones?: BotonInline[][],
+) {
   if (!config?.chatId || !reserva.telegram_message_id) return;
-  await editarMensaje(config.chatId, Number(reserva.telegram_message_id), `${textoReserva(reserva, null)}\n\n${resultado}`);
+  await editarMensaje(config.chatId, Number(reserva.telegram_message_id), `${textoReserva(reserva, null)}\n\n${resultado}`, botones);
 }
