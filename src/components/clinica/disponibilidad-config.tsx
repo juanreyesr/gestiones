@@ -14,6 +14,7 @@ import { coordenadasDeEnlace, enlacesUbicacion, esEnlaceCortoMaps } from "@/lib/
 import type { DisponibilidadConfig, RangoHorario } from "@/lib/clinica/types";
 import { BTN_ACCENT, BTN_GHOST, BTN_PRIMARY, Field, SectionCard } from "./ui";
 import { urlPublica } from "@/lib/url-publica";
+import { CampoHora } from "../campo-hora";
 
 const ZONAS = [
   "America/Guatemala",
@@ -396,27 +397,25 @@ export function DisponibilidadConfigView() {
                   <div className="grid gap-2">
                     {rangos.map((rango, index) => (
                       <div key={index} className="flex flex-wrap items-center gap-2">
-                        <input
-                          className="field max-w-[130px]"
-                          onChange={(event) =>
+                        <CampoHora
+                          etiqueta={"Desde"}
+                          onChange={(valor) =>
                             setRangos(
                               dia.dow,
-                              rangos.map((r, i) => (i === index ? { ...r, inicio: event.target.value } : r))
+                              rangos.map((r, i) => (i === index ? { ...r, inicio: valor } : r))
                             )
                           }
-                          type="time"
                           value={rango.inicio}
                         />
                         <span className="text-sm text-slate-400">a</span>
-                        <input
-                          className="field max-w-[130px]"
-                          onChange={(event) =>
+                        <CampoHora
+                          etiqueta={"Hasta"}
+                          onChange={(valor) =>
                             setRangos(
                               dia.dow,
-                              rangos.map((r, i) => (i === index ? { ...r, fin: event.target.value } : r))
+                              rangos.map((r, i) => (i === index ? { ...r, fin: valor } : r))
                             )
                           }
-                          type="time"
                           value={rango.fin}
                         />
                         <button
