@@ -1,11 +1,14 @@
 "use client";
 
-import { CalendarSearch, Check, Link2, Mail, Phone, RefreshCw, UserRoundPlus, X } from "lucide-react";
+import { CalendarSearch, Check, Link2, Mail, Phone, RefreshCw, Undo2, UserRoundPlus, X } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { buscarCoincidencia } from "@/lib/clinica/coincidencias";
 import {
   buscarReservasAhora,
+  deshacerResolucion,
   fetchReservasPendientes,
+  fetchReservasResueltas,
+  type ReservaResuelta,
   type ReservaGoogle,
   resolverReservaGoogle,
 } from "@/lib/clinica/reservas-google-client";
@@ -215,12 +218,31 @@ export function ReservasGoogleSection({ onCambio, pacientes }: { onCambio: () =>
   const [aviso, setAviso] = useState("");
   const [error, setError] = useState("");
 
+  const [resueltas, setResueltas] = useState<ReservaResuelta[]>([]);
+  const [deshaciendo, setDeshaciendo] = useState<string | null>(null);
+
   const cargar = useCallback(async () => {
-    const { data, error: err } = await fetchReservasPendientes();
+    const [{ data, error: err }, recientes] = await Promise.all([fetchReservasPendientes(), fetchReservasResueltas()]);
     setLoading(false);
     setError(err ?? "");
     setReservas(data);
+    setResueltas(recientes);
   }, []);
+
+  const deshacer = async (reserva: ReservaResuelta) => {
+    setDeshaciendo(reserva.id);
+    setAviso("");
+    setError("");
+    const { data, error: err } = await deshacerResolucion("reserva", reserva.id);
+    setDeshaciendo(null);
+    if (err) {
+      setError(err);
+      return;
+    }
+    setAviso(data?.mensaje ?? "Listo.");
+    await cargar();
+    onCambio();
+  };
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- initial data load on mount
@@ -271,6 +293,7 @@ export function ReservasGoogleSection({ onCambio, pacientes }: { onCambio: () =>
               onResuelta={(mensaje) => {
                 setAviso(mensaje);
                 setReservas((actuales) => actuales.filter((r) => r.id !== reserva.id));
+                void fetchReservasResueltas().then(setResueltas);
                 onCambio();
               }}
               pacientes={pacientes}
@@ -279,6 +302,36 @@ export function ReservasGoogleSection({ onCambio, pacientes }: { onCambio: () =>
           ))}
         </div>
       )}
+      {resueltas.length ? (
+        <div className="mt-4 grid gap-2">
+          <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Resueltas recientemente</div>
+          {resueltas.map((r) => (
+            <div key={r.id} className="flex flex-wrap items-center justify-between gap-2 border border-white/10 bg-white/4 p-3">
+              <div className="min-w-0">
+                <div className="text-sm font-semibold text-slate-200">{r.nombre ?? "Sin nombre"}</div>
+                <div className="text-xs text-slate-400">
+                  {formatoFechaHora(r.inicio)} ·{" "}
+                  {r.estado === "ignorada"
+                    ? "Ignorada"
+                    : r.estado === "creada"
+                      ? `Paciente nuevo: ${r.paciente ?? ""}`
+                      : `Vinculada a ${r.paciente ?? "un paciente"}`}
+                </div>
+              </div>
+              <button
+                className={BTN_GHOST}
+                disabled={deshaciendo === r.id}
+                onClick={() => void deshacer(r)}
+                title="Quita la cita creada y deja la reserva otra vez por revisar"
+                type="button"
+              >
+                <Undo2 className="h-4 w-4" />
+                {deshaciendo === r.id ? "Deshaciendo..." : "Deshacer"}
+              </button>
+            </div>
+          ))}
+        </div>
+      ) : null}
     </SectionCard>
   );
 }

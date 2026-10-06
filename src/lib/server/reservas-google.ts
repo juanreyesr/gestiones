@@ -57,7 +57,8 @@ export async function pacientesComparables(admin: SupabaseClient): Promise<Pacie
 // Texto y botones (Telegram)
 // ============================================================
 
-export function textoReserva(r: ReservaRow, coincidencia: Coincidencia | null) {
+/** `coincidencia` undefined: sin la linea de coincidencia (mensaje ya resuelto). */
+export function textoReserva(r: ReservaRow, coincidencia?: Coincidencia | null) {
   return [
     `📅 <b>Nueva reserva${r.tipo_evento ? ` — ${esc(r.tipo_evento)}` : ""}</b>`,
     `🗓 ${esc(fechaHora(r.inicio))}`,
@@ -67,10 +68,12 @@ export function textoReserva(r: ReservaRow, coincidencia: Coincidencia | null) {
     r.motivo ? `📝 ${esc(recortar(r.motivo, 400))}` : null,
     r.notas ? `💬 ${esc(recortar(r.notas, 400))}` : null,
     r.consentimiento ? "✔️ Aceptó el consentimiento" : null,
-    "",
-    coincidencia
-      ? `🔎 <b>Parece ser ${esc(coincidencia.paciente.nombre)}</b> (mismo ${coincidencia.por})`
-      : "🔎 No coincide con ningún paciente registrado.",
+    coincidencia === undefined ? null : "",
+    coincidencia === undefined
+      ? null
+      : coincidencia
+        ? `🔎 <b>Parece ser ${esc(coincidencia.paciente.nombre)}</b> (mismo ${coincidencia.por})`
+        : "🔎 No coincide con ningún paciente registrado.",
   ]
     .filter((linea) => linea !== null)
     .join("\n");
@@ -94,6 +97,8 @@ export function botonesReserva(r: ReservaRow, coincidencia: Coincidencia | null)
   botones.push([{ text: "🙈 Ignorar (no es una sesión)", callback_data: `gr:ig:${r.id}` }]);
   return botones;
 }
+
+export const botonDeshacerReserva = (id: string): BotonInline[] => [{ text: "↩️ Deshacer", callback_data: `gr:dz:${id}` }];
 
 // ============================================================
 // Deteccion (job de cada 10 minutos o boton "Buscar ahora" del panel)
@@ -213,7 +218,7 @@ async function marcarCanceladas(admin: SupabaseClient, config: TelegramConfig | 
       await editarMensaje(
         config.chatId,
         Number(reserva.telegram_message_id),
-        `${textoReserva(reserva, null)}\n\n🚫 <b>Cancelada</b>: el evento ya no está en Google Calendar.`,
+        `${textoReserva(reserva)}\n\n🚫 <b>Cancelada</b>: el evento ya no está en Google Calendar.`,
       );
     }
   }
@@ -261,7 +266,7 @@ export async function resolverReserva(
         .from("gestionesjj_google_reservas")
         .update({ estado: "ignorada", resuelto_en: new Date().toISOString() })
         .eq("id", reservaId);
-      await actualizarTelegram(reserva, opciones.config, "🙈 <b>Ignorada</b>");
+      await actualizarTelegram(reserva, opciones.config, "🙈 <b>Ignorada</b>", [botonDeshacerReserva(reserva.id)]);
       return { ok: true, mensaje: "Reserva ignorada.", citaId: null, pacienteId: null };
     }
 
@@ -367,7 +372,10 @@ export async function resolverReserva(
       reserva,
       opciones.config,
       pacienteCreado ? `➕ <b>Paciente creado</b>: ${esc(pacienteNombre)}` : `✅ <b>Vinculada a ${esc(pacienteNombre)}</b>`,
-      token ? [[{ text: "📲 Confirmarle la cita por WhatsApp", url: urlConfirmarPorWhatsApp(token) }]] : undefined,
+      [
+        ...(token ? [[{ text: "📲 Confirmarle la cita por WhatsApp", url: urlConfirmarPorWhatsApp(token) }]] : []),
+        botonDeshacerReserva(reserva.id),
+      ],
     );
     return { ok: true, mensaje, citaId: cita.id as string, pacienteId };
   } catch {
@@ -383,5 +391,5 @@ async function actualizarTelegram(
   botones?: BotonInline[][],
 ) {
   if (!config?.chatId || !reserva.telegram_message_id) return;
-  await editarMensaje(config.chatId, Number(reserva.telegram_message_id), `${textoReserva(reserva, null)}\n\n${resultado}`, botones);
+  await editarMensaje(config.chatId, Number(reserva.telegram_message_id), `${textoReserva(reserva)}\n\n${resultado}`, botones);
 }

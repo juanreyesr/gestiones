@@ -1,5 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { botonesRechazo, tokenCita, urlConfirmarPorWhatsApp } from "./cita-publica";
+import { deshacerReserva, deshacerSolicitud } from "./deshacer-solicitudes";
+import { buscarPacienteParaMensaje, enviarTarjetaMensaje, pedidoMensajePaciente } from "./telegram-mensaje-paciente";
 import { buscarCitaParaConfirmar, enviarConfirmacionCita, pedidoDeConfirmacion } from "./telegram-confirmar-cita";
 import { buscarCoincidencia, type Coincidencia } from "@/lib/clinica/coincidencias";
 import { enlaceWhatsApp, textoRecordatorioCita } from "@/lib/clinica/recordatorio";
@@ -132,6 +134,12 @@ export async function procesarUpdate(update: TelegramUpdate) {
     await enviarQuienPredica(admin, chatId, texto);
     return;
   }
+  // "enviar mensaje a Ana", "escríbele a Pedro": boton de WhatsApp con el saludo.
+  const mensajeA = comando ? null : pedidoMensajePaciente(texto);
+  if (mensajeA !== null) {
+    await buscarPacienteParaMensaje(admin, chatId, mensajeA);
+    return;
+  }
   // "confirmar Victoria", "confírmale la cita a Ana por WhatsApp".
   const confirmacion = comando ? null : pedidoDeConfirmacion(texto);
   if (confirmacion !== null) {
@@ -215,6 +223,9 @@ export async function procesarUpdate(update: TelegramUpdate) {
       return;
     case "confirmar":
       await buscarCitaParaConfirmar(admin, chatId, argumento);
+      return;
+    case "mensaje":
+      await buscarPacienteParaMensaje(admin, chatId, argumento);
       return;
     case "solicitudes":
       await enviarSolicitudes(admin, chatId);
@@ -343,6 +354,7 @@ function textoAyuda() {
     "/agendar — enlace de tu página de citas, listo para enviar",
     "/pago — enlace de pago de la consulta (PayPal), listo para enviar",
     "/datos <i>nombre</i> — enlace para que un paciente llene sus datos (con botón de WhatsApp a su número)",
+    "/mensaje <i>nombre</i> — botón de WhatsApp para escribirle a un paciente («Buenos días, Ana, te escribo para…»). También: <i>enviar mensaje a Ana</i>",
     "/confirmar <i>nombre</i> — botón para confirmarle por WhatsApp su próxima cita (con enlace para agregarla a su calendario). También: <i>confirmar Victoria</i>; sin nombre te muestro las próximas citas",
     "/ubicacion — dirección del consultorio con Google Maps y Waze, lista para enviar",
     "/pagos — pacientes con citas sin pagar, con botón para marcarlas pagadas",
@@ -355,6 +367,7 @@ function textoAyuda() {
     "📅 Las reservas de Calendly que lleguen a tu Google Calendar te las mando con botones para vincularlas a un paciente o crearlo.",
     "🗓 También puedes preguntar escribiendo normal: <i>¿qué tengo mañana?</i>, <i>¿tengo compromisos el viernes?</i>",
     "📲 Para confirmarle su cita a un paciente: <i>confirmar Victoria</i> o <i>confírmale la cita a Ana</i>.",
+    "💬 Para escribirle a un paciente: <i>enviar mensaje a Ana</i> o <i>escríbele a Pedro</i>.",
     "⛪ O sobre la iglesia: <i>quiero las prédicas de octubre</i>, <i>¿quién predica este fin de semana?</i>, <i>¿quién predica el martes?</i>",
   ].join("\n");
 }
@@ -824,6 +837,8 @@ export function textoSolicitudCita(sol: Omit<RawSolicitud, "id" | "estado">, coi
     .join("\n");
 }
 
+const botonDeshacerSolicitud = (id: string): BotonInline[] => [{ text: "↩️ Deshacer", callback_data: `sol:dz:${id}` }];
+
 export function botonesSolicitudCita(
   solicitudId: string,
   coincidencia?: Coincidencia | null,
@@ -1165,7 +1180,7 @@ async function procesarCallback(admin: SupabaseClient, query: CallbackQuery) {
         chatId,
         messageId,
         `${base}\n\n✅ <b>Aprobada</b>${paciente ? ` en el expediente de ${esc(paciente.nombre)}` : " — paciente nuevo creado"}. Ya está en tu agenda.`,
-        [...confirmar, ...ubicacion],
+        [...confirmar, ...ubicacion, botonDeshacerSolicitud(id)],
       );
       if (citaId) await sincronizarCitaGoogle(admin, citaId as string).catch(() => undefined);
       return;
@@ -1188,10 +1203,31 @@ async function procesarCallback(admin: SupabaseClient, query: CallbackQuery) {
         chatId,
         messageId,
         `${base}\n\n❌ <b>Rechazada</b>\n📲 Elige el motivo para avisarle por WhatsApp:`,
-        botonesRechazo(sol as RawSolicitud),
+        [...botonesRechazo(sol as RawSolicitud), botonDeshacerSolicitud(id)],
       );
       return;
     }
+
+    if (accion === "dz") {
+      const resultado = await deshacerSolicitud(admin, id);
+      await responder((resultado.ok ? resultado.mensaje : resultado.error).slice(0, 190));
+      if (!resultado.ok) return;
+      // Vuelve la tarjeta original para aprobar (al paciente correcto) o rechazar.
+      const coincidencia = buscarCoincidencia(await pacientesComparables(admin), sol as RawSolicitud);
+      await editarMensaje(
+        chatId,
+        messageId,
+        `${textoSolicitudCita(sol as RawSolicitud, coincidencia)}\n\n↩️ <i>Deshecho: elige de nuevo.</i>`,
+        botonesSolicitudCita(id, coincidencia, ubicacion),
+      );
+      return;
+    }
+  }
+
+  if (ambito === "gr" && id && accion === "dz") {
+    const resultado = await deshacerReserva(admin, id, config);
+    await responder((resultado.ok ? resultado.mensaje : resultado.error).slice(0, 190));
+    return;
   }
 
   if (ambito === "gr" && id) {
@@ -1209,6 +1245,12 @@ async function procesarCallback(admin: SupabaseClient, query: CallbackQuery) {
   if (ambito === "cc" && accion === "ok" && id) {
     await responder("Enviando...");
     await enviarConfirmacionCita(admin, chatId, id);
+    return;
+  }
+
+  if (ambito === "pm" && id && accion === "ok") {
+    await responder("Listo.");
+    await enviarTarjetaMensaje(admin, chatId, id);
     return;
   }
 
