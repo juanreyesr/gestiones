@@ -1,5 +1,6 @@
 "use client";
 
+import { BotonWhatsAppPaciente } from "./boton-whatsapp-paciente";
 import { ChevronRight, Search, Trash2, UserRoundPlus } from "lucide-react";
 import { useMemo, useState } from "react";
 import { deletePaciente, setEstadoPaciente } from "@/lib/clinica/pacientes";
@@ -113,22 +114,24 @@ export function PacientesList({
               key={paciente.id}
               className="grid gap-3 border border-white/10 bg-white/6 p-4 sm:grid-cols-[1fr_auto] sm:items-center"
             >
-              <button
-                className="group grid gap-0.5 text-left"
-                onClick={() => onOpen(paciente)}
-                type="button"
-              >
-                <span className="flex items-center gap-1.5 text-base font-semibold text-white">
-                  {paciente.nombre}
-                  <ChevronRight className="h-4 w-4 text-slate-500 transition group-hover:translate-x-0.5 group-hover:text-emerald-300" />
+              <div className="grid gap-0.5">
+                <button className="group w-fit text-left" onClick={() => onOpen(paciente)} type="button">
+                  <span className="flex items-center gap-1.5 text-base font-semibold text-white">
+                    {paciente.nombre}
+                    <ChevronRight className="h-4 w-4 text-slate-500 transition group-hover:translate-x-0.5 group-hover:text-emerald-300" />
+                  </span>
+                </button>
+                {/* El icono de WhatsApp va fuera del boton (no se anidan enlaces en botones). */}
+                <span className="flex items-center gap-2 text-sm text-slate-400">
+                  {paciente.telefono}
+                  <BotonWhatsAppPaciente paciente={paciente} />
                 </span>
-                <span className="text-sm text-slate-400">{paciente.telefono}</span>
-                <span className="text-xs text-slate-500">
+                <button className="w-fit text-left text-xs text-slate-500" onClick={() => onOpen(paciente)} type="button">
                   {ultimasSesiones[paciente.id]
                     ? `Última sesión: ${formatoFechaCorta(ultimasSesiones[paciente.id])}`
                     : "Sin sesiones"}
-                </span>
-              </button>
+                </button>
+              </div>
 
               <div className="flex items-center gap-2 sm:justify-end">
                 <label className="grid gap-1">

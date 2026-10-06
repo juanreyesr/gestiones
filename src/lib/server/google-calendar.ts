@@ -398,8 +398,9 @@ export async function obtenerEvento(calendarId: string, eventId: string) {
  * Marca un evento que creo otro sistema (Calendly...) como enlazado a una
  * cita de GestionesJJ, para que la agenda y los avisos no lo cuenten dos
  * veces. Solo agrega la propiedad privada; no toca titulo ni descripcion.
+ * Con `citaId` null la quita (al deshacer la vinculacion).
  */
-export async function marcarEventoGestiones(calendarId: string, eventId: string, citaId: string) {
+export async function marcarEventoGestiones(calendarId: string, eventId: string, citaId: string | null) {
   const { token, error } = await getValidAccessToken();
   if (!token) return { error };
   const response = await calendarRequest(token, calendarId, `/events/${encodeURIComponent(eventId)}`, {

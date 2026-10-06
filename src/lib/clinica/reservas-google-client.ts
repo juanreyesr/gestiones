@@ -57,13 +57,16 @@ export async function fetchReservasPendientes() {
   };
 }
 
-async function llamar<T>(body: Record<string, unknown>): Promise<{ data: T | null; error: string | null }> {
+async function llamar<T>(
+  body: Record<string, unknown>,
+  ruta = "/api/clinica/reservas-google",
+): Promise<{ data: T | null; error: string | null }> {
   const supabase = getSupabaseClient();
   const { data: sesion } = (await supabase?.auth.getSession()) ?? { data: { session: null } };
   const token = sesion.session?.access_token;
   if (!token) return { data: null, error: "Sesión no válida. Vuelve a iniciar." };
   try {
-    const response = await fetch("/api/clinica/reservas-google", {
+    const response = await fetch(ruta, {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
       body: JSON.stringify(body),
@@ -87,4 +90,39 @@ export function resolverReservaGoogle(input: {
   datos?: { nombre: string; telefono: string; email: string };
 }) {
   return llamar<{ mensaje: string; citaId: string | null; pacienteId: string | null }>(input);
+}
+
+/** "Deshacer" una solicitud de /agendar o una reserva de Calendly ya resuelta: vuelve a quedar pendiente. */
+export function deshacerResolucion(tipo: "solicitud" | "reserva", id: string) {
+  return llamar<{ mensaje: string }>({ tipo, id }, "/api/clinica/deshacer");
+}
+
+export type ReservaResuelta = {
+  id: string;
+  inicio: string;
+  nombre: string | null;
+  estado: "vinculada" | "creada" | "ignorada";
+  paciente: string | null;
+};
+
+/** Reservas resueltas en los ultimos 7 dias cuya cita aun no pasa (para poder deshacerlas). */
+export async function fetchReservasResueltas() {
+  const supabase = getSupabaseClient();
+  if (!supabase) return [] as ReservaResuelta[];
+  const { data } = await supabase
+    .from("gestionesjj_google_reservas")
+    .select("id,inicio,nombre,estado,gestionesjj_pacientes(nombre)")
+    .in("estado", ["vinculada", "creada", "ignorada"])
+    .gte("resuelto_en", new Date(Date.now() - 7 * 86_400_000).toISOString())
+    .gte("inicio", new Date().toISOString())
+    .order("resuelto_en", { ascending: false })
+    .limit(10);
+  type Raw = { id: string; inicio: string; nombre: string | null; estado: ReservaResuelta["estado"]; gestionesjj_pacientes: { nombre: string } | null };
+  return ((data ?? []) as unknown as Raw[]).map((r) => ({
+    id: r.id,
+    inicio: r.inicio,
+    nombre: r.nombre,
+    estado: r.estado,
+    paciente: r.gestionesjj_pacientes?.nombre ?? null,
+  }));
 }

@@ -1,5 +1,6 @@
 "use client";
 
+import { BotonWhatsAppPaciente } from "./boton-whatsapp-paciente";
 import {
   CalendarClock,
   CalendarDays,
@@ -277,6 +278,7 @@ export function PacienteExpediente({
             <span className="inline-flex items-center gap-1.5">
               <Phone className="h-3.5 w-3.5 text-slate-500" />
               {paciente.telefono}
+              <BotonWhatsAppPaciente paciente={paciente} />
             </span>
             {paciente.email ? (
               <span className="inline-flex items-center gap-1.5">

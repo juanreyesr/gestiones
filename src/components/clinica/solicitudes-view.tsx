@@ -1,6 +1,6 @@
 "use client";
 
-import { Check, Inbox, Mail, Phone, UserRoundPlus, X } from "lucide-react";
+import { Check, Inbox, Mail, Phone, Undo2, UserRoundPlus, X } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { syncCitaConGoogle } from "@/lib/clinica/google-client";
 import { formatoFechaHora, formatoHora } from "@/lib/clinica/slots";
@@ -9,6 +9,7 @@ import type { PacienteRow, SolicitudRow } from "@/lib/clinica/types";
 import { buscarCoincidencia } from "@/lib/clinica/coincidencias";
 import { fetchCoordenadasConsultorio, fetchDisponibilidad } from "@/lib/clinica/disponibilidad";
 import { enlaceWhatsApp } from "@/lib/clinica/recordatorio";
+import { deshacerResolucion } from "@/lib/clinica/reservas-google-client";
 import { mensajeUbicacion, type UbicacionConsultorio } from "@/lib/clinica/ubicacion";
 import { ModalPortal } from "../modal-portal";
 import { ReservasGoogleSection } from "./reservas-google-section";
@@ -172,6 +173,8 @@ export function SolicitudesView({
 }) {
   const [pendientes, setPendientes] = useState<SolicitudRow[]>([]);
   const [historial, setHistorial] = useState<SolicitudRow[]>([]);
+  // Momento de la ultima carga: solo se puede deshacer si la cita aun no pasa.
+  const [ahoraIso, setAhoraIso] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [aprobando, setAprobando] = useState<SolicitudRow | null>(null);
@@ -201,12 +204,31 @@ export function SolicitudesView({
     setError("");
     setPendientes(pend);
     setHistorial(hist);
+    setAhoraIso(new Date().toISOString());
   }, []);
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- initial data load on mount
     void cargar();
   }, [cargar]);
+
+  const [deshaciendoId, setDeshaciendoId] = useState<string | null>(null);
+  const [aviso, setAviso] = useState("");
+
+  const handleDeshacer = async (solicitud: SolicitudRow) => {
+    setDeshaciendoId(solicitud.id);
+    setAviso("");
+    const { data, error: err } = await deshacerResolucion("solicitud", solicitud.id);
+    setDeshaciendoId(null);
+    if (err) {
+      setError(err);
+      return;
+    }
+    setError("");
+    setAviso(data?.mensaje ?? "Listo.");
+    void cargar();
+    onCambio();
+  };
 
   const handleRechazar = async (solicitud: SolicitudRow) => {
     setRechazandoId(solicitud.id);
@@ -223,6 +245,7 @@ export function SolicitudesView({
   return (
     <div className="grid gap-5">
       {error ? <div className="border border-red-400/40 bg-red-400/10 p-3 text-sm text-red-200">{error}</div> : null}
+      {aviso ? <div className="border border-emerald-400/30 bg-emerald-400/10 p-3 text-sm text-emerald-200">{aviso}</div> : null}
 
       <ReservasGoogleSection onCambio={onCambio} pacientes={pacientes} />
 
@@ -347,7 +370,21 @@ export function SolicitudesView({
                   <div className="text-sm font-semibold text-slate-200">{solicitud.nombre}</div>
                   <div className="text-xs text-slate-400">{formatoFechaHora(solicitud.inicio)}</div>
                 </div>
-                <SolicitudBadge estado={solicitud.estado} />
+                <div className="flex items-center gap-2">
+                  <SolicitudBadge estado={solicitud.estado} />
+                  {(solicitud.estado === "aprobada" || solicitud.estado === "rechazada") && Date.parse(solicitud.inicio) > Date.parse(ahoraIso || "0") ? (
+                    <button
+                      className={BTN_GHOST}
+                      disabled={deshaciendoId === solicitud.id}
+                      onClick={() => void handleDeshacer(solicitud)}
+                      title="Quita la cita creada (si la hay) y deja la solicitud otra vez pendiente"
+                      type="button"
+                    >
+                      <Undo2 className="h-4 w-4" />
+                      {deshaciendoId === solicitud.id ? "Deshaciendo..." : "Deshacer"}
+                    </button>
+                  ) : null}
+                </div>
               </div>
             ))}
           </div>
