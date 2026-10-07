@@ -41,6 +41,8 @@ export type ReservaRow = {
   notas: string | null;
   consentimiento: boolean;
   consentimiento_texto: string | null;
+  modalidad: "presencial" | "virtual" | null;
+  ubicacion: string | null;
   estado: "pendiente" | "procesando" | "vinculada" | "creada" | "ignorada" | "cancelada";
   paciente_id: string | null;
   cita_id: string | null;
@@ -62,6 +64,7 @@ export function textoReserva(r: ReservaRow, coincidencia?: Coincidencia | null) 
   return [
     `📅 <b>Nueva reserva${r.tipo_evento ? ` — ${esc(r.tipo_evento)}` : ""}</b>`,
     `🗓 ${esc(fechaHora(r.inicio))}`,
+    lineaModalidad(r.modalidad),
     `👤 ${esc(r.nombre ?? "Sin nombre")}`,
     r.telefono || r.email ? `📞 ${esc([r.telefono, r.email].filter(Boolean).join(" · "))}` : null,
     lineaPais(r.telefono),
@@ -77,6 +80,13 @@ export function textoReserva(r: ReservaRow, coincidencia?: Coincidencia | null) 
   ]
     .filter((linea) => linea !== null)
     .join("\n");
+}
+
+/** Modalidad bien visible en el aviso (Telegram), venga de Calendly o de /agendar. */
+export function lineaModalidad(modalidad: string | null | undefined) {
+  if (modalidad === "virtual") return "💻 <b>VIRTUAL</b>";
+  if (modalidad === "presencial") return "🏢 <b>PRESENCIAL</b>";
+  return "❔ <b>Modalidad no indicada</b> — confírmala con la persona";
 }
 
 function lineaPais(telefono: string | null) {
@@ -120,7 +130,13 @@ export async function sincronizarReservas(admin: SupabaseClient, config: Telegra
 
   for (const evento of eventos) {
     if (evento.gestionesId || evento.todoElDia) continue;
-    const datos = parsearReserva({ titulo: evento.titulo, descripcion: evento.descripcion, invitados: evento.invitados });
+    const datos = parsearReserva({
+      titulo: evento.titulo,
+      descripcion: evento.descripcion,
+      invitados: evento.invitados,
+      ubicacion: evento.ubicacion,
+      videollamada: evento.videollamada,
+    });
     if (!datos.esReserva) continue;
 
     const unico = `${evento.id}|${Date.parse(evento.inicio)}`;
@@ -151,6 +167,8 @@ export async function sincronizarReservas(admin: SupabaseClient, config: Telegra
           notas: datos.notas,
           consentimiento: datos.consentimiento,
           consentimiento_texto: datos.consentimientoTexto,
+          modalidad: datos.modalidad,
+          ubicacion: datos.ubicacion,
         },
         { onConflict: "evento_clave", ignoreDuplicates: true },
       )
@@ -165,6 +183,18 @@ export async function sincronizarReservas(admin: SupabaseClient, config: Telegra
         .update({ inicio, fin })
         .eq("evento_clave", clave)
         .eq("estado", "pendiente");
+      // Reservas anteriores a la modalidad (o sin dato aun): se completa y la
+      // cita ya creada toma la modalidad correcta (antes quedaba "presencial").
+      if (datos.modalidad) {
+        const { data: completadas } = await admin
+          .from("gestionesjj_google_reservas")
+          .update({ modalidad: datos.modalidad, ubicacion: datos.ubicacion })
+          .eq("evento_clave", clave)
+          .is("modalidad", null)
+          .select("cita_id");
+        const citas = (completadas ?? []).map((r) => r.cita_id as string | null).filter((id): id is string => Boolean(id));
+        if (citas.length) await admin.from("gestionesjj_citas").update({ modalidad: datos.modalidad }).in("id", citas);
+      }
     }
   }
 
@@ -332,6 +362,8 @@ export async function resolverReserva(
         fin: reserva.fin,
         estado: "confirmada",
         origen: "publica",
+        // Sin modalidad conocida no se asume presencial (era el valor por defecto).
+        modalidad: reserva.modalidad,
         motivo: reserva.motivo,
         notas: notasCita,
         // Solo se enlaza si el evento vive en el calendario que la app sincroniza.
