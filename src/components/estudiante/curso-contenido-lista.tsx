@@ -59,7 +59,7 @@ type TareasConfig = {
  * Lista de semanas/contenidos/tareas visibles para un estudiante, en
  * acordeón. Presentacional y compartida: la usa el panel real del
  * estudiante (datos vía RPC, con entrega de archivos habilitada, en su
- * idioma preferido) y la vista previa "Ver como estudiante" del admin
+ * idioma preferido) y la vista previa "Ver como estudiante" del admin (/estudiante/vista-previa)
  * (datos leídos directo por el owner, sin acciones de escritura: se omite
  * `tareas.onSubirArchivo`, siempre en español). Por eso traduce con la
  * función pura `traducir(idioma, clave)` en vez de un contexto de React:

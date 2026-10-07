@@ -175,6 +175,10 @@ Acceso real de estudiantes al curso, con cuenta propia (correo + contrasena, amb
 
 Decisiones de seguridad relevantes: la contraseña que asigna el owner se guarda cifrada (AES-256-GCM, llave en `ESTUDIANTES_ENC_KEY`, nunca en texto plano) para poder reimprimir la ficha cuando haga falta; los estudiantes nunca leen las tablas del modulo Cursos directo, solo a traves de RPCs `SECURITY DEFINER` (`gestionesjj_estudiante_mi_perfil`, `gestionesjj_estudiante_mis_cursos`) que exponen unicamente lo suyo. La migracion es `supabase/migrations/021_gestionesjj_area_estudiantes.sql`. Requiere `SUPABASE_SECRET_KEY` y `ESTUDIANTES_ENC_KEY` configuradas (ver `.env.example`).
 
+### Ver como estudiante
+
+El boton **Ver como estudiante** del curso abre en otra pestana `/estudiante/vista-previa?curso=<id>`: el Aula virtual completa (encabezado, campana con "Recibir avisos", chat, perfil, cambio de idioma, semanas, contenidos y tareas) tal como la ve un estudiante de ese curso, con los datos leidos con la sesion del owner (mismos filtros que las RPCs del estudiante: semanas habilitadas y lo que no esta oculto). Nada se guarda: enviar mensajes, entregar tareas o guardar el perfil avisan que es una vista previa (`src/lib/estudiante/vista-previa.ts`).
+
 ### Avisos para estudiantes (Telegram y notificaciones del telefono)
 
 En la campana del Aula virtual, cada estudiante con un curso activo puede activar **"Activar en Telegram"** y/o **"Activar notificaciones"** (de ese navegador o telefono). Reciben solo lo de su curso: mensajes del docente, semana nueva, tarea publicada, calificacion y **"Tarea por vencer"** (24 horas antes de la fecha limite, si aun no entregaron; tambien aparece en la campana).
