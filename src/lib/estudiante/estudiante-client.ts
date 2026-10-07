@@ -1,5 +1,14 @@
 import type { Idioma } from "@/lib/cursos/types";
 import { getSupabaseClient } from "@/lib/supabase";
+import {
+  AVISO_VISTA_PREVIA,
+  vistaPreviaActiva,
+  vpActividades,
+  vpContenidos,
+  vpCursos,
+  vpSemanas,
+  vpUrlContenido,
+} from "./vista-previa";
 
 function idiomaValido(valor: unknown): valor is Idioma {
   return valor === "es" || valor === "en" || valor === "pt";
@@ -14,6 +23,10 @@ export async function loginEstudiante(correo: string, contrasena: string) {
 }
 
 export async function logoutEstudiante() {
+  if (vistaPreviaActiva()) {
+    window.close();
+    return;
+  }
   const supabase = getSupabaseClient();
   if (!supabase) return;
   await supabase.auth.signOut();
@@ -22,6 +35,7 @@ export async function logoutEstudiante() {
 export type MiPerfil = { nombre: string; correo: string; debeCambiarContrasena: boolean; idioma: Idioma };
 
 export async function fetchMiPerfil(): Promise<{ data: MiPerfil | null; error: string | null }> {
+  if (vistaPreviaActiva()) return { data: { nombre: "Estudiante de prueba", correo: "vista previa", debeCambiarContrasena: false, idioma: "es" }, error: null };
   const supabase = getSupabaseClient();
   if (!supabase) return { data: null, error: "Faltan las variables de Supabase." };
 
@@ -45,6 +59,7 @@ export async function fetchMiPerfil(): Promise<{ data: MiPerfil | null; error: s
 }
 
 export async function guardarIdioma(idioma: Idioma): Promise<{ error: string | null }> {
+  if (vistaPreviaActiva()) return { error: null };
   const token = await getAuthToken();
   if (!token) return { error: "Sesión no válida. Vuelve a iniciar." };
 
@@ -73,6 +88,7 @@ export type MiCurso = {
 };
 
 export async function fetchMisCursos(): Promise<{ data: MiCurso[]; error: string | null }> {
+  if (vistaPreviaActiva()) return { data: await vpCursos(), error: null };
   const supabase = getSupabaseClient();
   if (!supabase) return { data: [], error: "Faltan las variables de Supabase." };
 
@@ -106,6 +122,7 @@ export async function fetchMisCursos(): Promise<{ data: MiCurso[]; error: string
 export type MiSemana = { id: string; numero: number; titulo: string | null; fecha: string | null };
 
 export async function fetchMisSemanas(cursoId: string): Promise<{ data: MiSemana[]; error: string | null }> {
+  if (vistaPreviaActiva()) return { data: await vpSemanas(cursoId), error: null };
   const supabase = getSupabaseClient();
   if (!supabase) return { data: [], error: "Faltan las variables de Supabase." };
 
@@ -128,6 +145,7 @@ export type MiContenido = {
 };
 
 export async function fetchMisContenidos(semanaId: string): Promise<{ data: MiContenido[]; error: string | null }> {
+  if (vistaPreviaActiva()) return { data: await vpContenidos(semanaId), error: null };
   const supabase = getSupabaseClient();
   if (!supabase) return { data: [], error: "Faltan las variables de Supabase." };
 
@@ -161,6 +179,7 @@ export async function fetchMisContenidos(semanaId: string): Promise<{ data: MiCo
 }
 
 export async function obtenerUrlContenido(contenidoId: string): Promise<{ url: string | null; error: string | null }> {
+  if (vistaPreviaActiva()) return vpUrlContenido(contenidoId);
   const supabase = getSupabaseClient();
   if (!supabase) return { url: null, error: "Faltan las variables de Supabase." };
 
@@ -200,6 +219,7 @@ export type MiTarea = {
 };
 
 export async function fetchMisActividades(semanaId: string): Promise<{ data: MiTarea[]; error: string | null }> {
+  if (vistaPreviaActiva()) return { data: await vpActividades(semanaId), error: null };
   const supabase = getSupabaseClient();
   if (!supabase) return { data: [], error: "Faltan las variables de Supabase." };
 
@@ -247,6 +267,7 @@ export async function fetchMisActividades(semanaId: string): Promise<{ data: MiT
 export type MiArchivoEntrega = { id: string; nombre: string | null };
 
 export async function fetchMisArchivosEntrega(actividadId: string): Promise<{ data: MiArchivoEntrega[]; error: string | null }> {
+  if (vistaPreviaActiva()) return { data: [], error: null };
   const supabase = getSupabaseClient();
   if (!supabase) return { data: [], error: "Faltan las variables de Supabase." };
 
@@ -273,6 +294,7 @@ async function getAuthToken() {
  *   3) /entrega/confirmar verifica el archivo y registra la entrega.
  */
 export async function subirEntrega(actividadId: string, archivo: File): Promise<{ tardia: boolean | null; error: string | null }> {
+  if (vistaPreviaActiva()) return { tardia: null, error: AVISO_VISTA_PREVIA };
   const token = await getAuthToken();
   if (!token) return { tardia: null, error: "Sesión no válida. Vuelve a iniciar." };
   const supabase = getSupabaseClient();
@@ -309,6 +331,7 @@ export async function subirEntrega(actividadId: string, archivo: File): Promise<
 }
 
 export async function obtenerUrlArchivoPropio(archivoId: string): Promise<{ url: string | null; error: string | null }> {
+  if (vistaPreviaActiva()) return { url: null, error: AVISO_VISTA_PREVIA };
   const token = await getAuthToken();
   if (!token) return { url: null, error: "Sesión no válida. Vuelve a iniciar." };
 
@@ -329,6 +352,7 @@ export async function obtenerUrlArchivoPropio(archivoId: string): Promise<{ url:
 export type MiEstadoCurso = { aprobado: boolean | null; actividadesCalificadas: number };
 
 export async function fetchMiEstadoCurso(cursoId: string): Promise<{ data: MiEstadoCurso | null; error: string | null }> {
+  if (vistaPreviaActiva()) return { data: { aprobado: null, actividadesCalificadas: 0 }, error: null };
   const supabase = getSupabaseClient();
   if (!supabase) return { data: null, error: "Faltan las variables de Supabase." };
 
@@ -351,6 +375,7 @@ export type MiMensaje = {
 };
 
 export async function fetchMisMensajes(): Promise<{ data: MiMensaje[]; error: string | null }> {
+  if (vistaPreviaActiva()) return { data: [], error: null };
   const supabase = getSupabaseClient();
   if (!supabase) return { data: [], error: "Faltan las variables de Supabase." };
 
@@ -379,6 +404,7 @@ export async function fetchMisMensajes(): Promise<{ data: MiMensaje[]; error: st
 }
 
 export async function fetchMisMensajesNoLeidos(): Promise<{ data: number; error: string | null }> {
+  if (vistaPreviaActiva()) return { data: 0, error: null };
   const supabase = getSupabaseClient();
   if (!supabase) return { data: 0, error: "Faltan las variables de Supabase." };
 
@@ -388,6 +414,7 @@ export async function fetchMisMensajesNoLeidos(): Promise<{ data: number; error:
 }
 
 export async function enviarMensaje(contenido: string, archivo?: File | null): Promise<{ error: string | null }> {
+  if (vistaPreviaActiva()) return { error: AVISO_VISTA_PREVIA };
   const token = await getAuthToken();
   if (!token) return { error: "Sesión no válida. Vuelve a iniciar." };
 
@@ -410,6 +437,7 @@ export async function enviarMensaje(contenido: string, archivo?: File | null): P
 
 /** URL firmada de corta duración para ver/descargar el adjunto de un mensaje propio. */
 export async function obtenerUrlAdjuntoMensaje(mensajeId: string): Promise<{ url: string | null; error: string | null }> {
+  if (vistaPreviaActiva()) return { url: null, error: AVISO_VISTA_PREVIA };
   const token = await getAuthToken();
   if (!token) return { url: null, error: "Sesión no válida. Vuelve a iniciar." };
 
@@ -428,6 +456,7 @@ export async function obtenerUrlAdjuntoMensaje(mensajeId: string): Promise<{ url
 }
 
 export async function marcarMensajesLeidos(): Promise<{ error: string | null }> {
+  if (vistaPreviaActiva()) return { error: null };
   const token = await getAuthToken();
   if (!token) return { error: "Sesión no válida. Vuelve a iniciar." };
 
@@ -454,6 +483,7 @@ export type MiFicha = {
 };
 
 export async function fetchMiFicha(): Promise<{ data: MiFicha | null; error: string | null }> {
+  if (vistaPreviaActiva()) return { data: { tieneFoto: false, fechaNacimiento: null, pais: null, reflexionQuienSoy: null, reflexionProposito: null, reflexionRecuerdo: null }, error: null };
   const supabase = getSupabaseClient();
   if (!supabase) return { data: null, error: "Faltan las variables de Supabase." };
 
@@ -492,6 +522,7 @@ export async function guardarMiFicha(payload: {
   reflexionProposito: string | null;
   reflexionRecuerdo: string | null;
 }): Promise<{ error: string | null }> {
+  if (vistaPreviaActiva()) return { error: AVISO_VISTA_PREVIA };
   const token = await getAuthToken();
   if (!token) return { error: "Sesión no válida. Vuelve a iniciar." };
 
@@ -510,6 +541,7 @@ export async function guardarMiFicha(payload: {
 }
 
 export async function subirMiFoto(archivo: File): Promise<{ error: string | null }> {
+  if (vistaPreviaActiva()) return { error: AVISO_VISTA_PREVIA };
   const token = await getAuthToken();
   if (!token) return { error: "Sesión no válida. Vuelve a iniciar." };
 
@@ -531,6 +563,7 @@ export async function subirMiFoto(archivo: File): Promise<{ error: string | null
 }
 
 export async function obtenerUrlMiFoto(): Promise<{ url: string | null; error: string | null }> {
+  if (vistaPreviaActiva()) return { url: null, error: null };
   const token = await getAuthToken();
   if (!token) return { url: null, error: "Sesión no válida. Vuelve a iniciar." };
 
@@ -564,6 +597,7 @@ function tipoNotificacionValido(valor: unknown): valor is TipoNotificacion {
 }
 
 export async function fetchMisNotificaciones(): Promise<{ data: MiNotificacion[]; error: string | null }> {
+  if (vistaPreviaActiva()) return { data: [], error: null };
   const supabase = getSupabaseClient();
   if (!supabase) return { data: [], error: "Faltan las variables de Supabase." };
 
@@ -597,6 +631,7 @@ export async function fetchMisNotificaciones(): Promise<{ data: MiNotificacion[]
 }
 
 export async function fetchMisNotificacionesNoLeidas(): Promise<{ data: number; error: string | null }> {
+  if (vistaPreviaActiva()) return { data: 0, error: null };
   const supabase = getSupabaseClient();
   if (!supabase) return { data: 0, error: "Faltan las variables de Supabase." };
 
@@ -606,6 +641,7 @@ export async function fetchMisNotificacionesNoLeidas(): Promise<{ data: number; 
 }
 
 async function marcarNotificaciones(body: { id?: string; todas?: boolean }): Promise<{ error: string | null }> {
+  if (vistaPreviaActiva()) return { error: null };
   const token = await getAuthToken();
   if (!token) return { error: "Sesión no válida. Vuelve a iniciar." };
 
@@ -632,6 +668,7 @@ export function marcarTodasNotificacionesLeidas() {
 }
 
 export async function cambiarMiContrasena(nuevaContrasena: string) {
+  if (vistaPreviaActiva()) return { error: AVISO_VISTA_PREVIA };
   const supabase = getSupabaseClient();
   if (!supabase) return { error: "Faltan las variables de Supabase." };
 
@@ -655,6 +692,7 @@ export async function cambiarMiContrasena(nuevaContrasena: string) {
 
 /** El estudiante elige "no volver a preguntarme": no cambia la contraseña, solo deja de pedirla en cada ingreso. */
 export async function omitirCambioContrasena() {
+  if (vistaPreviaActiva()) return { error: null };
   const token = await getAuthToken();
   if (!token) return { error: "Sesión no válida. Vuelve a iniciar." };
 
@@ -682,6 +720,13 @@ export type EstadoAvisos = {
 };
 
 export async function llamarAvisos<T>(body: Record<string, unknown>): Promise<{ data: T | null; error: string | null }> {
+  if (vistaPreviaActiva()) {
+    // Se muestra la seccion de avisos como la ve el estudiante, sin activar nada.
+    if (body.accion === "estado") {
+      return { data: { tieneCurso: true, telegram: { disponible: true, vinculado: false }, push: { clave: "vista-previa", suscripciones: 0 } } as T, error: null };
+    }
+    return { data: null, error: AVISO_VISTA_PREVIA };
+  }
   const token = await getAuthToken();
   if (!token) return { data: null, error: "Sesión no válida. Vuelve a iniciar." };
   try {

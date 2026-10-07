@@ -3,6 +3,7 @@
 import { BellRing, Send } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { type EstadoAvisos, llamarAvisos } from "@/lib/estudiante/estudiante-client";
+import { AVISO_VISTA_PREVIA, vistaPreviaActiva } from "@/lib/estudiante/vista-previa";
 import { useIdioma } from "./idioma-context";
 
 const SW_URL = "/sw-aula.js";
@@ -87,6 +88,10 @@ export function AvisosEstudiante() {
 
   const activarPush = async () => {
     setAviso("");
+    if (vistaPreviaActiva()) {
+      setAviso(AVISO_VISTA_PREVIA);
+      return;
+    }
     if (!soportaPush()) {
       setAviso(t(esIosSinInstalar() ? "avisos_dispositivo_ios" : "avisos_dispositivo_no_soportado"));
       return;

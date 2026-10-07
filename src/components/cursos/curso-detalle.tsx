@@ -17,7 +17,6 @@ import { CursoPlanificacionTab } from "./curso-planificacion-tab";
 import { CursoReporteTab } from "./curso-reporte-tab";
 import { CursoSemanasTab } from "./curso-semanas-tab";
 import { BTN_GHOST, Chip } from "./ui";
-import { VistaPreviaEstudianteModal } from "./vista-previa-estudiante-modal";
 
 type CursoTab = "semanas" | "estudiantes" | "planificacion" | "reporte";
 
@@ -44,7 +43,6 @@ export function CursoDetalle({
   const [tab, setTab] = useState<CursoTab>("semanas");
   const [acceso, setAcceso] = useState(curso.acceso_estudiantes);
   const [guardandoAcceso, setGuardandoAcceso] = useState(false);
-  const [previaAbierta, setPreviaAbierta] = useState(false);
   const [autoasignacion, setAutoasignacionState] = useState(curso.autoasignacion_activa);
   const [guardandoAutoasignacion, setGuardandoAutoasignacion] = useState(false);
   const [compartirAbierto, setCompartirAbierto] = useState(false);
@@ -122,8 +120,12 @@ export function CursoDetalle({
           <button
             className={BTN_GHOST}
             disabled={!acceso}
-            onClick={() => setPreviaAbierta(true)}
-            title={acceso ? "Ver el curso como lo vería un estudiante" : "Activa el acceso de estudiantes para poder previsualizar"}
+            onClick={() => window.open(`/estudiante/vista-previa?curso=${curso.id}`, "_blank")}
+            title={
+              acceso
+                ? "Abre el Aula virtual completa (menús, notificaciones, chat, perfil y semanas) como la ve un estudiante"
+                : "Activa el acceso de estudiantes para poder previsualizar"
+            }
             type="button"
           >
             <Eye className="h-4 w-4" />
@@ -201,14 +203,6 @@ export function CursoDetalle({
         <CompartirAsignacionModal cursoNombre={curso.nombre} onClose={() => setCompartirAbierto(false)} token={curso.autoasignacion_token} />
       ) : null}
 
-      {previaAbierta ? (
-        <VistaPreviaEstudianteModal
-          cursoId={curso.id}
-          cursoNombre={curso.nombre}
-          onClose={() => setPreviaAbierta(false)}
-          universidadNombre={universidad.nombre}
-        />
-      ) : null}
     </div>
   );
 }
