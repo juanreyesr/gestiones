@@ -175,6 +175,14 @@ Acceso real de estudiantes al curso, con cuenta propia (correo + contrasena, amb
 
 Decisiones de seguridad relevantes: la contraseña que asigna el owner se guarda cifrada (AES-256-GCM, llave en `ESTUDIANTES_ENC_KEY`, nunca en texto plano) para poder reimprimir la ficha cuando haga falta; los estudiantes nunca leen las tablas del modulo Cursos directo, solo a traves de RPCs `SECURITY DEFINER` (`gestionesjj_estudiante_mi_perfil`, `gestionesjj_estudiante_mis_cursos`) que exponen unicamente lo suyo. La migracion es `supabase/migrations/021_gestionesjj_area_estudiantes.sql`. Requiere `SUPABASE_SECRET_KEY` y `ESTUDIANTES_ENC_KEY` configuradas (ver `.env.example`).
 
+### Avisos para estudiantes (Telegram y notificaciones del telefono)
+
+En la campana del Aula virtual, cada estudiante con un curso activo puede activar **"Activar en Telegram"** y/o **"Activar notificaciones"** (de ese navegador o telefono). Reciben solo lo de su curso: mensajes del docente, semana nueva, tarea publicada, calificacion y **"Tarea por vencer"** (24 horas antes de la fecha limite, si aun no entregaron; tambien aparece en la campana).
+
+- **Bot aparte** del bot privado de GestionesJJ: se conecta en el panel de Telegram (seccion *Bot de estudiantes*) pegando el token de @BotFather. El token, el secreto del webhook y las llaves VAPID de push se guardan solo en el servidor (`gestionesjj_estudiantes_avisos_config`, migracion `053`). El bot solo entiende `/start <codigo>` (enlace de un solo uso, 15 minutos, desde el Aula) y `/desactivar` (`/api/telegram/estudiantes/webhook`).
+- **Envio**: pg_cron llama cada minuto a `/api/estudiantes/avisos`, que reenvia las notificaciones nuevas de `gestionesjj_estudiante_notificaciones` en el idioma del estudiante, con boton "Abrir Aula virtual" (`src/lib/server/estudiantes-avisos.ts`). Push usa `web-push` y el service worker `public/sw-aula.js` (en iPhone requiere agregar el Aula a la pantalla de inicio).
+- **Al cerrar el curso** (archivarlo, quitarle el acceso o retirar al estudiante) deja de enviarle avisos de ese curso; si ya no tiene cursos activos, recibe una despedida, se cierra su vinculo de Telegram y se borran sus suscripciones push.
+
 ## Enlace del resumen general para jefatura (dentro de Coordinacion)
 
 El "Resumen general" de Coordinacion se puede compartir con jefatura en un enlace de **solo lectura**, sin cuenta y sin poder tocar nada:

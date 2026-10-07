@@ -1,6 +1,6 @@
 "use client";
 
-import { Award, Bell, BookOpen, ClipboardList, MessageCircle } from "lucide-react";
+import { AlarmClock, Award, Bell, BookOpen, ClipboardList, MessageCircle } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { formatearFechaHora } from "@/lib/cursos/types";
 import {
@@ -10,6 +10,7 @@ import {
   type MiCurso,
   type MiNotificacion,
 } from "@/lib/estudiante/estudiante-client";
+import { AvisosEstudiante } from "./avisos-estudiante";
 import { useIdioma } from "./idioma-context";
 
 const ICONOS = {
@@ -17,6 +18,7 @@ const ICONOS = {
   tarea: ClipboardList,
   calificacion: Award,
   mensaje: MessageCircle,
+  vencimiento: AlarmClock,
 } as const;
 
 function textoDetalle(notificacion: MiNotificacion, semanaLabel: string): string | null {
@@ -27,7 +29,7 @@ function textoDetalle(notificacion: MiNotificacion, semanaLabel: string): string
     if (numero === null) return titulo;
     return `${semanaLabel} ${numero}${titulo ? ` — ${titulo}` : ""}`;
   }
-  if (notificacion.tipo === "tarea" || notificacion.tipo === "calificacion") {
+  if (notificacion.tipo === "tarea" || notificacion.tipo === "calificacion" || notificacion.tipo === "vencimiento") {
     return typeof meta.titulo === "string" ? meta.titulo : null;
   }
   return typeof meta.extracto === "string" ? meta.extracto : null;
@@ -105,6 +107,7 @@ export function NotificacionesModal({
         </div>
 
         <div className="flex-1 overflow-y-auto">
+          <AvisosEstudiante />
           {cargando ? (
             <p className="py-6 text-center text-sm text-slate-400">{t("central_cargando")}</p>
           ) : notificaciones.length === 0 ? (

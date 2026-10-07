@@ -5,6 +5,7 @@ import QRCode from "qrcode";
 import { useCallback, useEffect, useState } from "react";
 import { getSupabaseClient } from "@/lib/supabase";
 import { NOTIFICACIONES, type Preferencias, type TipoNotificacion } from "@/lib/telegram-tipos";
+import { BotEstudiantesSection } from "./bot-estudiantes-section";
 import { ModalPortal } from "./modal-portal";
 
 type Estado = {
@@ -245,6 +246,8 @@ function TelegramPanel({ onClose }: { onClose: () => void }) {
               </div>
             </div>
           ) : null}
+
+          <BotEstudiantesSection />
 
           {aviso ? <p className="mt-3 border border-emerald-400/30 bg-emerald-400/10 p-3 text-sm text-emerald-200">{aviso}</p> : null}
           {error ? <p className="mt-3 border border-red-400/30 bg-red-400/10 p-3 text-sm text-red-200">{error}</p> : null}

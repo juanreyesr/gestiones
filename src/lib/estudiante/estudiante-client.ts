@@ -547,7 +547,7 @@ export async function obtenerUrlMiFoto(): Promise<{ url: string | null; error: s
   }
 }
 
-export type TipoNotificacion = "contenido" | "tarea" | "calificacion" | "mensaje";
+export type TipoNotificacion = "contenido" | "tarea" | "calificacion" | "mensaje" | "vencimiento";
 
 export type MiNotificacion = {
   id: string;
@@ -560,7 +560,7 @@ export type MiNotificacion = {
 };
 
 function tipoNotificacionValido(valor: unknown): valor is TipoNotificacion {
-  return valor === "contenido" || valor === "tarea" || valor === "calificacion" || valor === "mensaje";
+  return valor === "contenido" || valor === "tarea" || valor === "calificacion" || valor === "mensaje" || valor === "vencimiento";
 }
 
 export async function fetchMisNotificaciones(): Promise<{ data: MiNotificacion[]; error: string | null }> {
@@ -668,5 +668,32 @@ export async function omitirCambioContrasena() {
     return { error: null };
   } catch {
     return { error: "Error de conexión." };
+  }
+}
+
+// ============================================================
+// Avisos fuera del Aula (Telegram y notificaciones push)
+// ============================================================
+
+export type EstadoAvisos = {
+  tieneCurso: boolean;
+  telegram: { disponible: boolean; vinculado: boolean };
+  push: { clave: string | null; suscripciones: number };
+};
+
+export async function llamarAvisos<T>(body: Record<string, unknown>): Promise<{ data: T | null; error: string | null }> {
+  const token = await getAuthToken();
+  if (!token) return { data: null, error: "Sesión no válida. Vuelve a iniciar." };
+  try {
+    const response = await fetch("/api/estudiante/avisos", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify(body),
+    });
+    const json = (await response.json().catch(() => null)) as (T & { error?: string }) | null;
+    if (!response.ok) return { data: null, error: json?.error ?? "No se pudo completar." };
+    return { data: json as T, error: null };
+  } catch {
+    return { data: null, error: "Error de conexión." };
   }
 }
