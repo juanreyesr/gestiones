@@ -12,6 +12,10 @@
 export type EventoReservaEntrada = {
   titulo: string;
   descripcion: string | null;
+  /** Campo "Ubicacion" del evento (direccion, enlace de Zoom...). */
+  ubicacion?: string | null;
+  /** Enlace de Google Meet del evento, si tiene videollamada. */
+  videollamada?: string | null;
   invitados: { email: string | null; nombre: string | null; yo: boolean; organizador: boolean }[];
 };
 
@@ -26,7 +30,26 @@ export type DatosReserva = {
   consentimiento: boolean;
   /** Texto de la pregunta de consentimiento tal como la acepto la persona. */
   consentimientoTexto: string | null;
+  /** Presencial o virtual segun la ubicacion que eligio la persona; null si no se sabe. */
+  modalidad: "presencial" | "virtual" | null;
+  /** Ubicacion tal como viene (direccion o enlace), para mostrarla. */
+  ubicacion: string | null;
 };
+
+const VIRTUAL_RE =
+  /(meet\.google|google meet|zoom|teams\.microsoft|microsoft teams|whereby|skype|jitsi|videollamada|video ?llamada|conferencia web|web conference|videoconferencia|virtual|en linea|online|llamada telefonica|phone call)/;
+const PRESENCIAL_RE = /(presencial|en persona|in person|in-person|consultorio|clinica|oficina|direccion|zona \d|calle|avenida|\bave?\b|km\.?\s?\d)/;
+
+/** Modalidad de un texto de ubicacion: virtual si es videollamada; presencial si es un lugar fisico. */
+function modalidadDe(texto: string | null | undefined, lugarCuentaComoPresencial: boolean) {
+  const t = sinTildes(textoPlano(texto ?? "")).trim();
+  if (!t) return null;
+  if (VIRTUAL_RE.test(t)) return "virtual" as const;
+  if (PRESENCIAL_RE.test(t)) return "presencial" as const;
+  // Una direccion escrita (sin enlace) en el campo de ubicacion es un lugar fisico.
+  if (lugarCuentaComoPresencial && !/https?:\/\//.test(t)) return "presencial" as const;
+  return null;
+}
 
 type Par = { clave: string; valor: string };
 
@@ -128,6 +151,17 @@ export function parsearReserva(evento: EventoReservaEntrada): DatosReserva {
   const clavesConsentimiento = lista.find((p) => /acepto|consentimiento|consent/.test(sinTildes(p.clave)));
   const consentimiento = Boolean(clavesConsentimiento && /^(si|yes|acepto|true)\b/.test(sinTildes(clavesConsentimiento.valor)));
 
+  // Modalidad: Meet del evento > campo de ubicacion > "Ubicacion:" de la descripcion > nombre del tipo de evento.
+  const ubicacionDescripcion = buscar(lista, /^(ubicacion|location|lugar|donde|modalidad)$/);
+  const ubicacion = evento.ubicacion?.trim() || ubicacionDescripcion || evento.videollamada || null;
+  const modalidad: DatosReserva["modalidad"] = evento.videollamada
+    ? "virtual"
+    : modalidadDe(evento.ubicacion, true) ??
+      modalidadDe(ubicacionDescripcion, true) ??
+      modalidadDe(buscar(lista, /modalidad|prefieres|preferencia|tipo de (sesion|consulta|atencion)/), false) ??
+      modalidadDe(tipoEvento, false) ??
+      (/(conferencia web de google meet|google meet web conference|zoom\.us\/j\/)/.test(sinTildes(plano)) ? "virtual" : null);
+
   const esReserva =
     /calendly/i.test(descripcion) ||
     Boolean(tipoEvento) ||
@@ -143,5 +177,7 @@ export function parsearReserva(evento: EventoReservaEntrada): DatosReserva {
     notas: notas?.slice(0, 2000) || null,
     consentimiento,
     consentimientoTexto: consentimiento ? clavesConsentimiento!.clave.slice(0, 2000) : null,
+    modalidad,
+    ubicacion: ubicacion?.slice(0, 500) || null,
   };
 }

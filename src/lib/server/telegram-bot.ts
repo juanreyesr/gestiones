@@ -8,7 +8,7 @@ import { enlaceWhatsApp, textoRecordatorioCita } from "@/lib/clinica/recordatori
 import { mismaHoraQueConsultorio, nombreZona, PAIS_POR_DEFECTO, paisDe, paisPorCodigo, zonaDe } from "@/lib/paises";
 import { type EventoGoogle, getStoredTokens, insertEvent, isGoogleConfigured, listarEventos } from "./google-calendar";
 import { bloquePendientesPago, citasSinPagar, contarCitasSinCerrar, marcarPagadaDesdeTelegram } from "./pagos-citas";
-import { pacientesComparables, resolverReserva } from "./reservas-google";
+import { lineaModalidad, pacientesComparables, resolverReserva } from "./reservas-google";
 import { getSupabaseAdmin } from "./supabase-admin";
 import { enviarPruebaWhatsApp } from "./whatsapp-citas";
 import { enviarPredicasMes, enviarQuienPredica, pedidoDePredicas } from "./telegram-iglesia";
@@ -823,8 +823,8 @@ export function textoSolicitudCita(sol: Omit<RawSolicitud, "id" | "estado">, coi
     "🩺 <b>Nueva solicitud de cita</b>",
     `<b>${esc(sol.nombre)}</b>${etiquetas.length ? ` (${etiquetas.join(", ")})` : ""}`,
     `📅 ${esc(fechaHora(sol.inicio))}`,
+    lineaModalidad(sol.modalidad),
     `📞 ${esc(sol.telefono)}${sol.email ? ` · ${esc(sol.email)}` : ""}`,
-    sol.modalidad === "virtual" ? "💻 Virtual" : sol.modalidad === "presencial" ? "🏢 Presencial" : null,
     sol.necesita_ubicacion ? "📍 <b>Solicitó la ubicación</b> — envíasela con el botón de abajo." : null,
     sol.motivo ? `📝 ${esc(recortar(sol.motivo, 600))}` : null,
     coincidencia === undefined

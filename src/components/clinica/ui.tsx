@@ -137,3 +137,14 @@ export function SolicitudBadge({ estado }: { estado: SolicitudEstado }) {
     </span>
   );
 }
+
+/** Modalidad bien visible en solicitudes y reservas (Calendly o /agendar). */
+export function ModalidadBadge({ modalidad }: { modalidad: string | null | undefined }) {
+  const [texto, clase] =
+    modalidad === "virtual"
+      ? ["💻 VIRTUAL", "border-violet-300/60 bg-violet-300/15 text-violet-100"]
+      : modalidad === "presencial"
+        ? ["🏢 PRESENCIAL", "border-emerald-300/60 bg-emerald-300/15 text-emerald-100"]
+        : ["❔ Modalidad no indicada", "border-amber-300/60 bg-amber-300/10 text-amber-100"];
+  return <span className={`inline-block border px-2 py-1 text-xs font-bold tracking-wide ${clase}`}>{texto}</span>;
+}

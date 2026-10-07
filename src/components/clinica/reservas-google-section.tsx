@@ -14,7 +14,7 @@ import {
 } from "@/lib/clinica/reservas-google-client";
 import { formatoFechaHora, formatoHora } from "@/lib/clinica/slots";
 import type { PacienteRow } from "@/lib/clinica/types";
-import { BTN_ACCENT, BTN_GHOST, EmptyState, SectionCard } from "./ui";
+import { BTN_ACCENT, BTN_GHOST, EmptyState, ModalidadBadge, SectionCard } from "./ui";
 
 type Modo = { tipo: "otro"; busqueda: string; pacienteId: string } | { tipo: "crear"; nombre: string; telefono: string; email: string };
 
@@ -75,6 +75,9 @@ function ReservaCard({
           <div className="text-sm font-semibold text-sky-200">{formatoFechaHora(reserva.inicio)}</div>
           <div className="text-xs text-slate-400">hasta {formatoHora(reserva.fin)}</div>
           {reserva.tipoEvento ? <div className="mt-0.5 text-xs text-slate-400">{reserva.tipoEvento}</div> : null}
+          <div className="mt-1.5">
+            <ModalidadBadge modalidad={reserva.modalidad} />
+          </div>
         </div>
       </div>
 

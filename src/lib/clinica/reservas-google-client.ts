@@ -13,6 +13,7 @@ export type ReservaGoogle = {
   notas: string | null;
   consentimiento: boolean;
   calendarioPrincipal: boolean;
+  modalidad: "presencial" | "virtual" | null;
 };
 
 type RawReserva = {
@@ -27,6 +28,7 @@ type RawReserva = {
   notas: string | null;
   consentimiento: boolean;
   calendario_principal: boolean;
+  modalidad: "presencial" | "virtual" | null;
 };
 
 export async function fetchReservasPendientes() {
@@ -34,7 +36,7 @@ export async function fetchReservasPendientes() {
   if (!supabase) return { data: [] as ReservaGoogle[], error: "Faltan las variables de Supabase." };
   const { data, error } = await supabase
     .from("gestionesjj_google_reservas")
-    .select("id,inicio,fin,tipo_evento,nombre,telefono,email,motivo,notas,consentimiento,calendario_principal")
+    .select("id,inicio,fin,tipo_evento,nombre,telefono,email,motivo,notas,consentimiento,calendario_principal,modalidad")
     .eq("estado", "pendiente")
     .order("inicio")
     .limit(100);
@@ -52,6 +54,7 @@ export async function fetchReservasPendientes() {
       notas: r.notas,
       consentimiento: r.consentimiento,
       calendarioPrincipal: r.calendario_principal,
+      modalidad: r.modalidad,
     })),
     error: null,
   };

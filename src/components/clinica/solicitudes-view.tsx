@@ -13,7 +13,7 @@ import { deshacerResolucion } from "@/lib/clinica/reservas-google-client";
 import { mensajeUbicacion, type UbicacionConsultorio } from "@/lib/clinica/ubicacion";
 import { ModalPortal } from "../modal-portal";
 import { ReservasGoogleSection } from "./reservas-google-section";
-import { BTN_ACCENT, BTN_GHOST, EmptyState, SectionCard, SolicitudBadge } from "./ui";
+import { BTN_ACCENT, BTN_GHOST, EmptyState, ModalidadBadge, SectionCard, SolicitudBadge } from "./ui";
 
 function AprobarModal({
   onAprobada,
@@ -285,19 +285,16 @@ export function SolicitudesView({
                   <div className="text-right">
                     <div className="text-sm font-semibold text-amber-200">{formatoFechaHora(solicitud.inicio)}</div>
                     <div className="text-xs text-slate-400">hasta {formatoHora(solicitud.fin)}</div>
+                    <div className="mt-1.5">
+                      <ModalidadBadge modalidad={solicitud.modalidad} />
+                    </div>
                   </div>
                 </div>
                 {solicitud.yaEsPaciente ||
                 solicitud.primeraSesion ||
                 solicitud.darSeguimiento ||
-                solicitud.modalidad ||
                 solicitud.necesitaUbicacion ? (
                   <div className="flex flex-wrap gap-1.5">
-                    {solicitud.modalidad ? (
-                      <span className="border border-violet-300/40 bg-violet-300/10 px-2 py-0.5 text-[11px] font-semibold text-violet-200">
-                        {solicitud.modalidad === "virtual" ? "💻 Virtual" : "🏢 Presencial"}
-                      </span>
-                    ) : null}
                     {solicitud.necesitaUbicacion ? (
                       <span className="border border-rose-300/40 bg-rose-300/10 px-2 py-0.5 text-[11px] font-semibold text-rose-200">
                         📍 Pidió la ubicación
