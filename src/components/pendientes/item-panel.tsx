@@ -13,6 +13,7 @@ import { ESTADOS, PRIORIDADES, type ActualizacionRow, type GrupoRow, type ItemRo
 import { BTN_GHOST, ErrorBanner, Field, INPUT } from "@/components/ui-comun";
 import { CeldaResponsable, SelectorPastilla } from "./celdas";
 import type { AccionesTablero } from "./tipos";
+import { CampoFecha } from "@/components/campo-fecha";
 
 /**
  * Panel lateral de un pendiente, equivalente al panel de item de Monday:
@@ -168,22 +169,18 @@ export function ItemPanel({
                     </select>
                   </Field>
                   <Field label="Fecha de inicio">
-                    <input
+                    <CampoFecha
                       className={INPUT}
-                      onChange={(evento) =>
-                        acciones.actualizarItem(item.id, { fecha_inicio: evento.target.value || null })
-                      }
-                      type="date"
+                      onChange={(valor) => acciones.actualizarItem(item.id, { fecha_inicio: valor || null })}
+                      opcional
                       value={item.fecha_inicio ?? ""}
                     />
                   </Field>
                   <Field label="Fecha límite">
-                    <input
+                    <CampoFecha
                       className={INPUT}
-                      onChange={(evento) =>
-                        acciones.actualizarItem(item.id, { fecha_limite: evento.target.value || null })
-                      }
-                      type="date"
+                      onChange={(valor) => acciones.actualizarItem(item.id, { fecha_limite: valor || null })}
+                      opcional
                       value={item.fecha_limite ?? ""}
                     />
                   </Field>

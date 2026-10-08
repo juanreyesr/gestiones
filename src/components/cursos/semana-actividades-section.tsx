@@ -22,6 +22,7 @@ import {
 } from "@/lib/cursos/types";
 import { CalificarActividadModal } from "./calificar-actividad-modal";
 import { BTN_GHOST, BTN_PRIMARY, Chip, DescripcionesIdiomas, EmptyState, ErrorBanner, Field } from "./ui";
+import { CampoFechaHora } from "@/components/campo-fecha";
 
 const VISIBILIDAD_SIGUIENTE: Record<VisibilidadEstudiantes, VisibilidadEstudiantes> = {
   hereda: "visible",
@@ -334,7 +335,7 @@ function ActividadModal({
             </label>
             {entregaHabilitada ? (
               <Field label="Fecha límite (tu hora local)">
-                <input className="field" onChange={(event) => setFechaLimite(event.target.value)} type="datetime-local" value={fechaLimite} />
+                <CampoFechaHora onChange={setFechaLimite} opcional value={fechaLimite} />
               </Field>
             ) : null}
             <div className="grid gap-1.5">

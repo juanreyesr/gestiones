@@ -91,6 +91,7 @@ import { ConfirmDialog } from "./confirm-dialog";
 import { TelegramModal } from "./telegram-modal";
 import { useBloquearAtras } from "@/lib/use-bloquear-atras";
 import { ConfirmarPortada, pedirSalidaPortada } from "./confirmar-portada";
+import { CampoFecha } from "@/components/campo-fecha";
 
 const ALLOWED_EMAIL = "lic.juanreyesr@gmail.com";
 
@@ -1828,7 +1829,7 @@ function StepDatosGenerales(props: Parameters<typeof CoordinacionPanel>[0]) {
       ) : null}
 
       <Field label="Fecha de observacion">
-        <input className="field max-w-xs" type="date" value={fecha} onChange={(event) => setFecha(event.target.value)} />
+        <CampoFecha onChange={setFecha} value={fecha} />
       </Field>
     </div>
   );

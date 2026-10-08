@@ -6,6 +6,7 @@
  * campo nativo no abre teclado ni reloj y no deja cambiar la hora. Las listas
  * abren el selector del sistema en cualquier dispositivo.
  * `value` y `onChange` usan "HH:MM" en 24 horas, igual que el campo nativo.
+ * Con `opcional`, la hora puede quedar vacia ("") con la opcion "—".
  */
 
 const HORAS = Array.from({ length: 12 }, (_, i) => i + 1);
@@ -24,13 +25,16 @@ export function CampoHora({
   onChange,
   className = "field",
   etiqueta,
+  opcional = false,
 }: {
   value: string;
   onChange: (valor: string) => void;
   className?: string;
   /** Texto para lectores de pantalla, por ejemplo "Desde". */
   etiqueta?: string;
+  opcional?: boolean;
 }) {
+  const vacio = opcional && !value;
   const { hora12, minutos, pm } = partes(value);
   const cambiar = (nueva: Partial<ReturnType<typeof partes>>) => {
     const p = { hora12, minutos, pm, ...nueva };
@@ -42,25 +46,45 @@ export function CampoHora({
 
   return (
     <span aria-label={etiqueta} className="inline-flex items-center gap-1" role="group">
-      <select aria-label="Hora" className={estilo} onChange={(e) => cambiar({ hora12: Number(e.target.value) })} value={hora12}>
+      <select
+        aria-label="Hora"
+        className={estilo}
+        onChange={(e) => (e.target.value ? cambiar({ hora12: Number(e.target.value) }) : onChange(""))}
+        value={vacio ? "" : hora12}
+      >
+        {opcional ? <option value="">—</option> : null}
         {HORAS.map((h) => (
           <option key={h} value={h}>
             {h}
           </option>
         ))}
       </select>
-      <span className="text-slate-400">:</span>
-      <select aria-label="Minutos" className={estilo} onChange={(e) => cambiar({ minutos: Number(e.target.value) })} value={minutos}>
-        {opcionesMinutos.map((m) => (
-          <option key={m} value={m}>
-            {dos(m)}
-          </option>
-        ))}
-      </select>
-      <select aria-label="a. m. o p. m." className={estilo} onChange={(e) => cambiar({ pm: e.target.value === "pm" })} value={pm ? "pm" : "am"}>
-        <option value="am">a. m.</option>
-        <option value="pm">p. m.</option>
-      </select>
+      {vacio ? null : (
+        <>
+          <span className="text-slate-400">:</span>
+          <select
+            aria-label="Minutos"
+            className={estilo}
+            onChange={(e) => cambiar({ minutos: Number(e.target.value) })}
+            value={minutos}
+          >
+            {opcionesMinutos.map((m) => (
+              <option key={m} value={m}>
+                {dos(m)}
+              </option>
+            ))}
+          </select>
+          <select
+            aria-label="a. m. o p. m."
+            className={estilo}
+            onChange={(e) => cambiar({ pm: e.target.value === "pm" })}
+            value={pm ? "pm" : "am"}
+          >
+            <option value="am">a. m.</option>
+            <option value="pm">p. m.</option>
+          </select>
+        </>
+      )}
     </span>
   );
 }

@@ -13,6 +13,7 @@ import {
   type Seguimiento,
   type SeguimientoEstado,
 } from "@/lib/reuniones";
+import { CampoFecha } from "@/components/campo-fecha";
 
 const AUTOSAVE_MS = 2 * 60 * 1000;
 
@@ -299,12 +300,10 @@ export function ReunionesView() {
         <div className="grid gap-4">
           <label className="grid max-w-xs gap-1.5">
             <span className="text-xs font-semibold uppercase tracking-widest text-slate-400">Fecha de reunion</span>
-            <input
-              aria-label="Fecha de reunion"
-              className="field"
-              type="date"
+            <CampoFecha
+              etiqueta="Fecha de reunion"
               value={editor.fecha}
-              onChange={(event) => setEditor((prev) => (prev ? { ...prev, fecha: event.target.value } : prev))}
+              onChange={(fecha) => setEditor((prev) => (prev ? { ...prev, fecha } : prev))}
             />
           </label>
 
@@ -359,11 +358,10 @@ export function ReunionesView() {
                       placeholder="Responsable"
                       value={seg.responsable}
                     />
-                    <input
-                      aria-label="Fecha de entrega"
-                      className="field w-full sm:w-40"
-                      onChange={(event) => actualizarSeguimiento(seg.id, { fechaEntrega: event.target.value })}
-                      type="date"
+                    <CampoFecha
+                      etiqueta="Fecha de entrega"
+                      onChange={(fechaEntrega) => actualizarSeguimiento(seg.id, { fechaEntrega })}
+                      opcional
                       value={seg.fechaEntrega}
                     />
                     <select

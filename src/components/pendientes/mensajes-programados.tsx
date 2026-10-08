@@ -13,6 +13,7 @@ import {
   updateMensajeProgramado,
   type MensajeProgramadoRow,
 } from "@/lib/pendientes/mensajes";
+import { CampoFechaHora } from "@/components/campo-fecha";
 
 /** Igual que MAX_INTENTOS_MENSAJE del servidor (migracion 046). */
 const MAX_INTENTOS = 5;
@@ -269,7 +270,7 @@ function FormularioMensaje({
         </Field>
 
         <Field label="Fecha y hora del aviso">
-          <input className={INPUT} onChange={(evento) => setCuando(evento.target.value)} type="datetime-local" value={cuando} />
+          <CampoFechaHora className={INPUT} onChange={setCuando} value={cuando} />
         </Field>
 
         <div className="flex justify-end gap-2">

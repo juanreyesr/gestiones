@@ -7,6 +7,7 @@ import { ModalPortal } from "@/components/modal-portal";
 import { deleteSemana, fetchSemanas, insertSemana, setHabilitadoEstudiantes, siguienteNumero, updateSemana } from "@/lib/cursos/semanas";
 import { TIPO_SESION_LABELS, formatearFecha, type SemanaRow, type TipoSesion } from "@/lib/cursos/types";
 import { BTN_GHOST, BTN_PRIMARY, CardBox, Chip, EmptyState, ErrorBanner, Field } from "./ui";
+import { CampoFecha } from "@/components/campo-fecha";
 
 const TIPO_SESION_CHIP: Record<TipoSesion, string> = {
   normal: "",
@@ -238,7 +239,7 @@ function SemanaModal({
               <input className="field" onChange={(event) => setTitulo(event.target.value)} value={titulo} />
             </Field>
             <Field label="Fecha">
-              <input className="field" onChange={(event) => setFecha(event.target.value)} type="date" value={fecha ?? ""} />
+              <CampoFecha onChange={setFecha} opcional value={fecha ?? ""} />
             </Field>
             <Field label="Tipo de sesión">
               <div className="grid gap-1.5">

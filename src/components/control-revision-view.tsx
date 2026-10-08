@@ -28,6 +28,7 @@ import { formatoLargo, hoyISO } from "@/lib/fechas";
 import { entraAlControl, lunesSiguiente } from "@/lib/control-revision-mensajes";
 import { AvisosTelegramModal } from "./control-revision-avisos-modal";
 import { BTN_GHOST, BTN_PRIMARY, EmptyState, ErrorBanner, Field, INPUT } from "./ui-comun";
+import { CampoFecha as SelectorFecha } from "@/components/campo-fecha";
 
 type Fila = FilaControlExcel & { cursoId: string; docenteId: string; numero: number };
 
@@ -345,12 +346,11 @@ export function ControlRevisionView() {
           </select>
         </Field>
         <Field label="Fecha límite de entrega">
-          <input
+          <SelectorFecha
             className={INPUT}
             disabled={!fechaLimite}
-            type="date"
             value={fechaLimite ?? ""}
-            onChange={(e) => actualizarLimite(e.target.value)}
+            onChange={actualizarLimite}
           />
         </Field>
       </div>
@@ -395,13 +395,7 @@ export function ControlRevisionView() {
             cursos presenciales con docente asignado). Después se puede cambiar arriba.
           </p>
           <div className="flex flex-wrap items-end gap-2">
-            <input
-              className={`${INPUT} max-w-48`}
-              required
-              type="date"
-              value={fechaInicial}
-              onChange={(e) => setFechaInicial(e.target.value)}
-            />
+            <SelectorFecha className={INPUT} opcional value={fechaInicial} onChange={setFechaInicial} />
             <button className={BTN_PRIMARY} disabled={!fechaInicial} type="submit">
               Iniciar control
             </button>
@@ -486,12 +480,12 @@ export function ControlRevisionView() {
                     if (esCampoFecha(campo)) {
                       return (
                         <td key={campo} className={CELDA}>
-                          <input
-                            className={`${CONTROL} ${ancho} border-white/10 bg-slate-950/70 text-slate-100`}
+                          <SelectorFecha
+                            className={`${CONTROL} border-white/10 bg-slate-950/70 text-slate-100`}
                             disabled={!entregado}
-                            type="date"
+                            opcional
                             value={valor ?? ""}
-                            onChange={(e) => cambiar(fila.cursoId, campo, e.target.value || null)}
+                            onChange={(nuevo) => cambiar(fila.cursoId, campo, nuevo || null)}
                           />
                         </td>
                       );
