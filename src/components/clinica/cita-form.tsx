@@ -8,6 +8,7 @@ import { claveDiaLocal, formatoHora, seTraslapan } from "@/lib/clinica/slots";
 import type { CitaModalidad, CitaRow, PacienteRow } from "@/lib/clinica/types";
 import { ModalPortal } from "../modal-portal";
 import { BTN_GHOST, BTN_PRIMARY, Field } from "./ui";
+import { CampoFechaHora } from "@/components/campo-fecha";
 
 function toLocalInputValue(iso: string) {
   const date = new Date(iso);
@@ -171,12 +172,7 @@ export function CitaForm({
 
             <div className="grid gap-4 sm:grid-cols-2">
               <Field label="Fecha y hora *">
-                <input
-                  className="field"
-                  onChange={(event) => setInicio(event.target.value)}
-                  type="datetime-local"
-                  value={inicio}
-                />
+                <CampoFechaHora onChange={setInicio} opcional value={inicio} />
               </Field>
               <Field label="Duración (minutos)">
                 <input

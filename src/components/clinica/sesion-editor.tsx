@@ -11,6 +11,7 @@ import {
 import { claveDiaLocal } from "@/lib/clinica/slots";
 import type { PacienteRow, SesionModalidad, SesionRow } from "@/lib/clinica/types";
 import { BTN_GHOST, BTN_PRIMARY, Field } from "./ui";
+import { CampoFechaHora } from "@/components/campo-fecha";
 
 type ItemEditable = { key: string; id?: string; descripcion: string };
 
@@ -163,7 +164,7 @@ export function SesionEditor({
       <div className="grid gap-4 border border-white/10 bg-white/6 p-4">
         <div className="grid gap-4 sm:grid-cols-2">
           <Field label="Fecha y hora de la sesión *">
-            <input className="field" onChange={(event) => setFecha(event.target.value)} type="datetime-local" value={fecha} />
+            <CampoFechaHora onChange={setFecha} value={fecha} />
           </Field>
           <Field label="Tipo de sesión">
             <select

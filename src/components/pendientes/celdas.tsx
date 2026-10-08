@@ -2,6 +2,7 @@
 
 import { CalendarDays, Check, UserRound, X } from "lucide-react";
 import { useState } from "react";
+import { CampoFecha } from "@/components/campo-fecha";
 import { Avatar, MenuAnclado } from "@/components/ui-comun";
 import { etiquetaVencimiento, formatoCorto, parseFecha } from "@/lib/fechas";
 
@@ -152,18 +153,25 @@ export function CeldaFecha({
 
   if (editando) {
     return (
-      <input
-        autoFocus
-        className="w-full border border-emerald-300/60 bg-slate-950 px-1.5 py-1 text-xs text-white outline-none"
-        onBlur={() => setEditando(false)}
-        onChange={(evento) => {
-          onChange(evento.target.value || null);
-          setEditando(false);
-        }}
+      <div
+        className="flex flex-wrap items-center gap-1"
         onClick={(evento) => evento.stopPropagation()}
-        type="date"
-        value={valor ?? ""}
-      />
+      >
+        <CampoFecha
+          className="border border-emerald-300/60 bg-slate-950 py-1 text-xs text-white outline-none"
+          onChange={(nuevo) => onChange(nuevo || null)}
+          opcional
+          value={valor ?? ""}
+        />
+        <button
+          className="text-emerald-300 transition hover:text-emerald-200"
+          onClick={() => setEditando(false)}
+          title="Listo"
+          type="button"
+        >
+          <Check className="h-3.5 w-3.5" />
+        </button>
+      </div>
     );
   }
 

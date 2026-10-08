@@ -47,6 +47,7 @@ import {
 import { fetchPeriodoSupervision, guardarPeriodoSupervision } from "@/lib/supervision-periodos";
 import type { GrupoProgramacion, SupervisionRealizada } from "@/lib/supervision-excel";
 import { ErrorBanner, Field, INPUT } from "./ui-comun";
+import { CampoFecha } from "@/components/campo-fecha";
 
 export type IniciarSupervision = {
   docenteId: string;
@@ -409,27 +410,24 @@ export function SupervisionView({
           </select>
         </Field>
         <Field label="Semana 1 (inicio de clases)">
-          <input
+          <CampoFecha
             className={INPUT}
-            type="date"
             value={rango?.inicioClases ?? ""}
-            onChange={(e) => e.target.value && actualizarRango({ inicioClases: e.target.value })}
+            onChange={(valor) => valor && actualizarRango({ inicioClases: valor })}
           />
         </Field>
         <Field label="Fin de clases">
-          <input
+          <CampoFecha
             className={INPUT}
-            type="date"
             value={rango?.fin ?? ""}
-            onChange={(e) => e.target.value && actualizarRango({ fin: e.target.value })}
+            onChange={(valor) => valor && actualizarRango({ fin: valor })}
           />
         </Field>
         <Field label="Plan desde">
-          <input
+          <CampoFecha
             className={INPUT}
-            type="date"
             value={rango?.inicio ?? ""}
-            onChange={(e) => e.target.value && actualizarRango({ inicio: e.target.value })}
+            onChange={(valor) => valor && actualizarRango({ inicio: valor })}
           />
         </Field>
         <Field label="Semana de parciales">

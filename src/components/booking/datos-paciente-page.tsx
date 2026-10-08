@@ -5,6 +5,7 @@ import { useCallback, useEffect, useState } from "react";
 import { SituacionFields, type SituacionValue } from "@/components/clinica/situacion-fields";
 import type { HijoInfo } from "@/lib/clinica/types";
 import { inferirPais, PAISES, paisDeZona, paisPorCodigo, zonaDelNavegador } from "@/lib/paises";
+import { CampoFecha } from "@/components/campo-fecha";
 
 type Estado = "cargando" | "ok" | "completado" | "invalido" | "enviado";
 
@@ -290,7 +291,17 @@ export function DatosPacientePage({ token }: { token: string }) {
                   </span>
                 </label>
                 <Campo label="Correo electrónico" onChange={set("email")} type="email" value={form.email} />
-                <Campo label="Fecha de nacimiento" onChange={set("fechaNacimiento")} type="date" value={form.fechaNacimiento} />
+                <label className="grid gap-1.5">
+                  <span className="text-xs font-semibold uppercase text-slate-400">Fecha de nacimiento</span>
+                  <CampoFecha
+                    anioDesde={1920}
+                    anioHasta={new Date().getFullYear()}
+                    className="field-light"
+                    onChange={set("fechaNacimiento")}
+                    opcional
+                    value={form.fechaNacimiento}
+                  />
+                </label>
                 <Campo label="Género" onChange={set("genero")} value={form.genero} />
                 <Campo label="Escolaridad" onChange={set("escolaridad")} value={form.escolaridad} />
                 <Campo label="Estado civil" onChange={set("estadoCivil")} value={form.estadoCivil} />

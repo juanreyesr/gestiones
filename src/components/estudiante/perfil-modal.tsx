@@ -12,6 +12,7 @@ import {
   type MiFicha,
 } from "@/lib/estudiante/estudiante-client";
 import { useIdioma } from "./idioma-context";
+import { CampoFecha } from "@/components/campo-fecha";
 
 const MAX_BYTES_FOTO = 5 * 1024 * 1024; // 5 MB, igual que valida el servidor
 
@@ -150,10 +151,12 @@ export function PerfilModal({ onClose }: { onClose: () => void }) {
 
               <label className="grid gap-1.5">
                 <span className="text-xs font-medium uppercase tracking-wide text-slate-500">{t("perfil_fecha_nacimiento")}</span>
-                <input
+                <CampoFecha
+                  anioDesde={1920}
+                  anioHasta={new Date().getFullYear()}
                   className="field-light"
-                  onChange={(event) => setFechaNacimiento(event.target.value)}
-                  type="date"
+                  onChange={setFechaNacimiento}
+                  opcional
                   value={fechaNacimiento}
                 />
               </label>

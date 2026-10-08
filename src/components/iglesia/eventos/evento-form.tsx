@@ -21,6 +21,8 @@ import {
   type TipoEvento,
 } from "@/lib/iglesia/types";
 import { BTN_GHOST, BTN_PRIMARY, ErrorBanner, Field, INPUT, Modal } from "@/components/ui-comun";
+import { CampoFecha } from "@/components/campo-fecha";
+import { CampoHora } from "@/components/campo-hora";
 
 const filaVacia = (rol: RolParticipante): ParticipanteBorrador => ({
   rol,
@@ -208,10 +210,10 @@ export function EventoForm({
             </select>
           </Field>
           <Field label="Fecha">
-            <input className={INPUT} onChange={(evt) => setFecha(evt.target.value)} required type="date" value={fecha} />
+            <CampoFecha className={INPUT} onChange={setFecha} opcional value={fecha} />
           </Field>
           <Field label="Hora">
-            <input className={INPUT} onChange={(evt) => setHora(evt.target.value)} type="time" value={hora} />
+            <CampoHora className={INPUT} onChange={setHora} opcional value={hora} />
           </Field>
           <Field label="Lugar">
             <input
