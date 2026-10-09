@@ -62,7 +62,6 @@ export async function GET(request: Request, { params }: { params: Promise<{ toke
       telefono: row.telefono,
       email: row.email,
       fechaNacimiento: row.fecha_nacimiento,
-      genero: row.genero,
       ocupacion: row.ocupacion,
       escolaridad: row.escolaridad,
       estadoCivil: row.estado_civil,
@@ -124,13 +123,20 @@ export async function POST(request: Request, { params }: { params: Promise<{ tok
     ? (body.conviveCon as unknown[]).filter((o): o is string => typeof o === "string").slice(0, 12)
     : [];
 
+  // El genero lo registra el terapeuta en la primera sesion, no el paciente:
+  // se ignora lo que venga en el formulario y se conserva lo ya guardado
+  // (la funcion de guardado reemplaza todos los campos).
+  const { data: actual } = await supabase.rpc("gestionesjj_public_datos_get", { p_token: token });
+  const filaActual = (Array.isArray(actual) ? actual[0] : actual) as RawDatos | null;
+  const generoActual = filaActual?.estado === "ok" ? filaActual.genero : null;
+
   const { data, error } = await supabase.rpc("gestionesjj_public_datos_save", {
     p_token: token,
     p_nombre: str("nombre"),
     p_telefono: str("telefono"),
     p_email: opt("email"),
     p_fecha_nacimiento: opt("fechaNacimiento"),
-    p_genero: opt("genero"),
+    p_genero: generoActual,
     p_ocupacion: opt("ocupacion"),
     p_escolaridad: opt("escolaridad"),
     p_estado_civil: opt("estadoCivil"),
