@@ -1,6 +1,6 @@
 "use client";
 
-import { BotonWhatsAppPaciente } from "./boton-whatsapp-paciente";
+import { BotonWhatsAppPaciente, IconoWhatsApp } from "./boton-whatsapp-paciente";
 import {
   CalendarClock,
   CalendarDays,
@@ -35,6 +35,8 @@ import { SesionDetalle } from "./sesion-detalle";
 import { SesionEditor } from "./sesion-editor";
 import { BTN_ACCENT, BTN_GHOST, EmptyState, PacienteBadge, SectionCard } from "./ui";
 import { urlPublica } from "@/lib/url-publica";
+import { mensajeHojaDatos } from "@/lib/clinica/mensaje-paciente";
+import { enlaceWhatsApp } from "@/lib/clinica/recordatorio";
 
 type Vista = "ficha" | "editar" | "sesion" | "editar-sesion";
 
@@ -160,6 +162,30 @@ export function PacienteExpediente({
     } catch {
       setDatosMsg(url);
     }
+  };
+
+  // Abre WhatsApp con el enlace y el mensaje ya escritos (saludo segun la hora al tocar).
+  const handleWhatsAppDatos = async () => {
+    if (!paciente) return;
+    setDatosMsg("");
+    const abrir = (token: string) =>
+      enlaceWhatsApp(paciente.telefono, mensajeHojaDatos(paciente.nombre, urlPublica(`/datos/${token}`)), paciente.pais);
+    if (paciente.datosToken) {
+      window.open(abrir(paciente.datosToken), "_blank", "noopener,noreferrer");
+      return;
+    }
+    // Sin enlace todavia hay que crearlo antes: la pestaña se abre ya, dentro
+    // del toque, para que el navegador no la bloquee como ventana emergente.
+    const ventana = window.open("", "_blank");
+    const { token, error: tokenError } = await ensureDatosToken(paciente.id, paciente.datosToken);
+    if (tokenError || !token) {
+      ventana?.close();
+      setDatosMsg(tokenError ?? "No se pudo generar el enlace.");
+      return;
+    }
+    if (ventana) ventana.location.href = abrir(token);
+    else window.location.href = abrir(token);
+    void cargar();
   };
 
   // Enlace corto /pagar -> enlace de pago de PayPal (PAYPAL_ENLACE_CONSULTA).
@@ -432,6 +458,14 @@ export function PacienteExpediente({
                   <Link2 className="h-4 w-4" />
                   {copiado ? "¡Enlace copiado!" : "Copiar enlace para datos generales"}
                   {copiado ? null : <Copy className="h-3.5 w-3.5" />}
+                </button>
+                <button
+                  className="inline-flex items-center gap-2 border border-emerald-400/40 bg-emerald-400/10 px-4 py-2 text-sm font-semibold text-emerald-200 transition hover:border-emerald-300 hover:text-emerald-100"
+                  onClick={handleWhatsAppDatos}
+                  type="button"
+                >
+                  <IconoWhatsApp />
+                  Enviar por WhatsApp
                 </button>
               </div>
             )}

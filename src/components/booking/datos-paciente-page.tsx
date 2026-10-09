@@ -14,7 +14,6 @@ type FormState = {
   telefono: string;
   email: string;
   fechaNacimiento: string;
-  genero: string;
   escolaridad: string;
   estadoCivil: string;
   direccion: string;
@@ -31,7 +30,6 @@ const VACIO: FormState = {
   telefono: "",
   email: "",
   fechaNacimiento: "",
-  genero: "",
   escolaridad: "",
   estadoCivil: "",
   direccion: "",
@@ -108,7 +106,6 @@ export function DatosPacientePage({ token }: { token: string }) {
         nombre: data.nombre ?? "",
         email: data.email ?? "",
         fechaNacimiento: data.fechaNacimiento ?? "",
-        genero: data.genero ?? "",
         escolaridad: data.escolaridad ?? "",
         estadoCivil: data.estadoCivil ?? "",
         direccion: data.direccion ?? "",
@@ -302,7 +299,6 @@ export function DatosPacientePage({ token }: { token: string }) {
                     value={form.fechaNacimiento}
                   />
                 </label>
-                <Campo label="Género" onChange={set("genero")} value={form.genero} />
                 <Campo label="Escolaridad" onChange={set("escolaridad")} value={form.escolaridad} />
                 <Campo label="Estado civil" onChange={set("estadoCivil")} value={form.estadoCivil} />
               </div>
