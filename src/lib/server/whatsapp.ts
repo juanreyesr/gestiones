@@ -9,6 +9,7 @@ import { comparaSeguro } from "./telegram";
  *  - WHATSAPP_TOKEN            token de acceso (usuario del sistema de Meta Business)
  *  - WHATSAPP_PHONE_NUMBER_ID  id del numero conectado (no es el numero telefonico)
  *  - WHATSAPP_TEMPLATE_CITA    nombre de la plantilla aprobada del recordatorio
+ *  - WHATSAPP_TEMPLATE_PAGO    opcional: plantilla de confirmacion de pago (PayPal)
  *  - WHATSAPP_TEMPLATE_IDIOMA  idioma de la plantilla (por defecto "es")
  *  - WHATSAPP_VERIFY_TOKEN     texto libre para verificar el webhook
  *  - WHATSAPP_APP_SECRET       secreto de la app de Meta: valida la firma de cada webhook
@@ -33,13 +34,18 @@ export function proveedorWhatsApp(): Proveedor {
   return valor === "360dialog" || valor === "ycloud" ? valor : "meta";
 }
 
-export function isWhatsAppConfigured() {
+/** Hay token y numero de origen: se pueden enviar mensajes (cualquier plantilla). */
+export function whatsAppConectado() {
   const proveedor = proveedorWhatsApp();
   const destino =
     proveedor === "ycloud"
       ? process.env.WHATSAPP_NUMERO
       : proveedor === "360dialog" || process.env.WHATSAPP_API_URL || process.env.WHATSAPP_PHONE_NUMBER_ID;
-  return Boolean(process.env.WHATSAPP_TOKEN && process.env.WHATSAPP_TEMPLATE_CITA && destino);
+  return Boolean(process.env.WHATSAPP_TOKEN && destino);
+}
+
+export function isWhatsAppConfigured() {
+  return whatsAppConectado() && Boolean(process.env.WHATSAPP_TEMPLATE_CITA);
 }
 
 const e164 = (numero: string) => `+${numero.replace(/\D/g, "")}`;

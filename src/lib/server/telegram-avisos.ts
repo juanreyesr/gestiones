@@ -115,7 +115,7 @@ export async function avisarRespuestaEncuesta(token: string, expectativa: string
   );
 }
 
-export async function avisarPago(aviso: AvisoPago, resultado: ResultadoPago | null = null) {
+export async function avisarPago(aviso: AvisoPago, resultado: ResultadoPago | null = null, lineaWhatsApp: string | null = null) {
   const lineas =
     aviso.tipo === "completado"
       ? [
@@ -132,6 +132,7 @@ export async function avisarPago(aviso: AvisoPago, resultado: ResultadoPago | nu
           aviso.captureId ? `<i>Transacción ${esc(aviso.captureId)}</i>` : null,
         ];
   if (resultado) lineas.push("", resultado.linea);
+  if (lineaWhatsApp) lineas.push(lineaWhatsApp);
   await notificar("pagos_paypal", lineas.filter((linea) => linea !== null).join("\n"), {
     botones: [...(resultado?.botones ?? []), [{ text: "Ver en PayPal", url: "https://www.paypal.com/activities" }]],
   });

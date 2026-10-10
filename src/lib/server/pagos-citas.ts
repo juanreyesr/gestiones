@@ -41,7 +41,12 @@ export function botonDeshacerPago(citaId: string): BotonInline {
   return { text: "↩️ No era esta cita (desmarcar)", callback_data: `pag:no:${citaId}` };
 }
 
-export type ResultadoPago = { linea: string; botones: BotonInline[][] };
+export type ResultadoPago = {
+  linea: string;
+  botones: BotonInline[][];
+  /** Solo cuando el pago se acaba de aplicar a una cita (no en reintentos ni reembolsos). */
+  aplicado?: { pacienteId: string; citaInicio: string };
+};
 
 /**
  * Aplica un evento de PayPal a las citas:
@@ -142,6 +147,7 @@ export async function aplicarPagoPayPal(admin: SupabaseClient, aviso: AvisoPago)
       adelantado ? " (pago por adelantado)" : ""
     } — identificado por ${coincidencia.por}.`,
     botones: [[botonDeshacerPago(cita.id)]],
+    aplicado: { pacienteId: paciente.id, citaInicio: cita.inicio },
   };
 }
 
