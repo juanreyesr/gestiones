@@ -10,6 +10,8 @@ export type DocenteAdminRow = {
   trato: string | null;
   femenino: boolean;
   activo: boolean;
+  /** YYYY-MM-DD; alimenta la alerta y el aviso de cumpleaños. */
+  fecha_nacimiento: string | null;
 };
 
 export async function fetchDocentesAdmin() {
@@ -18,7 +20,7 @@ export async function fetchDocentesAdmin() {
 
   const { data, error } = await supabase
     .from("gestionesjj_docentes")
-    .select("id,nombre,correo,telefono,codigo,trato,femenino,activo")
+    .select("id,nombre,correo,telefono,codigo,trato,femenino,activo,fecha_nacimiento")
     .order("nombre");
 
   if (error) return { data: [] as DocenteAdminRow[], error: error.message };
@@ -33,6 +35,7 @@ export type DocenteAdminPayload = {
   trato: string | null;
   femenino: boolean;
   activo: boolean;
+  fecha_nacimiento: string | null;
 };
 
 export async function upsertDocenteAdmin(id: string | null, payload: DocenteAdminPayload) {

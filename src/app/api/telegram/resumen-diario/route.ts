@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { comparaSeguro, enviarMensaje, fechaLocal, isTelegramConfigured, leerConfig } from "@/lib/server/telegram";
+import { avisoCumpleanosDocentes } from "@/lib/server/cumpleanos-docentes";
 import { avisoCumpleanosPacientes } from "@/lib/server/cumpleanos-pacientes";
 import { construirResumenDiario } from "@/lib/server/telegram-bot";
 import { getSupabaseAdmin } from "@/lib/server/supabase-admin";
@@ -8,7 +9,7 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 /**
- * Resumen diario y cumpleaños de pacientes por Telegram. Lo dispara Vercel
+ * Resumen diario y cumpleaños de pacientes y docentes por Telegram. Lo dispara Vercel
  * Cron (ver vercel.json), que envia Authorization: Bearer <CRON_SECRET>. Solo
  * manda los avisos una vez por dia aunque el cron se ejecute mas de una vez.
  */
@@ -41,6 +42,18 @@ export async function GET(request: Request) {
       const res = await enviarMensaje(config.chatId, cumpleanos.texto, { botones: cumpleanos.botones });
       if (!res.ok) return NextResponse.json({ status: "error", error: res.error }, { status: 502 });
       enviados.push("cumpleanos");
+    }
+  }
+
+  if (config.preferencias.cumpleanos_docentes) {
+    const cumpleanos = await avisoCumpleanosDocentes(admin);
+    if (cumpleanos) {
+      const res = await enviarMensaje(config.chatId, cumpleanos.texto, { botones: cumpleanos.botones });
+      if (!res.ok) {
+        if (enviados.length) await admin.from("gestionesjj_telegram_config").update({ ultimo_resumen: hoy }).eq("id", 1);
+        return NextResponse.json({ status: "error", error: res.error }, { status: 502 });
+      }
+      enviados.push("cumpleanos_docentes");
     }
   }
 

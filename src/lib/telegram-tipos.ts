@@ -14,6 +14,7 @@ export type TipoNotificacion =
   | "encuestas_respuestas"
   | "pagos_paypal"
   | "cumpleanos_pacientes"
+  | "cumpleanos_docentes"
   | "resumen_diario";
 
 export const NOTIFICACIONES: { id: TipoNotificacion; etiqueta: string; porDefecto: boolean }[] = [
@@ -34,6 +35,11 @@ export const NOTIFICACIONES: { id: TipoNotificacion; etiqueta: string; porDefect
   { id: "pagos_paypal", etiqueta: "Pagos de consultas recibidos por PayPal", porDefecto: true },
   { id: "encuestas_respuestas", etiqueta: "Respuestas de encuestas", porDefecto: false },
   { id: "cumpleanos_pacientes", etiqueta: "Cumpleaños de pacientes, con botón para felicitarlos por WhatsApp (7:00 a. m.)", porDefecto: true },
+  {
+    id: "cumpleanos_docentes",
+    etiqueta: "Cumpleaños de docentes, con botón para felicitarlos por WhatsApp (7:00 a. m.; también una semana antes)",
+    porDefecto: true,
+  },
   { id: "resumen_diario", etiqueta: "Resumen diario (7:00 a. m.)", porDefecto: true },
 ];
 

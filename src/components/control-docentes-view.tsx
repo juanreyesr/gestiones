@@ -9,6 +9,8 @@ import {
   type DocenteAdminPayload,
   type DocenteAdminRow,
 } from "@/lib/docentes-admin";
+import { diaYMes } from "@/lib/cumpleanos-docentes";
+import { CampoFecha } from "./campo-fecha";
 
 type FormState = {
   nombre: string;
@@ -16,11 +18,12 @@ type FormState = {
   correo: string;
   telefono: string;
   trato: string;
+  fechaNacimiento: string;
   femenino: boolean;
   activo: boolean;
 };
 
-const FORM_VACIO: FormState = { nombre: "", codigo: "", correo: "", telefono: "", trato: "", femenino: false, activo: true };
+const FORM_VACIO: FormState = { nombre: "", codigo: "", correo: "", telefono: "", trato: "", fechaNacimiento: "", femenino: false, activo: true };
 
 export function ControlDocentesView({ onDocentesChanged }: { onDocentesChanged?: () => void }) {
   const [docentes, setDocentes] = useState<DocenteAdminRow[]>([]);
@@ -75,6 +78,7 @@ export function ControlDocentesView({ onDocentesChanged }: { onDocentesChanged?:
       correo: docente.correo ?? "",
       telefono: docente.telefono ?? "",
       trato: docente.trato ?? "",
+      fechaNacimiento: docente.fecha_nacimiento ?? "",
       femenino: docente.femenino,
       activo: docente.activo,
     });
@@ -100,6 +104,7 @@ export function ControlDocentesView({ onDocentesChanged }: { onDocentesChanged?:
       correo: form.correo.trim() || null,
       telefono: form.telefono.trim() || null,
       trato: form.trato.trim() || null,
+      fecha_nacimiento: form.fechaNacimiento || null,
       femenino: form.femenino,
       activo: form.activo,
     };
@@ -127,6 +132,7 @@ export function ControlDocentesView({ onDocentesChanged }: { onDocentesChanged?:
       correo: docente.correo,
       telefono: docente.telefono,
       trato: docente.trato,
+      fecha_nacimiento: docente.fecha_nacimiento,
       femenino: docente.femenino,
       activo: nuevoActivo,
     });
@@ -198,7 +204,21 @@ export function ControlDocentesView({ onDocentesChanged }: { onDocentesChanged?:
                 value={form.telefono}
               />
             </Field>
+            <Field label="Fecha de nacimiento">
+              <CampoFecha
+                anioDesde={1940}
+                anioHasta={new Date().getFullYear()}
+                etiqueta="Fecha de nacimiento"
+                onChange={(valor) => setForm((current) => ({ ...current, fechaNacimiento: valor }))}
+                opcional
+                value={form.fechaNacimiento}
+              />
+            </Field>
           </div>
+          <p className="mt-1 text-xs text-slate-400">
+            Con la fecha de nacimiento, Coordinacion te avisa una semana antes de su cumpleaños y el mismo dia te llega a
+            Telegram la felicitacion lista para enviarla por WhatsApp.
+          </p>
 
           <div className="mt-3">
             <Field label="Trato en los mensajes">
@@ -284,6 +304,7 @@ export function ControlDocentesView({ onDocentesChanged }: { onDocentesChanged?:
                 <p className="mt-1 text-xs text-slate-400">
                   ID: {docente.codigo || "-"} · Correo: {docente.correo || "-"} · Telefono: {docente.telefono || "-"}
                   {docente.trato ? ` · Trato: ${docente.trato}` : ""}
+                  {docente.fecha_nacimiento ? ` · Cumpleaños: ${diaYMes(docente.fecha_nacimiento)}` : ""}
                 </p>
               </div>
 
