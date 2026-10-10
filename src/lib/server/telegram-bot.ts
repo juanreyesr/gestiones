@@ -11,6 +11,7 @@ import { bloquePendientesPago, citasSinPagar, contarCitasSinCerrar, marcarPagada
 import { lineaModalidad, pacientesComparables, resolverReserva } from "./reservas-google";
 import { getSupabaseAdmin } from "./supabase-admin";
 import { enviarPruebaWhatsApp } from "./whatsapp-citas";
+import { enviarPruebaPagoWhatsApp } from "./whatsapp-pagos";
 import { enviarPredicasMes, enviarQuienPredica, pedidoDePredicas } from "./telegram-iglesia";
 import {
   botonUbicacion,
@@ -246,6 +247,9 @@ export async function procesarUpdate(update: TelegramUpdate) {
     case "probarwhatsapp":
       await probarWhatsApp(chatId, argumento, config.chatNombre);
       return;
+    case "probarpago":
+      await probarPagoWhatsApp(chatId, argumento, config.chatNombre);
+      return;
     case "predicas":
       await enviarPredicasMes(admin, chatId, argumento);
       return;
@@ -317,6 +321,29 @@ async function procesarStart(admin: SupabaseClient, config: TelegramConfig | nul
   );
 }
 
+async function probarPagoWhatsApp(chatId: number, argumento: string, chatNombre: string | null) {
+  const telefono = argumento.trim();
+  if (!telefono) {
+    await enviarMensaje(
+      chatId,
+      "🧪 Escribe el número al que mando la confirmación de pago de prueba, por ejemplo:\n/probarpago 5555 1234\n/probarpago +1 305 555 1234\n\n<i>Usa un número distinto al del consultorio: WhatsApp no deja que un número se escriba a sí mismo.</i>",
+    );
+    return;
+  }
+  const res = await enviarPruebaPagoWhatsApp(telefono, chatNombre ?? "Hola");
+  if (res.ok) {
+    await enviarMensaje(
+      chatId,
+      `✅ <b>Confirmación de pago de prueba enviada</b> a +${esc(res.numero)} (monto y cita de ejemplo). Así la recibirán los pacientes cuando su pago de PayPal se aplique a su cita.`,
+    );
+    return;
+  }
+  const pista = /132001|does not exist/i.test(res.error)
+    ? "\n\nLa plantilla no se encuentra: revisa que esté <b>aprobada</b> y que el nombre (WHATSAPP_TEMPLATE_PAGO) y el idioma (WHATSAPP_TEMPLATE_IDIOMA, p. ej. es o es_MX) coincidan exactamente."
+    : "";
+  await enviarMensaje(chatId, `❌ <b>No se pudo enviar la prueba</b>${"numero" in res && res.numero ? ` a +${esc(res.numero)}` : ""}\n<i>${esc(res.error)}</i>${pista}`);
+}
+
 async function probarWhatsApp(chatId: number, argumento: string, chatNombre: string | null) {
   const telefono = argumento.trim();
   if (!telefono) {
@@ -360,6 +387,7 @@ function textoAyuda() {
     "/pagos — pacientes con citas sin pagar, con botón para marcarlas pagadas",
     "/mensajes — mensajes de estudiantes sin leer",
     "/probarwhatsapp <i>número</i> — te mando el recordatorio de WhatsApp de prueba a ese número (otro distinto al del consultorio)",
+    "/probarpago <i>número</i> — te mando la confirmación de pago por WhatsApp de prueba a ese número",
     "/predicas <i>mes</i> — calendario de prédicas listo para enviar por WhatsApp (ej. /predicas octubre)",
     "/quienpredica <i>cuándo</i> — quién predica y quién cierra: <i>hoy, domingo, martes, fin de semana, 12/10</i>",
     "",

@@ -1,8 +1,16 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { paisDe, telefonoInternacional, zonaDe } from "@/lib/paises";
+import { paisDe, telefonoInternacional, ZONA_CONSULTORIO, zonaDe } from "@/lib/paises";
 import type { AvisoPago } from "./paypal";
 import { esc } from "./telegram";
 import { enviarPlantilla, whatsAppConectado } from "./whatsapp";
+
+/** Parametros de la plantilla: {{1}} primer nombre, {{2}} monto, {{3}} fecha de la cita. */
+function parametrosPago(nombreCompleto: string, monto: string, inicioIso: string, zona: string) {
+  const fecha = new Intl.DateTimeFormat("es-GT", { timeZone: zona, weekday: "long", day: "numeric", month: "long" }).format(
+    new Date(inicioIso),
+  );
+  return [nombreCompleto.split(" ")[0] || "Hola", monto, fecha];
+}
 
 /**
  * Confirmacion de pago al paciente por WhatsApp, despues de que el webhook de
@@ -42,19 +50,36 @@ export async function confirmarPagoPorWhatsApp(
   const numero = telefonoInternacional(paciente.telefono, paisDe(datos));
   if (!numero) return "ℹ️ No le envié la confirmación por WhatsApp: no tiene teléfono en su ficha.";
 
-  const fecha = new Intl.DateTimeFormat("es-GT", {
-    timeZone: zonaDe(datos),
-    weekday: "long",
-    day: "numeric",
-    month: "long",
-  }).format(new Date(aplicado.citaInicio));
-
   const res = await enviarPlantilla({
     telefono: numero,
     plantilla,
-    cuerpo: [paciente.nombre.split(" ")[0] || "Hola", aviso.monto ?? "tu pago", fecha],
+    cuerpo: parametrosPago(paciente.nombre, aviso.monto ?? "tu pago", aplicado.citaInicio, zonaDe(datos)),
   });
   return res.ok
     ? "📲 Le confirmé el pago por WhatsApp."
     : `⚠️ No se envió la confirmación por WhatsApp: <i>${esc(res.error)}</i>`;
+}
+
+/**
+ * Envia la plantilla de pago a un numero para probarla sin un pago real
+ * (/probarpago en Telegram). Usa un monto y una cita de manana de ejemplo.
+ */
+export async function enviarPruebaPagoWhatsApp(telefono: string, nombre: string) {
+  const plantilla = process.env.WHATSAPP_TEMPLATE_PAGO;
+  if (!whatsAppConectado()) {
+    return { ok: false as const, error: "WhatsApp no está configurado en el servidor (faltan variables en Vercel)." };
+  }
+  if (!plantilla) {
+    return { ok: false as const, error: "Falta WHATSAPP_TEMPLATE_PAGO en Vercel (nombre de la plantilla aprobada, p. ej. pago_recibido)." };
+  }
+  const numero = telefonoInternacional(telefono, paisDe({ telefono }));
+  if (numero.length < 8) return { ok: false as const, error: "Ese número no parece válido." };
+  const manana = new Date(Date.now() + 86_400_000);
+  manana.setUTCHours(16, 0, 0, 0); // 10:00 a. m. en Guatemala
+  const res = await enviarPlantilla({
+    telefono: numero,
+    plantilla,
+    cuerpo: parametrosPago(nombre, "50.00 USD", manana.toISOString(), ZONA_CONSULTORIO),
+  });
+  return res.ok ? { ok: true as const, numero } : { ok: false as const, error: res.error, numero };
 }
