@@ -111,6 +111,7 @@ export const COMANDOS_BOT = [
   { command: "mensaje", description: "Escribirle a un paciente por WhatsApp: /mensaje Ana" },
   { command: "ubicacion", description: "Dirección del consultorio con Maps y Waze" },
   { command: "probarwhatsapp", description: "Probar el recordatorio de WhatsApp: /probarwhatsapp número" },
+  { command: "probarpago", description: "Probar la confirmación de pago por WhatsApp: /probarpago número" },
   { command: "predicas", description: "Prédicas del mes para enviar: /predicas octubre" },
   { command: "quienpredica", description: "Quién predica y cierra: /quienpredica domingo" },
   { command: "mensajes", description: "Mensajes de estudiantes sin leer" },
