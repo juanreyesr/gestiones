@@ -74,6 +74,7 @@ import { CodigoKioscoModal } from "./codigo-kiosco-modal";
 import { ConsultasView } from "./consultas-view";
 import { ControlCursosView } from "./control-cursos-view";
 import { ControlDocentesView } from "./control-docentes-view";
+import { CumpleanosDocentesAlerta } from "./cumpleanos-docentes-alerta";
 import { ControlRevisionView } from "./control-revision-view";
 import { CursosView } from "./cursos/cursos-view";
 import { EmailDraftModal } from "./email-draft-modal";
@@ -1024,6 +1025,7 @@ export function GestionesApp() {
                     </div>
                   ) : (
                     <div className="coordinacion-scope grid gap-5">
+                      <CumpleanosDocentesAlerta />
                       <CoordinacionTabs
                         alertasReuniones={alertasSeguimientos}
                         onChange={(value) => {
