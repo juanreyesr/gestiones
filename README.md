@@ -27,7 +27,9 @@ Centro de gestion de pacientes y sesiones de terapia:
 
 ### Dominio publico
 
-La portada pública (`/` → `/es`) es el sitio web estático de `sitio-web/` (ver `sitio-web/README.md`); desde ahí se entra a `/estudiante` y `/admin`.
+La portada pública (`/` → `/es`) es el sitio web de `sitio-web/` (ver `sitio-web/README.md`); desde ahí se entra a `/estudiante` y `/admin`.
+
+**Editar página** (botón junto a "Página principal" en `/admin`): editor de la portada con vista previa en tiempo real (computadora o celular, en español o inglés). Edita los textos del encabezado, cifras, áreas, manifiesto y biografía, la foto de la biografía y el **carrusel de imágenes del encabezado** (subir varias o por enlace, ordenar con flechas, quitar y elegir cada cuántos segundos cambian; sin flechas ni puntos de navegación). Se autoguarda como borrador y se publica con "Publicar cambios" (`/api/sitio/portada/publicar`), que actualiza `/es` y `/en` al instante. Las fotos grandes se reducen a 2400 px antes de subirse. Migración `055`.
 
 **Icono y accesos directos**: el icono de la firma (`assets/icono-app.png`) sale en la pestaña y al crear un acceso directo o "Agregar a pantalla de inicio" (`public/favicon.ico`, `public/icons/`, `public/apple-touch-icon.png` y `public/manifest.webmanifest`, enlazados en `src/app/layout.tsx` y en el `<head>` del sitio estático). En el menu del sitio aparece **Instalar aplicación** cuando el navegador lo permite (Chrome en Android/PC abre su ventana de instalacion; en iPhone/iPad muestra los pasos de Compartir → "Agregar a inicio"; en Internet de Samsung explica instalarla desde Chrome porque su version la marca Play Protect). En moviles, la portada muestra sobre la foto los accesos **Aula virtual** y **Consulta psicológica**. El manifiesto no fija `start_url`: el acceso directo abre la pagina desde la que se creo (por ejemplo `/admin`). Para regenerarlos: `bash assets/generar-iconos.sh` (tambien genera los de la app movil).
 

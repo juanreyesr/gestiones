@@ -11,7 +11,8 @@ const securityHeaders = [
 
 // Sitio web público (HTML estático generado por sitio-web/build.mjs en public/).
 // Las páginas viven en public/<idioma>/<seccion>/index.html y se sirven sin
-// barra final: /es, /es/formacion, /en/learning...
+// barra final: /es/formacion, /en/learning... La portada (/es, /en) la genera
+// src/app/sitio-portada/[idioma]/route.ts con lo publicado en "Editar página".
 const idiomasSitio = ["es", "en"];
 
 const nextConfig: NextConfig = {
@@ -31,7 +32,7 @@ const nextConfig: NextConfig = {
   },
   async rewrites() {
     return idiomasSitio.flatMap((idioma) => [
-      { source: `/${idioma}`, destination: `/${idioma}/index.html` },
+      { source: `/${idioma}`, destination: `/sitio-portada/${idioma}` },
       { source: `/${idioma}/:seccion`, destination: `/${idioma}/:seccion/index.html` },
     ]);
   },

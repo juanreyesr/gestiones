@@ -10,7 +10,7 @@
 
 ## Proyecto
 - Next.js (App Router) + Supabase, desplegado en Vercel en `www.juanjreyes.org`.
-- Sitio público estático: se genera con `node sitio-web/build.mjs` hacia `public/es` y `public/en`; no editar esos HTML a mano (ver `sitio-web/README.md`).
+- Sitio público estático: se genera con `node sitio-web/build.mjs` hacia `public/es` y `public/en`; no editar esos HTML a mano (ver `sitio-web/README.md`). La portada (`/es`, `/en`) es dinámica: se edita en `/admin` → "Editar página" y se renderiza con `sitio-web/plantilla.mjs`.
 - `/admin` (GestionesJJ) y `/estudiante` (Aula virtual) bloquean el "atrás" del navegador (`src/lib/use-bloquear-atras.ts`); salir al sitio (botón "Página principal" o "atrás" en la pantalla principal) pide confirmación ("¿Quieres regresar a la página de portada?", `src/components/confirmar-portada.tsx`).
 - Pagos: `/pagar` → enlace de PayPal; `/pago/gracias`; aviso por Telegram desde `/api/paypal/webhook` (ver README, "Pagos de consultas con PayPal").
 - App móvil: Capacitor 8 (`android/`, `ios/`, `capacitor.config.ts`); abre todo `https://www.juanjreyes.org` (inicio en la página principal) en un WebView. Tras cambiar la config o el ícono: `pnpm cap:sync`.
