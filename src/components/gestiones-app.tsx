@@ -24,6 +24,7 @@ import {
   LogOut,
   Mail,
   NotebookPen,
+  PencilLine,
   Plus,
   Presentation,
   Printer,
@@ -81,6 +82,7 @@ import { EmailDraftModal } from "./email-draft-modal";
 import { EncuestasView } from "./encuestas/encuestas-view";
 import { EntrevistaKiosk } from "./entrevista-kiosk";
 import { IglesiaView } from "./iglesia/iglesia-view";
+import { EditorPagina } from "./sitio/editor-pagina";
 import { PendientesView } from "./pendientes/pendientes-view";
 import { InformeDocenteView } from "./informe-docente-view";
 import { PresentacionView } from "./presentacion-view";
@@ -170,6 +172,7 @@ type RawDocente = {
 
 export function GestionesApp() {
   const [activeArea, setActiveArea] = useState<AreaId | null>(null);
+  const [editorPaginaOpen, setEditorPaginaOpen] = useState(false);
   const [coordinacionView, setCoordinacionView] = useState<CoordinacionView>("resumen");
   const [alertasSeguimientos, setAlertasSeguimientos] = useState(0);
   const [respaldoDescargando, setRespaldoDescargando] = useState(false);
@@ -844,7 +847,8 @@ export function GestionesApp() {
   // con confirmacion porque salir del area descarta lo que no se haya guardado.
   const [confirmarVolverMenu, setConfirmarVolverMenu] = useState(false);
   useBloquearAtras(() => {
-    if (activeArea) setConfirmarVolverMenu(true);
+    if (editorPaginaOpen) setEditorPaginaOpen(false);
+    else if (activeArea) setConfirmarVolverMenu(true);
     else pedirSalidaPortada();
   });
 
@@ -871,6 +875,7 @@ export function GestionesApp() {
   return (
     <>
       <ConfirmarPortada />
+      {editorPaginaOpen ? <EditorPagina onClose={() => setEditorPaginaOpen(false)} /> : null}
       <main className="min-h-screen bg-[#060c17] text-slate-50 print-hidden">
         <section className="relative min-h-screen overflow-x-clip">
           <div className="relative z-10 mx-auto flex min-h-screen w-full max-w-7xl flex-col gap-6 px-4 py-5 sm:px-6 lg:px-8">
@@ -891,6 +896,15 @@ export function GestionesApp() {
                     </button>
                   ) : null}
                   <BotonPaginaPrincipal />
+                  <button
+                    className="inline-flex items-center gap-1 rounded-full border border-white/12 bg-white/8 py-1 pl-2 pr-2.5 text-xs font-semibold text-slate-300 transition hover:border-emerald-300/50 hover:text-white"
+                    onClick={() => setEditorPaginaOpen(true)}
+                    title="Editar la portada del sitio con vista previa en tiempo real"
+                    type="button"
+                  >
+                    <PencilLine className="h-3.5 w-3.5" />
+                    Editar página
+                  </button>
                   <span className="inline-flex items-center gap-2 rounded-full border border-emerald-300/30 bg-emerald-300/10 px-3 py-1 text-xs font-semibold text-emerald-100">
                     <Sparkles className="h-3.5 w-3.5" />
                     GestionesJJ
