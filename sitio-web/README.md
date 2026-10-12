@@ -5,12 +5,13 @@ y el HTML de todas las páginas; `build.mjs` agrega los estilos y el JS y genera
 como HTML estático en `public/`.
 
 - **Portada (`/es`, `/en`)**: se edita desde GestionesJJ → botón **"Editar página"** (textos en
-  español e inglés, carrusel de imágenes del encabezado y foto de la biografía) con vista previa
+  español e inglés y tres carruseles de imágenes: encabezado, junto al título de las áreas y
+  biografía) con vista previa
   en tiempo real. Lo editado se guarda solo como borrador y llega al sitio con "Publicar cambios".
   La genera `src/app/sitio-portada/[idioma]/route.ts` con la misma plantilla y el contenido
   publicado (tabla `gestionesjj_sitio_portada`, imágenes en el bucket público `gestionesjj-sitio`,
   migración `055`); si no hay nada publicado usa los textos por defecto de `plantilla.mjs`.
-- **Carrusel**: las imágenes cambian solas con un fundido lento y un acercamiento sutil, sin
+- **Carruseles**: con una imagen queda fija; con varias, cambian solas con un fundido lento y un acercamiento sutil, sin
   flechas ni puntos; la siguiente se precarga antes de mostrarse y se respeta "reducir movimiento".
 - Editar las demás secciones, el menú o el pie: modificar `sitio-web/plantilla.mjs` (estilos y JS
   en `build.mjs`) y ejecutar `node sitio-web/build.mjs`. No editar a mano los HTML de

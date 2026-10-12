@@ -45,6 +45,7 @@ const MAX_LADO_IMAGEN = 2400;
 const SCRIPT_VISTA_PREVIA = `<script>document.addEventListener('click',function(e){var a=e.target.closest&&e.target.closest('a');if(!a)return;e.preventDefault();var h=a.getAttribute('href')||'';if(h.charAt(0)==='#'){var t=document.getElementById(h.slice(1));if(t)t.scrollIntoView({behavior:'smooth'})}},true);</script>`;
 
 type Ruta = (string | number)[];
+type ClaveGaleria = "imagenes" | "imagenesAreas" | "fotosBio";
 type CampoTexto = { ruta: Ruta; etiqueta: string; largo?: boolean };
 type Seccion = { id: string; titulo: string; descripcion: string; selector: string; campos: CampoTexto[] };
 
@@ -173,7 +174,7 @@ export function EditorPagina({ onClose }: { onClose: () => void }) {
   const [aviso, setAviso] = useState("");
   const [guardando, setGuardando] = useState(false);
   const [publicando, setPublicando] = useState(false);
-  const [subiendo, setSubiendo] = useState<"carrusel" | "bio" | null>(null);
+  const [subiendo, setSubiendo] = useState<ClaveGaleria | null>(null);
   const [confirmarDescartar, setConfirmarDescartar] = useState(false);
 
   // Autoguardado del borrador: lo último guardado evita escrituras repetidas.
@@ -255,23 +256,23 @@ export function EditorPagina({ onClose }: { onClose: () => void }) {
     cambiar([idioma, clave], structuredClone(defecto[clave]));
   };
 
-  const agregarImagenes = (urls: string[]) => {
-    setBorrador((b) => (b ? { ...b, imagenes: [...b.imagenes, ...urls].slice(0, MAX_IMAGENES) } : b));
+  const agregarImagenes = (clave: ClaveGaleria, urls: string[]) => {
+    setBorrador((b) => (b ? { ...b, [clave]: [...b[clave], ...urls].slice(0, MAX_IMAGENES) } : b));
   };
 
-  const subirCarrusel = async (archivos: FileList | null) => {
+  const subirGaleria = async (clave: ClaveGaleria, archivos: FileList | null) => {
     if (!archivos?.length || !borrador) return;
-    const libres = MAX_IMAGENES - borrador.imagenes.length;
+    const libres = MAX_IMAGENES - borrador[clave].length;
     if (libres <= 0) {
-      setError(`El carrusel admite hasta ${MAX_IMAGENES} imágenes.`);
+      setError(`Cada carrusel admite hasta ${MAX_IMAGENES} imágenes.`);
       return;
     }
     setError("");
-    setSubiendo("carrusel");
+    setSubiendo(clave);
     try {
       for (const archivo of Array.from(archivos).slice(0, libres)) {
         const url = await subirImagen(archivo);
-        agregarImagenes([url]);
+        agregarImagenes(clave, [url]);
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : "No se pudo subir la imagen.");
@@ -280,22 +281,7 @@ export function EditorPagina({ onClose }: { onClose: () => void }) {
     }
   };
 
-  const subirFotoBio = async (archivos: FileList | null) => {
-    const archivo = archivos?.[0];
-    if (!archivo) return;
-    setError("");
-    setSubiendo("bio");
-    try {
-      const url = await subirImagen(archivo);
-      cambiar(["fotoBio"], url);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "No se pudo subir la imagen.");
-    } finally {
-      setSubiendo(null);
-    }
-  };
-
-  const pedirEnlace = (destino: "carrusel" | "bio") => {
+  const pedirEnlace = (clave: ClaveGaleria) => {
     const valor = window.prompt("Pega el enlace (https://...) de la imagen:");
     if (!valor) return;
     const url = limpiarUrlImagen(valor);
@@ -304,19 +290,91 @@ export function EditorPagina({ onClose }: { onClose: () => void }) {
       return;
     }
     setError("");
-    if (destino === "bio") cambiar(["fotoBio"], url);
-    else agregarImagenes([url]);
+    agregarImagenes(clave, [url]);
   };
 
-  const moverImagen = (indice: number, paso: -1 | 1) => {
+  const moverImagen = (clave: ClaveGaleria, indice: number, paso: -1 | 1) => {
     setBorrador((b) => {
       if (!b) return b;
-      const imagenes = [...b.imagenes];
+      const imagenes = [...b[clave]];
       const destino = indice + paso;
       if (destino < 0 || destino >= imagenes.length) return b;
       [imagenes[indice], imagenes[destino]] = [imagenes[destino], imagenes[indice]];
-      return { ...b, imagenes };
+      return { ...b, [clave]: imagenes };
     });
+  };
+
+  /** Lista de imágenes de un carrusel: subir, por enlace, ordenar y quitar. */
+  const galeria = (clave: ClaveGaleria, vacio: string) => {
+    if (!borrador) return null;
+    const imagenes = borrador[clave];
+    return (
+      <div className="grid gap-2">
+        <div className="flex flex-wrap gap-2">
+          <label className={`${BTN_GHOST} cursor-pointer !px-2.5 !py-1.5 text-xs`}>
+            {subiendo === clave ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5" />}
+            {subiendo === clave ? "Subiendo…" : "Subir imágenes"}
+            <input
+              accept="image/*"
+              className="sr-only"
+              disabled={subiendo !== null}
+              multiple
+              onChange={(e) => {
+                void subirGaleria(clave, e.target.files);
+                e.target.value = "";
+              }}
+              type="file"
+            />
+          </label>
+          <button className={`${BTN_GHOST} !px-2.5 !py-1.5 text-xs`} onClick={() => pedirEnlace(clave)} type="button">
+            <Link2 className="h-3.5 w-3.5" /> Imagen por enlace
+          </button>
+        </div>
+        {imagenes.length ? (
+          <ul className="grid gap-2">
+            {imagenes.map((url, i) => (
+              <li key={`${url}-${i}`} className="flex items-center gap-2 border border-white/10 bg-slate-950/60 p-1.5">
+                {/* eslint-disable-next-line @next/next/no-img-element -- miniatura de una URL externa o de Storage */}
+                <img alt="" className="h-12 w-20 shrink-0 object-cover" src={url} />
+                <span className="min-w-0 flex-1 truncate text-xs text-slate-400">
+                  {i === 0 ? "Primera · " : ""}
+                  {decodeURIComponent(url.split("/").pop() ?? url)}
+                </span>
+                <button
+                  aria-label="Subir"
+                  className="p-1 text-slate-400 hover:text-white disabled:opacity-30"
+                  disabled={i === 0}
+                  onClick={() => moverImagen(clave, i, -1)}
+                  type="button"
+                >
+                  <ArrowUp className="h-4 w-4" />
+                </button>
+                <button
+                  aria-label="Bajar"
+                  className="p-1 text-slate-400 hover:text-white disabled:opacity-30"
+                  disabled={i === imagenes.length - 1}
+                  onClick={() => moverImagen(clave, i, 1)}
+                  type="button"
+                >
+                  <ArrowDown className="h-4 w-4" />
+                </button>
+                <button
+                  className="inline-flex items-center gap-1 px-1.5 py-1 text-xs text-red-200 hover:text-red-100"
+                  onClick={() => cambiar([clave], imagenes.filter((_, j) => j !== i))}
+                  type="button"
+                >
+                  <Trash2 className="h-3.5 w-3.5" /> Quitar
+                </button>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="flex items-center gap-2 border border-dashed border-white/15 p-3 text-xs text-slate-400">
+            <ImagePlus className="h-4 w-4 shrink-0" /> {vacio}
+          </p>
+        )}
+      </div>
+    );
   };
 
   const publicar = async () => {
@@ -525,75 +583,12 @@ export function EditorPagina({ onClose }: { onClose: () => void }) {
                         ordenarlas y «Quitar» para retirarlas. Sin imágenes se muestra el retrato de siempre.
                       </p>
                     </div>
-                    <div className="flex flex-wrap gap-2">
-                      <label className={`${BTN_GHOST} cursor-pointer !px-2.5 !py-1.5 text-xs`}>
-                        {subiendo === "carrusel" ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5" />}
-                        {subiendo === "carrusel" ? "Subiendo…" : "Subir imágenes"}
-                        <input
-                          accept="image/*"
-                          className="sr-only"
-                          disabled={subiendo !== null}
-                          multiple
-                          onChange={(e) => {
-                            void subirCarrusel(e.target.files);
-                            e.target.value = "";
-                          }}
-                          type="file"
-                        />
-                      </label>
-                      <button className={`${BTN_GHOST} !px-2.5 !py-1.5 text-xs`} onClick={() => pedirEnlace("carrusel")} type="button">
-                        <Link2 className="h-3.5 w-3.5" /> Imagen por enlace
-                      </button>
-                    </div>
+                    {galeria("imagenes", "Aún no hay imágenes: se muestra el retrato fijo.")}
 
-                    {borrador.imagenes.length ? (
-                      <ul className="grid gap-2">
-                        {borrador.imagenes.map((url, i) => (
-                          <li key={`${url}-${i}`} className="flex items-center gap-2 border border-white/10 bg-slate-950/60 p-1.5">
-                            {/* eslint-disable-next-line @next/next/no-img-element -- miniatura de una URL externa o de Storage */}
-                            <img alt="" className="h-12 w-20 shrink-0 object-cover" src={url} />
-                            <span className="min-w-0 flex-1 truncate text-xs text-slate-400">
-                              {i === 0 ? "Primera · " : ""}
-                              {decodeURIComponent(url.split("/").pop() ?? url)}
-                            </span>
-                            <button
-                              aria-label="Subir"
-                              className="p-1 text-slate-400 hover:text-white disabled:opacity-30"
-                              disabled={i === 0}
-                              onClick={() => moverImagen(i, -1)}
-                              type="button"
-                            >
-                              <ArrowUp className="h-4 w-4" />
-                            </button>
-                            <button
-                              aria-label="Bajar"
-                              className="p-1 text-slate-400 hover:text-white disabled:opacity-30"
-                              disabled={i === borrador.imagenes.length - 1}
-                              onClick={() => moverImagen(i, 1)}
-                              type="button"
-                            >
-                              <ArrowDown className="h-4 w-4" />
-                            </button>
-                            <button
-                              className="inline-flex items-center gap-1 px-1.5 py-1 text-xs text-red-200 hover:text-red-100"
-                              onClick={() => cambiar(["imagenes"], borrador.imagenes.filter((_, j) => j !== i))}
-                              type="button"
-                            >
-                              <Trash2 className="h-3.5 w-3.5" /> Quitar
-                            </button>
-                          </li>
-                        ))}
-                      </ul>
-                    ) : (
-                      <p className="flex items-center gap-2 border border-dashed border-white/15 p-3 text-xs text-slate-400">
-                        <ImagePlus className="h-4 w-4" /> Aún no hay imágenes: se muestra el retrato fijo.
-                      </p>
-                    )}
-
-                    {borrador.imagenes.length > 1 ? (
+                    {[borrador.imagenes, borrador.imagenesAreas, borrador.fotosBio].some((g) => g.length > 1) ? (
                       <label className="grid gap-1.5">
                         <span className="text-xs font-semibold text-slate-300">
-                          Cambiar de imagen cada {borrador.intervalo} segundos
+                          Cambiar de imagen cada {borrador.intervalo} segundos (todos los carruseles)
                         </span>
                         <input
                           className="accent-emerald-300"
@@ -650,41 +645,20 @@ export function EditorPagina({ onClose }: { onClose: () => void }) {
                         );
                       })}
 
+                      {seccion.id === "areas" ? (
+                        <div className="grid gap-1.5">
+                          <span className="text-xs font-semibold text-slate-300">Imagen junto al título</span>
+                          <span className="text-[11px] leading-4 text-slate-500">
+                            Una imagen fija o varias en carrusel automático, a la derecha de «{borrador[idioma].areas.titulo}».
+                          </span>
+                          {galeria("imagenesAreas", "Sin imagen: el título ocupa el ancho de la sección.")}
+                        </div>
+                      ) : null}
+
                       {seccion.id === "bio" ? (
-                        <div className="grid gap-2">
-                          <span className="text-xs font-semibold text-slate-300">Foto</span>
-                          <div className="flex items-center gap-3">
-                            {/* eslint-disable-next-line @next/next/no-img-element -- miniatura de una URL externa o de Storage */}
-                            <img
-                              alt=""
-                              className="h-16 w-16 shrink-0 object-cover grayscale-[65%]"
-                              src={borrador.fotoBio ?? "/assets/portrait.jpg"}
-                            />
-                            <div className="flex flex-wrap gap-2">
-                              <label className={`${BTN_GHOST} cursor-pointer !px-2.5 !py-1.5 text-xs`}>
-                                {subiendo === "bio" ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5" />}
-                                Cambiar foto
-                                <input
-                                  accept="image/*"
-                                  className="sr-only"
-                                  disabled={subiendo !== null}
-                                  onChange={(e) => {
-                                    void subirFotoBio(e.target.files);
-                                    e.target.value = "";
-                                  }}
-                                  type="file"
-                                />
-                              </label>
-                              <button className={`${BTN_GHOST} !px-2.5 !py-1.5 text-xs`} onClick={() => pedirEnlace("bio")} type="button">
-                                <Link2 className="h-3.5 w-3.5" /> Por enlace
-                              </button>
-                              {borrador.fotoBio ? (
-                                <button className={`${BTN_GHOST} !px-2.5 !py-1.5 text-xs`} onClick={() => cambiar(["fotoBio"], null)} type="button">
-                                  <RotateCcw className="h-3.5 w-3.5" /> Retrato original
-                                </button>
-                              ) : null}
-                            </div>
-                          </div>
+                        <div className="grid gap-1.5">
+                          <span className="text-xs font-semibold text-slate-300">Fotos (carrusel automático)</span>
+                          {galeria("fotosBio", "Sin fotos: se muestra el retrato de siempre.")}
                         </div>
                       ) : null}
                     </section>

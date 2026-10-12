@@ -12,12 +12,14 @@ export interface TextosPortada {
 export interface Portada {
   es: TextosPortada;
   en: TextosPortada;
-  /** Imágenes del carrusel del encabezado; vacío = retrato fijo. */
+  /** Carrusel del encabezado; vacío = retrato fijo. */
   imagenes: string[];
-  /** Segundos entre imagen e imagen. */
+  /** Carrusel junto al título de las áreas ("Cada historia..."); vacío = sin imagen. */
+  imagenesAreas: string[];
+  /** Carrusel de la sección "Sobre Juan J."; vacío = retrato por defecto. */
+  fotosBio: string[];
+  /** Segundos entre imagen e imagen (todos los carruseles). */
   intervalo: number;
-  /** Foto de la sección "Sobre Juan J."; null = retrato por defecto. */
-  fotoBio: string | null;
 }
 
 export interface ConfigSitio {
