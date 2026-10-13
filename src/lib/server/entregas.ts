@@ -67,14 +67,14 @@ export async function validarTareaParaEntrega(
 
   const { data: semana, error: semanaError } = await admin
     .from("gestionesjj_curso_semanas")
-    .select("curso_id, habilitado_estudiantes")
+    .select("curso_id, numero, habilitado_estudiantes")
     .eq("id", actividad.semana_id)
     .maybeSingle();
   if (semanaError || !semana || !semana.habilitado_estudiantes) return noEncontrada;
 
   const { data: curso, error: cursoError } = await admin
     .from("gestionesjj_cursos_impartidos")
-    .select("acceso_estudiantes")
+    .select("acceso_estudiantes, perfil_bloqueo_semana")
     .eq("id", semana.curso_id)
     .maybeSingle();
   if (cursoError || !curso || !curso.acceso_estudiantes) return noEncontrada;
@@ -87,6 +87,15 @@ export async function validarTareaParaEntrega(
     .eq("estado", "activo")
     .maybeSingle();
   if (inscripcionError || !inscripcion) return noEncontrada;
+
+  // Bloqueo por perfil incompleto (migración 056): misma regla que la RPC de tareas.
+  if (curso.perfil_bloqueo_semana !== null && (semana.numero as number) >= (curso.perfil_bloqueo_semana as number)) {
+    const { data: completo, error: completoError } = await admin.rpc("gestionesjj_perfil_completo", { p_estudiante_id: estudianteId });
+    if (completoError) return { ok: false, status: 500, error: "No se pudo verificar tu perfil." };
+    if (!completo) {
+      return { ok: false, status: 403, error: "Tienes que completar los datos de tu perfil para continuar con el curso." };
+    }
+  }
 
   return { ok: true, cursoId: semana.curso_id as string, fechaLimite: (actividad.fecha_limite as string | null) ?? null };
 }

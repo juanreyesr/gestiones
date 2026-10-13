@@ -1,6 +1,6 @@
 "use client";
 
-import { CalendarDays, ChevronLeft, ClipboardCheck, ClipboardList, Eye, FileText, MessageCircle, QrCode, Users } from "lucide-react";
+import { CalendarDays, ChevronLeft, ClipboardCheck, ClipboardList, Eye, FileText, MessageCircle, QrCode, UserCog, Users } from "lucide-react";
 import type React from "react";
 import { useCallback, useEffect, useState } from "react";
 import { fetchCalificacionesDeCurso } from "@/lib/cursos/actividades";
@@ -16,6 +16,7 @@ import { CursoEstudiantesTab } from "./curso-estudiantes-tab";
 import { CursoPlanificacionTab } from "./curso-planificacion-tab";
 import { CursoReporteTab } from "./curso-reporte-tab";
 import { CursoSemanasTab } from "./curso-semanas-tab";
+import { PreguntasPerfilModal } from "./preguntas-perfil-modal";
 import { BTN_GHOST, Chip } from "./ui";
 
 type CursoTab = "semanas" | "estudiantes" | "planificacion" | "reporte";
@@ -46,6 +47,8 @@ export function CursoDetalle({
   const [autoasignacion, setAutoasignacionState] = useState(curso.autoasignacion_activa);
   const [guardandoAutoasignacion, setGuardandoAutoasignacion] = useState(false);
   const [compartirAbierto, setCompartirAbierto] = useState(false);
+  const [preguntasAbierto, setPreguntasAbierto] = useState(false);
+  const [bloqueoSemana, setBloqueoSemana] = useState(curso.perfil_bloqueo_semana);
   const [mensajesNoLeidos, setMensajesNoLeidos] = useState(0);
   const [tareasPorCalificar, setTareasPorCalificar] = useState(0);
   const [bandejaAbierta, setBandejaAbierta] = useState(abrirBandejaAlEntrar);
@@ -145,6 +148,18 @@ export function CursoDetalle({
             <QrCode className="h-4 w-4" />
             Compartir
           </button>
+          <button
+            className={BTN_GHOST}
+            onClick={() => setPreguntasAbierto(true)}
+            title="Editar las preguntas del perfil del estudiante y el bloqueo de tareas por perfil incompleto"
+            type="button"
+          >
+            <UserCog className="h-4 w-4" />
+            Preguntas del perfil
+            {bloqueoSemana !== null ? (
+              <span className="border border-amber-300/40 bg-amber-300/10 px-1.5 text-[11px] text-amber-100">Bloqueo sem. {bloqueoSemana}</span>
+            ) : null}
+          </button>
         </div>
       </div>
 
@@ -184,7 +199,7 @@ export function CursoDetalle({
       <CursoTabs onChange={setTab} value={tab} />
 
       {tab === "semanas" ? <CursoSemanasTab cursoId={curso.id} onOpenSemana={onOpenSemana} /> : null}
-      {tab === "estudiantes" ? <CursoEstudiantesTab cursoId={curso.id} cursoNombre={curso.nombre} /> : null}
+      {tab === "estudiantes" ? <CursoEstudiantesTab carneModo={curso.carne_modo} cursoId={curso.id} cursoNombre={curso.nombre} /> : null}
       {tab === "planificacion" ? <CursoPlanificacionTab cursoId={curso.id} /> : null}
       {tab === "reporte" ? <CursoReporteTab curso={curso} universidad={universidad} /> : null}
 
@@ -196,6 +211,15 @@ export function CursoDetalle({
             setBandejaAbierta(false);
             void cargarPendientes();
           }}
+        />
+      ) : null}
+
+      {preguntasAbierto ? (
+        <PreguntasPerfilModal
+          bloqueoSemana={bloqueoSemana}
+          cursoId={curso.id}
+          onBloqueoGuardado={setBloqueoSemana}
+          onClose={() => setPreguntasAbierto(false)}
         />
       ) : null}
 

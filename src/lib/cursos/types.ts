@@ -37,8 +37,18 @@ export type CursoImpartidoRow = {
   docente_nombre: string | null;
   autoasignacion_activa: boolean;
   autoasignacion_token: string;
+  carne_modo: CarneModo;
+  /** Semana desde la que se bloquean las tareas a quien no completó su perfil; null = sin bloqueo. */
+  perfil_bloqueo_semana: number | null;
   created_at: string;
   updated_at: string;
+};
+
+export type CarneModo = "manual" | "automatico";
+
+export const CARNE_MODO_LABELS: Record<CarneModo, string> = {
+  manual: "Manual (lo escribo yo)",
+  automatico: "Automática (correlativo año + 6 dígitos)",
 };
 
 export type EstadoSolicitud = "pendiente" | "aprobada" | "rechazada";

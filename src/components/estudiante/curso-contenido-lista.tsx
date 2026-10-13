@@ -1,6 +1,6 @@
 "use client";
 
-import { ChevronDown, ChevronRight, ClipboardList, Download, FileText, Link2, Upload } from "lucide-react";
+import { ChevronDown, ChevronRight, ClipboardList, Download, FileText, Link2, Lock, Upload } from "lucide-react";
 import type React from "react";
 import { useState } from "react";
 import type { Idioma } from "@/lib/cursos/types";
@@ -47,6 +47,8 @@ export type ArchivoPropioVista = { id: string; nombre: string | null };
 
 type TareasConfig = {
   porSemana: Record<string, TareaEstudianteVista[] | undefined>;
+  /** Perfil incompleto: desde esta semana las tareas quedan bloqueadas y se muestra el botón para completarlo. */
+  bloqueoPerfil?: { desdeSemana: number; onCompletarPerfil: () => void } | null;
   subiendoTareaId?: string | null;
   /** Devuelve false si la subida falló (p. ej. para conservar una nota de voz y reintentar). */
   onSubirArchivo?: (tarea: TareaEstudianteVista, archivo: File) => void | Promise<void | boolean>;
@@ -178,7 +180,21 @@ export function CursoContenidoLista({
                 {tareas ? (
                   <div>
                     <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400">{t("lista_tareas")}</p>
-                    {cargandoSemanaId === semana.id ? (
+                    {tareas.bloqueoPerfil && semana.numero >= tareas.bloqueoPerfil.desdeSemana ? (
+                      <div className="grid gap-2 rounded-lg border border-amber-200 bg-amber-50 p-3">
+                        <p className="flex items-center gap-1.5 text-xs text-amber-800">
+                          <Lock className="h-3.5 w-3.5 shrink-0" />
+                          {t("bloqueo_perfil_detalle")}
+                        </p>
+                        <button
+                          className="rounded-lg bg-amber-500 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-amber-600"
+                          onClick={tareas.bloqueoPerfil.onCompletarPerfil}
+                          type="button"
+                        >
+                          {t("bloqueo_perfil_boton")}
+                        </button>
+                      </div>
+                    ) : cargandoSemanaId === semana.id ? (
                       <p className="text-sm text-slate-400">{t("central_cargando")}</p>
                     ) : !tareasSemana || tareasSemana.length === 0 ? (
                       <p className="text-sm text-slate-400">{t("lista_sin_tareas")}</p>

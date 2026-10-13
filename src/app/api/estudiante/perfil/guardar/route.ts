@@ -16,7 +16,12 @@ function textoOpcional(valor: unknown, max: number): { ok: true; valor: string |
   return { ok: true, valor: valor.trim() || null };
 }
 
-/** El estudiante guarda su ficha de perfil (fecha de nacimiento, país y las tres preguntas de reflexión). */
+/**
+ * El estudiante guarda su ficha de perfil: fecha de nacimiento, país y las
+ * respuestas a las preguntas del perfil que define el docente (migración 056).
+ * Solo se aceptan respuestas a preguntas activas; las respuestas guardadas a
+ * preguntas ya desactivadas se conservan.
+ */
 export async function POST(request: Request) {
   if (!rateLimit(request, { key: "estudiante-perfil-guardar", limit: 20, windowMs: 60_000 })) {
     return rateLimitResponse();
@@ -33,10 +38,8 @@ export async function POST(request: Request) {
   }
 
   const pais = textoOpcional(body?.pais, MAX_PAIS);
-  const quienSoy = textoOpcional(body?.reflexionQuienSoy, MAX_TEXTO);
-  const proposito = textoOpcional(body?.reflexionProposito, MAX_TEXTO);
-  const recuerdo = textoOpcional(body?.reflexionRecuerdo, MAX_TEXTO);
-  if (!pais.ok || !quienSoy.ok || !proposito.ok || !recuerdo.ok) {
+  const respuestasBody = body?.respuestas;
+  if (!pais.ok || (respuestasBody !== undefined && (typeof respuestasBody !== "object" || respuestasBody === null || Array.isArray(respuestasBody)))) {
     return NextResponse.json({ error: "Solicitud inválida." }, { status: 422 });
   }
 
@@ -45,14 +48,28 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "El servicio no está disponible." }, { status: 500 });
   }
 
+  const [{ data: preguntas, error: preguntasError }, { data: actual, error: actualError }] = await Promise.all([
+    admin.from("gestionesjj_perfil_preguntas").select("id").eq("activa", true),
+    admin.from("gestionesjj_estudiantes").select("perfil_respuestas").eq("id", auth.estudianteId).maybeSingle(),
+  ]);
+  if (preguntasError || actualError) {
+    return NextResponse.json({ error: "No se pudo guardar tu perfil." }, { status: 500 });
+  }
+
+  const respuestas: Record<string, string> = { ...((actual?.perfil_respuestas as Record<string, string> | null) ?? {}) };
+  for (const { id } of (preguntas ?? []) as Array<{ id: string }>) {
+    const valor = textoOpcional((respuestasBody as Record<string, unknown> | undefined)?.[id], MAX_TEXTO);
+    if (!valor.ok) return NextResponse.json({ error: "Una respuesta es demasiado larga." }, { status: 422 });
+    if (valor.valor) respuestas[id] = valor.valor;
+    else delete respuestas[id];
+  }
+
   const { error } = await admin
     .from("gestionesjj_estudiantes")
     .update({
       fecha_nacimiento: fechaNacimiento || null,
       pais: pais.valor,
-      reflexion_quien_soy: quienSoy.valor,
-      reflexion_proposito: proposito.valor,
-      reflexion_recuerdo: recuerdo.valor,
+      perfil_respuestas: respuestas,
       updated_at: new Date().toISOString(),
     })
     .eq("id", auth.estudianteId);

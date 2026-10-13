@@ -181,6 +181,17 @@ Acceso real de estudiantes al curso, con cuenta propia (correo + contrasena, amb
 
 Decisiones de seguridad relevantes: la contraseña que asigna el owner se guarda cifrada (AES-256-GCM, llave en `ESTUDIANTES_ENC_KEY`, nunca en texto plano) para poder reimprimir la ficha cuando haga falta; los estudiantes nunca leen las tablas del modulo Cursos directo, solo a traves de RPCs `SECURITY DEFINER` (`gestionesjj_estudiante_mi_perfil`, `gestionesjj_estudiante_mis_cursos`) que exponen unicamente lo suyo. La migracion es `supabase/migrations/021_gestionesjj_area_estudiantes.sql`. Requiere `SUPABASE_SECRET_KEY` y `ESTUDIANTES_ENC_KEY` configuradas (ver `.env.example`).
 
+### Carné automático, preguntas del perfil y bloqueo de tareas
+
+Migracion `056`:
+
+- **Asignación de carné** (al crear o editar un curso): *Manual* (el docente lo escribe) o *Automática*. En automática, un trigger asigna al agregar o aprobar a alguien el año + un correlativo de 6 digitos (`2026000009`). El correlativo es **uno solo para todos los cursos y no se reinicia al cambiar de año** (si 2026 termina en `2026000007`, el siguiente en 2027 es `2027000008`); si la misma persona ya tiene un carné con ese formato en otro curso, se reutiliza. Tabla `gestionesjj_carne_correlativo`.
+- **Preguntas del perfil** (botón del encabezado del curso): se agregan, editan (con traducción opcional a inglés/portugués), reordenan, desactivan o eliminan. Son globales, porque el perfil es de la persona. Respuestas en `gestionesjj_estudiantes.perfil_respuestas`.
+- **Perfil completo** = foto, fecha de nacimiento, país y todas las preguntas activas respondidas. La pestaña Estudiantes muestra a cada uno como *Perfil completo* o *incompleto (falta …)* y el total.
+- **Bloqueo de tareas**: en el mismo modal, casilla por curso para bloquear las tareas desde la semana indicada (5 por defecto) a quien no completó su perfil. El estudiante ve el botón «Tienes que completar los datos de tu perfil para continuar con el curso», que abre *Mi perfil*; se valida también al subir una entrega.
+- **Cumpleaños de estudiantes**: los lunes a las 7:00 a. m. llega a Telegram la lista de quienes cumplen años esa semana (lunes a domingo) en cursos activos. Se apaga en Telegram → avisos.
+- En la ficha de perfil, tocar la foto la abre en grande.
+
 ### Ver como estudiante
 
 El boton **Ver como estudiante** del curso abre en otra pestana `/estudiante/vista-previa?curso=<id>`: el Aula virtual completa (encabezado, campana con "Recibir avisos", chat, perfil, cambio de idioma, semanas, contenidos y tareas) tal como la ve un estudiante de ese curso, con los datos leidos con la sesion del owner (mismos filtros que las RPCs del estudiante: semanas habilitadas y lo que no esta oculto). Nada se guarda: enviar mensajes, entregar tareas o guardar el perfil avisan que es una vista previa (`src/lib/estudiante/vista-previa.ts`).

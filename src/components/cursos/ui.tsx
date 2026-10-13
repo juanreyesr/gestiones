@@ -3,6 +3,7 @@
 import { Languages } from "lucide-react";
 import type React from "react";
 import { useState } from "react";
+import { CARNE_MODO_LABELS, type CarneModo } from "@/lib/cursos/types";
 
 export const BTN_PRIMARY =
   "inline-flex items-center gap-2 bg-emerald-300 px-4 py-2 text-sm font-bold text-slate-950 transition hover:bg-emerald-200 disabled:opacity-60";
@@ -103,5 +104,26 @@ export function Chip({ children, className }: { children: React.ReactNode; class
     <span className={`inline-flex items-center border px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide ${className}`}>
       {children}
     </span>
+  );
+}
+
+/** Selector de cómo se asigna el carné a los estudiantes del curso. */
+export function CarneModoField({ onChange, value }: { onChange: (valor: CarneModo) => void; value: CarneModo }) {
+  return (
+    <Field label="Asignación de carné">
+      <select className="field" onChange={(event) => onChange(event.target.value as CarneModo)} value={value}>
+        {(Object.keys(CARNE_MODO_LABELS) as CarneModo[]).map((modo) => (
+          <option key={modo} value={modo}>
+            {CARNE_MODO_LABELS[modo]}
+          </option>
+        ))}
+      </select>
+      {value === "automatico" ? (
+        <span className="text-xs text-slate-500">
+          Cada estudiante nuevo recibe el siguiente número del correlativo (por ejemplo, 2026000009). El correlativo es uno solo para
+          todos los cursos y no se reinicia al cambiar de año.
+        </span>
+      ) : null}
+    </Field>
   );
 }
