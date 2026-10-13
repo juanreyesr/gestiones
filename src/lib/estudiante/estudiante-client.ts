@@ -477,17 +477,16 @@ export type MiFicha = {
   tieneFoto: boolean;
   fechaNacimiento: string | null;
   pais: string | null;
-  reflexionQuienSoy: string | null;
-  reflexionProposito: string | null;
-  reflexionRecuerdo: string | null;
+  /** Respuestas a las preguntas del perfil: id de pregunta -> texto. */
+  respuestas: Record<string, string>;
 };
 
 export async function fetchMiFicha(): Promise<{ data: MiFicha | null; error: string | null }> {
-  if (vistaPreviaActiva()) return { data: { tieneFoto: false, fechaNacimiento: null, pais: null, reflexionQuienSoy: null, reflexionProposito: null, reflexionRecuerdo: null }, error: null };
+  if (vistaPreviaActiva()) return { data: { tieneFoto: false, fechaNacimiento: null, pais: null, respuestas: {} }, error: null };
   const supabase = getSupabaseClient();
   if (!supabase) return { data: null, error: "Faltan las variables de Supabase." };
 
-  const { data, error } = await supabase.rpc("gestionesjj_estudiante_mi_ficha");
+  const { data, error } = await supabase.rpc("gestionesjj_estudiante_mi_ficha_perfil");
   if (error) return { data: null, error: error.message };
 
   const fila = (Array.isArray(data) ? data[0] : data) as
@@ -495,9 +494,7 @@ export async function fetchMiFicha(): Promise<{ data: MiFicha | null; error: str
         foto_path: string | null;
         fecha_nacimiento: string | null;
         pais: string | null;
-        reflexion_quien_soy: string | null;
-        reflexion_proposito: string | null;
-        reflexion_recuerdo: string | null;
+        perfil_respuestas: Record<string, string> | null;
       }
     | null;
   if (!fila) return { data: null, error: null };
@@ -507,20 +504,52 @@ export async function fetchMiFicha(): Promise<{ data: MiFicha | null; error: str
       tieneFoto: Boolean(fila.foto_path),
       fechaNacimiento: fila.fecha_nacimiento,
       pais: fila.pais,
-      reflexionQuienSoy: fila.reflexion_quien_soy,
-      reflexionProposito: fila.reflexion_proposito,
-      reflexionRecuerdo: fila.reflexion_recuerdo,
+      respuestas: fila.perfil_respuestas ?? {},
     },
     error: null,
   };
 }
 
+export type MiPreguntaPerfil = { id: string; texto: string; textoEn: string | null; textoPt: string | null };
+
+/** Preguntas activas del perfil (las define el docente). */
+export async function fetchPreguntasMiPerfil(): Promise<{ data: MiPreguntaPerfil[]; error: string | null }> {
+  const supabase = getSupabaseClient();
+  if (!supabase) return { data: [], error: "Faltan las variables de Supabase." };
+
+  // En la vista previa quien mira es el owner: lee la tabla directo (RLS de owner).
+  const { data, error } = vistaPreviaActiva()
+    ? await supabase
+        .from("gestionesjj_perfil_preguntas")
+        .select("id, texto, texto_en, texto_pt")
+        .eq("activa", true)
+        .order("orden")
+        .order("created_at")
+    : await supabase.rpc("gestionesjj_estudiante_perfil_preguntas");
+  if (error) return { data: [], error: error.message };
+
+  const filas = (data ?? []) as Array<{ id: string; texto: string; texto_en: string | null; texto_pt: string | null }>;
+  return { data: filas.map((f) => ({ id: f.id, texto: f.texto, textoEn: f.texto_en, textoPt: f.texto_pt })), error: null };
+}
+
+/**
+ * Semana desde la que este curso le bloquea las tareas al estudiante porque
+ * no ha completado su perfil, o null si no tiene bloqueo.
+ */
+export async function fetchMiBloqueoPerfil(cursoId: string): Promise<{ data: number | null; error: string | null }> {
+  if (vistaPreviaActiva()) return { data: null, error: null };
+  const supabase = getSupabaseClient();
+  if (!supabase) return { data: null, error: "Faltan las variables de Supabase." };
+
+  const { data, error } = await supabase.rpc("gestionesjj_estudiante_bloqueo_perfil", { p_curso_id: cursoId });
+  if (error) return { data: null, error: error.message };
+  return { data: typeof data === "number" ? data : null, error: null };
+}
+
 export async function guardarMiFicha(payload: {
   fechaNacimiento: string | null;
   pais: string | null;
-  reflexionQuienSoy: string | null;
-  reflexionProposito: string | null;
-  reflexionRecuerdo: string | null;
+  respuestas: Record<string, string>;
 }): Promise<{ error: string | null }> {
   if (vistaPreviaActiva()) return { error: AVISO_VISTA_PREVIA };
   const token = await getAuthToken();

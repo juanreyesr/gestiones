@@ -2,8 +2,10 @@
 
 import {
   Cake,
+  CheckCircle2,
   ChevronDown,
   ChevronUp,
+  CircleAlert,
   KeyRound,
   MessageCircle,
   Pencil,
@@ -39,10 +41,12 @@ import { estudiantesConCumpleanosEstaSemana, type EstudianteCumpleanos } from "@
 import { exportFichasCredencialesPdf } from "@/lib/cursos/fichas-pdf";
 import { fetchMensajesNoLeidosPorEstudiante } from "@/lib/cursos/mensajes";
 import { fetchPerfilesGlobalesPorIds } from "@/lib/cursos/perfil-estudiante";
+import { faltantesPerfil, fetchPreguntasPerfil, perfilCompleto } from "@/lib/cursos/perfil-preguntas";
 import {
   TIPO_EVENTO_LABELS,
   formatearFecha,
   formatearFechaHora,
+  type CarneModo,
   type EstudianteEventoRow,
   type EstudianteRow,
 } from "@/lib/cursos/types";
@@ -51,7 +55,18 @@ import { PerfilEstudianteModal } from "./perfil-estudiante-modal";
 import { SolicitudesPendientesSection } from "./solicitudes-pendientes-section";
 import { BTN_GHOST, BTN_PRIMARY, EmptyState, ErrorBanner, Field } from "./ui";
 
-export function CursoEstudiantesTab({ cursoId, cursoNombre }: { cursoId: string; cursoNombre: string }) {
+type EstadoPerfil = { completo: boolean; faltan: string[] };
+
+export function CursoEstudiantesTab({
+  carneModo = "manual",
+  cursoId,
+  cursoNombre,
+}: {
+  carneModo?: CarneModo;
+  cursoId: string;
+  cursoNombre: string;
+}) {
+  const carneAutomatico = carneModo === "automatico";
   const [estudiantes, setEstudiantes] = useState<EstudianteRow[]>([]);
   const [eventos, setEventos] = useState<EstudianteEventoRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -74,6 +89,7 @@ export function CursoEstudiantesTab({ cursoId, cursoNombre }: { cursoId: string;
   const [chatObjetivo, setChatObjetivo] = useState<EstudianteRow | null>(null);
   const [perfilObjetivo, setPerfilObjetivo] = useState<EstudianteRow | null>(null);
   const [cumpleanos, setCumpleanos] = useState<EstudianteCumpleanos[]>([]);
+  const [estadosPerfil, setEstadosPerfil] = useState<Record<string, EstadoPerfil>>({});
 
   const cargar = useCallback(async () => {
     setLoading(true);
@@ -87,13 +103,22 @@ export function CursoEstudiantesTab({ cursoId, cursoNombre }: { cursoId: string;
     setLoading(false);
 
     const idsConAcceso = estudiantesData.map((e) => e.estudiante_id).filter((id): id is string => Boolean(id));
-    const [{ data: estados }, { data: noLeidos }, { data: perfiles }] = await Promise.all([
+    const [{ data: estados }, { data: noLeidos }, { data: perfiles }, { data: preguntasActivas }] = await Promise.all([
       fetchEstadosAccesoGlobal(idsConAcceso),
       fetchMensajesNoLeidosPorEstudiante(idsConAcceso),
       fetchPerfilesGlobalesPorIds(idsConAcceso),
+      fetchPreguntasPerfil(true),
     ]);
     setEstadosAcceso(estados);
     setMensajesNoLeidos(noLeidos);
+    setEstadosPerfil(
+      Object.fromEntries(
+        idsConAcceso.map((id) => [
+          id,
+          { completo: perfilCompleto(perfiles.get(id), preguntasActivas), faltan: faltantesPerfil(perfiles.get(id), preguntasActivas) },
+        ]),
+      ),
+    );
 
     const fechasNacimiento = new Map(idsConAcceso.map((id) => [id, perfiles.get(id)?.fecha_nacimiento ?? null]));
     const activosConAcceso = estudiantesData
@@ -117,7 +142,8 @@ export function CursoEstudiantesTab({ cursoId, cursoNombre }: { cursoId: string;
       curso_id: cursoId,
       nombre: nombre.trim(),
       correo: correo.trim() || null,
-      carne: carne.trim() || null,
+      // En modo automático el trigger de la base de datos asigna el siguiente carné.
+      carne: carneAutomatico ? null : carne.trim() || null,
     });
     setGuardando(false);
     if (insertError) {
@@ -199,6 +225,7 @@ export function CursoEstudiantesTab({ cursoId, cursoNombre }: { cursoId: string;
   const retirados = estudiantes.filter((e) => e.estado === "retirado");
   const estudiantesPorId = new Map(estudiantes.map((e) => [e.id, e.nombre]));
   const activosConAcceso = activos.filter((e) => e.estudiante_id).length;
+  const perfilesCompletos = activos.filter((e) => e.estudiante_id && estadosPerfil[e.estudiante_id]?.completo).length;
 
   return (
     <div className="grid gap-4">
@@ -216,12 +243,18 @@ export function CursoEstudiantesTab({ cursoId, cursoNombre }: { cursoId: string;
         </div>
       ) : null}
 
-      <SolicitudesPendientesSection cursoId={cursoId} onResuelto={cargar} />
+      <SolicitudesPendientesSection carneAutomatico={carneAutomatico} cursoId={cursoId} onResuelto={cargar} />
 
       <div className="flex flex-wrap items-center justify-between gap-3 border border-white/10 bg-white/6 p-4">
         <div>
           <p className="text-sm font-semibold text-white">Acceso de estudiantes al curso</p>
           <p className="text-xs text-slate-400">{activosConAcceso} de {activos.length} estudiantes activos con acceso otorgado.</p>
+          {activosConAcceso ? (
+            <p className="text-xs text-slate-400">
+              Perfil completo: {perfilesCompletos} de {activosConAcceso}
+            </p>
+          ) : null}
+          {carneAutomatico ? <p className="text-xs text-slate-500">Carné automático: se asigna solo al agregar o aprobar a alguien.</p> : null}
         </div>
         <button className={BTN_GHOST} disabled={imprimiendoFichas || !activosConAcceso} onClick={handleImprimirFichasCurso} type="button">
           <Printer className="h-4 w-4" />
@@ -237,7 +270,11 @@ export function CursoEstudiantesTab({ cursoId, cursoNombre }: { cursoId: string;
           <input className="field" onChange={(event) => setCorreo(event.target.value)} value={correo} />
         </Field>
         <Field label="Carné">
-          <input className="field" onChange={(event) => setCarne(event.target.value)} value={carne} />
+          {carneAutomatico ? (
+            <input className="field" disabled placeholder="Automático" value="" />
+          ) : (
+            <input className="field" onChange={(event) => setCarne(event.target.value)} value={carne} />
+          )}
         </Field>
         <div className="flex items-end">
           <button className={BTN_PRIMARY} disabled={guardando} onClick={handleAgregar} type="button">
@@ -264,6 +301,9 @@ export function CursoEstudiantesTab({ cursoId, cursoNombre }: { cursoId: string;
                   {[estudiante.correo, estudiante.carne].filter(Boolean).join(" · ") || "Sin datos de contacto"}
                 </div>
                 <div className="text-xs text-slate-500">Asignado: {formatearFechaHora(estudiante.asignado_en)}</div>
+                {estudiante.estado === "activo" && estudiante.estudiante_id && estadosPerfil[estudiante.estudiante_id] ? (
+                  <EstadoPerfilChip estado={estadosPerfil[estudiante.estudiante_id]} onClick={() => setPerfilObjetivo(estudiante)} />
+                ) : null}
               </div>
               <div className="flex flex-wrap items-center gap-2">
                 {estudiante.estado === "activo" ? (
@@ -451,6 +491,24 @@ export function CursoEstudiantesTab({ cursoId, cursoNombre }: { cursoId: string;
         />
       ) : null}
     </div>
+  );
+}
+
+function EstadoPerfilChip({ estado, onClick }: { estado: EstadoPerfil; onClick: () => void }) {
+  return (
+    <button
+      className={`mt-1 inline-flex items-center gap-1 border px-2 py-0.5 text-[11px] font-semibold ${
+        estado.completo
+          ? "border-emerald-300/40 bg-emerald-300/10 text-emerald-200"
+          : "border-amber-300/40 bg-amber-300/10 text-amber-100"
+      }`}
+      onClick={onClick}
+      title={estado.completo ? "Ver su perfil" : `Le falta: ${estado.faltan.join(", ")}`}
+      type="button"
+    >
+      {estado.completo ? <CheckCircle2 className="h-3 w-3" /> : <CircleAlert className="h-3 w-3" />}
+      {estado.completo ? "Perfil completo" : `Perfil incompleto (falta ${estado.faltan.join(", ")})`}
+    </button>
   );
 }
 

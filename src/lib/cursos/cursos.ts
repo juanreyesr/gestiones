@@ -1,6 +1,6 @@
 import { getSupabaseClient } from "@/lib/supabase";
 import { borrarArchivos, copiarArchivo, rutaArchivoCurso } from "./archivos";
-import type { CursoConUniversidadRow, CursoImpartidoRow, EstadoCurso } from "./types";
+import type { CarneModo, CursoConUniversidadRow, CursoImpartidoRow, EstadoCurso } from "./types";
 
 export async function fetchCursosPorUniversidad(universidadId: string) {
   const supabase = getSupabaseClient();
@@ -61,6 +61,7 @@ export async function insertCurso(payload: {
   horario?: string | null;
   estado?: EstadoCurso;
   docente_nombre?: string | null;
+  carne_modo?: CarneModo;
 }) {
   const supabase = getSupabaseClient();
   if (!supabase) return { id: null as string | null, error: "Faltan las variables de Supabase." };
@@ -79,6 +80,8 @@ export async function updateCurso(
     horario?: string | null;
     estado?: EstadoCurso;
     docente_nombre?: string | null;
+    carne_modo?: CarneModo;
+    perfil_bloqueo_semana?: number | null;
   },
 ) {
   const supabase = getSupabaseClient();
@@ -159,6 +162,7 @@ export async function clonarCurso(
     horario?: string | null;
     descripcion?: string | null;
     docente_nombre?: string | null;
+    carne_modo?: CarneModo;
   },
 ) {
   const supabase = getSupabaseClient();
@@ -174,6 +178,7 @@ export async function clonarCurso(
       horario: destino.horario ?? null,
       descripcion: destino.descripcion ?? null,
       docente_nombre: destino.docente_nombre ?? null,
+      carne_modo: destino.carne_modo ?? "manual",
       origen_curso_id: origenId,
     })
     .select("id")

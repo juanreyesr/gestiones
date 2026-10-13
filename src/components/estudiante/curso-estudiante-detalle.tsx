@@ -9,6 +9,7 @@ import {
   type TareaEstudianteVista,
 } from "@/components/estudiante/curso-contenido-lista";
 import {
+  fetchMiBloqueoPerfil,
   fetchMiEstadoCurso,
   fetchMisActividades,
   fetchMisArchivosEntrega,
@@ -22,6 +23,7 @@ import {
   type MiSemana,
 } from "@/lib/estudiante/estudiante-client";
 import { useIdioma } from "./idioma-context";
+import { PerfilModal } from "./perfil-modal";
 
 export function CursoEstudianteDetalle({ curso, onVolver }: { curso: MiCurso; onVolver: () => void }) {
   const [semanas, setSemanas] = useState<MiSemana[]>([]);
@@ -33,17 +35,20 @@ export function CursoEstudianteDetalle({ curso, onVolver }: { curso: MiCurso; on
   const [cargandoSemanaId, setCargandoSemanaId] = useState<string | null>(null);
   const [subiendoTareaId, setSubiendoTareaId] = useState<string | null>(null);
   const [error, setError] = useState("");
+  const [bloqueoDesdeSemana, setBloqueoDesdeSemana] = useState<number | null>(null);
+  const [perfilAbierto, setPerfilAbierto] = useState(false);
   const { idioma, t } = useIdioma();
 
   useEffect(() => {
     let cancelado = false;
     // eslint-disable-next-line react-hooks/set-state-in-effect -- carga inicial de semanas al abrir el curso
     setCargando(true);
-    Promise.all([fetchMisSemanas(curso.cursoId), fetchMiEstadoCurso(curso.cursoId)]).then(
-      ([{ data, error: fetchError }, { data: estado }]) => {
+    Promise.all([fetchMisSemanas(curso.cursoId), fetchMiEstadoCurso(curso.cursoId), fetchMiBloqueoPerfil(curso.cursoId)]).then(
+      ([{ data, error: fetchError }, { data: estado }, { data: bloqueo }]) => {
         if (cancelado) return;
         setSemanas(data);
         setEstadoCurso(estado);
+        setBloqueoDesdeSemana(bloqueo);
         setError(fetchError ?? "");
         setCargando(false);
       },
@@ -107,6 +112,23 @@ export function CursoEstudianteDetalle({ curso, onVolver }: { curso: MiCurso; on
     setArchivosPorTarea((prev) => ({ ...prev, [tareaId]: data }));
   }, []);
 
+  // Al guardar o cerrar "Mi perfil" se vuelve a revisar el bloqueo; si se
+  // levantó, se recargan las tareas de las semanas ya abiertas.
+  const revisarBloqueo = useCallback(async () => {
+    const { data: bloqueo } = await fetchMiBloqueoPerfil(curso.cursoId);
+    setBloqueoDesdeSemana(bloqueo);
+    if (bloqueo !== null || bloqueoDesdeSemana === null) return;
+    const semanasCargadas = Object.keys(tareasPorSemana);
+    const recargadas = await Promise.all(semanasCargadas.map((semanaId) => fetchMisActividades(semanaId)));
+    setTareasPorSemana((prev) => {
+      const siguiente = { ...prev };
+      semanasCargadas.forEach((semanaId, i) => {
+        siguiente[semanaId] = recargadas[i].data;
+      });
+      return siguiente;
+    });
+  }, [bloqueoDesdeSemana, curso.cursoId, tareasPorSemana]);
+
   const handleDescargarArchivoPropio = useCallback(async (archivo: ArchivoPropioVista) => {
     const { url, error: fetchError } = await obtenerUrlArchivoPropio(archivo.id);
     if (fetchError || !url) {
@@ -162,6 +184,8 @@ export function CursoEstudianteDetalle({ curso, onVolver }: { curso: MiCurso; on
             semanas={semanas}
             tareas={{
               porSemana: tareasPorSemana,
+              bloqueoPerfil:
+                bloqueoDesdeSemana !== null ? { desdeSemana: bloqueoDesdeSemana, onCompletarPerfil: () => setPerfilAbierto(true) } : null,
               subiendoTareaId,
               onSubirArchivo: handleSubirArchivo,
               archivosPorTarea,
@@ -171,6 +195,16 @@ export function CursoEstudianteDetalle({ curso, onVolver }: { curso: MiCurso; on
           />
         )}
       </div>
+
+      {perfilAbierto ? (
+        <PerfilModal
+          onClose={() => {
+            setPerfilAbierto(false);
+            void revisarBloqueo();
+          }}
+          onGuardado={() => void revisarBloqueo()}
+        />
+      ) : null}
     </div>
   );
 }

@@ -13,7 +13,9 @@ const UUID_RE = /^[0-9a-f-]{36}$/i;
  * El docente aprueba una solicitud de autoasignacion: crea (o reutiliza)
  * la identidad global y la cuenta real de Supabase Auth con la contraseña
  * que la persona eligio al pedir la asignacion, y crea la inscripcion al
- * curso con el carné que el docente le asigna aquí.
+ * curso con el carné que el docente le asigna aquí. Si el curso asigna el
+ * carné de forma automática y no se escribe uno, lo pone el trigger de la
+ * base de datos con el siguiente número del correlativo (migración 056).
  */
 export async function POST(request: Request) {
   if (!rateLimit(request, { key: "estudiantes-aprobar-solicitud", limit: 30, windowMs: 60_000 })) {
@@ -35,10 +37,6 @@ export async function POST(request: Request) {
   if (!UUID_RE.test(solicitudId)) {
     return NextResponse.json({ error: "Solicitud inválida." }, { status: 422 });
   }
-  if (!carne) {
-    return NextResponse.json({ error: "Asigna un número de carné para aprobar." }, { status: 422 });
-  }
-
   const { data: solicitud, error: solicitudError } = await admin
     .from("gestionesjj_curso_solicitudes")
     .select("id, curso_id, nombre, correo, contrasena_cifrada, estado")
@@ -49,6 +47,15 @@ export async function POST(request: Request) {
   }
   if (solicitud.estado !== "pendiente") {
     return NextResponse.json({ error: "Esta solicitud ya fue resuelta." }, { status: 409 });
+  }
+
+  const { data: curso } = await admin
+    .from("gestionesjj_cursos_impartidos")
+    .select("carne_modo")
+    .eq("id", solicitud.curso_id)
+    .maybeSingle();
+  if (!carne && curso?.carne_modo !== "automatico") {
+    return NextResponse.json({ error: "Asigna un número de carné para aprobar." }, { status: 422 });
   }
 
   const { texto: contrasena, error: descifradoError } = descifrarContrasena(solicitud.contrasena_cifrada);
@@ -107,10 +114,10 @@ export async function POST(request: Request) {
       curso_id: solicitud.curso_id,
       nombre: solicitud.nombre,
       correo: solicitud.correo,
-      carne,
+      carne: carne || null,
       estudiante_id: estudianteId,
     })
-    .select("id")
+    .select("id, carne")
     .single();
   if (insertInscripcionError || !cursoEstudiante) {
     return NextResponse.json({ error: insertInscripcionError?.message ?? "No se pudo inscribir al estudiante." }, { status: 500 });
@@ -126,11 +133,11 @@ export async function POST(request: Request) {
 
   const { error: updateSolicitudError } = await admin
     .from("gestionesjj_curso_solicitudes")
-    .update({ estado: "aprobada", carne, curso_estudiante_id: cursoEstudiante.id, resuelto_en: new Date().toISOString() })
+    .update({ estado: "aprobada", carne: cursoEstudiante.carne, curso_estudiante_id: cursoEstudiante.id, resuelto_en: new Date().toISOString() })
     .eq("id", solicitudId);
   if (updateSolicitudError) {
     return NextResponse.json({ error: updateSolicitudError.message }, { status: 500 });
   }
 
-  return NextResponse.json({ ok: true });
+  return NextResponse.json({ ok: true, carne: cursoEstudiante.carne as string | null });
 }

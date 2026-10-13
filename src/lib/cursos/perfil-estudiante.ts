@@ -6,9 +6,8 @@ export type PerfilEstudianteGlobal = {
   foto_path: string | null;
   fecha_nacimiento: string | null;
   pais: string | null;
-  reflexion_quien_soy: string | null;
-  reflexion_proposito: string | null;
-  reflexion_recuerdo: string | null;
+  /** Respuestas a las preguntas del perfil: id de pregunta -> texto. */
+  perfil_respuestas: Record<string, string> | null;
 };
 
 /** Ficha de perfil que el propio estudiante llenó (identidad global, no por curso). El owner ya tiene acceso directo por RLS. */
@@ -18,7 +17,7 @@ export async function fetchPerfilEstudianteGlobal(estudianteId: string) {
 
   const { data, error } = await supabase
     .from("gestionesjj_estudiantes")
-    .select("foto_path, fecha_nacimiento, pais, reflexion_quien_soy, reflexion_proposito, reflexion_recuerdo")
+    .select("foto_path, fecha_nacimiento, pais, perfil_respuestas")
     .eq("id", estudianteId)
     .maybeSingle();
 
@@ -26,7 +25,7 @@ export async function fetchPerfilEstudianteGlobal(estudianteId: string) {
   return { data: data as PerfilEstudianteGlobal | null, error: null };
 }
 
-/** Perfiles globales de varios estudiantes a la vez (para el reporte del curso). Clave: id global (gestionesjj_estudiantes.id). */
+/** Perfiles globales de varios estudiantes a la vez (lista y reporte del curso). Clave: id global (gestionesjj_estudiantes.id). */
 export async function fetchPerfilesGlobalesPorIds(estudianteIds: string[]) {
   const supabase = getSupabaseClient();
   if (!supabase) return { data: new Map<string, PerfilEstudianteGlobal>(), error: "Faltan las variables de Supabase." };
@@ -34,7 +33,7 @@ export async function fetchPerfilesGlobalesPorIds(estudianteIds: string[]) {
 
   const { data, error } = await supabase
     .from("gestionesjj_estudiantes")
-    .select("id, foto_path, fecha_nacimiento, pais, reflexion_quien_soy, reflexion_proposito, reflexion_recuerdo")
+    .select("id, foto_path, fecha_nacimiento, pais, perfil_respuestas")
     .in("id", estudianteIds);
 
   if (error) return { data: new Map<string, PerfilEstudianteGlobal>(), error: error.message };

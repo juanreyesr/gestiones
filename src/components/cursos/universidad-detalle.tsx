@@ -14,8 +14,8 @@ import {
   setEstadoCurso,
   updateCurso,
 } from "@/lib/cursos/cursos";
-import { ESTADO_CURSO_LABELS, type CursoConUniversidadRow, type CursoImpartidoRow, type UniversidadRow } from "@/lib/cursos/types";
-import { BTN_GHOST, BTN_PRIMARY, CardBox, Chip, EmptyState, ErrorBanner, Field } from "./ui";
+import { ESTADO_CURSO_LABELS, type CarneModo, type CursoConUniversidadRow, type CursoImpartidoRow, type UniversidadRow } from "@/lib/cursos/types";
+import { BTN_GHOST, BTN_PRIMARY, CardBox, CarneModoField, Chip, EmptyState, ErrorBanner, Field } from "./ui";
 
 const ESTADO_CHIP: Record<string, string> = {
   activo: "border-emerald-300/40 bg-emerald-300/15 text-emerald-200",
@@ -278,6 +278,7 @@ function EditarCursoModal({
   const [horario, setHorario] = useState(curso.horario ?? "");
   const [descripcion, setDescripcion] = useState(curso.descripcion ?? "");
   const [docenteNombre, setDocenteNombre] = useState(curso.docente_nombre ?? "");
+  const [carneModo, setCarneModo] = useState<CarneModo>(curso.carne_modo ?? "manual");
   const [guardando, setGuardando] = useState(false);
   const [error, setError] = useState("");
 
@@ -294,6 +295,7 @@ function EditarCursoModal({
       horario: horario.trim() || null,
       descripcion: descripcion.trim() || null,
       docente_nombre: docenteNombre.trim() || null,
+      carne_modo: carneModo,
     });
     setGuardando(false);
     if (updateError) {
@@ -332,6 +334,7 @@ function EditarCursoModal({
                 value={docenteNombre}
               />
             </Field>
+            <CarneModoField onChange={setCarneModo} value={carneModo} />
             <Field label="Descripción">
               <textarea
                 className="field"
@@ -377,6 +380,7 @@ function CrearCursoWizard({
   const [horario, setHorario] = useState("");
   const [descripcion, setDescripcion] = useState("");
   const [docenteNombre, setDocenteNombre] = useState("");
+  const [carneModo, setCarneModo] = useState<CarneModo>("manual");
   const [clonando, setClonando] = useState(false);
   const [error, setError] = useState("");
 
@@ -395,6 +399,7 @@ function CrearCursoWizard({
     setHorario(curso?.horario ?? "");
     setDescripcion(curso?.descripcion ?? "");
     setDocenteNombre(curso?.docente_nombre ?? "");
+    setCarneModo(curso?.carne_modo ?? "manual");
     setPaso("formulario");
   };
 
@@ -415,6 +420,7 @@ function CrearCursoWizard({
         horario: horario.trim() || null,
         descripcion: descripcion.trim() || null,
         docente_nombre: docenteNombre.trim() || null,
+        carne_modo: carneModo,
       });
       setClonando(false);
       if (cloneError) {
@@ -430,6 +436,7 @@ function CrearCursoWizard({
         horario: horario.trim() || null,
         descripcion: descripcion.trim() || null,
         docente_nombre: docenteNombre.trim() || null,
+        carne_modo: carneModo,
       });
       setClonando(false);
       if (insertError) {
@@ -518,6 +525,7 @@ function CrearCursoWizard({
                   value={docenteNombre}
                 />
               </Field>
+              <CarneModoField onChange={setCarneModo} value={carneModo} />
               <Field label="Descripción">
                 <textarea
                   className="field"

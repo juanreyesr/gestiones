@@ -8,7 +8,16 @@ import { formatearFechaHora, type SolicitudRow } from "@/lib/cursos/types";
 import { ErrorBanner } from "./ui";
 
 /** Solicitudes de autoasignacion (QR/enlace) pendientes de revisar para este curso. */
-export function SolicitudesPendientesSection({ cursoId, onResuelto }: { cursoId: string; onResuelto: () => void | Promise<void> }) {
+export function SolicitudesPendientesSection({
+  carneAutomatico = false,
+  cursoId,
+  onResuelto,
+}: {
+  /** El curso asigna el carné solo: el campo queda opcional (vacío = siguiente del correlativo). */
+  carneAutomatico?: boolean;
+  cursoId: string;
+  onResuelto: () => void | Promise<void>;
+}) {
   const [solicitudes, setSolicitudes] = useState<SolicitudRow[]>([]);
   const [cargando, setCargando] = useState(true);
   const [carnes, setCarnes] = useState<Record<string, string>>({});
@@ -30,7 +39,7 @@ export function SolicitudesPendientesSection({ cursoId, onResuelto }: { cursoId:
 
   const handleAprobar = async (solicitud: SolicitudRow) => {
     const carne = (carnes[solicitud.id] ?? "").trim();
-    if (!carne) {
+    if (!carne && !carneAutomatico) {
       setError("Asigna un número de carné antes de aprobar.");
       return;
     }
@@ -67,7 +76,12 @@ export function SolicitudesPendientesSection({ cursoId, onResuelto }: { cursoId:
           <p className="text-sm font-semibold text-amber-100">
             {solicitudes.length} solicitud{solicitudes.length === 1 ? "" : "es"} de asignación pendiente{solicitudes.length === 1 ? "" : "s"}
           </p>
-          <p className="text-xs text-amber-200/80">Alguien pidió unirse a este curso desde el enlace/QR. Asígnale un carné para aprobarla.</p>
+          <p className="text-xs text-amber-200/80">
+            Alguien pidió unirse a este curso desde el enlace/QR.{" "}
+            {carneAutomatico
+              ? "Al aprobarla recibe el siguiente carné del correlativo."
+              : "Asígnale un carné para aprobarla."}
+          </p>
         </div>
       </div>
 
@@ -83,10 +97,10 @@ export function SolicitudesPendientesSection({ cursoId, onResuelto }: { cursoId:
             </div>
             <div className="flex flex-wrap items-center gap-2">
               <input
-                className="field w-32"
+                className="field w-36"
                 disabled={procesandoId === solicitud.id}
                 onChange={(event) => setCarnes((prev) => ({ ...prev, [solicitud.id]: event.target.value }))}
-                placeholder="Carné"
+                placeholder={carneAutomatico ? "Carné automático" : "Carné"}
                 value={carnes[solicitud.id] ?? ""}
               />
               <button
