@@ -34,3 +34,27 @@ export function mensajeCumpleanos(nombre: string) {
   const primerNombre = primerNombreDe(nombre);
   return `¡Feliz cumpleaños${primerNombre ? `, ${primerNombre}` : ""}! Espero que hoy pases un muy feliz cumpleaños. Que Dios te bendiga grandemente.`;
 }
+
+/**
+ * Mensaje para enviar un cuestionario o evaluacion por WhatsApp. Si el
+ * paciente es menor, va dirigido a los padres y pide que respondan por separado
+ * cuando el enlace admite mas de una respuesta.
+ */
+export function mensajeEvaluacion(
+  nombre: string,
+  url: string,
+  opciones: { esMenor: boolean; respuestas: number },
+  hora = horaGuatemala()
+) {
+  const primerNombre = primerNombreDe(nombre);
+  const cuerpo = opciones.esMenor
+    ? `te comparto un breve cuestionario sobre ${primerNombre || "tu hijo o hija"} para nuestra próxima sesión.${
+        opciones.respuestas > 1 ? " Si en casa hay dos cuidadores, es mejor que cada uno lo responda por separado desde el mismo enlace." : ""
+      }`
+    : "te comparto un breve cuestionario para nuestra próxima sesión.";
+  return [
+    `${saludoPorHora(hora)}, ${cuerpo} Tus respuestas son confidenciales y las revisaremos juntos en sesión:`,
+    url,
+    "Muchas gracias, saludos.",
+  ].join("\n\n");
+}

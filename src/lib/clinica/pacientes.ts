@@ -1,4 +1,5 @@
 import { getSupabaseClient } from "@/lib/supabase";
+import type { Responsable } from "./consentimiento";
 import type { HijoInfo, Moneda, PacienteEstado, PacientePayload, PacienteRow } from "./types";
 
 type RawPaciente = {
@@ -38,10 +39,13 @@ type RawPaciente = {
   whatsapp_recordatorios: boolean | null;
   tarifa: number | string | null;
   tarifa_moneda: Moneda | null;
+  es_menor: boolean | null;
+  responsables: Responsable[] | null;
+  identificacion: string | null;
 };
 
 const PACIENTE_COLUMNS =
-  "id,nombre,telefono,email,pais,zona_horaria,fecha_nacimiento,genero,ocupacion,escolaridad,estado_civil,direccion,emergencia_nombre,emergencia_telefono,emergencia_relacion,motivo_consulta,antecedentes_medicos,antecedentes_psicologicos,antecedentes_familiares,medicacion_actual,referido_por,notas_generales,tiene_hijos,hijos,vive_solo,convive_con,convive_otros,horario_trabajo,estado,created_at,datos_token,datos_completados_at,consentimiento_aceptado_at,whatsapp_recordatorios,tarifa,tarifa_moneda";
+  "id,nombre,telefono,email,pais,zona_horaria,fecha_nacimiento,genero,ocupacion,escolaridad,estado_civil,direccion,emergencia_nombre,emergencia_telefono,emergencia_relacion,motivo_consulta,antecedentes_medicos,antecedentes_psicologicos,antecedentes_familiares,medicacion_actual,referido_por,notas_generales,tiene_hijos,hijos,vive_solo,convive_con,convive_otros,horario_trabajo,estado,created_at,datos_token,datos_completados_at,consentimiento_aceptado_at,whatsapp_recordatorios,tarifa,tarifa_moneda,es_menor,responsables,identificacion";
 
 function mapPaciente(row: RawPaciente): PacienteRow {
   return {
@@ -81,6 +85,9 @@ function mapPaciente(row: RawPaciente): PacienteRow {
     whatsappRecordatorios: row.whatsapp_recordatorios ?? true,
     tarifa: row.tarifa === null || row.tarifa === undefined ? null : Number(row.tarifa),
     tarifaMoneda: row.tarifa_moneda ?? "GTQ",
+    esMenor: row.es_menor ?? false,
+    responsables: Array.isArray(row.responsables) ? row.responsables : [],
+    identificacion: row.identificacion ?? null,
   };
 }
 
@@ -182,4 +189,58 @@ export async function actualizarTarifa(pacienteId: string, tarifa: number | null
     if (citasError) return { error: citasError.message };
   }
   return { error: null };
+}
+
+/** Marca (o desmarca) que el paciente es menor de edad. */
+export async function marcarMenor(id: string, esMenor: boolean) {
+  const supabase = getSupabaseClient();
+  if (!supabase) return { error: "Faltan las variables de Supabase." };
+  const { error } = await supabase.from("gestionesjj_pacientes").update({ es_menor: esMenor }).eq("id", id);
+  return { error: error?.message ?? null };
+}
+
+export type ConsentimientoRow = {
+  id: string;
+  version: string;
+  esMenor: boolean;
+  texto: string;
+  firmantes: Responsable[];
+  asentimientoMenor: boolean | null;
+  declaraTutela: boolean | null;
+  aceptadoAt: string;
+};
+
+/** Historial de consentimientos aceptados por el paciente (o sus padres), del mas reciente al mas antiguo. */
+export async function fetchConsentimientos(pacienteId: string) {
+  const supabase = getSupabaseClient();
+  if (!supabase) return { data: [] as ConsentimientoRow[], error: "Faltan las variables de Supabase." };
+  const { data, error } = await supabase
+    .from("gestionesjj_consentimientos")
+    .select("id,version,es_menor,texto,firmantes,asentimiento_menor,declara_tutela,aceptado_at")
+    .eq("paciente_id", pacienteId)
+    .order("aceptado_at", { ascending: false });
+  if (error) return { data: [] as ConsentimientoRow[], error: error.message };
+  type Raw = {
+    id: string;
+    version: string;
+    es_menor: boolean;
+    texto: string;
+    firmantes: Responsable[] | null;
+    asentimiento_menor: boolean | null;
+    declara_tutela: boolean | null;
+    aceptado_at: string;
+  };
+  return {
+    data: ((data ?? []) as Raw[]).map((r) => ({
+      id: r.id,
+      version: r.version,
+      esMenor: r.es_menor,
+      texto: r.texto,
+      firmantes: Array.isArray(r.firmantes) ? r.firmantes : [],
+      asentimientoMenor: r.asentimiento_menor,
+      declaraTutela: r.declara_tutela,
+      aceptadoAt: r.aceptado_at,
+    })),
+    error: null,
+  };
 }

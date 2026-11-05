@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
-import { rateLimit, rateLimitResponse } from "@/lib/server/rate-limit";
+import { CONSENTIMIENTO_VERSION, consentimientoComoTexto, type Responsable } from "@/lib/clinica/consentimiento";
+import { getClientIp, rateLimit, rateLimitResponse } from "@/lib/server/rate-limit";
 import { getSupabaseClient } from "@/lib/supabase";
 
 export const runtime = "nodejs";
@@ -30,6 +31,9 @@ type RawDatos = {
   horario_trabajo: string | null;
   pais?: string | null;
   zona_horaria?: string | null;
+  es_menor?: boolean | null;
+  responsables?: Responsable[] | null;
+  identificacion?: string | null;
 };
 
 export async function GET(request: Request, { params }: { params: Promise<{ token: string }> }) {
@@ -78,6 +82,9 @@ export async function GET(request: Request, { params }: { params: Promise<{ toke
       horarioTrabajo: row.horario_trabajo,
       pais: row.pais ?? null,
       zonaHoraria: row.zona_horaria ?? null,
+      esMenor: row.es_menor ?? false,
+      responsables: Array.isArray(row.responsables) ? row.responsables : [],
+      identificacion: row.identificacion ?? null,
     },
     { headers: { "Cache-Control": "no-store" } }
   );
@@ -129,6 +136,39 @@ export async function POST(request: Request, { params }: { params: Promise<{ tok
   const { data: actual } = await supabase.rpc("gestionesjj_public_datos_get", { p_token: token });
   const filaActual = (Array.isArray(actual) ? actual[0] : actual) as RawDatos | null;
   const generoActual = filaActual?.estado === "ok" ? filaActual.genero : null;
+  // "Menor de edad" lo marca el psicologo en el expediente; no se toma del formulario.
+  const esMenor = filaActual?.estado === "ok" ? Boolean(filaActual.es_menor) : false;
+
+  // Consentimiento informado obligatorio. El texto que queda como constancia se
+  // arma aqui (no se acepta el que mande el navegador) con los mismos datos que
+  // vio quien firma.
+  if (body.consentimiento !== true) {
+    return NextResponse.json(
+      { error: "Debe aceptar el consentimiento informado para guardar su información." },
+      { status: 422 }
+    );
+  }
+  const recortar = (v: unknown, max: number) => (typeof v === "string" ? v.trim().slice(0, max) : "");
+  const responsables: Responsable[] = esMenor && Array.isArray(body.responsables)
+    ? (body.responsables as unknown[])
+        .filter((r): r is Record<string, unknown> => typeof r === "object" && r !== null)
+        .map((r) => ({
+          nombre: recortar(r.nombre, 120),
+          tipoIdentificacion: recortar(r.tipoIdentificacion, 30),
+          identificacion: recortar(r.identificacion, 40),
+          parentesco: recortar(r.parentesco, 40),
+          telefono: recortar(r.telefono, 30),
+        }))
+        .filter((r) => r.nombre !== "" || r.identificacion !== "")
+        .slice(0, 2)
+    : [];
+  const identificacion = esMenor ? "" : recortar(body.identificacion, 40);
+  const consentimientoTexto = consentimientoComoTexto({
+    esMenor,
+    pacienteNombre: str("nombre"),
+    pacienteIdentificacion: identificacion,
+    responsables,
+  });
 
   const { data, error } = await supabase.rpc("gestionesjj_public_datos_save", {
     p_token: token,
@@ -153,6 +193,14 @@ export async function POST(request: Request, { params }: { params: Promise<{ tok
     p_horario_trabajo: opt("horarioTrabajo"),
     p_pais: opt("pais")?.toUpperCase().slice(0, 2) ?? null,
     p_zona_horaria: opt("zonaHoraria")?.slice(0, 64) ?? null,
+    p_identificacion: identificacion || null,
+    p_responsables: responsables,
+    p_consentimiento_version: CONSENTIMIENTO_VERSION,
+    p_consentimiento_texto: consentimientoTexto,
+    p_asentimiento_menor: esMenor ? body.asentimientoMenor === true : null,
+    p_declara_tutela: esMenor ? body.declaraTutela === true : null,
+    p_ip: getClientIp(request).slice(0, 64),
+    p_user_agent: (request.headers.get("user-agent") ?? "").slice(0, 300),
   });
 
   if (error) {
