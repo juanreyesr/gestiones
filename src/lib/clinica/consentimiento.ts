@@ -29,13 +29,13 @@ export type Responsable = {
 
 export const RESPONSABLE_VACIO: Responsable = {
   nombre: "",
-  tipoIdentificacion: "DPI",
+  tipoIdentificacion: "Documento de identificación",
   identificacion: "",
   parentesco: "",
   telefono: "",
 };
 
-export const TIPOS_IDENTIFICACION = ["DPI", "Pasaporte", "Otro documento"] as const;
+export const TIPOS_IDENTIFICACION = ["Documento de identificación", "Pasaporte", "Otro documento"] as const;
 export const PARENTESCOS = ["Madre", "Padre", "Tutor/a legal", "Otro (con representación legal)"] as const;
 
 export type AplicaA = "todos" | "adulto" | "menor";

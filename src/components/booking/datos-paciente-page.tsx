@@ -536,7 +536,7 @@ function ResponsablesFields({ onChange, value }: { onChange: (v: Responsable[]) 
             </select>
           </label>
           <label className="grid gap-1.5">
-            <span className="text-xs font-semibold uppercase text-slate-400">Documento</span>
+            <span className="text-xs font-semibold uppercase text-slate-400">Tipo de documento</span>
             <select
               className="field-light"
               onChange={(e) => cambiar(i, "tipoIdentificacion", e.target.value)}
