@@ -41,14 +41,15 @@ export function PagadaCheckbox({
 
   useEffect(() => {
     let vivo = true;
-    if (!cita.pacienteId || cita.pagada) return;
+    // Sin pagar: para mostrar el saldo. Pagada: solo al corregir el monto recibido.
+    if (!cita.pacienteId || (cita.pagada && !otroMonto)) return;
     void fetchCobroCita(cita).then((r) => {
       if (vivo) setCobro(r);
     });
     return () => {
       vivo = false;
     };
-  }, [cita]);
+  }, [cita, otroMonto]);
 
   const registrar = async (nuevo: boolean, monto: number | null) => {
     setGuardando(true);
@@ -115,6 +116,22 @@ export function PagadaCheckbox({
 
       {recibidoTexto ? <span className="text-xs text-slate-400">{recibidoTexto}</span> : null}
 
+      {pagada && !otroMonto ? (
+        <button
+          className="inline-flex items-center gap-1 text-xs font-semibold text-slate-400 transition hover:text-slate-200"
+          disabled={guardando}
+          onClick={() => {
+            setOtroMonto(true);
+            setError("");
+          }}
+          title="Si el paciente entregó otro monto (más o menos), la diferencia pasa a la siguiente sesión"
+          type="button"
+        >
+          <Pencil className="h-3 w-3" />
+          Corregir monto recibido
+        </button>
+      ) : null}
+
       {!pagada ? (
         <label className="inline-flex cursor-pointer select-none items-center gap-1.5 text-xs text-slate-300">
           <input
@@ -131,7 +148,7 @@ export function PagadaCheckbox({
         </label>
       ) : null}
 
-      {otroMonto && !pagada ? (
+      {otroMonto ? (
         <span className="inline-flex flex-wrap items-center gap-1.5">
           <input
             aria-label="Monto recibido"
@@ -151,8 +168,13 @@ export function PagadaCheckbox({
             onClick={registrarOtroMonto}
             type="button"
           >
-            Registrar pago
+            {pagada ? "Guardar" : "Registrar pago"}
           </button>
+          {pagada ? (
+            <button className="px-1 text-xs text-slate-400" onClick={() => setOtroMonto(false)} type="button">
+              ✕
+            </button>
+          ) : null}
           {diferencia !== null && diferencia !== 0 ? (
             <span className={`text-xs ${diferencia > 0 ? "text-emerald-300" : "text-amber-300"}`}>
               {diferencia > 0

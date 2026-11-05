@@ -61,7 +61,7 @@ export async function aplicarPagoPayPal(admin: SupabaseClient, aviso: AvisoPago)
     if (!aviso.capturaOriginalId) return null;
     const { data } = await admin
       .from("gestionesjj_citas")
-      .update({ pagada: false, pagada_at: null, pago_referencia: null })
+      .update({ pagada: false, pagada_at: null, pago_referencia: null, monto_pagado: null })
       .eq("pago_referencia", aviso.capturaOriginalId)
       .select(COLUMNAS);
     const citas = (data ?? []) as unknown as RawCitaPago[];
@@ -142,10 +142,14 @@ export async function aplicarPagoPayPal(admin: SupabaseClient, aviso: AvisoPago)
     return { linea: `⚠️ No pude marcar la cita como pagada: ${esc(error.message)}`, botones: [] };
   }
 
+  // Monto real recibido: si difiere de lo que tocaba, la diferencia queda como
+  // abono a favor o pendiente para la siguiente sesión.
+  const saldoLinea = await registrarMontoRecibido(admin, cita.id, aviso);
+
   return {
     linea: `✅ Marcada como pagada: cita de <b>${esc(paciente.nombre)}</b> del ${esc(fechaHora(cita.inicio))}${
       adelantado ? " (pago por adelantado)" : ""
-    } — identificado por ${coincidencia.por}.`,
+    } — identificado por ${coincidencia.por}.${saldoLinea ? `\n${saldoLinea}` : ""}`,
     botones: [[botonDeshacerPago(cita.id)]],
     aplicado: { pacienteId: paciente.id, citaInicio: cita.inicio },
   };
@@ -197,14 +201,52 @@ export function bloquePendientesPago(citas: RawCitaPago[], maxBotones = 6) {
   return { pacientes: grupos.size, lineas, botones, total: totalPorMoneda(montos(citas)) };
 }
 
+/**
+ * Registra en la cita el monto bruto que pagó el paciente por PayPal (misma
+ * función que "Otro monto" en la Clínica). Solo si la moneda del pago es la de
+ * la cita; si no, queda como pago exacto y se avisa. Devuelve una línea para
+ * Telegram cuando hay abono, pendiente o moneda distinta.
+ */
+async function registrarMontoRecibido(admin: SupabaseClient, citaId: string, aviso: AvisoPago) {
+  if (aviso.montoValor === null || aviso.montoValor === undefined) return "";
+  const { data: fila } = await admin.from("gestionesjj_citas").select("monto,moneda").eq("id", citaId).maybeSingle();
+  const cita = fila as { monto: number | string | null; moneda: "GTQ" | "USD" | null } | null;
+  if (!cita || cita.monto === null) return "";
+  const monedaCita = cita.moneda ?? "GTQ";
+  if ((aviso.montoMoneda ?? "").toUpperCase() !== monedaCita) {
+    return `ℹ️ Pagó en ${esc(aviso.montoMoneda ?? "otra moneda")} y la cita está en ${monedaCita}: se registró como pago completo (ajústalo en la Clínica con «Corregir monto recibido» si hace falta).`;
+  }
+  const { data, error } = await admin.rpc("gestionesjj_registrar_pago", {
+    p_cita_id: citaId,
+    p_pagada: true,
+    p_monto_recibido: aviso.montoValor,
+  });
+  const r = (Array.isArray(data) ? data[0] : data) as { saldo_nuevo: number | string | null } | null;
+  if (error || !r) return "";
+  const saldo = Number(r.saldo_nuevo ?? 0);
+  if (saldo > 0) return `💰 Quedan <b>${esc(totalPorMoneda([{ monto: saldo, moneda: monedaCita }]))}</b> a favor para la siguiente sesión.`;
+  if (saldo < 0) return `⚠️ Quedan <b>${esc(totalPorMoneda([{ monto: -saldo, moneda: monedaCita }]))}</b> pendientes para la siguiente sesión.`;
+  return "";
+}
+
 /** Marca (o desmarca) una cita como pagada desde un boton de Telegram. */
 export async function marcarPagadaDesdeTelegram(admin: SupabaseClient, citaId: string, pagada: boolean) {
-  const { data, error } = await admin
-    .from("gestionesjj_citas")
-    .update(pagada ? { pagada: true, pagada_at: new Date().toISOString() } : { pagada: false, pagada_at: null, pago_referencia: null })
-    .eq("id", citaId)
-    .select(COLUMNAS)
-    .maybeSingle();
+  // Igual que la casilla "Pagada" de la Clínica: pagó lo que le tocaba (incluido
+  // el saldo de sesiones anteriores); al desmarcar se borra lo registrado.
+  const { error: rpcError } = await admin.rpc("gestionesjj_registrar_pago", {
+    p_cita_id: citaId,
+    p_pagada: pagada,
+    p_monto_recibido: null,
+  });
+  if (rpcError) return null;
+  const { data, error } = pagada
+    ? await admin.from("gestionesjj_citas").select(COLUMNAS).eq("id", citaId).maybeSingle()
+    : await admin
+        .from("gestionesjj_citas")
+        .update({ pago_referencia: null })
+        .eq("id", citaId)
+        .select(COLUMNAS)
+        .maybeSingle();
   if (error || !data) return null;
   const cita = data as unknown as RawCitaPago;
   return `${nombreDe(cita)} (${fechaHora(cita.inicio)})`;
