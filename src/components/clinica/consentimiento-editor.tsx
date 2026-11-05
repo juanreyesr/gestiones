@@ -18,7 +18,7 @@ const EJEMPLO_MENOR = {
   esMenor: true,
   pacienteNombre: "Sofía Pérez",
   responsables: [
-    { nombre: "Ana Pérez", parentesco: "Madre", tipoIdentificacion: "DPI", identificacion: "1234 56789 0101", telefono: "" },
+    { nombre: "Ana Pérez", parentesco: "Madre", tipoIdentificacion: "Documento de identificación", identificacion: "1234 56789 0101", telefono: "" },
   ],
 };
 const EJEMPLO_ADULTO = { esMenor: false, pacienteNombre: "Carlos Gómez", pacienteIdentificacion: "DPI 2345 67890 0101" };
