@@ -1,5 +1,7 @@
 /**
- * B-Breve: formato de datos (Anexo C) y validación. Sin imports en tiempo de
+ * B-Breve: formato de datos (Anexo C) y validación. El código corto B16-…
+ * ya no se usa en la aplicación (el avance se guarda solo); se conserva por
+ * compatibilidad con el Anexo C y sus casos de prueba. Sin imports en tiempo de
  * ejecución para poder probarlo con Node directamente (scripts/probar-b-breve.mjs).
  */
 
@@ -97,4 +99,42 @@ export function leerBBreve(texto: string): BBreveDatos | null {
     }
   }
   return decodificarBBreve(t);
+}
+
+/** Avance parcial del formulario (guardado automático). Todo puede estar vacío. */
+export type BBreveBorrador = {
+  nombre: string;
+  relacion: string;
+  fecha: string;
+  items: (number | null)[];
+  S1: 0 | 1 | null;
+  S2: 0 | 1 | null;
+  abierta: string;
+  extra: string;
+};
+
+/** Limpia un borrador recibido: valores fuera de escala quedan vacíos (no se inventan respuestas). */
+export function limpiarBorradorBBreve(datos: unknown): BBreveBorrador {
+  const d = (datos && typeof datos === "object" ? datos : {}) as Record<string, unknown>;
+  const texto = (k: string, max: number) => (typeof d[k] === "string" ? (d[k] as string).slice(0, max) : "");
+  const items = Array.from({ length: 16 }, (_, i) => {
+    const v = Array.isArray(d.items) ? (d.items as unknown[])[i] : null;
+    return esItem(v) ? v : null;
+  });
+  return {
+    nombre: texto("nombre", 120),
+    relacion: texto("relacion", 60),
+    fecha: /^\d{4}-\d{2}-\d{2}$/.test(texto("fecha", 10)) ? texto("fecha", 10) : "",
+    items,
+    S1: esBit(d.S1) ? d.S1 : null,
+    S2: esBit(d.S2) ? d.S2 : null,
+    abierta: texto("abierta", 4000),
+    extra: texto("extra", 4000),
+  };
+}
+
+/** Preguntas obligatorias respondidas en un borrador (16 ítems + S1 + S2 = 18). */
+export function avanceBBreve(b: Pick<BBreveBorrador, "items" | "S1" | "S2">) {
+  const respondidas = b.items.filter((v) => v !== null).length + (b.S1 !== null ? 1 : 0) + (b.S2 !== null ? 1 : 0);
+  return { respondidas, total: 18 };
 }
