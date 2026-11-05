@@ -9,6 +9,7 @@ import { fetchUltimasSesiones } from "@/lib/clinica/ultimas-sesiones";
 import type { PacienteRow } from "@/lib/clinica/types";
 import { AgendaView } from "./agenda-view";
 import { ClinicaDashboard } from "./clinica-dashboard";
+import { ConsentimientoEditor } from "./consentimiento-editor";
 import { DisponibilidadConfigView } from "./disponibilidad-config";
 import { PacienteExpediente } from "./paciente-expediente";
 import { PacienteForm } from "./paciente-form";
@@ -175,7 +176,12 @@ export function ClinicaView() {
         />
       ) : null}
 
-      {tab === "configuracion" ? <DisponibilidadConfigView /> : null}
+      {tab === "configuracion" ? (
+        <div className="grid gap-5">
+          <DisponibilidadConfigView />
+          <ConsentimientoEditor />
+        </div>
+      ) : null}
     </div>
   );
 }

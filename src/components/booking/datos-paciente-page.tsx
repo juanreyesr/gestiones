@@ -8,9 +8,12 @@ import { inferirPais, PAISES, paisDeZona, paisPorCodigo, zonaDelNavegador } from
 import { CampoFecha } from "@/components/campo-fecha";
 import { ConsentimientoModal } from "@/components/clinica/consentimiento-documento";
 import {
+  normalizarPlantilla,
   PARENTESCOS,
+  PLANTILLA_INICIAL,
   RESPONSABLE_VACIO,
   TIPOS_IDENTIFICACION,
+  type PlantillaConsentimiento,
   type Responsable,
 } from "@/lib/clinica/consentimiento";
 
@@ -72,6 +75,7 @@ type DatosRespuesta = Partial<Omit<FormState, "pais" | "zonaHoraria">> & {
   esMenor?: boolean;
   responsables?: Responsable[] | null;
   identificacion?: string | null;
+  plantillaConsentimiento?: unknown;
 };
 
 function Campo({
@@ -107,6 +111,7 @@ export function DatosPacientePage({ token }: { token: string }) {
   const [declaraTutela, setDeclaraTutela] = useState(false);
   const [asentimiento, setAsentimiento] = useState(false);
   const [verConsentimiento, setVerConsentimiento] = useState(false);
+  const [plantilla, setPlantilla] = useState<PlantillaConsentimiento>(PLANTILLA_INICIAL);
 
   const cargar = useCallback(async () => {
     try {
@@ -159,6 +164,7 @@ export function DatosPacientePage({ token }: { token: string }) {
         horarioTrabajo: data.horarioTrabajo ?? "",
       });
       setEsMenor(Boolean(data.esMenor));
+      setPlantilla(normalizarPlantilla(data.plantillaConsentimiento) ?? PLANTILLA_INICIAL);
       setIdentificacion(data.identificacion ?? "");
       if (Array.isArray(data.responsables) && data.responsables.length > 0) {
         setResponsables(data.responsables.slice(0, 2).map((r) => ({ ...RESPONSABLE_VACIO, ...r })));
@@ -469,6 +475,7 @@ export function DatosPacientePage({ token }: { token: string }) {
                     responsables: responsables.filter((r) => r.nombre.trim()),
                   }}
                   onAceptar={() => setAcepta(true)}
+                  plantilla={plantilla}
                   onCerrar={() => setVerConsentimiento(false)}
                 />
               ) : null}

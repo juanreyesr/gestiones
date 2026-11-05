@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
-import { CONSENTIMIENTO_VERSION, consentimientoComoTexto, type Responsable } from "@/lib/clinica/consentimiento";
+import { consentimientoComoTexto, type Responsable } from "@/lib/clinica/consentimiento";
+import { plantillaVigente } from "@/lib/clinica/consentimiento-plantillas";
 import { getClientIp, rateLimit, rateLimitResponse } from "@/lib/server/rate-limit";
 import { getSupabaseClient } from "@/lib/supabase";
 
@@ -54,6 +55,8 @@ export async function GET(request: Request, { params }: { params: Promise<{ toke
     return NextResponse.json({ estado: "invalido" });
   }
   const row = (Array.isArray(data) ? data[0] : data) as RawDatos;
+  // Plantilla vigente del consentimiento (editable en Clínica → Configuración).
+  const plantilla = await plantillaVigente(supabase);
 
   if (row.estado !== "ok") {
     return NextResponse.json({ estado: row.estado }, { headers: { "Cache-Control": "no-store" } });
@@ -85,6 +88,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ toke
       esMenor: row.es_menor ?? false,
       responsables: Array.isArray(row.responsables) ? row.responsables : [],
       identificacion: row.identificacion ?? null,
+      plantillaConsentimiento: plantilla,
     },
     { headers: { "Cache-Control": "no-store" } }
   );
@@ -163,12 +167,13 @@ export async function POST(request: Request, { params }: { params: Promise<{ tok
         .slice(0, 2)
     : [];
   const identificacion = esMenor ? "" : recortar(body.identificacion, 40);
+  const plantilla = await plantillaVigente(supabase);
   const consentimientoTexto = consentimientoComoTexto({
     esMenor,
     pacienteNombre: str("nombre"),
     pacienteIdentificacion: identificacion,
     responsables,
-  });
+  }, plantilla);
 
   const { data, error } = await supabase.rpc("gestionesjj_public_datos_save", {
     p_token: token,
@@ -195,7 +200,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ tok
     p_zona_horaria: opt("zonaHoraria")?.slice(0, 64) ?? null,
     p_identificacion: identificacion || null,
     p_responsables: responsables,
-    p_consentimiento_version: CONSENTIMIENTO_VERSION,
+    p_consentimiento_version: plantilla.version,
     p_consentimiento_texto: consentimientoTexto,
     p_asentimiento_menor: esMenor ? body.asentimientoMenor === true : null,
     p_declara_tutela: esMenor ? body.declaraTutela === true : null,
