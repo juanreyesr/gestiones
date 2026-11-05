@@ -34,7 +34,7 @@ import { exportarExpedientePdf } from "@/lib/clinica/expediente-pdf";
 import { fetchSesionEnCurso, fetchSesionesDePaciente, iniciarSesion, vincularCitaASesion } from "@/lib/clinica/sesiones";
 import { claveDiaLocal, formatoFechaCorta, formatoFechaHora } from "@/lib/clinica/slots";
 import type { CitaRow, CompromisoRow, PacienteRow, SesionRow } from "@/lib/clinica/types";
-import { CitasSinPagarAviso, PagadaCheckbox, TarifaEditor } from "./pagos";
+import { CitasSinPagarAviso, PagadaCheckbox, SaldoPaciente, TarifaEditor } from "./pagos";
 import { PacienteForm } from "./paciente-form";
 import { ConsentimientosPaciente } from "./consentimientos-paciente";
 import { EvaluacionesPaciente } from "./evaluaciones-paciente";
@@ -516,6 +516,11 @@ export function PacienteExpediente({
                 key={`${paciente.tarifa}-${paciente.tarifaMoneda}`}
                 onSaved={() => void cargar()}
                 paciente={paciente}
+              />
+              <SaldoPaciente
+                key={`${paciente.id}-${proximaCita?.pagada}-${citasSinPagar.length}`}
+                moneda={paciente.tarifaMoneda}
+                pacienteId={paciente.id}
               />
               <div className="border-t border-white/10" />
               <p className="text-sm leading-6 text-slate-300">

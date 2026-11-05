@@ -21,11 +21,12 @@ type RawCita = {
   pagada_at: string | null;
   monto: number | string | null;
   moneda: Moneda | null;
+  monto_pagado?: number | string | null;
   gestionesjj_pacientes?: { nombre: string } | null;
 };
 
 const CITA_COLUMNS =
-  "id,paciente_id,contacto_nombre,contacto_telefono,contacto_email,inicio,fin,estado,origen,modalidad,motivo,notas,motivo_estado,gcal_event_id,gcal_sync_status,pagada,pagada_at,monto,moneda,gestionesjj_pacientes(nombre)";
+  "id,paciente_id,contacto_nombre,contacto_telefono,contacto_email,inicio,fin,estado,origen,modalidad,motivo,notas,motivo_estado,gcal_event_id,gcal_sync_status,pagada,pagada_at,monto,moneda,monto_pagado,gestionesjj_pacientes(nombre)";
 
 function mapCita(row: RawCita): CitaRow {
   return {
@@ -49,6 +50,7 @@ function mapCita(row: RawCita): CitaRow {
     pagadaAt: row.pagada_at,
     monto: row.monto === null || row.monto === undefined ? null : Number(row.monto),
     moneda: row.moneda,
+    montoPagado: row.monto_pagado === null || row.monto_pagado === undefined ? null : Number(row.monto_pagado),
   };
 }
 
@@ -166,15 +168,53 @@ export async function fetchCitasSinPagar(pacienteId?: string) {
   return { data: ((data ?? []) as unknown as RawCita[]).map(mapCita), error: null };
 }
 
-export async function marcarCitaPagada(id: string, pagada: boolean) {
+/**
+ * Marca o desmarca una cita como pagada. Sin `montoRecibido`, pagó lo que le
+ * tocaba (incluido el saldo de sesiones anteriores). Con `montoRecibido`, la
+ * diferencia queda como abono a favor o pendiente para la siguiente sesión.
+ */
+export async function marcarCitaPagada(id: string, pagada: boolean, montoRecibido: number | null = null) {
   const supabase = getSupabaseClient();
   if (!supabase) return { error: "Faltan las variables de Supabase." };
 
-  const { error } = await supabase
-    .from("gestionesjj_citas")
-    .update({ pagada, pagada_at: pagada ? new Date().toISOString() : null })
-    .eq("id", id);
+  const { error } = await supabase.rpc("gestionesjj_registrar_pago", {
+    p_cita_id: id,
+    p_pagada: pagada,
+    p_monto_recibido: pagada ? montoRecibido : null,
+  });
   return { error: error?.message ?? null };
+}
+
+/**
+ * Lo que se le cobra al paciente en esta cita: monto (de la cita o, si aún no
+ * tiene, la tarifa del paciente) y saldo de sesiones anteriores.
+ * saldo > 0: abonado a favor; saldo < 0: pendiente. aPagar = monto − saldo.
+ */
+export async function fetchCobroCita(cita: Pick<CitaRow, "id" | "pacienteId" | "monto" | "moneda">) {
+  const supabase = getSupabaseClient();
+  if (!supabase || !cita.pacienteId) return null;
+  let monto = cita.monto;
+  let moneda: Moneda = cita.moneda ?? "GTQ";
+  if (monto === null) {
+    const { data } = await supabase
+      .from("gestionesjj_pacientes")
+      .select("tarifa,tarifa_moneda")
+      .eq("id", cita.pacienteId)
+      .single();
+    const p = data as { tarifa: number | string | null; tarifa_moneda: Moneda | null } | null;
+    if (p?.tarifa !== null && p?.tarifa !== undefined) {
+      monto = Number(p.tarifa);
+      moneda = p.tarifa_moneda ?? "GTQ";
+    }
+  }
+  const { data: saldo, error } = await supabase.rpc("gestionesjj_saldo_paciente", {
+    p_paciente_id: cita.pacienteId,
+    p_moneda: moneda,
+    p_excluir_cita: cita.id,
+  });
+  if (error) return null;
+  const s = Number(saldo ?? 0);
+  return { monto, moneda, saldo: s, aPagar: monto === null ? null : Math.max(monto - s, 0) };
 }
 
 /** Citas que ya terminaron pero siguen pendientes/confirmadas: falta marcar si se atendieron. */
