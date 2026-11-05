@@ -20,7 +20,7 @@ import {
   Mail,
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { fetchCitasSinPagar, fetchProximaCitaDePaciente } from "@/lib/clinica/citas";
+import { fetchCitasPorIds, fetchCitasSinPagar, fetchProximaCitaDePaciente } from "@/lib/clinica/citas";
 import { fetchCompromisosPendientes } from "@/lib/clinica/compromisos";
 import {
   ensureDatosToken,
@@ -34,7 +34,7 @@ import { exportarExpedientePdf } from "@/lib/clinica/expediente-pdf";
 import { fetchSesionEnCurso, fetchSesionesDePaciente, iniciarSesion, vincularCitaASesion } from "@/lib/clinica/sesiones";
 import { claveDiaLocal, formatoFechaCorta, formatoFechaHora } from "@/lib/clinica/slots";
 import type { CitaRow, CompromisoRow, PacienteRow, SesionRow } from "@/lib/clinica/types";
-import { CitasSinPagarAviso, PagadaCheckbox, SaldoPaciente, TarifaEditor } from "./pagos";
+import { CitasSinPagarAviso, MontoCita, PagadaCheckbox, SaldoPaciente, TarifaEditor } from "./pagos";
 import { PacienteForm } from "./paciente-form";
 import { ConsentimientosPaciente } from "./consentimientos-paciente";
 import { EvaluacionesPaciente } from "./evaluaciones-paciente";
@@ -94,6 +94,8 @@ export function PacienteExpediente({
   const [datosMsg, setDatosMsg] = useState("");
   const [sesionEditando, setSesionEditando] = useState<SesionRow | null>(null);
   const [consentimientos, setConsentimientos] = useState<ConsentimientoRow[]>([]);
+  // Cita (y su pago) de cada sesión del historial, por id de cita.
+  const [citasDeSesiones, setCitasDeSesiones] = useState<Record<string, CitaRow>>({});
 
   const cargar = useCallback(async () => {
     setLoading(true);
@@ -114,7 +116,11 @@ export function PacienteExpediente({
     }
     setError("");
     setPaciente(pacienteRes.data);
-    setSesiones(sesionesRes.data.filter((sesion) => sesion.estado === "finalizada"));
+    const finalizadas = sesionesRes.data.filter((sesion) => sesion.estado === "finalizada");
+    setSesiones(finalizadas);
+    const idsCitas = finalizadas.map((s) => s.citaId).filter((id): id is string => Boolean(id));
+    const { data: citasSesiones } = await fetchCitasPorIds(idsCitas);
+    setCitasDeSesiones(Object.fromEntries(citasSesiones.map((c) => [c.id, c])));
     setSesionEnCurso(enCursoRes.data);
     setCompromisos(compromisosRes.data);
     setProximaCita(citaRes.data);
@@ -396,6 +402,7 @@ export function PacienteExpediente({
               <div className="grid gap-2">
                 {sesiones.map((sesion, index) => {
                   const abierta = sesionAbierta === sesion.id;
+                  const citaSesion = sesion.citaId ? citasDeSesiones[sesion.citaId] : undefined;
                   return (
                     <div key={sesion.id} className="border border-white/10 bg-white/4">
                       <button
@@ -419,6 +426,22 @@ export function PacienteExpediente({
                           <ChevronDown className="h-4 w-4 shrink-0 text-slate-400" />
                         )}
                       </button>
+                      {citaSesion ? (
+                        <div className="flex flex-wrap items-center gap-2 border-t border-white/10 px-3 py-2">
+                          <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Pago</span>
+                          <MontoCita
+                            key={`m-${citaSesion.id}-${citaSesion.monto}-${citaSesion.moneda}`}
+                            cita={citaSesion}
+                            onChanged={() => void cargar()}
+                          />
+                          <PagadaCheckbox
+                            key={`p-${citaSesion.id}-${citaSesion.pagada}-${citaSesion.montoPagado}`}
+                            cita={citaSesion}
+                            label="Marcar pagada"
+                            onChanged={() => void cargar()}
+                          />
+                        </div>
+                      ) : null}
                       {abierta ? (
                         <div className="border-t border-white/10 p-4">
                           <div className="mb-3 flex justify-end">
