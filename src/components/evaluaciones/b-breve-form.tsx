@@ -1,8 +1,8 @@
 "use client";
 
-import { CheckCircle2, Copy, Send } from "lucide-react";
-import { useState } from "react";
-import { codificarBBreve } from "@/lib/evaluaciones/b-breve/codigo";
+import { CheckCircle2, CloudOff, RefreshCw, Send } from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import type { BBreveBorrador } from "@/lib/evaluaciones/b-breve/codigo";
 import {
   B_BREVE_ABIERTA,
   B_BREVE_AVISO_FORMULARIO,
@@ -25,21 +25,97 @@ const hoyLocal = () => {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 };
 
-type Resultado = { tipo: "guardado" } | { tipo: "respaldo"; codigo: string; mensaje: string };
+type EstadoGuardado = "sin-cambios" | "pendiente" | "guardando" | "guardado" | "sin-conexion";
+type Fase = "llenando" | "enviando" | "enviado" | "fallo-envio" | "cerrado";
 
-export function BBreveForm({ codigoCaso, token }: { codigoCaso: string; token: string }) {
-  const [nombre, setNombre] = useState("");
-  const [relacion, setRelacion] = useState("");
-  const [fecha, setFecha] = useState(hoyLocal);
-  const [items, setItems] = useState<(number | null)[]>(() => Array(16).fill(null));
-  const [seg, setSeg] = useState<Record<"S1" | "S2", 0 | 1 | null>>({ S1: null, S2: null });
-  const [abierta, setAbierta] = useState("");
-  const [extra, setExtra] = useState("");
+const ESPERA_GUARDADO_MS = 1200;
+
+export function BBreveForm({
+  borradorInicial,
+  codigoCaso,
+  token,
+}: {
+  borradorInicial: BBreveBorrador | null;
+  codigoCaso: string;
+  token: string;
+}) {
+  const [nombre, setNombre] = useState(borradorInicial?.nombre ?? "");
+  const [relacion, setRelacion] = useState(borradorInicial?.relacion ?? "");
+  const [fecha, setFecha] = useState(borradorInicial?.fecha || hoyLocal());
+  const [items, setItems] = useState<(number | null)[]>(() => borradorInicial?.items ?? Array(16).fill(null));
+  const [seg, setSeg] = useState<Record<"S1" | "S2", 0 | 1 | null>>({
+    S1: borradorInicial?.S1 ?? null,
+    S2: borradorInicial?.S2 ?? null,
+  });
+  const [abierta, setAbierta] = useState(borradorInicial?.abierta ?? "");
+  const [extra, setExtra] = useState(borradorInicial?.extra ?? "");
   const [faltan, setFaltan] = useState<Set<string>>(new Set());
   const [error, setError] = useState("");
-  const [enviando, setEnviando] = useState(false);
-  const [resultado, setResultado] = useState<Resultado | null>(null);
-  const [copiado, setCopiado] = useState(false);
+  const [fase, setFase] = useState<Fase>("llenando");
+  const [guardado, setGuardado] = useState<EstadoGuardado>("sin-cambios");
+  const [continua] = useState(() =>
+    Boolean(borradorInicial && (borradorInicial.nombre || borradorInicial.items.some((v) => v !== null)))
+  );
+  const temporizador = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const version = useRef(0);
+
+  const borrador = useCallback(
+    (): BBreveBorrador => ({ nombre, relacion, fecha, items, S1: seg.S1, S2: seg.S2, abierta, extra }),
+    [nombre, relacion, fecha, items, seg, abierta, extra]
+  );
+
+  // Guardado automático: un momento después del último cambio se envía el avance al servidor.
+  const guardarAvance = useCallback(
+    async (datos: BBreveBorrador, v: number) => {
+      setGuardado("guardando");
+      try {
+        const res = await fetch(`/api/evaluacion/${token}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(datos),
+        });
+        const data = (await res.json().catch(() => ({}))) as { estado?: string };
+        if (data.estado === "completa" || data.estado === "cerrada") {
+          setFase("cerrado");
+          return;
+        }
+        if (v === version.current) setGuardado(res.ok ? "guardado" : "sin-conexion");
+      } catch {
+        if (v === version.current) setGuardado("sin-conexion");
+      }
+    },
+    [token]
+  );
+
+  // Último contenido ya guardado: solo se guarda de nuevo si algo cambió.
+  const ultimoGuardado = useRef<string | null>(null);
+  useEffect(() => {
+    if (fase !== "llenando" && fase !== "fallo-envio") return;
+    const datos = borrador();
+    const json = JSON.stringify(datos);
+    if (ultimoGuardado.current === null) {
+      ultimoGuardado.current = json; // estado inicial (lo que ya estaba guardado)
+      return;
+    }
+    if (json === ultimoGuardado.current) return;
+    ultimoGuardado.current = json;
+    const v = ++version.current;
+    setGuardado("pendiente");
+    if (temporizador.current) clearTimeout(temporizador.current);
+    temporizador.current = setTimeout(() => void guardarAvance(datos, v), ESPERA_GUARDADO_MS);
+    return () => {
+      if (temporizador.current) clearTimeout(temporizador.current);
+    };
+  }, [borrador, guardarAvance, fase]);
+
+  // Si se recupera la conexión, se reintenta el guardado del avance.
+  useEffect(() => {
+    const alVolver = () => {
+      if (guardado === "sin-conexion") void guardarAvance(borrador(), version.current);
+    };
+    window.addEventListener("online", alVolver);
+    return () => window.removeEventListener("online", alVolver);
+  }, [guardado, guardarAvance, borrador]);
 
   const quitarFalta = (clave: string) =>
     setFaltan((prev) => {
@@ -50,7 +126,7 @@ export function BBreveForm({ codigoCaso, token }: { codigoCaso: string; token: s
     });
 
   const enviar = async () => {
-    if (enviando) return;
+    if (fase === "enviando") return;
     const faltantes: string[] = [];
     if (!nombre.trim()) faltantes.push("nombre");
     if (!relacion) faltantes.push("relacion");
@@ -63,9 +139,10 @@ export function BBreveForm({ codigoCaso, token }: { codigoCaso: string; token: s
       document.getElementById(`bb-${faltantes[0]}`)?.scrollIntoView({ behavior: "smooth", block: "center" });
       return;
     }
+    if (temporizador.current) clearTimeout(temporizador.current);
     setFaltan(new Set());
     setError("");
-    setEnviando(true);
+    setFase("enviando");
     const respuesta = {
       v: 1,
       instrumento: "B-Breve",
@@ -80,8 +157,6 @@ export function BBreveForm({ codigoCaso, token }: { codigoCaso: string; token: s
       extra: extra.trim(),
       enviado: new Date().toISOString(),
     };
-    const respaldo = (mensaje: string) =>
-      setResultado({ tipo: "respaldo", codigo: codificarBBreve(respuesta), mensaje });
     try {
       const res = await fetch(`/api/evaluacion/${token}`, {
         method: "POST",
@@ -89,82 +164,45 @@ export function BBreveForm({ codigoCaso, token }: { codigoCaso: string; token: s
         body: JSON.stringify(respuesta),
       });
       const data = (await res.json().catch(() => ({}))) as { estado?: string; error?: string };
-      setEnviando(false);
       if (res.status === 422 && data.error) {
+        setFase("llenando");
         setError(data.error);
         return;
       }
-      if (res.ok && data.estado === "guardado") {
-        setResultado({ tipo: "guardado" });
-      } else if (res.ok && (data.estado === "completa" || data.estado === "cerrada")) {
-        respaldo("Este enlace ya no recibe más respuestas, por eso no se guardaron automáticamente.");
-      } else {
-        respaldo("No pudimos registrar sus respuestas automáticamente.");
-      }
+      if (res.ok && data.estado === "guardado") setFase("enviado");
+      else if (res.ok && (data.estado === "completa" || data.estado === "cerrada")) setFase("cerrado");
+      else setFase("fallo-envio");
     } catch {
-      setEnviando(false);
-      respaldo("No pudimos registrar sus respuestas por un problema de conexión.");
+      setFase("fallo-envio");
     }
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
-  if (resultado?.tipo === "guardado") {
+  if (fase === "enviado") {
     return (
       <div className="grid gap-3 py-8 text-center" data-testid="bb-gracias">
         <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-emerald-50">
           <CheckCircle2 className="h-7 w-7 text-emerald-600" />
         </div>
+        <p className="text-lg font-semibold text-slate-900">Formulario enviado correctamente</p>
         <p className="mx-auto max-w-md text-base leading-7 text-slate-700">{B_BREVE_GRACIAS}</p>
+        <p className="text-xs text-slate-400">Ya puede cerrar esta página.</p>
       </div>
     );
   }
 
-  if (resultado?.tipo === "respaldo") {
-    const texto = `Código de respuestas del cuestionario B-Breve: ${resultado.codigo}\nRespondió: ${nombre.trim()} (${relacion}), ${fecha}${
-      abierta.trim() ? `\n\nRespuesta abierta: ${abierta.trim()}` : ""
-    }`;
+  if (fase === "cerrado") {
     return (
-      <div className="grid gap-4 py-4" data-testid="bb-respaldo">
-        <p className="text-lg font-semibold text-slate-900">Gracias por responder</p>
-        <p className="text-sm leading-6 text-slate-600">
-          {resultado.mensaje} Para que no se pierdan, copie este código y envíeselo al psicólogo:
+      <div className="grid gap-3 py-8 text-center" data-testid="bb-cerrado">
+        <p className="text-base font-semibold text-slate-900">Este formulario ya fue enviado</p>
+        <p className="mx-auto max-w-sm text-sm leading-6 text-slate-500">
+          Si necesita responderlo de nuevo, pida a su psicólogo que lo vuelva a habilitar.
         </p>
-        <div className="select-all break-all rounded-xl bg-slate-100 p-4 font-mono text-lg tracking-wider text-slate-900">
-          {resultado.codigo}
-        </div>
-        <div className="flex flex-wrap gap-2">
-          <button
-            className="inline-flex items-center gap-2 rounded-lg bg-slate-900 px-4 py-3 text-sm font-bold text-white"
-            onClick={async () => {
-              try {
-                await navigator.clipboard.writeText(texto);
-                setCopiado(true);
-                setTimeout(() => setCopiado(false), 2000);
-              } catch {
-                /* el código queda seleccionable */
-              }
-            }}
-            type="button"
-          >
-            <Copy className="h-4 w-4" />
-            {copiado ? "Copiado" : "Copiar código"}
-          </button>
-          <a
-            className="inline-flex items-center gap-2 rounded-lg border border-emerald-300 bg-emerald-50 px-4 py-3 text-sm font-bold text-emerald-800"
-            href={`https://wa.me/?text=${encodeURIComponent(texto)}`}
-            rel="noopener noreferrer"
-            target="_blank"
-          >
-            <Send className="h-4 w-4" />
-            Enviar por WhatsApp
-          </a>
-        </div>
       </div>
     );
   }
 
-  const marco = (clave: string) =>
-    faltan.has(clave) ? "border-red-300 bg-red-50/60" : "border-transparent";
+  const marco = (clave: string) => (faltan.has(clave) ? "border-red-300 bg-red-50/60" : "border-transparent");
 
   const opcion = ({
     activo,
@@ -199,12 +237,53 @@ export function BBreveForm({ codigoCaso, token }: { codigoCaso: string; token: s
     </label>
   );
 
+  const indicador =
+    guardado === "guardando" || guardado === "pendiente"
+      ? "Guardando…"
+      : guardado === "guardado"
+        ? "Avance guardado"
+        : guardado === "sin-conexion"
+          ? "Sin conexión: su avance se guardará al reconectar"
+          : continua
+            ? "Continúa donde se quedó"
+            : "Su avance se guarda automáticamente";
+
   return (
     <div className="grid gap-6">
+      {/* Indicador fijo del guardado automático */}
+      <div
+        aria-live="polite"
+        className={`sticky top-0 z-10 -mx-4 -mt-4 flex items-center justify-center gap-1.5 rounded-t-2xl border-b px-3 py-2 text-xs font-semibold sm:-mx-7 sm:-mt-7 ${
+          guardado === "sin-conexion" ? "border-amber-200 bg-amber-50 text-amber-800" : "border-slate-100 bg-white/95 text-slate-500"
+        }`}
+        data-testid="bb-guardado"
+      >
+        {guardado === "sin-conexion" ? <CloudOff className="h-3.5 w-3.5" /> : <CheckCircle2 className="h-3.5 w-3.5 text-teal-600" />}
+        {indicador}
+      </div>
+
+      {fase === "fallo-envio" ? (
+        <div className="grid gap-2 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900" role="alert">
+          <p>
+            <strong>No se pudo enviar todavía</strong> (posible problema de conexión). Sus respuestas están guardadas en este enlace;
+            no las pierde.
+          </p>
+          <button
+            className="inline-flex w-fit items-center gap-2 rounded-lg bg-amber-700 px-4 py-2.5 font-bold text-white"
+            onClick={() => void enviar()}
+            type="button"
+          >
+            <RefreshCw className="h-4 w-4" />
+            Reintentar envío
+          </button>
+        </div>
+      ) : null}
+
       <div>
         <h1 className="text-2xl font-semibold leading-tight text-slate-900 sm:text-3xl">{B_BREVE_TITULO}</h1>
         <p className="mt-2 text-sm text-slate-500">
-          Tiempo aproximado: 5 a 8 minutos. Sus respuestas las revisará únicamente el psicólogo tratante.
+          Tiempo aproximado: 5 a 8 minutos. Sus respuestas las revisará únicamente el psicólogo tratante. Puede cerrar la página y
+          continuar después con el mismo enlace.
         </p>
       </div>
       <div className="rounded-r-xl border-l-4 border-teal-600 bg-teal-50 p-4 text-sm leading-6 text-slate-700">
@@ -248,9 +327,7 @@ export function BBreveForm({ codigoCaso, token }: { codigoCaso: string; token: s
 
       <div>
         <h2 className="text-xl font-semibold text-slate-900">{B_BREVE_ENCABEZADO_ITEMS}</h2>
-        <p className="mt-1 text-xs leading-5 text-slate-500">
-          {B_BREVE_ESCALA.map((e, i) => `${i} = ${e}`).join(" · ")}
-        </p>
+        <p className="mt-1 text-xs leading-5 text-slate-500">{B_BREVE_ESCALA.map((e, i) => `${i} = ${e}`).join(" · ")}</p>
       </div>
 
       <div className="grid gap-2">
@@ -259,7 +336,7 @@ export function BBreveForm({ codigoCaso, token }: { codigoCaso: string; token: s
           const etiquetas = item.etiquetas ?? B_BREVE_ESCALA;
           return (
             <fieldset
-              className={`rounded-xl border p-3 ${marco(clave)} ${faltan.has(clave) ? "" : "border-b-slate-100"}`}
+              className={`rounded-xl border p-3 ${marco(clave)}`}
               data-falta={faltan.has(clave) ? "si" : undefined}
               id={`bb-${clave}`}
               key={item.n}
@@ -279,12 +356,20 @@ export function BBreveForm({ codigoCaso, token }: { codigoCaso: string; token: s
                 </p>
               </div>
               <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-                {[0, 1, 2, 3].map((v) => (
-                  opcion({activo: items[i] === v, etiqueta: etiquetas[v], falta: faltan.has(clave), key: v, name: clave, numero: String(v), onSelect: () => {
+                {[0, 1, 2, 3].map((v) =>
+                  opcion({
+                    activo: items[i] === v,
+                    etiqueta: etiquetas[v],
+                    falta: faltan.has(clave),
+                    key: v,
+                    name: clave,
+                    numero: String(v),
+                    onSelect: () => {
                       setItems((prev) => prev.map((x, j) => (j === i ? v : x)));
                       quitarFalta(clave);
-                    }})
-                ))}
+                    },
+                  })
+                )}
               </div>
             </fieldset>
           );
@@ -312,12 +397,19 @@ export function BBreveForm({ codigoCaso, token }: { codigoCaso: string; token: s
               <p className="pt-1 text-[15px] leading-6 text-slate-800">{s.texto}</p>
             </div>
             <div className="grid max-w-xs grid-cols-2 gap-2">
-              {([1, 0] as const).map((v) => (
-                opcion({activo: seg[s.clave] === v, falta: faltan.has(s.clave), key: v, name: s.clave, numero: v === 1 ? "Sí" : "No", onSelect: () => {
+              {([1, 0] as const).map((v) =>
+                opcion({
+                  activo: seg[s.clave] === v,
+                  falta: faltan.has(s.clave),
+                  key: v,
+                  name: s.clave,
+                  numero: v === 1 ? "Sí" : "No",
+                  onSelect: () => {
                     setSeg((prev) => ({ ...prev, [s.clave]: v }));
                     quitarFalta(s.clave);
-                  }})
-              ))}
+                  },
+                })
+              )}
             </div>
           </fieldset>
         ))}
@@ -341,13 +433,14 @@ export function BBreveForm({ codigoCaso, token }: { codigoCaso: string; token: s
 
       <button
         className="inline-flex items-center justify-center gap-2 rounded-xl bg-teal-700 px-4 py-4 text-base font-bold text-white transition hover:bg-teal-800 disabled:opacity-60"
-        disabled={enviando}
+        disabled={fase === "enviando"}
         onClick={() => void enviar()}
         type="button"
       >
         <Send className="h-4 w-4" />
-        {enviando ? "Enviando..." : "Enviar respuestas"}
+        {fase === "enviando" ? "Enviando..." : "Enviar respuestas"}
       </button>
+      <p className="-mt-3 text-center text-xs text-slate-400">Al enviar, el formulario se cierra y ya no se puede modificar.</p>
 
       <p className="border-t border-slate-100 pt-4 text-xs leading-5 text-slate-400">{B_BREVE_AVISO_FORMULARIO}</p>
     </div>

@@ -2,9 +2,15 @@
 
 import { ClipboardList, HeartPulse } from "lucide-react";
 import { useEffect, useState } from "react";
+import type { BBreveBorrador } from "@/lib/evaluaciones/b-breve/codigo";
 import { BBreveForm } from "./b-breve-form";
 
-type Info = { estado: "cargando" | "ok" | "completa" | "cerrada" | "invalido"; instrumento?: string | null; ref?: string | null };
+type Info = {
+  estado: "cargando" | "ok" | "completa" | "cerrada" | "invalido";
+  instrumento?: string | null;
+  ref?: string | null;
+  borrador?: BBreveBorrador | null;
+};
 
 /** Página pública /evaluacion/<token>: elige el formulario según el instrumento asignado. */
 export function EvaluacionPublica({ token }: { token: string }) {
@@ -25,18 +31,21 @@ export function EvaluacionPublica({ token }: { token: string }) {
   if (info.estado === "cargando") {
     contenido = <p className="py-10 text-center text-sm text-slate-400">Cargando...</p>;
   } else if (info.estado === "ok" && info.instrumento === "b-breve") {
-    contenido = <BBreveForm codigoCaso={info.ref ?? ""} token={token} />;
+    contenido = <BBreveForm borradorInicial={info.borrador ?? null} codigoCaso={info.ref ?? ""} token={token} />;
   } else {
-    const yaRespondido = info.estado === "completa" || info.estado === "cerrada";
+    const titulo =
+      info.estado === "completa" ? "Este formulario ya fue enviado" : info.estado === "cerrada" ? "Formulario no disponible" : "Enlace no válido";
+    const detalle =
+      info.estado === "completa"
+        ? "Sus respuestas ya quedaron registradas. Si necesita responderlo de nuevo, pida a su psicólogo que lo vuelva a habilitar."
+        : info.estado === "cerrada"
+          ? "Su psicólogo cerró este formulario. Si necesita responderlo, pídale que lo vuelva a habilitar."
+          : "Este enlace no es válido o ya no está disponible. Solicite uno nuevo a su psicólogo.";
     contenido = (
       <div className="grid gap-3 py-8 text-center">
         <ClipboardList className="mx-auto h-8 w-8 text-slate-300" />
-        <p className="text-base font-semibold text-slate-900">{yaRespondido ? "Cuestionario ya respondido" : "Enlace no válido"}</p>
-        <p className="mx-auto max-w-sm text-sm leading-6 text-slate-500">
-          {yaRespondido
-            ? "Este cuestionario ya recibió las respuestas esperadas. Si necesita responderlo de nuevo, pida un enlace nuevo a su psicólogo."
-            : "Este enlace no es válido o ya no está disponible. Solicite uno nuevo a su psicólogo."}
-        </p>
+        <p className="text-base font-semibold text-slate-900">{titulo}</p>
+        <p className="mx-auto max-w-sm text-sm leading-6 text-slate-500">{detalle}</p>
       </div>
     );
   }

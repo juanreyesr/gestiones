@@ -3,14 +3,12 @@
 import {
   AlertTriangle,
   ChevronLeft,
-  ClipboardCheck,
   Copy,
   FileJson,
   Lock,
   Plus,
   Printer,
   RefreshCw,
-  Save,
   Trash2,
   Unlock,
 } from "lucide-react";
@@ -20,8 +18,7 @@ import { enlaceWhatsApp } from "@/lib/clinica/recordatorio";
 import { formatoFechaCorta } from "@/lib/clinica/slots";
 import type { PacienteRow } from "@/lib/clinica/types";
 import { calificarBBreve } from "@/lib/evaluaciones/b-breve/calificacion";
-import { leerBBreve, validarBBreve, type BBreveDatos } from "@/lib/evaluaciones/b-breve/codigo";
-import { B_BREVE_RELACIONES } from "@/lib/evaluaciones/b-breve/contenido";
+import { avanceBBreve, limpiarBorradorBBreve, validarBBreve, type BBreveDatos } from "@/lib/evaluaciones/b-breve/codigo";
 import { informeBBreveHtml, type AplicacionBBreve } from "@/lib/evaluaciones/b-breve/informe-html";
 import {
   asignarEvaluacion,
@@ -29,7 +26,6 @@ import {
   eliminarEvaluacion,
   eliminarRespuesta,
   fetchEvaluacionesDePaciente,
-  guardarRespuestaPorCodigo,
   type EvaluacionRespuestaRow,
   type EvaluacionRow,
 } from "@/lib/evaluaciones/evaluaciones";
@@ -38,12 +34,24 @@ import { urlPublica } from "@/lib/url-publica";
 import { IconoWhatsApp } from "./boton-whatsapp-paciente";
 import { BTN_ACCENT, BTN_DANGER, BTN_GHOST, Field, SectionCard } from "./ui";
 
-type Vista = { tipo: "lista" } | { tipo: "informe"; respuestaId: string } | { tipo: "codigo" };
+type Vista = { tipo: "lista" } | { tipo: "informe"; respuestaId: string };
 
-const hoy = () => {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-};
+/** "hace 5 min", "hace 2 h", o la fecha. */
+function haceCuanto(iso: string) {
+  const min = Math.round((Date.now() - new Date(iso).getTime()) / 60_000);
+  if (min < 1) return "hace un momento";
+  if (min < 60) return `hace ${min} min`;
+  if (min < 24 * 60) return `hace ${Math.round(min / 60)} h`;
+  return formatoFechaCorta(iso);
+}
+
+/** Etiquetas sugeridas para N personas: los padres o tutores del expediente y luego "Cuidador n". */
+function etiquetasSugeridas(paciente: PacienteRow, n: number) {
+  const nombres = paciente.responsables
+    .map((r) => [r.nombre.trim().split(/\s+/)[0], r.parentesco ? `(${r.parentesco})` : ""].filter(Boolean).join(" "))
+    .filter(Boolean);
+  return Array.from({ length: n }, (_, i) => nombres[i] ?? (n === 1 && !paciente.esMenor ? paciente.nombre : `Cuidador ${i + 1}`));
+}
 
 const normalizar = (s: string | null | undefined) =>
   (s ?? "").normalize("NFD").replace(/[̀-ͯ]/g, "").trim().toLowerCase();
@@ -100,7 +108,9 @@ export function EvaluacionesPaciente({ paciente }: { paciente: PacienteRow }) {
   const [vista, setVista] = useState<Vista>({ tipo: "lista" });
   const [asignando, setAsignando] = useState(false);
   const [instrumento, setInstrumento] = useState<string>(INSTRUMENTOS[0].id);
-  const [permitidas, setPermitidas] = useState(INSTRUMENTOS[0].respuestasPorDefecto);
+  const [etiquetas, setEtiquetas] = useState<string[]>(() =>
+    etiquetasSugeridas(paciente, paciente.esMenor ? INSTRUMENTOS[0].respuestasPorDefecto : 1)
+  );
   const [nota, setNota] = useState("");
   const [aviso, setAviso] = useState("");
 
@@ -131,28 +141,39 @@ export function EvaluacionesPaciente({ paciente }: { paciente: PacienteRow }) {
     setTimeout(() => setAviso(""), 3000);
   };
 
-  const whatsapp = (ev: EvaluacionRow) =>
+  // WhatsApp al teléfono del padre o tutor del enlace (si está en el expediente); si no, al del paciente.
+  const whatsapp = (ev: EvaluacionRow) => {
+    const primer = (ev.etiqueta ?? "").trim().split(/\s+/)[0]?.toLowerCase() ?? "";
+    const responsable = primer
+      ? paciente.responsables.find((r) => r.telefono.trim() && r.nombre.trim().toLowerCase().startsWith(primer))
+      : undefined;
     window.open(
       enlaceWhatsApp(
-        paciente.telefono,
-        mensajeEvaluacion(paciente.nombre, urlDe(ev), { esMenor: paciente.esMenor, respuestas: ev.respuestasPermitidas }),
+        responsable?.telefono ?? paciente.telefono,
+        mensajeEvaluacion(paciente.nombre, urlDe(ev), { esMenor: paciente.esMenor, respuestas: 1 }),
         paciente.pais
       ),
       "_blank",
       "noopener,noreferrer"
     );
+  };
 
   const handleAsignar = async () => {
     setError("");
-    const { data, error: err } = await asignarEvaluacion(paciente.id, instrumento, permitidas, nota);
-    if (err || !data) {
-      setError(err ?? "No se pudo asignar la evaluación.");
+    const { error: err } = await asignarEvaluacion(paciente.id, instrumento, etiquetas, nota);
+    if (err) {
+      setError(err);
       return;
     }
     setAsignando(false);
     setNota("");
     await cargar();
-    void copiar(urlDe(data), "Evaluación asignada. Enlace copiado: envíalo por WhatsApp o pégalo donde quieras.");
+    setAviso(
+      etiquetas.length > 1
+        ? `Se crearon ${etiquetas.length} enlaces, uno por persona. Envía a cada quien el suyo con su botón de WhatsApp.`
+        : "Enlace creado. Envíalo con el botón de WhatsApp o cópialo."
+    );
+    setTimeout(() => setAviso(""), 6000);
   };
 
   if (vista.tipo === "informe") {
@@ -169,32 +190,13 @@ export function EvaluacionesPaciente({ paciente }: { paciente: PacienteRow }) {
     );
   }
 
-  if (vista.tipo === "codigo") {
-    return (
-      <CalificarCodigo
-        onGuardado={() => {
-          setVista({ tipo: "lista" });
-          void cargar();
-        }}
-        onVolver={() => setVista({ tipo: "lista" })}
-        paciente={paciente}
-      />
-    );
-  }
-
   return (
     <SectionCard
       action={
-        <div className="flex flex-wrap gap-2">
-          <button className={BTN_GHOST} onClick={() => setVista({ tipo: "codigo" })} type="button">
-            <ClipboardCheck className="h-4 w-4" />
-            Calificar código recibido
-          </button>
-          <button className={BTN_ACCENT} onClick={() => setAsignando((v) => !v)} type="button">
-            <Plus className="h-4 w-4" />
-            Asignar evaluación
-          </button>
-        </div>
+        <button className={BTN_ACCENT} onClick={() => setAsignando((v) => !v)} type="button">
+          <Plus className="h-4 w-4" />
+          Asignar evaluación
+        </button>
       }
       title={`Evaluaciones y formularios (${respuestas.length})`}
     >
@@ -208,7 +210,8 @@ export function EvaluacionesPaciente({ paciente }: { paciente: PacienteRow }) {
               className="field"
               onChange={(e) => {
                 setInstrumento(e.target.value);
-                setPermitidas(instrumentoPorId(e.target.value)?.respuestasPorDefecto ?? 1);
+                const i = instrumentoPorId(e.target.value);
+                setEtiquetas(etiquetasSugeridas(paciente, i?.responde === "cuidador" && paciente.esMenor ? i.respuestasPorDefecto : 1));
               }}
               value={instrumento}
             >
@@ -220,20 +223,40 @@ export function EvaluacionesPaciente({ paciente }: { paciente: PacienteRow }) {
             </select>
           </Field>
           <p className="text-xs leading-5 text-slate-400">{instrumentoPorId(instrumento)?.descripcion}</p>
-          <div className="grid gap-3 sm:grid-cols-[200px_1fr]">
-            <Field label="Respuestas por enlace">
-              <select className="field" onChange={(e) => setPermitidas(Number(e.target.value))} value={permitidas}>
-                {[1, 2, 3, 4].map((n) => (
-                  <option key={n} value={n}>
-                    {n} {n === 1 ? "respuesta" : "respuestas (cada cuidador por separado)"}
-                  </option>
-                ))}
-              </select>
-            </Field>
-            <Field label="Nota privada (opcional)">
-              <input className="field" maxLength={500} onChange={(e) => setNota(e.target.value)} placeholder="Ej. aplicación inicial, seguimiento semana 4" value={nota} />
-            </Field>
+          <Field label="¿Cuántas personas lo responderán? (un enlace para cada una)">
+            <select
+              className="field"
+              onChange={(e) => {
+                const n = Number(e.target.value);
+                setEtiquetas((prev) => {
+                  const sugeridas = etiquetasSugeridas(paciente, n);
+                  return sugeridas.map((s, i) => prev[i] ?? s);
+                });
+              }}
+              value={etiquetas.length}
+            >
+              {[1, 2, 3, 4].map((n) => (
+                <option key={n} value={n}>
+                  {n} {n === 1 ? "persona" : "personas (cada una con su enlace)"}
+                </option>
+              ))}
+            </select>
+          </Field>
+          <div className="grid gap-2 sm:grid-cols-2">
+            {etiquetas.map((et, i) => (
+              <Field key={i} label={`Enlace ${i + 1}: para quién`}>
+                <input
+                  className="field"
+                  maxLength={60}
+                  onChange={(e) => setEtiquetas((prev) => prev.map((x, j) => (j === i ? e.target.value : x)))}
+                  value={et}
+                />
+              </Field>
+            ))}
           </div>
+          <Field label="Nota privada (opcional)">
+            <input className="field" maxLength={500} onChange={(e) => setNota(e.target.value)} placeholder="Ej. aplicación inicial, seguimiento semana 4" value={nota} />
+          </Field>
           {instrumentoPorId(instrumento)?.responde === "cuidador" && !paciente.esMenor ? (
             <p className="text-xs text-amber-300">
               Este instrumento lo responden los padres o cuidadores. El paciente no está marcado como menor de edad.
@@ -241,7 +264,7 @@ export function EvaluacionesPaciente({ paciente }: { paciente: PacienteRow }) {
           ) : null}
           <div className="flex gap-2">
             <button className={BTN_ACCENT} onClick={() => void handleAsignar()} type="button">
-              Crear enlace
+              {etiquetas.length > 1 ? `Crear ${etiquetas.length} enlaces` : "Crear enlace"}
             </button>
             <button className={BTN_GHOST} onClick={() => setAsignando(false)} type="button">
               Cancelar
@@ -255,7 +278,7 @@ export function EvaluacionesPaciente({ paciente }: { paciente: PacienteRow }) {
       {!cargando && evaluaciones.length === 0 && respuestas.length === 0 ? (
         <p className="text-sm leading-6 text-slate-400">
           Aún no hay evaluaciones. Con «Asignar evaluación» se crea un enlace para el paciente (o sus padres); al responderlo, la
-          respuesta queda aquí con su calificación. Ellos no ven puntuaciones.
+          respuesta queda aquí con su calificación. Mientras responden ves su avance; ellos no ven puntuaciones.
         </p>
       ) : null}
 
@@ -265,17 +288,33 @@ export function EvaluacionesPaciente({ paciente }: { paciente: PacienteRow }) {
           {evaluaciones.map((ev) => {
             const usadas = usadasDe(ev);
             const abierta = ev.estado === "abierta";
+            const avance = ev.borrador && ev.instrumento === "b-breve" ? avanceBBreve(limpiarBorradorBBreve(ev.borrador)) : null;
+            const estadoTexto = !abierta
+              ? ev.estado === "completa"
+                ? "✓ Enviado"
+                : "Cerrado"
+              : avance
+                ? `En progreso: ${avance.respondidas} de ${avance.total} respondidas${ev.borradorAt ? ` · ${haceCuanto(ev.borradorAt)}` : ""}`
+                : "Sin abrir todavía";
             return (
               <div className="flex flex-wrap items-center justify-between gap-2 border border-white/10 bg-white/4 p-3" key={ev.id}>
                 <div className="min-w-0">
-                  <div className="text-sm font-semibold text-white">{instrumentoPorId(ev.instrumento)?.nombre ?? ev.instrumento}</div>
+                  <div className="text-sm font-semibold text-white">
+                    {ev.etiqueta ? `${ev.etiqueta} · ` : ""}
+                    {instrumentoPorId(ev.instrumento)?.nombre.split(" · ")[0] ?? ev.instrumento}
+                  </div>
                   <div className="text-xs text-slate-400">
-                    {formatoFechaCorta(ev.createdAt)} · {usadas}/{ev.respuestasPermitidas} respuestas ·{" "}
-                    <span className={abierta ? "text-emerald-300" : "text-slate-400"}>
-                      {abierta ? "Abierto" : ev.estado === "completa" ? "Completo" : "Cerrado"}
+                    Creado {formatoFechaCorta(ev.createdAt)} ·{" "}
+                    <span className={ev.estado === "completa" ? "text-emerald-300" : avance ? "text-amber-300" : "text-slate-400"}>
+                      {estadoTexto}
                     </span>
                     {ev.nota ? ` · ${ev.nota}` : ""}
                   </div>
+                  {avance ? (
+                    <div className="mt-1.5 h-1.5 w-48 max-w-full overflow-hidden rounded-full bg-white/10">
+                      <div className="h-full bg-amber-300" style={{ width: `${Math.round((avance.respondidas / avance.total) * 100)}%` }} />
+                    </div>
+                  ) : null}
                 </div>
                 <div className="flex flex-wrap gap-1.5">
                   {abierta ? (
@@ -305,7 +344,7 @@ export function EvaluacionesPaciente({ paciente }: { paciente: PacienteRow }) {
                         await cambiarEstadoEvaluacion(ev, "reabrir", usadas);
                         void cargar();
                       }}
-                      title="Reabrir para una respuesta más"
+                      title="Habilitar de nuevo (para que lo vuelva a responder)"
                       type="button"
                     >
                       <Unlock className="h-4 w-4" />
@@ -315,7 +354,7 @@ export function EvaluacionesPaciente({ paciente }: { paciente: PacienteRow }) {
                     <button
                       className={BTN_DANGER}
                       onClick={async () => {
-                        if (!window.confirm("¿Eliminar este enlace? Dejará de funcionar.")) return;
+                        if (!window.confirm(avance ? "Esta persona ya empezó a responder. ¿Eliminar el enlace y su avance?" : "¿Eliminar este enlace? Dejará de funcionar.")) return;
                         await eliminarEvaluacion(ev.id);
                         void cargar();
                       }}
@@ -359,7 +398,7 @@ export function EvaluacionesPaciente({ paciente }: { paciente: PacienteRow }) {
                   <span className="block text-xs text-slate-400">
                     Respondió: {r.respondienteNombre}
                     {r.respondienteRelacion ? ` (${r.respondienteRelacion})` : ""}
-                    {r.origen === "codigo" ? " · ingresado por código" : ""}
+                    {r.origen === "codigo" ? " · ingresado manualmente" : ""}
                   </span>
                 </span>
                 <span className="flex items-center gap-2">
@@ -503,108 +542,6 @@ function InformeRespuesta({
             />
           </>
         )}
-      </div>
-    </SectionCard>
-  );
-}
-
-/** Calificar un código corto (B16-…) que el padre envió por WhatsApp y guardarlo en el expediente. */
-function CalificarCodigo({
-  onGuardado,
-  onVolver,
-  paciente,
-}: {
-  onGuardado: () => void;
-  onVolver: () => void;
-  paciente: PacienteRow;
-}) {
-  const [codigo, setCodigo] = useState("");
-  const [nombre, setNombre] = useState("");
-  const [relacion, setRelacion] = useState("");
-  const [fecha, setFecha] = useState(hoy);
-  const [error, setError] = useState("");
-  const [guardando, setGuardando] = useState(false);
-  const datos = codigo.trim() ? leerBBreve(codigo) : null;
-  // El JSON descargado ya trae quién respondió y la fecha.
-  const nombreEf = nombre || datos?.nombre || "";
-  const relacionEf = relacion || datos?.relacion || "";
-  const fechaEf = datos?.fecha && !fecha ? datos.fecha : fecha;
-
-  const guardar = async () => {
-    if (!datos || guardando) return;
-    if (!nombreEf.trim()) {
-      setError("Escribe el nombre de quien respondió.");
-      return;
-    }
-    setGuardando(true);
-    const { error: err } = await guardarRespuestaPorCodigo(paciente.id, "b-breve", nombreEf, relacionEf, fechaEf, {
-      v: 1,
-      instrumento: "B-Breve",
-      abierta: "",
-      extra: "",
-      ...datos,
-      nombre: nombreEf.trim(),
-      relacion: relacionEf,
-      fecha: fechaEf,
-      enviado: new Date().toISOString(),
-    });
-    setGuardando(false);
-    if (err) {
-      setError(err);
-      return;
-    }
-    onGuardado();
-  };
-
-  return (
-    <SectionCard title="Calificar código recibido (B-Breve)">
-      <div className="grid gap-4">
-        <button className={`${BTN_GHOST} w-fit`} onClick={onVolver} type="button">
-          <ChevronLeft className="h-4 w-4" />
-          Volver a evaluaciones
-        </button>
-        <p className="text-sm leading-6 text-slate-300">
-          Si el padre o la madre te envió por WhatsApp un código como <code className="text-emerald-200">B16-2103320231021301-01</code> (o el
-          JSON descargado), pégalo aquí para ver el informe y guardarlo en el expediente de {paciente.nombre}.
-        </p>
-        <Field label="Código o JSON">
-          <input className="field font-mono" onChange={(e) => setCodigo(e.target.value)} placeholder="B16-…" value={codigo} />
-        </Field>
-        {codigo.trim() && !datos ? (
-          <p className="text-sm text-red-200">
-            No se reconoce el código. Formato esperado: B16-, 16 dígitos del 0 al 3, guion, 2 dígitos (0 o 1) y, opcionalmente, guion y
-            código de caso. No se calculó nada.
-          </p>
-        ) : null}
-        {datos ? (
-          <>
-            <div className="grid gap-3 sm:grid-cols-3">
-              <Field label="Quién respondió *">
-                <input className="field" onChange={(e) => setNombre(e.target.value)} placeholder={datos.nombre || "Nombre"} value={nombre} />
-              </Field>
-              <Field label="Relación">
-                <select className="field" onChange={(e) => setRelacion(e.target.value)} value={relacionEf}>
-                  <option value="">Sin especificar</option>
-                  {B_BREVE_RELACIONES.map((r) => (
-                    <option key={r}>{r}</option>
-                  ))}
-                </select>
-              </Field>
-              <Field label="Fecha de aplicación">
-                <input className="field" onChange={(e) => setFecha(e.target.value)} type="date" value={fechaEf} />
-              </Field>
-            </div>
-            {error ? <p className="text-sm text-red-200">{error}</p> : null}
-            <button className={`${BTN_ACCENT} w-fit`} disabled={guardando} onClick={() => void guardar()} type="button">
-              <Save className="h-4 w-4" />
-              {guardando ? "Guardando..." : "Guardar en el expediente"}
-            </button>
-            <InformeFrame
-              html={informeBBreveHtml({ datos, nombre: nombreEf, relacion: relacionEf, fecha: fechaEf })}
-              titulo="Vista previa del informe"
-            />
-          </>
-        ) : null}
       </div>
     </SectionCard>
   );

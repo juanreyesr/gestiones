@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { validarBBreve } from "@/lib/evaluaciones/b-breve/codigo";
+import { limpiarBorradorBBreve, validarBBreve } from "@/lib/evaluaciones/b-breve/codigo";
 import { B_BREVE_RELACIONES } from "@/lib/evaluaciones/b-breve/contenido";
 import { rateLimit, rateLimitResponse } from "@/lib/server/rate-limit";
 import { getSupabaseClient } from "@/lib/supabase";
@@ -10,7 +10,7 @@ export const dynamic = "force-dynamic";
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const SIN_CACHE = { "Cache-Control": "no-store" };
 
-type RawGet = { estado: string; instrumento: string | null; ref: string | null };
+type RawGet = { estado: string; instrumento: string | null; ref: string | null; borrador?: unknown };
 
 /**
  * Formulario de evaluación por enlace (/evaluacion/<token>). Devuelve solo el
@@ -28,7 +28,34 @@ export async function GET(request: Request, { params }: { params: Promise<{ toke
   const { data, error } = await supabase.rpc("gestionesjj_public_evaluacion_get", { p_token: token });
   const row = (Array.isArray(data) ? data[0] : data) as RawGet | null;
   if (error || !row) return NextResponse.json({ estado: "invalido" }, { headers: SIN_CACHE });
-  return NextResponse.json({ estado: row.estado, instrumento: row.instrumento, ref: row.ref }, { headers: SIN_CACHE });
+  return NextResponse.json(
+    {
+      estado: row.estado,
+      instrumento: row.instrumento,
+      ref: row.ref,
+      // Avance guardado (solo con el enlace abierto), para continuar donde se quedó.
+      borrador: row.estado === "ok" && row.borrador ? limpiarBorradorBBreve(row.borrador) : null,
+    },
+    { headers: SIN_CACHE }
+  );
+}
+
+/** Guardado automático del avance mientras se responde. */
+export async function PUT(request: Request, { params }: { params: Promise<{ token: string }> }) {
+  if (!rateLimit(request, { key: "evaluacion-borrador", limit: 90, windowMs: 60_000 })) return rateLimitResponse();
+  const { token } = await params;
+  if (!UUID_RE.test(token)) return NextResponse.json({ error: "Enlace no válido." }, { status: 422 });
+  const body = (await request.json().catch(() => null)) as unknown;
+  if (!body || typeof body !== "object") return NextResponse.json({ error: "Solicitud inválida." }, { status: 422 });
+
+  const supabase = getSupabaseClient();
+  if (!supabase) return NextResponse.json({ error: "No disponible." }, { status: 503 });
+  const { data, error } = await supabase.rpc("gestionesjj_public_evaluacion_borrador", {
+    p_token: token,
+    p_borrador: limpiarBorradorBBreve(body),
+  });
+  if (error) return NextResponse.json({ error: error.message }, { status: 422 });
+  return NextResponse.json({ estado: data as string }, { headers: SIN_CACHE });
 }
 
 export async function POST(request: Request, { params }: { params: Promise<{ token: string }> }) {
