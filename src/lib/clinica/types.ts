@@ -1,3 +1,5 @@
+import type { Responsable } from "./consentimiento";
+
 export type PacienteEstado = "activo" | "inactivo" | "alta";
 export type SesionEstado = "en_curso" | "finalizada";
 export type SesionModalidad = "seguimiento" | "tema_nuevo";
@@ -65,6 +67,12 @@ export type PacienteRow = {
   /** Tarifa por sesion de este paciente (null = sin definir). */
   tarifa: number | null;
   tarifaMoneda: Moneda;
+  /** Lo marca el psicologo: adapta la hoja de datos y el consentimiento a padres o tutores. */
+  esMenor: boolean;
+  /** Padres o tutores que firmaron el consentimiento (si es menor). */
+  responsables: Responsable[];
+  /** Documento de identificacion del paciente adulto. */
+  identificacion: string | null;
 };
 
 export type PacientePayload = {
@@ -97,6 +105,8 @@ export type PacientePayload = {
   horario_trabajo?: string | null;
   estado?: PacienteEstado;
   whatsapp_recordatorios?: boolean;
+  es_menor?: boolean;
+  identificacion?: string | null;
 };
 
 export type CompromisoRow = {

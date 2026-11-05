@@ -32,10 +32,12 @@ type FormState = {
   notasGenerales: string;
   estado: PacienteEstado;
   whatsappRecordatorios: boolean;
+  esMenor: boolean;
+  identificacion: string;
 };
 
 /** Campos de texto del formulario (los que editan input/textarea). */
-type CampoTexto = Exclude<keyof FormState, "whatsappRecordatorios">;
+type CampoTexto = Exclude<keyof FormState, "whatsappRecordatorios" | "esMenor">;
 
 function toFormState(paciente: PacienteRow | null): FormState {
   return {
@@ -61,6 +63,8 @@ function toFormState(paciente: PacienteRow | null): FormState {
     notasGenerales: paciente?.notasGenerales ?? "",
     estado: paciente?.estado ?? "activo",
     whatsappRecordatorios: paciente?.whatsappRecordatorios ?? true,
+    esMenor: paciente?.esMenor ?? false,
+    identificacion: paciente?.identificacion ?? "",
   };
 }
 
@@ -112,6 +116,8 @@ function toPayload(form: FormState, situacion: SituacionValue): PacientePayload 
     horario_trabajo: opt(situacion.horarioTrabajo),
     estado: form.estado,
     whatsapp_recordatorios: form.whatsappRecordatorios,
+    es_menor: form.esMenor,
+    identificacion: form.esMenor ? null : opt(form.identificacion),
   };
 }
 
@@ -274,7 +280,21 @@ export function PacienteForm({
 
       <Section onToggle={() => toggle("personales")} open={openSections.personales} title="Datos personales">
         <div className="grid gap-4 sm:grid-cols-2">
-          <Field label="Nombre completo *">{input("nombre", { placeholder: "Nombre del paciente" })}</Field>
+          <div className="grid gap-1.5">
+            <Field label="Nombre completo *">{input("nombre", { placeholder: "Nombre del paciente" })}</Field>
+            <label className="flex items-center gap-2 text-xs text-slate-300">
+              <input
+                checked={form.esMenor}
+                onChange={(event) => {
+                  const valor = event.target.checked;
+                  setForm((prev) => ({ ...prev, esMenor: valor }));
+                  setSavedAt(null);
+                }}
+                type="checkbox"
+              />
+              Es menor de edad (la hoja de datos y el consentimiento los llenan y firman sus padres o tutores)
+            </label>
+          </div>
           <div className="grid gap-1.5">
             <Field label="Teléfono *">{input("telefono", { placeholder: "0000-0000 · de otro país: +504 9999 8888" })}</Field>
             <label className="flex items-center gap-2 text-xs text-slate-300">
@@ -304,6 +324,9 @@ export function PacienteForm({
             </select>
           </Field>
           <Field label="Escolaridad">{input("escolaridad")}</Field>
+          {form.esMenor ? null : (
+            <Field label="Documento de identificación (DPI o pasaporte)">{input("identificacion")}</Field>
+          )}
           <Field label="Estado civil">
             <select className="field" onChange={(event) => set("estadoCivil")(event.target.value)} value={form.estadoCivil}>
               <option value="">Sin especificar</option>

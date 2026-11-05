@@ -22,13 +22,22 @@ import {
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { fetchCitasSinPagar, fetchProximaCitaDePaciente } from "@/lib/clinica/citas";
 import { fetchCompromisosPendientes } from "@/lib/clinica/compromisos";
-import { ensureDatosToken, fetchPaciente, reactivarDatos } from "@/lib/clinica/pacientes";
+import {
+  ensureDatosToken,
+  fetchConsentimientos,
+  fetchPaciente,
+  marcarMenor,
+  reactivarDatos,
+  type ConsentimientoRow,
+} from "@/lib/clinica/pacientes";
 import { exportarExpedientePdf } from "@/lib/clinica/expediente-pdf";
 import { fetchSesionEnCurso, fetchSesionesDePaciente, iniciarSesion, vincularCitaASesion } from "@/lib/clinica/sesiones";
 import { claveDiaLocal, formatoFechaCorta, formatoFechaHora } from "@/lib/clinica/slots";
 import type { CitaRow, CompromisoRow, PacienteRow, SesionRow } from "@/lib/clinica/types";
 import { CitasSinPagarAviso, PagadaCheckbox, TarifaEditor } from "./pagos";
 import { PacienteForm } from "./paciente-form";
+import { ConsentimientosPaciente } from "./consentimientos-paciente";
+import { EvaluacionesPaciente } from "./evaluaciones-paciente";
 import { PlanTratamiento } from "./plan-tratamiento";
 import { SesionActiva } from "./sesion-activa";
 import { SesionDetalle } from "./sesion-detalle";
@@ -84,16 +93,18 @@ export function PacienteExpediente({
   const [pagoCopiado, setPagoCopiado] = useState<string | null>(null);
   const [datosMsg, setDatosMsg] = useState("");
   const [sesionEditando, setSesionEditando] = useState<SesionRow | null>(null);
+  const [consentimientos, setConsentimientos] = useState<ConsentimientoRow[]>([]);
 
   const cargar = useCallback(async () => {
     setLoading(true);
-    const [pacienteRes, sesionesRes, enCursoRes, compromisosRes, citaRes, sinPagarRes] = await Promise.all([
+    const [pacienteRes, sesionesRes, enCursoRes, compromisosRes, citaRes, sinPagarRes, consentimientosRes] = await Promise.all([
       fetchPaciente(pacienteId),
       fetchSesionesDePaciente(pacienteId),
       fetchSesionEnCurso(pacienteId),
       fetchCompromisosPendientes(pacienteId),
       fetchProximaCitaDePaciente(pacienteId),
       fetchCitasSinPagar(pacienteId),
+      fetchConsentimientos(pacienteId),
     ]);
     setLoading(false);
 
@@ -108,6 +119,7 @@ export function PacienteExpediente({
     setCompromisos(compromisosRes.data);
     setProximaCita(citaRes.data);
     setCitasSinPagar(sinPagarRes.data);
+    setConsentimientos(consentimientosRes.data);
   }, [pacienteId]);
 
   useEffect(() => {
@@ -374,6 +386,7 @@ export function PacienteExpediente({
       <div className="grid gap-4 xl:grid-cols-[1fr_340px]">
         <div className="grid content-start gap-4">
           <PlanTratamiento onCambio={() => void cargar()} sesiones={sesiones} />
+          <EvaluacionesPaciente paciente={paciente} />
           <SectionCard title={`Historial de sesiones (${sesiones.length})`}>
             {sesiones.length === 0 ? (
               <p className="text-sm text-slate-400">
@@ -433,7 +446,26 @@ export function PacienteExpediente({
         </div>
 
         <aside className="grid content-start gap-4">
-          <SectionCard title="Hoja de datos generales">
+          <SectionCard title="Hoja de datos y consentimiento">
+            <label className="mb-3 flex items-start gap-2 border-b border-white/10 pb-3 text-sm text-slate-200">
+              <input
+                checked={paciente.esMenor}
+                className="mt-1"
+                onChange={async (event) => {
+                  const valor = event.target.checked;
+                  const { error: err } = await marcarMenor(paciente.id, valor);
+                  if (err) setDatosMsg(err);
+                  else void cargar();
+                }}
+                type="checkbox"
+              />
+              <span>
+                Es menor de edad
+                <span className="block text-xs text-slate-400">
+                  La hoja la llenan sus padres o tutores y el consentimiento lo firman ellos (nombre e identificación).
+                </span>
+              </span>
+            </label>
             {paciente.datosCompletadosAt ? (
               <div className="grid gap-2">
                 <p className="inline-flex items-center gap-1.5 text-sm text-emerald-300">
@@ -452,7 +484,9 @@ export function PacienteExpediente({
             ) : (
               <div className="grid gap-2">
                 <p className="text-sm leading-6 text-slate-300">
-                  Envía este enlace al paciente para que complete su información. Al guardarla, el enlace se desactiva.
+                  Envía este enlace {paciente.esMenor ? "a los padres o tutores" : "al paciente"} para que complete
+                  {paciente.esMenor ? "n" : ""} la información y acepte{paciente.esMenor ? "n" : ""} el consentimiento informado
+                  (obligatorio). Al guardarla, el enlace se desactiva.
                 </p>
                 <button className={BTN_GHOST} onClick={handleCopiarEnlaceDatos} type="button">
                   <Link2 className="h-4 w-4" />
@@ -470,12 +504,10 @@ export function PacienteExpediente({
               </div>
             )}
             {datosMsg ? <p className="mt-2 break-all text-xs text-slate-400">{datosMsg}</p> : null}
-            {paciente.consentimientoAceptadoAt ? (
-              <p className="mt-3 inline-flex items-center gap-1.5 border-t border-white/10 pt-3 text-xs text-slate-400">
-                <ShieldCheck className="h-3.5 w-3.5 text-emerald-300" />
-                Consentimiento aceptado el {formatoFechaCorta(paciente.consentimientoAceptadoAt)}
-              </p>
-            ) : null}
+            <ConsentimientosPaciente
+              aceptadoAt={paciente.consentimientoAceptadoAt}
+              consentimientos={consentimientos}
+            />
           </SectionCard>
 
           <SectionCard title="Pago de la consulta">
