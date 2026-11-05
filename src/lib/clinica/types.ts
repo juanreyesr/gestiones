@@ -170,6 +170,8 @@ export type CitaRow = {
   /** Monto de la cita; se copia de la tarifa del paciente al atenderla o pagarla. */
   monto: number | null;
   moneda: Moneda | null;
+  /** Lo que entregó realmente el paciente (null = pagó justo lo que le tocaba). */
+  montoPagado: number | null;
 };
 
 export type SolicitudRow = {

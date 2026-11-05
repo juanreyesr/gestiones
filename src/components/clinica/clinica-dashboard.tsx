@@ -212,7 +212,7 @@ export function ClinicaDashboard({
         <div className="grid gap-3 sm:grid-cols-3">
           <div>
             <div className="text-xs font-semibold uppercase text-slate-400">Cobrado este mes</div>
-            <div className="mt-1 text-xl font-semibold text-emerald-200">{totalPorMoneda(cobradasMes)}</div>
+            <div className="mt-1 text-xl font-semibold text-emerald-200">{totalPorMoneda(cobradasMes.map((c) => ({ monto: c.montoPagado ?? c.monto, moneda: c.moneda })))}</div>
             <div className="text-xs text-slate-500">
               {cobradasMes.length === 1 ? "1 cita pagada" : `${cobradasMes.length} citas pagadas`}
             </div>
