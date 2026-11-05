@@ -150,6 +150,15 @@ export async function eliminarCita(id: string) {
   return { error: error?.message ?? null };
 }
 
+/** Citas por id (por ejemplo, las ligadas a las sesiones del historial de un paciente). */
+export async function fetchCitasPorIds(ids: string[]) {
+  const supabase = getSupabaseClient();
+  if (!supabase || ids.length === 0) return { data: [] as CitaRow[], error: null as string | null };
+  const { data, error } = await supabase.from("gestionesjj_citas").select(CITA_COLUMNS).in("id", ids);
+  if (error) return { data: [] as CitaRow[], error: error.message };
+  return { data: ((data ?? []) as unknown as RawCita[]).map(mapCita), error: null };
+}
+
 /** Citas atendidas (completadas) que aun no se marcan como pagadas; de un paciente o de todos. */
 export async function fetchCitasSinPagar(pacienteId?: string) {
   const supabase = getSupabaseClient();
