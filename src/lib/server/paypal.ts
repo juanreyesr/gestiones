@@ -22,6 +22,9 @@ export type AvisoPago = {
   tipo: "completado" | "reembolsado";
   monto: string | null;
   neto: string | null;
+  /** Monto bruto pagado (lo que entregó el paciente) y su moneda, para registrar abonos o pendientes. */
+  montoValor?: number | null;
+  montoMoneda?: string | null;
   captureId: string | null;
   /** En un reembolso: ID de la captura (pago) original que se reembolsa. */
   capturaOriginalId: string | null;
@@ -92,6 +95,15 @@ function montoTexto(valor: unknown) {
   return monto?.value ? `${monto.value} ${monto.currency_code ?? ""}`.trim() : null;
 }
 
+function montoNumero(valor: unknown) {
+  const monto = valor as { value?: string; currency_code?: string } | undefined;
+  const numero = monto?.value ? Number(monto.value) : NaN;
+  return {
+    montoValor: Number.isFinite(numero) && numero >= 0 ? Math.round(numero * 100) / 100 : null,
+    montoMoneda: monto?.currency_code ?? null,
+  };
+}
+
 /** Nombre, correo y concepto salen de la orden (la captura no los trae). */
 async function datosDeOrden(token: string, orderId: string) {
   try {
@@ -137,6 +149,7 @@ export async function avisoDeEvento(evento: EventoPayPal, token: string): Promis
   return {
     tipo,
     monto: montoTexto(recurso.amount),
+    ...montoNumero(recurso.amount),
     neto: tipo === "completado" ? montoTexto(desglose?.net_amount) : null,
     captureId: typeof recurso.id === "string" ? recurso.id : null,
     capturaOriginalId: tipo === "reembolsado" ? capturaOriginalId : null,
