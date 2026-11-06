@@ -6,13 +6,42 @@
  * solo); se conserva por compatibilidad con el Anexo C y sus casos de prueba.
  */
 
+/** Módulos de la batería. La pregunta de seguridad se aplica siempre. */
+export type ModuloEapi = "gad" | "dass" | "ptq" | "docs";
+export const MODULOS_EAPI: readonly ModuloEapi[] = ["gad", "dass", "ptq", "docs"];
+
+/** Tamaño y escala de cada módulo, y minutos aproximados para responderlo. */
+export const FORMA_MODULOS: Record<ModuloEapi, { items: number; max: number; minutos: number; sigla: string }> = {
+  gad: { items: 7, max: 3, minutos: 2, sigla: "GAD-7" },
+  dass: { items: 21, max: 3, minutos: 4, sigla: "DASS-21" },
+  ptq: { items: 15, max: 4, minutos: 3, sigla: "PTQ" },
+  docs: { items: 20, max: 4, minutos: 6, sigla: "DOCS" },
+};
+
+/**
+ * Módulos asignados a un enlace. Formato actual: { modulos: [...] }.
+ * Compatibilidad: { docs: true } (enlaces anteriores) = batería completa con DOCS.
+ */
+export function modulosDeOpciones(opciones: unknown): ModuloEapi[] {
+  const o = (opciones && typeof opciones === "object" ? opciones : {}) as { modulos?: unknown; docs?: unknown };
+  if (Array.isArray(o.modulos)) {
+    const lista = MODULOS_EAPI.filter((m) => (o.modulos as unknown[]).includes(m));
+    if (lista.length) return lista;
+  }
+  return o.docs === true ? ["gad", "dass", "ptq", "docs"] : ["gad", "dass", "ptq"];
+}
+
+/** Preguntas obligatorias: las de cada módulo + la pregunta de seguridad. */
+export const preguntasEapi = (modulos: readonly ModuloEapi[]) => modulos.reduce((n, m) => n + FORMA_MODULOS[m].items, 0) + 1;
+export const minutosEapi = (modulos: readonly ModuloEapi[]) => modulos.reduce((n, m) => n + FORMA_MODULOS[m].minutos, 0) + 1;
+
 export type EapiRespuesta = {
   v: 1;
   instrumento: "AEI";
   modulos: string[];
-  gad: number[];
-  dass: number[];
-  ptq: number[];
+  gad: number[] | null;
+  dass: number[] | null;
+  ptq: number[] | null;
   docs: number[] | null;
   safety: number;
   func: number | null;
@@ -28,19 +57,20 @@ const enRango = (max: number) => (v: unknown): v is number => typeof v === "numb
 const lista = (v: unknown, largo: number, max: number): v is number[] => Array.isArray(v) && v.length === largo && v.every(enRango(max));
 
 /** Valida una respuesta completa sin corregir valores (un 5 o un faltante es error). */
-export function validarEapi(datos: unknown, conDocs: boolean): { ok: true; datos: EapiRespuesta } | { ok: false; error: string } {
+export function validarEapi(
+  datos: unknown,
+  modulos: readonly ModuloEapi[]
+): { ok: true; datos: EapiRespuesta } | { ok: false; error: string } {
   if (!datos || typeof datos !== "object") return { ok: false, error: "Las respuestas no son válidas." };
   const d = datos as Record<string, unknown>;
-  if (!lista(d.gad, 7, 3) || !lista(d.dass, 21, 3) || !lista(d.ptq, 15, 4)) {
-    return { ok: false, error: "Faltan respuestas o hay valores fuera de la escala." };
+  const listas: Record<ModuloEapi, number[] | null> = { gad: null, dass: null, ptq: null, docs: null };
+  for (const m of modulos) {
+    const v = d[m];
+    if (!lista(v, FORMA_MODULOS[m].items, FORMA_MODULOS[m].max)) return { ok: false, error: "Faltan respuestas o hay valores fuera de la escala." };
+    listas[m] = [...v];
   }
   if (!enRango(3)(d.safety)) return { ok: false, error: "Falta la última pregunta." };
   if (d.func !== null && d.func !== undefined && !enRango(3)(d.func)) return { ok: false, error: "Respuesta no válida." };
-  let docs: number[] | null = null;
-  if (conDocs) {
-    if (!lista(d.docs, 20, 4)) return { ok: false, error: "Faltan respuestas del bloque 4." };
-    docs = [...d.docs];
-  }
   const texto = (k: string, max: number) => (typeof d[k] === "string" ? (d[k] as string).slice(0, max).trim() : "");
   const edad = typeof d.edad === "number" && Number.isInteger(d.edad) && d.edad >= 5 && d.edad <= 110 ? d.edad : null;
   return {
@@ -48,13 +78,10 @@ export function validarEapi(datos: unknown, conDocs: boolean): { ok: true; datos
     datos: {
       v: 1,
       instrumento: "AEI",
-      modulos: docs ? ["GAD-7", "DASS-21", "PTQ", "DOCS"] : ["GAD-7", "DASS-21", "PTQ"],
-      gad: [...d.gad],
-      dass: [...d.dass],
-      ptq: [...d.ptq],
-      docs,
+      modulos: modulos.map((m) => FORMA_MODULOS[m].sigla),
+      ...listas,
       safety: d.safety,
-      func: d.func === null || d.func === undefined ? null : (d.func as number),
+      func: listas.gad && d.func !== null && d.func !== undefined ? (d.func as number) : null,
       ref: texto("ref", 40).replace(/[^A-Za-z0-9]/g, "").slice(0, 12),
       nombre: texto("nombre", 120),
       edad,
@@ -66,7 +93,9 @@ export function validarEapi(datos: unknown, conDocs: boolean): { ok: true; datos
 }
 
 /** Código corto (Anexo C.2). */
-export function codificarEapi(r: Pick<EapiRespuesta, "gad" | "dass" | "ptq" | "safety" | "func" | "docs" | "ref">) {
+export function codificarEapi(
+  r: { gad: number[]; dass: number[]; ptq: number[] } & Pick<EapiRespuesta, "safety" | "func" | "docs" | "ref">
+) {
   let s = `AEI1-G${r.gad.join("")}-D${r.dass.join("")}-P${r.ptq.join("")}-S${r.safety}`;
   if (r.func != null) s += `-F${r.func}`;
   if (r.docs) s += `-O${r.docs.join("")}`;
@@ -135,9 +164,9 @@ export function limpiarBorradorEapi(datos: unknown): EapiBorrador {
   };
 }
 
-/** Preguntas obligatorias respondidas: 44 sin DOCS (7 + 21 + 15 + 1), 64 con DOCS. */
-export function avanceEapi(b: EapiBorrador, conDocs: boolean) {
+/** Preguntas obligatorias respondidas según los módulos asignados (batería completa: 44, o 64 con DOCS). */
+export function avanceEapi(b: EapiBorrador, modulos: readonly ModuloEapi[]) {
   const n = (a: (number | null)[]) => a.filter((v) => v !== null).length;
-  const respondidas = n(b.gad) + n(b.dass) + n(b.ptq) + (b.safety !== null ? 1 : 0) + (conDocs ? n(b.docs) : 0);
-  return { respondidas, total: conDocs ? 64 : 44 };
+  const respondidas = modulos.reduce((t, m) => t + n(b[m]), 0) + (b.safety !== null ? 1 : 0);
+  return { respondidas, total: preguntasEapi(modulos) };
 }

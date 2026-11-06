@@ -19,10 +19,21 @@ import type { PacienteRow } from "@/lib/clinica/types";
 import { calificarBBreve } from "@/lib/evaluaciones/b-breve/calificacion";
 import { avanceBBreve, limpiarBorradorBBreve, validarBBreve, type BBreveDatos } from "@/lib/evaluaciones/b-breve/codigo";
 import { informeBBreveHtml, type AplicacionBBreve } from "@/lib/evaluaciones/b-breve/informe-html";
-import { calificarEapi } from "@/lib/evaluaciones/eapi/calificacion";
-import { avanceEapi, limpiarBorradorEapi } from "@/lib/evaluaciones/eapi/codigo";
+import { calificarEapi, NOMBRES_MODULOS } from "@/lib/evaluaciones/eapi/calificacion";
+import {
+  avanceEapi,
+  FORMA_MODULOS,
+  limpiarBorradorEapi,
+  minutosEapi,
+  MODULOS_EAPI,
+  modulosDeOpciones,
+  preguntasEapi,
+  type ModuloEapi,
+} from "@/lib/evaluaciones/eapi/codigo";
 import { calificarRiasec } from "@/lib/evaluaciones/riasec/calificacion";
 import { avanceRiasec, limpiarBorradorRiasec } from "@/lib/evaluaciones/riasec/codigo";
+import { calificarValores, VALORES_INFO } from "@/lib/evaluaciones/valores/calificacion";
+import { avanceValores, limpiarBorradorValores } from "@/lib/evaluaciones/valores/codigo";
 import {
   asignarEvaluacion,
   cambiarEstadoEvaluacion,
@@ -38,6 +49,7 @@ import { IconoWhatsApp } from "./boton-whatsapp-paciente";
 import { datosEapi, InformeEapi } from "./informe-eapi";
 import { InformeFrame } from "./informe-frame";
 import { datosRiasec, InformeRiasec } from "./informe-riasec";
+import { datosValores, InformeValores } from "./informe-valores";
 import { NotasPrivadas } from "./notas-privadas";
 import { BTN_ACCENT, BTN_DANGER, BTN_GHOST, Field, SectionCard } from "./ui";
 
@@ -95,7 +107,7 @@ export function EvaluacionesPaciente({ paciente }: { paciente: PacienteRow }) {
   const [etiquetas, setEtiquetas] = useState<string[]>(() =>
     etiquetasSugeridas(paciente, paciente.esMenor ? INSTRUMENTOS[0].respuestasPorDefecto : 1)
   );
-  const [conDocs, setConDocs] = useState(false);
+  const [modulosEapi, setModulosEapi] = useState<ModuloEapi[]>(["gad", "dass", "ptq"]);
   const [nota, setNota] = useState("");
   const [aviso, setAviso] = useState("");
 
@@ -145,12 +157,16 @@ export function EvaluacionesPaciente({ paciente }: { paciente: PacienteRow }) {
 
   const handleAsignar = async () => {
     setError("");
+    if (instrumento === "eapi" && modulosEapi.length === 0) {
+      setError("Elige al menos una escala del EAPI.");
+      return;
+    }
     const { error: err } = await asignarEvaluacion(
       paciente.id,
       instrumento,
       etiquetas,
       nota,
-      instrumento === "eapi" ? { docs: conDocs } : {}
+      instrumento === "eapi" ? { modulos: modulosEapi } : {}
     );
     if (err) {
       setError(err);
@@ -250,13 +266,33 @@ export function EvaluacionesPaciente({ paciente }: { paciente: PacienteRow }) {
             ))}
           </div>
           {instrumento === "eapi" ? (
-            <label className="flex items-start gap-2 text-sm text-slate-200">
-              <input checked={conDocs} className="mt-1" onChange={(e) => setConDocs(e.target.checked)} type="checkbox" />
-              <span>
-                Incluir el módulo TOC (DOCS, 20 preguntas más sobre obsesiones y compulsiones)
-                <span className="block text-xs text-slate-400">Recomendado solo si sospechas síntomas obsesivo-compulsivos.</span>
-              </span>
-            </label>
+            <fieldset className="grid gap-2">
+              <legend className="mb-1 text-sm font-semibold text-slate-200">Escalas a aplicar (cada una puede enviarse por separado)</legend>
+              {MODULOS_EAPI.map((m) => (
+                <label className="flex items-start gap-2 text-sm text-slate-200" key={m}>
+                  <input
+                    checked={modulosEapi.includes(m)}
+                    className="mt-1"
+                    onChange={(e) =>
+                      setModulosEapi((l) => MODULOS_EAPI.filter((x) => (x === m ? e.target.checked : l.includes(x))))
+                    }
+                    type="checkbox"
+                  />
+                  <span>
+                    {NOMBRES_MODULOS[m].completo}
+                    <span className="block text-xs text-slate-400">
+                      {FORMA_MODULOS[m].items} preguntas · {NOMBRES_MODULOS[m].mide}
+                      {m === "docs" ? ". Recomendado solo si sospechas síntomas obsesivo-compulsivos." : "."}
+                    </span>
+                  </span>
+                </label>
+              ))}
+              <p className="text-xs text-slate-400">
+                {modulosEapi.length
+                  ? `Total: ${preguntasEapi(modulosEapi)} preguntas (incluye siempre la pregunta de seguridad), unos ${minutosEapi(modulosEapi)} minutos. Los informes pueden verse por escala o unificados, también uniendo escalas enviadas en enlaces distintos.`
+                  : "Elige al menos una escala."}
+              </p>
+            </fieldset>
           ) : null}
           <Field label="Nota privada (opcional)">
             <input className="field" maxLength={500} onChange={(e) => setNota(e.target.value)} placeholder="Ej. aplicación inicial, seguimiento semana 4" value={nota} />
@@ -297,10 +333,12 @@ export function EvaluacionesPaciente({ paciente }: { paciente: PacienteRow }) {
               : ev.instrumento === "b-breve"
                 ? avanceBBreve(limpiarBorradorBBreve(ev.borrador))
                 : ev.instrumento === "eapi"
-                  ? avanceEapi(limpiarBorradorEapi(ev.borrador), ev.opciones?.docs === true)
+                  ? avanceEapi(limpiarBorradorEapi(ev.borrador), modulosDeOpciones(ev.opciones))
                   : ev.instrumento === "riasec"
                     ? avanceRiasec(limpiarBorradorRiasec(ev.borrador))
-                    : null;
+                    : ev.instrumento === "valores"
+                      ? avanceValores(limpiarBorradorValores(ev.borrador))
+                      : null;
             const estadoTexto = !abierta
               ? ev.estado === "completa"
                 ? "✓ Enviado"
@@ -314,7 +352,7 @@ export function EvaluacionesPaciente({ paciente }: { paciente: PacienteRow }) {
                   <div className="text-sm font-semibold text-white">
                     {ev.etiqueta ? `${ev.etiqueta} · ` : ""}
                     {instrumentoPorId(ev.instrumento)?.nombre.split(" · ")[0] ?? ev.instrumento}
-                    {ev.instrumento === "eapi" && ev.opciones?.docs === true ? " + TOC" : ""}
+                    {ev.instrumento === "eapi" ? ` (${modulosDeOpciones(ev.opciones).map((m) => FORMA_MODULOS[m].sigla).join(", ")})` : ""}
                   </div>
                   <div className="text-xs text-slate-400">
                     Creado {formatoFechaCorta(ev.createdAt)} ·{" "}
@@ -400,6 +438,8 @@ export function EvaluacionesPaciente({ paciente }: { paciente: PacienteRow }) {
             const ce = de ? calificarEapi(de) : null;
             const dr = r.instrumento === "riasec" ? datosRiasec(r) : null;
             const cr = dr ? calificarRiasec(dr) : null;
+            const dv = r.instrumento === "valores" ? datosValores(r) : null;
+            const cv = dv ? calificarValores(dv) : null;
             const alarma = (datos && (datos.S1 === 1 || datos.S2 === 1)) || (ce && ce.flags.some((f) => f.lvl === "alert"));
             return (
               <button
@@ -434,9 +474,21 @@ export function EvaluacionesPaciente({ paciente }: { paciente: PacienteRow }) {
                       Código <strong className="tracking-wider">{cr.codigo}</strong> · diferenciación {cr.diferenciacion.k}
                     </span>
                   ) : null}
+                  {cv ? (
+                    <span className="text-xs text-slate-200">
+                      Valores: <strong>{cv.principales.map((v) => VALORES_INFO[v].nombre).join(", ")}</strong>
+                    </span>
+                  ) : null}
                   {ce ? (
                     <span className="text-xs text-slate-200">
-                      GAD-7 <strong>{ce.gad.total}</strong> · Estrés <strong>{ce.dass.str.band.label}</strong> · PTQ <strong>{ce.ptq.total}</strong>
+                      {[
+                        ce.gad ? `GAD-7 ${ce.gad.total}` : "",
+                        ce.dass ? `Estrés ${ce.dass.str.band.label}` : "",
+                        ce.ptq ? `PTQ ${ce.ptq.total}` : "",
+                        ce.docs ? `DOCS ${ce.docs.total}` : "",
+                      ]
+                        .filter(Boolean)
+                        .join(" · ")}
                     </span>
                   ) : null}
                   <span className="text-xs font-semibold text-emerald-300">Ver informe →</span>
@@ -520,7 +572,7 @@ function InformeRespuesta({
               const blob = new Blob([JSON.stringify(actual.datos, null, 2)], { type: "application/json" });
               const a = document.createElement("a");
               a.href = URL.createObjectURL(blob);
-              a.download = `${actual.instrumento === "eapi" ? "EAPI" : actual.instrumento === "riasec" ? "RIASEC" : "B16"}_${(actual.respondienteNombre || "respuesta").replace(/\s+/g, "_")}_${fechaDe(actual)}.json`;
+              a.download = `${actual.instrumento === "eapi" ? "EAPI" : actual.instrumento === "riasec" ? "RIASEC" : actual.instrumento === "valores" ? "VALORES" : "B16"}_${(actual.respondienteNombre || "respuesta").replace(/\s+/g, "_")}_${fechaDe(actual)}.json`;
               a.click();
               URL.revokeObjectURL(a.href);
             }}
@@ -547,6 +599,8 @@ function InformeRespuesta({
           <InformeEapi actual={actual} paciente={paciente} respuestas={respuestas} />
         ) : actual.instrumento === "riasec" ? (
           <InformeRiasec actual={actual} paciente={paciente} respuestas={respuestas} />
+        ) : actual.instrumento === "valores" ? (
+          <InformeValores actual={actual} paciente={paciente} respuestas={respuestas} />
         ) : actual.instrumento !== "b-breve" || !datos ? (
           <p className="text-sm text-red-200">Esta respuesta no tiene un formato válido para calificar.</p>
         ) : (

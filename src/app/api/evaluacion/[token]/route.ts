@@ -1,8 +1,9 @@
 import { after, NextResponse } from "next/server";
 import { limpiarBorradorBBreve, validarBBreve } from "@/lib/evaluaciones/b-breve/codigo";
 import { B_BREVE_RELACIONES } from "@/lib/evaluaciones/b-breve/contenido";
-import { limpiarBorradorEapi, validarEapi } from "@/lib/evaluaciones/eapi/codigo";
+import { limpiarBorradorEapi, modulosDeOpciones, validarEapi } from "@/lib/evaluaciones/eapi/codigo";
 import { limpiarBorradorRiasec, validarRiasec } from "@/lib/evaluaciones/riasec/codigo";
+import { limpiarBorradorValores, validarValores } from "@/lib/evaluaciones/valores/codigo";
 import { rateLimit, rateLimitResponse } from "@/lib/server/rate-limit";
 import { avisarEvaluacionRespondida } from "@/lib/server/telegram-avisos";
 import { getSupabaseClient } from "@/lib/supabase";
@@ -21,13 +22,15 @@ type RawGet = {
   opciones?: Record<string, unknown> | null;
 };
 
-const conDocs = (fila: RawGet) => fila.instrumento === "eapi" && fila.opciones?.docs === true;
+/** Escalas del EAPI asignadas al enlace (los enlaces anteriores usaban { docs: true }). */
+const modulosEapi = (fila: RawGet) => modulosDeOpciones(fila.opciones);
 
 /** Limpia el avance según el instrumento del enlace. */
 function limpiarBorrador(fila: RawGet, datos: unknown) {
   if (fila.instrumento === "b-breve") return limpiarBorradorBBreve(datos);
   if (fila.instrumento === "eapi") return limpiarBorradorEapi(datos);
   if (fila.instrumento === "riasec") return limpiarBorradorRiasec(datos);
+  if (fila.instrumento === "valores") return limpiarBorradorValores(datos);
   return null;
 }
 
@@ -55,7 +58,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ toke
       estado: fila.estado,
       instrumento: fila.instrumento,
       ref: fila.ref,
-      opciones: { docs: conDocs(fila) },
+      opciones: fila.instrumento === "eapi" ? { modulos: modulosEapi(fila) } : {},
       // Avance guardado (solo con el enlace abierto), para continuar donde se quedó.
       borrador: fila.estado === "ok" && fila.borrador ? limpiarBorrador(fila, fila.borrador) : null,
     },
@@ -113,7 +116,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ tok
     fecha = v.datos.fecha ?? "";
     guardar = { ...v.datos };
   } else if (fila.instrumento === "eapi") {
-    const v = validarEapi(body, conDocs(fila));
+    const v = validarEapi(body, modulosEapi(fila));
     if (!v.ok) return NextResponse.json({ error: v.error }, { status: 422 });
     if (!v.datos.nombre) return NextResponse.json({ error: "Escriba su nombre." }, { status: 422 });
     nombre = v.datos.nombre;
@@ -123,6 +126,14 @@ export async function POST(request: Request, { params }: { params: Promise<{ tok
     alertaSeguridad = v.datos.safety;
   } else if (fila.instrumento === "riasec") {
     const v = validarRiasec(body);
+    if (!v.ok) return NextResponse.json({ error: v.error }, { status: 422 });
+    if (!v.datos.nombre) return NextResponse.json({ error: "Escribe tu nombre." }, { status: 422 });
+    nombre = v.datos.nombre;
+    relacion = "Paciente";
+    fecha = v.datos.fecha;
+    guardar = { ...v.datos };
+  } else if (fila.instrumento === "valores") {
+    const v = validarValores(body);
     if (!v.ok) return NextResponse.json({ error: v.error }, { status: 422 });
     if (!v.datos.nombre) return NextResponse.json({ error: "Escribe tu nombre." }, { status: 422 });
     nombre = v.datos.nombre;
