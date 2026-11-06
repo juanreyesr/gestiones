@@ -9,6 +9,7 @@
     "start": "next start",
     "lint": "eslint",
     "test:b-breve": "node --experimental-strip-types --no-warnings scripts/probar-b-breve.mjs",
+    "test:eapi": "node --experimental-strip-types --no-warnings --import ./scripts/ts-resolver.mjs scripts/probar-eapi.mjs",
     "cap:sync": "cap sync",
     "cap:android": "cap open android",
     "cap:ios": "cap open ios"

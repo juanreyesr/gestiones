@@ -60,7 +60,7 @@ function senales(c: CalificacionBBreve, prefijo = "") {
     .join("");
 }
 
-export function informeBBreveHtml(a: AplicacionBBreve, b?: AplicacionBBreve | null, p?: AplicacionBBreve | null) {
+export function informeBBreveHtml(a: AplicacionBBreve, b?: AplicacionBBreve | null, p?: AplicacionBBreve | null, notasPrivadas = "") {
   const ca = calificarBBreve(a.datos);
   const alarmas = ca.senales.filter((s) => s.nivel === "alarma").length;
   let html = `<h1>Informe de calificación · Cuestionario B-Breve</h1>
@@ -122,6 +122,7 @@ ${x.datos.abierta ? `<p class="cita">${esc(x.datos.abierta)}</p>` : `<p class="m
 ${x.datos.extra ? `<div class="sub">Comentarios adicionales</div><p class="cita">${esc(x.datos.extra)}</p>` : ""}`;
   }
 
+  if (notasPrivadas.trim()) html += `<h2>Notas del profesional</h2><p class="cita">${esc(notasPrivadas)}</p>`;
   html += `<p class="aviso">${esc(B_BREVE_AVISO_INFORME)} Fuente: sección 10.2 de "Polidipsia psicógena infantil: guía para el psicólogo" (Lic. Juan J. Reyes).</p>`;
 
   return `<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">

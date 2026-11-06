@@ -58,3 +58,13 @@ export function mensajeEvaluacion(
     "Muchas gracias, saludos.",
   ].join("\n\n");
 }
+
+/** Mensaje para enviarle al paciente el enlace de su informe de resultados. */
+export function mensajeInforme(nombre: string, url: string, hora = horaGuatemala()) {
+  const primerNombre = primerNombreDe(nombre);
+  return [
+    `${saludoPorHora(hora)}${primerNombre ? `, ${primerNombre}` : ""}, te comparto el informe con los resultados de tu evaluación. Lo conversaremos en la próxima sesión:`,
+    url,
+    "Saludos.",
+  ].join("\n\n");
+}
