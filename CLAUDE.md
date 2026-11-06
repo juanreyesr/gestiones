@@ -6,6 +6,7 @@
 
 ## Flujo de trabajo
 - Cuando un PR propio esté en verde (despliegue de Vercel exitoso) y sin conflictos, marcarlo como listo y **fusionarlo sin preguntar** (squash).
+- Supabase: el propietario autoriza aplicar migraciones y cambios en la base de datos sin pedir confirmación (asume el riesgo). Antes de aplicar, probar las funciones con un bloque que termine en excepción (se revierte) y, al terminar, informar qué se aplicó y cómo se verificó.
 - Antes de subir cambios: `npx tsc --noEmit -p .`, `pnpm lint` (0 errores) y `pnpm build`.
 
 ## Proyecto

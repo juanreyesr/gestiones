@@ -17,7 +17,11 @@ export function formatoFechaLarga(iso: string) {
 }
 
 export function formatoFechaCorta(iso: string) {
-  return new Intl.DateTimeFormat("es-GT", { day: "2-digit", month: "short", year: "numeric" }).format(new Date(iso));
+  // Una fecha sola (AAAA-MM-DD) se interpreta como día local: new Date() la tomaría
+  // como medianoche UTC y en Guatemala mostraría el día anterior.
+  const soloFecha = /^\d{4}-\d{2}-\d{2}$/.test(iso);
+  const fecha = soloFecha ? new Date(Number(iso.slice(0, 4)), Number(iso.slice(5, 7)) - 1, Number(iso.slice(8, 10))) : new Date(iso);
+  return new Intl.DateTimeFormat("es-GT", { day: "2-digit", month: "short", year: "numeric" }).format(fecha);
 }
 
 export function formatoHora(iso: string) {

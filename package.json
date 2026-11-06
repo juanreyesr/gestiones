@@ -14,7 +14,8 @@
     "cap:sync": "cap sync",
     "cap:android": "cap open android",
     "cap:ios": "cap open ios",
-    "test:valores": "node --experimental-strip-types --no-warnings --import ./scripts/ts-resolver.mjs scripts/probar-valores.mjs"
+    "test:valores": "node --experimental-strip-types --no-warnings --import ./scripts/ts-resolver.mjs scripts/probar-valores.mjs",
+    "test:evolucion": "node --experimental-strip-types --no-warnings --import ./scripts/ts-resolver.mjs scripts/probar-evolucion.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.110.0",

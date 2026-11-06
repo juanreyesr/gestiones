@@ -38,6 +38,7 @@ import { CitasSinPagarAviso, MontoCita, PagadaCheckbox, SaldoPaciente, TarifaEdi
 import { PacienteForm } from "./paciente-form";
 import { ConsentimientosPaciente } from "./consentimientos-paciente";
 import { EvaluacionesPaciente } from "./evaluaciones-paciente";
+import { PanelEvolucion } from "./panel-evolucion";
 import { PlanTratamiento } from "./plan-tratamiento";
 import { SesionActiva } from "./sesion-activa";
 import { SesionDetalle } from "./sesion-detalle";
@@ -392,6 +393,7 @@ export function PacienteExpediente({
       <div className="grid gap-4 xl:grid-cols-[1fr_340px]">
         <div className="grid content-start gap-4">
           <PlanTratamiento onCambio={() => void cargar()} sesiones={sesiones} />
+          <PanelEvolucion pacienteId={paciente.id} sesiones={sesiones} />
           <EvaluacionesPaciente paciente={paciente} />
           <SectionCard title={`Historial de sesiones (${sesiones.length})`}>
             {sesiones.length === 0 ? (
