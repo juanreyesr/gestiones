@@ -27,6 +27,12 @@ export function InformePacienteVista({ informe }: { informe: InformePaciente }) 
         </p>
       </header>
       <p className="text-sm leading-6">{informe.intro}</p>
+      {informe.destacado ? (
+        <section className="grid gap-1 rounded-xl border border-indigo-200 bg-indigo-50 p-4 text-indigo-950">
+          <h2 className="text-lg font-semibold">{informe.destacado.titulo}</h2>
+          <p className="text-sm leading-6">{informe.destacado.texto}</p>
+        </section>
+      ) : null}
 
       {informe.resultados.length > 0 ? (
         <section className="grid gap-3">
@@ -40,7 +46,7 @@ export function InformePacienteVista({ informe }: { informe: InformePaciente }) 
                 </span>
               </div>
               <p className="text-xs uppercase tracking-wide text-slate-400">{r.periodo}</p>
-              <p className="text-sm leading-6">{r.texto}</p>
+              <p className="whitespace-pre-line text-sm leading-6">{r.texto}</p>
             </div>
           ))}
         </section>

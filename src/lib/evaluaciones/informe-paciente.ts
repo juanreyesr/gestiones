@@ -27,6 +27,8 @@ export type InformePaciente = {
   emitido: string;
   profesional: string;
   intro: string;
+  /** Recuadro destacado al inicio (p. ej. el código de intereses). */
+  destacado?: { titulo: string; texto: string };
   resultados: ResultadoPaciente[];
   notas: string;
   ayuda: string[] | null;
@@ -56,6 +58,10 @@ export function leerInformePaciente(valor: unknown): InformePaciente | null {
     emitido: s(o.emitido, 40),
     profesional: s(o.profesional, 120),
     intro: s(o.intro),
+    destacado:
+      o.destacado && typeof o.destacado === "object"
+        ? { titulo: s((o.destacado as Record<string, unknown>).titulo, 200), texto: s((o.destacado as Record<string, unknown>).texto, 1000) }
+        : undefined,
     resultados: (o.resultados as unknown[])
       .filter((r): r is Record<string, unknown> => !!r && typeof r === "object")
       .slice(0, 12)

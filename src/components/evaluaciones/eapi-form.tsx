@@ -38,7 +38,7 @@ const ESPERA_GUARDADO_MS = 1200;
 const vacio = (n: number) => Array<number | null>(n).fill(null);
 
 /** Una pregunta con opciones grandes (una sola elección). */
-function Pregunta({
+export function Pregunta({
   etiquetas,
   falta,
   id,

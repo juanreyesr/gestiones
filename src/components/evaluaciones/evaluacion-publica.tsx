@@ -6,12 +6,14 @@ import type { BBreveBorrador } from "@/lib/evaluaciones/b-breve/codigo";
 import type { EapiBorrador } from "@/lib/evaluaciones/eapi/codigo";
 import { BBreveForm } from "./b-breve-form";
 import { EapiForm } from "./eapi-form";
+import type { RiasecBorrador } from "@/lib/evaluaciones/riasec/codigo";
+import { RiasecForm } from "./riasec-form";
 
 type Info = {
   estado: "cargando" | "ok" | "completa" | "cerrada" | "invalido";
   instrumento?: string | null;
   ref?: string | null;
-  borrador?: BBreveBorrador | EapiBorrador | null;
+  borrador?: BBreveBorrador | EapiBorrador | RiasecBorrador | null;
   opciones?: { docs?: boolean } | null;
 };
 
@@ -37,6 +39,8 @@ export function EvaluacionPublica({ token }: { token: string }) {
     contenido = (
       <BBreveForm borradorInicial={(info.borrador as BBreveBorrador | null) ?? null} codigoCaso={info.ref ?? ""} token={token} />
     );
+  } else if (info.estado === "ok" && info.instrumento === "riasec") {
+    contenido = <RiasecForm borradorInicial={(info.borrador as RiasecBorrador | null) ?? null} codigoCaso={info.ref ?? ""} token={token} />;
   } else if (info.estado === "ok" && info.instrumento === "eapi") {
     contenido = (
       <EapiForm
