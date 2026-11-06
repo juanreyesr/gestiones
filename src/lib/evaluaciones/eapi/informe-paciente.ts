@@ -3,8 +3,14 @@
  * diagnósticos, sin señales clínicas ni el ítem de seguridad). Solo panel.
  */
 import type { InformePaciente, OpcionesInforme, ResultadoPaciente, TonoResultado } from "../informe-paciente";
-import { calificarEapi, type EapiDatos } from "./calificacion";
+import { calificarEapi, evolucionEapi, type EapiDatos, type Tendencia } from "./calificacion";
 import { EAPI_LINEAS_AYUDA, EAPI_TITULO_PACIENTE } from "./escalas";
+
+const formatoFecha = (iso: string) => {
+  if (!/^\d{4}-\d{2}-\d{2}/.test(iso)) return iso;
+  const [a, m, d] = iso.slice(0, 10).split("-").map(Number);
+  return new Date(a, m - 1, d).toLocaleDateString("es-GT", { day: "numeric", month: "long", year: "numeric" });
+};
 
 export const AREAS_EAPI = [
   { id: "gad", nombre: "Preocupación y nerviosismo" },
@@ -76,9 +82,28 @@ export function opcionesPorDefectoEapi(datos: EapiDatos): OpcionesInforme {
 export function informePacienteEapi(
   datos: EapiDatos,
   opciones: OpcionesInforme,
-  extra: { paciente: string; fechaAplicacion: string; notas: string; profesional: string }
+  extra: {
+    paciente: string;
+    fechaAplicacion: string;
+    notas: string;
+    profesional: string;
+    /** Evaluación anterior, para contar en palabras sencillas cómo ha cambiado. */
+    anterior?: { datos: EapiDatos; fecha: string } | null;
+  }
 ): InformePaciente {
   const c = calificarEapi(datos);
+  const ev = extra.anterior ? evolucionEapi(datos, extra.anterior.datos) : null;
+  const fechaAnt = extra.anterior?.fecha ? formatoFecha(extra.anterior.fecha) : "";
+  const FRASE: Record<Tendencia, string> = {
+    mejora: "ha mejorado",
+    igual: "se mantiene en un nivel parecido",
+    empeora: "ha aumentado; lo revisaremos con atención",
+  };
+  /** Frase de evolución para un área (id de escala en evolucionEapi). */
+  const cambio = (id: string) => {
+    const e = ev?.escalas.find((x) => x.id === id);
+    return e ? `\n\nComparado con su evaluación del ${fechaAnt}: ${FRASE[e.tendencia]}.` : "";
+  };
   const resultados: ResultadoPaciente[] = [];
   const incluir = (id: string) => opciones.incluir[id] !== false;
   const pts = (v: number, max: number) => (opciones.mostrarPuntuaciones ? `${v} de ${max}` : undefined);
@@ -90,7 +115,7 @@ export function informePacienteEapi(
       periodo: "Últimas 2 semanas",
       nivel: ["Mínimo", "Leve", "Moderado", "Alto"][i],
       tono: (["bien", "leve", "atencion", "alto"] as TonoResultado[])[i],
-      texto: TEXTOS.gad[i],
+      texto: TEXTOS.gad[i] + cambio("gad"),
       puntuacion: pts(c.gad.total, 21),
     });
   }
@@ -103,7 +128,7 @@ export function informePacienteEapi(
       periodo: "Última semana",
       nivel: NIVELES_DASS[i],
       tono: TONOS_DASS[i],
-      texto: TEXTOS[id][i],
+      texto: TEXTOS[id][i] + cambio(`dass-${id}`),
       puntuacion: pts(cDass[id].x2, 42),
     });
   };
@@ -117,7 +142,7 @@ export function informePacienteEapi(
       periodo: "En general",
       nivel: ["Habitual", "Elevado", "Alto"][i],
       tono: (["bien", "atencion", "alto"] as TonoResultado[])[i],
-      texto: TEXTOS.ptq[i],
+      texto: TEXTOS.ptq[i] + cambio("ptq"),
       puntuacion: pts(c.ptq.total, 60),
     });
   }
@@ -128,7 +153,7 @@ export function informePacienteEapi(
       periodo: "Último mes",
       nivel: ["Bajo", "Moderado", "Alto"][i],
       tono: (["bien", "atencion", "alto"] as TonoResultado[])[i],
-      texto: TEXTOS.docs[i],
+      texto: TEXTOS.docs[i] + cambio("docs"),
       puntuacion: pts(c.docs.total, 80),
     });
   }
@@ -142,6 +167,19 @@ export function informePacienteEapi(
     profesional: extra.profesional,
     intro:
       "Este informe resume, en palabras sencillas, sus respuestas al cuestionario. Los resultados son orientativos: ayudan a conocer cómo ha estado y a seguir su avance a lo largo del proceso, pero no son un diagnóstico. Los conversaremos en sesión.",
+    destacado: ev && ev.escalas.length
+      ? {
+          titulo:
+            ev.global === "mejora"
+              ? "Su evolución: hay mejoría"
+              : ev.global === "empeora"
+                ? "Su evolución: algunas áreas aumentaron"
+                : ev.global === "mixto"
+                  ? "Su evolución: algunas áreas mejoraron y otras aumentaron"
+                  : "Su evolución: se mantiene estable",
+          texto: `Comparamos sus respuestas con las de su evaluación del ${fechaAnt}. En cada área le indicamos cómo ha cambiado. Lo conversaremos en sesión.`,
+        }
+      : undefined,
     resultados,
     notas: extra.notas.trim(),
     ayuda: opciones.incluirAyuda ? [...EAPI_LINEAS_AYUDA] : null,

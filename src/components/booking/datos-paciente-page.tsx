@@ -502,7 +502,7 @@ export function DatosPacientePage({ token }: { token: string }) {
 }
 
 /** Padre, madre o tutor(es) que firman el consentimiento de un menor (uno obligatorio, hasta dos). */
-function ResponsablesFields({ onChange, value }: { onChange: (v: Responsable[]) => void; value: Responsable[] }) {
+export function ResponsablesFields({ onChange, value }: { onChange: (v: Responsable[]) => void; value: Responsable[] }) {
   const cambiar = (i: number, campo: keyof Responsable, v: string) =>
     onChange(value.map((r, j) => (j === i ? { ...r, [campo]: v } : r)));
   return (

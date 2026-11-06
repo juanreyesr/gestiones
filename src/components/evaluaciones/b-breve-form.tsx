@@ -20,11 +20,6 @@ import {
 // Importante: este formulario NO importa la calificación. Los padres nunca ven
 // puntuaciones, bandas, señales ni interpretaciones (regla 3 de la especificación).
 
-const hoyLocal = () => {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-};
-
 type EstadoGuardado = "sin-cambios" | "pendiente" | "guardando" | "guardado" | "sin-conexion";
 type Fase = "llenando" | "enviando" | "enviado" | "fallo-envio" | "cerrado";
 
@@ -41,7 +36,6 @@ export function BBreveForm({
 }) {
   const [nombre, setNombre] = useState(borradorInicial?.nombre ?? "");
   const [relacion, setRelacion] = useState(borradorInicial?.relacion ?? "");
-  const [fecha, setFecha] = useState(borradorInicial?.fecha || hoyLocal());
   const [items, setItems] = useState<(number | null)[]>(() => borradorInicial?.items ?? Array(16).fill(null));
   const [seg, setSeg] = useState<Record<"S1" | "S2", 0 | 1 | null>>({
     S1: borradorInicial?.S1 ?? null,
@@ -60,8 +54,9 @@ export function BBreveForm({
   const version = useRef(0);
 
   const borrador = useCallback(
-    (): BBreveBorrador => ({ nombre, relacion, fecha, items, S1: seg.S1, S2: seg.S2, abierta, extra }),
-    [nombre, relacion, fecha, items, seg, abierta, extra]
+    // La fecha la pone el servidor (día del envío).
+    (): BBreveBorrador => ({ nombre, relacion, fecha: "", items, S1: seg.S1, S2: seg.S2, abierta, extra }),
+    [nombre, relacion, items, seg, abierta, extra]
   );
 
   // Guardado automático: un momento después del último cambio se envía el avance al servidor.
@@ -149,7 +144,7 @@ export function BBreveForm({
       ref: codigoCaso,
       nombre: nombre.trim(),
       relacion,
-      fecha,
+      fecha: "",
       items: items as number[],
       S1: seg.S1 as 0 | 1,
       S2: seg.S2 as 0 | 1,
@@ -318,10 +313,6 @@ export function BBreveForm({
               <option key={r}>{r}</option>
             ))}
           </select>
-        </label>
-        <label className="grid gap-1.5 p-1">
-          <span className="text-xs font-semibold uppercase text-slate-500">Fecha</span>
-          <input className="field-light" onChange={(e) => setFecha(e.target.value)} type="date" value={fecha} />
         </label>
       </div>
 

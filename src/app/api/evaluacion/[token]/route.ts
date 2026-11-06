@@ -1,6 +1,7 @@
 import { after, NextResponse } from "next/server";
 import { limpiarBorradorBBreve, validarBBreve } from "@/lib/evaluaciones/b-breve/codigo";
 import { B_BREVE_RELACIONES } from "@/lib/evaluaciones/b-breve/contenido";
+import { plantillaVigente } from "@/lib/clinica/consentimiento-plantillas";
 import { limpiarBorradorEapi, modulosDeOpciones, validarEapi } from "@/lib/evaluaciones/eapi/codigo";
 import { limpiarBorradorRiasec, validarRiasec } from "@/lib/evaluaciones/riasec/codigo";
 import { limpiarBorradorValores, validarValores } from "@/lib/evaluaciones/valores/codigo";
@@ -20,6 +21,11 @@ type RawGet = {
   ref: string | null;
   borrador?: unknown;
   opciones?: Record<string, unknown> | null;
+  consentimiento?: boolean | null;
+  es_menor?: boolean | null;
+  paciente_nombre?: string | null;
+  identificacion?: string | null;
+  responsables?: unknown;
 };
 
 /** Escalas del EAPI asignadas al enlace (los enlaces anteriores usaban { docs: true }). */
@@ -43,9 +49,11 @@ async function leerEnlace(token: string) {
 }
 
 /**
- * Formulario de evaluación por enlace (/evaluacion/<token>). Devuelve solo el
+ * Formulario de evaluación por enlace (/evaluacion/<token>). Devuelve el
  * instrumento, sus opciones, el estado del enlace, el avance guardado y un
- * código de caso corto: nunca datos del expediente ni puntuaciones.
+ * código de caso corto; nunca puntuaciones. Si el paciente aún no firmó el
+ * consentimiento informado, devuelve también lo necesario para firmarlo
+ * (plantilla vigente, nombre, si es menor y firmantes ya registrados).
  */
 export async function GET(request: Request, { params }: { params: Promise<{ token: string }> }) {
   if (!rateLimit(request, { key: "evaluacion-token", limit: 30, windowMs: 60_000 })) return rateLimitResponse();
@@ -53,9 +61,21 @@ export async function GET(request: Request, { params }: { params: Promise<{ toke
   if (!UUID_RE.test(token)) return NextResponse.json({ estado: "invalido" }, { headers: SIN_CACHE });
   const { fila } = await leerEnlace(token);
   if (!fila) return NextResponse.json({ estado: "invalido" }, { headers: SIN_CACHE });
+  // Enlaces sin la columna (migración anterior) se tratan como firmados.
+  const sinConsentimiento = fila.estado === "ok" && fila.consentimiento === false;
   return NextResponse.json(
     {
       estado: fila.estado,
+      consentimiento: sinConsentimiento
+        ? {
+            firmado: false,
+            esMenor: fila.es_menor === true,
+            pacienteNombre: fila.paciente_nombre ?? "",
+            identificacion: fila.identificacion ?? "",
+            responsables: Array.isArray(fila.responsables) ? fila.responsables.slice(0, 2) : [],
+            plantilla: await plantillaVigente(),
+          }
+        : { firmado: true },
       instrumento: fila.instrumento,
       ref: fila.ref,
       opciones: fila.instrumento === "eapi" ? { modulos: modulosEapi(fila) } : {},
@@ -101,7 +121,6 @@ export async function POST(request: Request, { params }: { params: Promise<{ tok
   // Validación según el instrumento del enlace (no según lo que diga el cuerpo).
   let nombre = "";
   let relacion = "";
-  let fecha = "";
   let guardar: Record<string, unknown>;
   let alertaSeguridad = 0;
   if (fila.instrumento === "b-breve") {
@@ -113,44 +132,35 @@ export async function POST(request: Request, { params }: { params: Promise<{ tok
     }
     nombre = v.datos.nombre;
     relacion = v.datos.relacion ?? "";
-    fecha = v.datos.fecha ?? "";
     guardar = { ...v.datos };
   } else if (fila.instrumento === "eapi") {
     const v = validarEapi(body, modulosEapi(fila));
     if (!v.ok) return NextResponse.json({ error: v.error }, { status: 422 });
-    if (!v.datos.nombre) return NextResponse.json({ error: "Escriba su nombre." }, { status: 422 });
-    nombre = v.datos.nombre;
     relacion = "Paciente";
-    fecha = v.datos.fecha;
     guardar = { ...v.datos };
     alertaSeguridad = v.datos.safety;
   } else if (fila.instrumento === "riasec") {
     const v = validarRiasec(body);
     if (!v.ok) return NextResponse.json({ error: v.error }, { status: 422 });
-    if (!v.datos.nombre) return NextResponse.json({ error: "Escribe tu nombre." }, { status: 422 });
-    nombre = v.datos.nombre;
     relacion = "Paciente";
-    fecha = v.datos.fecha;
     guardar = { ...v.datos };
   } else if (fila.instrumento === "valores") {
     const v = validarValores(body);
     if (!v.ok) return NextResponse.json({ error: v.error }, { status: 422 });
-    if (!v.datos.nombre) return NextResponse.json({ error: "Escribe tu nombre." }, { status: 422 });
-    nombre = v.datos.nombre;
     relacion = "Paciente";
-    fecha = v.datos.fecha;
     guardar = { ...v.datos };
   } else {
     return NextResponse.json({ error: "Instrumento no disponible." }, { status: 422 });
   }
-  // El código de caso y la hora de envío los pone el servidor.
+  // El código de caso y la hora de envío los pone el servidor; el nombre del
+  // paciente, la fecha y la edad, la base de datos (desde el expediente).
   guardar = { ...guardar, ref: fila.ref ?? "", enviado: new Date().toISOString() };
 
   const { data, error } = await supabase.rpc("gestionesjj_public_evaluacion_responder", {
     p_token: token,
     p_nombre: nombre,
     p_relacion: relacion || null,
-    p_fecha: fecha || null,
+    p_fecha: null,
     p_datos: guardar,
   });
   if (error) return NextResponse.json({ error: error.message }, { status: 422 });

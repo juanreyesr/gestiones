@@ -183,9 +183,37 @@ export function EvaluacionesPaciente({ paciente }: { paciente: PacienteRow }) {
     setTimeout(() => setAviso(""), 6000);
   };
 
+  /** Nueva aplicación del mismo instrumento (y mismas escalas) para comparar la evolución. */
+  const nuevaAplicacion = async (instrumentoId: string, opciones: Record<string, unknown>, etiqueta: string) => {
+    setError("");
+    const { error: err } = await asignarEvaluacion(paciente.id, instrumentoId, [etiqueta], "Seguimiento", opciones);
+    if (err) {
+      setError(err);
+      return;
+    }
+    setVista({ tipo: "lista" });
+    await cargar();
+    setAviso("Nueva aplicación creada (seguimiento). Envíala con su botón de WhatsApp; al responderla verás la evolución en el informe.");
+    setTimeout(() => setAviso(""), 8000);
+  };
+
   if (vista.tipo === "informe") {
+    const actual = respuestas.find((r) => r.id === vista.respuestaId);
+    const original = actual ? evaluaciones.find((ev) => ev.id === actual.evaluacionId) : undefined;
     return (
       <InformeRespuesta
+        onNuevaAplicacion={
+          actual
+            ? () =>
+                void nuevaAplicacion(
+                  actual.instrumento,
+                  actual.instrumento === "eapi"
+                    ? { modulos: MODULOS_EAPI.filter((m) => Array.isArray((actual.datos as Record<string, unknown>)[m])) }
+                    : (original?.opciones ?? {}),
+                  original?.etiqueta ?? ""
+                )
+            : undefined
+        }
         onEliminada={() => {
           setVista({ tipo: "lista" });
           void cargar();
@@ -389,6 +417,18 @@ export function EvaluacionesPaciente({ paciente }: { paciente: PacienteRow }) {
                       </button>
                     </>
                   ) : (
+                    <>
+                    {usadas > 0 ? (
+                      <button
+                        className={BTN_GHOST}
+                        onClick={() => void nuevaAplicacion(ev.instrumento, ev.opciones ?? {}, ev.etiqueta ?? "")}
+                        title="Nueva aplicación con las mismas escalas, para comparar la evolución"
+                        type="button"
+                      >
+                        <Plus className="h-4 w-4" />
+                        Nueva aplicación
+                      </button>
+                    ) : null}
                     <button
                       className={BTN_GHOST}
                       onClick={async () => {
@@ -400,6 +440,7 @@ export function EvaluacionesPaciente({ paciente }: { paciente: PacienteRow }) {
                     >
                       <Unlock className="h-4 w-4" />
                     </button>
+                    </>
                   )}
                   {usadas === 0 ? (
                     <button
@@ -505,12 +546,14 @@ export function EvaluacionesPaciente({ paciente }: { paciente: PacienteRow }) {
 /** Informe de una respuesta con comparación opcional (segundo cuidador y aplicación anterior). */
 function InformeRespuesta({
   onEliminada,
+  onNuevaAplicacion,
   onVolver,
   paciente,
   respuestaId,
   respuestas,
 }: {
   onEliminada: () => void;
+  onNuevaAplicacion?: () => void;
   onVolver: () => void;
   paciente: PacienteRow;
   respuestaId: string;
@@ -566,6 +609,18 @@ function InformeRespuesta({
             <ChevronLeft className="h-4 w-4" />
             Volver a evaluaciones
           </button>
+          {onNuevaAplicacion ? (
+            <button
+              className={BTN_ACCENT}
+              onClick={() => {
+                if (window.confirm("¿Crear una nueva aplicación del mismo instrumento (mismas escalas) para comparar la evolución?")) onNuevaAplicacion();
+              }}
+              type="button"
+            >
+              <Plus className="h-4 w-4" />
+              Nueva aplicación (seguimiento)
+            </button>
+          ) : null}
           <button
             className={BTN_GHOST}
             onClick={() => {

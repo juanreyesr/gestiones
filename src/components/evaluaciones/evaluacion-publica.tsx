@@ -10,6 +10,7 @@ import type { RiasecBorrador } from "@/lib/evaluaciones/riasec/codigo";
 import { RiasecForm } from "./riasec-form";
 import type { ValoresBorrador } from "@/lib/evaluaciones/valores/codigo";
 import { ValoresForm } from "./valores-form";
+import { ConsentimientoEvaluacion, type DatosConsentimientoEvaluacion } from "./consentimiento-evaluacion";
 
 type Info = {
   estado: "cargando" | "ok" | "completa" | "cerrada" | "invalido";
@@ -17,6 +18,8 @@ type Info = {
   ref?: string | null;
   borrador?: BBreveBorrador | EapiBorrador | RiasecBorrador | ValoresBorrador | null;
   opciones?: { modulos?: string[] } | null;
+  /** firmado = false: antes de responder hay que firmar el consentimiento informado. */
+  consentimiento?: ({ firmado: false } & DatosConsentimientoEvaluacion) | { firmado: true };
 };
 
 /** Página pública /evaluacion/<token>: elige el formulario según el instrumento asignado. */
@@ -37,6 +40,18 @@ export function EvaluacionPublica({ token }: { token: string }) {
   let contenido: React.ReactNode;
   if (info.estado === "cargando") {
     contenido = <p className="py-10 text-center text-sm text-slate-400">Cargando...</p>;
+  } else if (info.estado === "ok" && info.consentimiento?.firmado === false) {
+    const datosConsentimiento = info.consentimiento;
+    contenido = (
+      <ConsentimientoEvaluacion
+        datos={datosConsentimiento}
+        onFirmado={() => {
+          setInfo((prev) => ({ ...prev, consentimiento: { firmado: true } }));
+          window.scrollTo({ top: 0 });
+        }}
+        token={token}
+      />
+    );
   } else if (info.estado === "ok" && info.instrumento === "b-breve") {
     contenido = (
       <BBreveForm borradorInicial={(info.borrador as BBreveBorrador | null) ?? null} codigoCaso={info.ref ?? ""} token={token} />

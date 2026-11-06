@@ -36,11 +36,6 @@ import {
 // Importante: este formulario NO importa la calificación. El paciente no ve
 // puntuaciones, bandas, etiquetas diagnósticas ni comentarios.
 
-const hoyLocal = () => {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-};
-
 type EstadoGuardado =
   | "sin-cambios"
   | "pendiente"
@@ -151,9 +146,6 @@ export function EapiForm({
   const tituloBloque = (m: ModuloEapi) =>
     EAPI_BLOQUES[m].titulo.replace(/^Bloque \d+/, `Bloque ${numeroBloque(m)}`);
   const b = borradorInicial;
-  const [nombre, setNombre] = useState(b?.nombre ?? "");
-  const [edad, setEdad] = useState(b?.edad ?? "");
-  const [fecha, setFecha] = useState(b?.fecha || hoyLocal());
   const [listas, setListas] = useState<Record<Lista, (number | null)[]>>(
     () => ({
       gad: b?.gad ?? vacio(7),
@@ -173,8 +165,7 @@ export function EapiForm({
   const [continua] = useState(() =>
     Boolean(
       b &&
-      (b.nombre ||
-        [...b.gad, ...b.dass, ...b.ptq, ...b.docs].some((v) => v !== null)),
+      [...b.gad, ...b.dass, ...b.ptq, ...b.docs].some((v) => v !== null),
     ),
   );
   const temporizador = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -182,9 +173,10 @@ export function EapiForm({
 
   const borrador = useCallback(
     (): EapiBorrador => ({
-      nombre,
-      edad,
-      fecha,
+      // Nombre, edad y fecha se toman del expediente al enviar.
+      nombre: "",
+      edad: "",
+      fecha: "",
       gad: listas.gad,
       func,
       dass: listas.dass,
@@ -193,7 +185,7 @@ export function EapiForm({
       safety,
       abierta,
     }),
-    [nombre, edad, fecha, listas, func, safety, abierta],
+    [listas, func, safety, abierta],
   );
 
   const guardarAvance = useCallback(
@@ -280,7 +272,6 @@ export function EapiForm({
   const enviar = async () => {
     if (fase === "enviando") return;
     const faltantes: string[] = [];
-    if (!nombre.trim()) faltantes.push("nombre");
     for (const m of modulos)
       listas[m].forEach((v, i) => v === null && faltantes.push(`${m}${i + 1}`));
     if (safety === null) faltantes.push("safety");
@@ -296,7 +287,6 @@ export function EapiForm({
     setFaltan(new Set());
     setError("");
     setFase("enviando");
-    const edadNum = Number(edad);
     const respuesta = {
       v: 1,
       instrumento: "AEI",
@@ -307,9 +297,9 @@ export function EapiForm({
       safety,
       func: tiene("gad") ? func : null,
       ref: codigoCaso,
-      nombre: nombre.trim(),
-      edad: edad && Number.isInteger(edadNum) ? edadNum : null,
-      fecha,
+      nombre: "",
+      edad: null,
+      fecha: "",
       abierta: abierta.trim(),
       enviado: new Date().toISOString(),
     };
@@ -476,49 +466,6 @@ export function EapiForm({
       </div>
       <div className="rounded-r-xl border-l-4 border-teal-600 bg-teal-50 p-4 text-sm leading-6 text-slate-700">
         {EAPI_INTRO}
-      </div>
-
-      <div className="grid gap-4 sm:grid-cols-3">
-        <label
-          className={`grid gap-1.5 rounded-lg border p-1 sm:col-span-2 ${faltan.has("nombre") ? "border-red-300 bg-red-50/60" : "border-transparent"}`}
-          id="ea-nombre"
-        >
-          <span className="text-xs font-semibold uppercase text-slate-500">
-            Su nombre *
-          </span>
-          <input
-            autoComplete="name"
-            className="field-light"
-            onChange={(e) => {
-              setNombre(e.target.value);
-              quitarFalta("nombre");
-            }}
-            value={nombre}
-          />
-        </label>
-        <label className="grid gap-1.5 p-1">
-          <span className="text-xs font-semibold uppercase text-slate-500">
-            Edad
-          </span>
-          <input
-            className="field-light"
-            inputMode="numeric"
-            maxLength={3}
-            onChange={(e) => setEdad(e.target.value.replace(/\D/g, ""))}
-            value={edad}
-          />
-        </label>
-        <label className="grid gap-1.5 p-1">
-          <span className="text-xs font-semibold uppercase text-slate-500">
-            Fecha
-          </span>
-          <input
-            className="field-light"
-            onChange={(e) => setFecha(e.target.value)}
-            type="date"
-            value={fecha}
-          />
-        </label>
       </div>
 
       {tiene("gad") ? (

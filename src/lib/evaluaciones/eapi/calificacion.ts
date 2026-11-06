@@ -294,3 +294,104 @@ export const SIGLAS_EAPI: [string, string][] = [
 export function avisoEapi(modulos: ModuloEapi[]) {
   return `Instrumentos de cribado autoaplicados (${modulos.map((m) => NOMBRES_MODULOS[m].sigla).join(", ")}): orientan la entrevista y permiten seguir el cambio, pero ninguna puntuación constituye un diagnóstico. Los criterios y códigos del DSM-5-TR y la CIE-11 se incluyen como referencia para la formulación clínica y deben verificarse con entrevista clínica, historia y, cuando corresponda, exploración médica. Toda puntuación ≥ 1 en el ítem de seguridad exige evaluación de riesgo inmediata. Los resultados no se muestran al paciente salvo en el informe que el psicólogo decida enviarle; la interpretación corresponde al psicólogo tratante.`;
 }
+
+/* ===================== EVOLUCIÓN ENTRE APLICACIONES ===================== */
+export type Tendencia = "mejora" | "igual" | "empeora";
+export type EvolucionEscala = {
+  id: string;
+  modulo: ModuloEapi;
+  nombre: string;
+  antes: number;
+  ahora: number;
+  delta: number;
+  max: number;
+  bandaAntes: string;
+  bandaAhora: string;
+  tendencia: Tendencia;
+  criterio: string;
+};
+export type EvolucionItem = { modulo: ModuloEapi; n: number; antes: number; ahora: number; delta: number; tendencia: Tendencia };
+export type EvolucionEapi = {
+  escalas: EvolucionEscala[];
+  items: EvolucionItem[];
+  resumenItems: Record<Tendencia, number>;
+  global: Tendencia | "mixto";
+  seguridad: { antes: number; ahora: number; tendencia: Tendencia };
+  modulos: ModuloEapi[];
+};
+
+const tendenciaDe = (delta: number): Tendencia => (delta < 0 ? "mejora" : delta > 0 ? "empeora" : "igual");
+
+/**
+ * Evolución de la aplicación actual frente a la anterior, en las escalas
+ * presentes en ambas. En todas las escalas del EAPI una puntuación más alta
+ * indica más síntomas, así que bajar = mejora.
+ * - GAD-7: cambio ≥ 4 puntos (diferencia mínima clínicamente importante, Toussaint et al., 2020).
+ * - DASS-21, PTQ y DOCS: cambio de banda (no hay diferencias mínimas consolidadas).
+ * - Ítems: cada respuesta sube, baja o se mantiene (descriptivo, no estadístico).
+ */
+export function evolucionEapi(actual: EapiDatos, anterior: EapiDatos): EvolucionEapi {
+  const sc = calificarEapi(actual);
+  const sp = calificarEapi(anterior);
+  const escalas: EvolucionEscala[] = [];
+  const porBanda = (iAntes: number, iAhora: number): Tendencia => (iAhora < iAntes ? "mejora" : iAhora > iAntes ? "empeora" : "igual");
+  if (sc.gad && sp.gad) {
+    const d = sc.gad.total - sp.gad.total;
+    escalas.push({
+      id: "gad", modulo: "gad", nombre: "GAD-7 (ansiedad generalizada)", antes: sp.gad.total, ahora: sc.gad.total, delta: d, max: 21,
+      bandaAntes: sp.gad.band.label, bandaAhora: sc.gad.band.label,
+      tendencia: d <= -4 ? "mejora" : d >= 4 ? "empeora" : "igual",
+      criterio: "Cambio ≥ 4 puntos (diferencia mínima clínicamente importante)",
+    });
+  }
+  if (sc.dass && sp.dass) {
+    for (const k of ["dep", "anx", "str"] as const) {
+      escalas.push({
+        id: `dass-${k}`, modulo: "dass", nombre: `DASS-21 ${sc.dass[k].name} (×2)`, antes: sp.dass[k].x2, ahora: sc.dass[k].x2,
+        delta: sc.dass[k].x2 - sp.dass[k].x2, max: 42, bandaAntes: sp.dass[k].band.label, bandaAhora: sc.dass[k].band.label,
+        tendencia: porBanda(sp.dass[k].band.i, sc.dass[k].band.i), criterio: "Cambio de banda",
+      });
+    }
+  }
+  const nivel = (b: Banda) => (b.k === "low" ? 0 : b.k === "mid" ? 1 : 2);
+  if (sc.ptq && sp.ptq) {
+    escalas.push({
+      id: "ptq", modulo: "ptq", nombre: "PTQ (pensamiento repetitivo)", antes: sp.ptq.total, ahora: sc.ptq.total, delta: sc.ptq.total - sp.ptq.total, max: 60,
+      bandaAntes: sp.ptq.band.label, bandaAhora: sc.ptq.band.label, tendencia: porBanda(nivel(sp.ptq.band), nivel(sc.ptq.band)),
+      criterio: "Cambio de rango (no clínico < 22, elevado, clínico ≥ 37)",
+    });
+  }
+  if (sc.docs && sp.docs) {
+    escalas.push({
+      id: "docs", modulo: "docs", nombre: "DOCS (obsesiones y compulsiones)", antes: sp.docs.total, ahora: sc.docs.total, delta: sc.docs.total - sp.docs.total, max: 80,
+      bandaAntes: sp.docs.band.label, bandaAhora: sc.docs.band.label, tendencia: porBanda(nivel(sp.docs.band), nivel(sc.docs.band)),
+      criterio: "Cambio respecto de los cortes 18 y 21",
+    });
+  }
+  const modulos = MODULOS_EAPI.filter((m) => actual[m] && anterior[m]);
+  const items: EvolucionItem[] = [];
+  for (const m of modulos) {
+    const a = actual[m]!;
+    const p = anterior[m]!;
+    a.forEach((v, i) => items.push({ modulo: m, n: i + 1, antes: p[i], ahora: v, delta: v - p[i], tendencia: tendenciaDe(v - p[i]) }));
+  }
+  const resumenItems = { mejora: 0, igual: 0, empeora: 0 } as Record<Tendencia, number>;
+  for (const it of items) resumenItems[it.tendencia]++;
+  const hay = (t: Tendencia) => escalas.some((e) => e.tendencia === t);
+  const global = hay("mejora") && hay("empeora") ? "mixto" : hay("mejora") ? "mejora" : hay("empeora") ? "empeora" : "igual";
+  return {
+    escalas,
+    items,
+    resumenItems,
+    global,
+    seguridad: { antes: anterior.safety, ahora: actual.safety, tendencia: tendenciaDe(actual.safety - anterior.safety) },
+    modulos,
+  };
+}
+
+export const TEXTO_TENDENCIA: Record<Tendencia | "mixto", string> = {
+  mejora: "Mejora",
+  igual: "Sigue igual",
+  empeora: "Empeora",
+  mixto: "Cambios mixtos",
+};
