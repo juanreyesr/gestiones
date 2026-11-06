@@ -344,6 +344,26 @@ export async function fetchInformesDeRespuestas(respuestaIds: string[]) {
   return Object.fromEntries(((data ?? []) as RawInforme[]).map((r) => [r.respuesta_id, mapInforme(r)]));
 }
 
+/** Alarma de una respuesta marcada como atendida (se guarda en opciones.alarmaAtendida del informe). */
+export type AtencionAlarma = { at: string; nota: string };
+
+export function atencionDe(informe: InformeRow | null | undefined): AtencionAlarma | null {
+  const a = (informe?.opciones as { alarmaAtendida?: unknown } | undefined)?.alarmaAtendida;
+  if (!a || typeof a !== "object") return null;
+  const o = a as Record<string, unknown>;
+  return typeof o.at === "string" ? { at: o.at, nota: typeof o.nota === "string" ? o.nota : "" } : null;
+}
+
+/**
+ * Marca (o desmarca, con nota = null) la alarma de una respuesta como atendida.
+ * guardarNotasInforme conserva las demás opciones del informe (las del informe al paciente).
+ */
+export async function marcarAlarmaAtendida(respuestaId: string, pacienteId: string, nota: string | null) {
+  return guardarNotasInforme(respuestaId, pacienteId, {
+    opciones: { alarmaAtendida: nota === null ? null : { at: new Date().toISOString(), nota: nota.trim().slice(0, 500) } },
+  });
+}
+
 /** Guarda notas y opciones (crea la fila si no existe). */
 export async function guardarNotasInforme(
   respuestaId: string,
@@ -355,7 +375,11 @@ export async function guardarNotasInforme(
   const fila: Record<string, unknown> = { respuesta_id: respuestaId, paciente_id: pacienteId, updated_at: new Date().toISOString() };
   if (cambios.notasPrivadas !== undefined) fila.notas_privadas = cambios.notasPrivadas.slice(0, 10000) || null;
   if (cambios.notasPaciente !== undefined) fila.notas_paciente = cambios.notasPaciente.slice(0, 6000) || null;
-  if (cambios.opciones !== undefined) fila.opciones = cambios.opciones;
+  if (cambios.opciones !== undefined) {
+    // Se combinan con las guardadas: el informe al paciente y la alarma atendida comparten la columna.
+    const { data: actual } = await supabase.from("gestionesjj_evaluacion_informes").select("opciones").eq("respuesta_id", respuestaId).maybeSingle();
+    fila.opciones = { ...((actual as { opciones?: Record<string, unknown> } | null)?.opciones ?? {}), ...cambios.opciones };
+  }
   const { data, error } = await supabase
     .from("gestionesjj_evaluacion_informes")
     .upsert(fila, { onConflict: "respuesta_id" })
