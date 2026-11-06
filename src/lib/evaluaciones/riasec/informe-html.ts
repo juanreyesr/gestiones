@@ -39,6 +39,7 @@ export function informeRiasecHtml(a: AplicacionRiasec, anterior?: AplicacionRias
   const top = c.orden.slice(0, 3);
   let html = `<h1>Informe · ${esc(RIASEC_NOMBRE_PROFESIONAL)}</h1>
 <p class="muted">Respondió: <strong>${esc(a.nombre || "—")}</strong>${a.datos.edad ? ` · Edad: ${a.datos.edad}` : ""}${a.datos.estudios ? ` · Estudios: ${esc(a.datos.estudios)}` : ""} · Fecha: ${esc(fechaLarga(a.fecha))} · Calificado el ${esc(new Date().toLocaleDateString("es-GT"))}</p>
+<p class="muted">RIASEC son las iniciales de los seis tipos de intereses del modelo de John L. Holland: Realista (R), Investigador (I), Artístico (A), Social (S), Emprendedor (E) y Convencional (C). El código Holland son las letras de los tres tipos con mayor puntuación.</p>
 <div class="kpi">
   <div><div class="v">${esc(c.codigo)}</div><div class="l">Código Holland (${top.map((t) => esc(RIASEC_INFO[t].nombre)).join(" – ")})</div></div>
   <div><div class="v">${c.diferenciacion.valor}<small>/24</small></div><div class="l">Diferenciación · ${esc(c.diferenciacion.k)}</div></div>

@@ -3,9 +3,9 @@
  * Para agregar uno nuevo: su contenido en src/lib/evaluaciones/<id>/, su
  * formulario en src/components/evaluaciones/ (FORMULARIOS) y su informe en
  * src/components/clinica/evaluaciones/ (INFORMES), y su validación en
- * /api/evaluacion/[token]. Solo metadatos aquí (lo usa también la página pública).
+ * /api/evaluacion/[token] y en la página pública (evaluacion-publica.tsx). Solo metadatos aquí (lo usa también la página pública).
  */
-export type InstrumentoId = "b-breve" | "eapi" | "riasec";
+export type InstrumentoId = "b-breve" | "eapi" | "riasec" | "valores";
 
 export type Instrumento = {
   id: InstrumentoId;
@@ -34,7 +34,7 @@ export const INSTRUMENTOS: readonly Instrumento[] = [
     id: "eapi",
     nombre: "Evaluación de estrés, ansiedad y pensamientos intrusivos (EAPI)",
     descripcion:
-      "Batería AEI: GAD-7 + DASS-21 + PTQ + ítem de seguridad (44 preguntas, 10 a 12 min); módulo opcional TOC (DOCS, +20). Calificación automática, señales, hipótesis DSM-5-TR / CIE-11, seguimiento e informe para enviar al paciente con sus notas.",
+      "Escalas que se eligen al asignar (juntas o por separado): Escala del Trastorno de Ansiedad Generalizada de 7 ítems (GAD-7), Escalas de Depresión, Ansiedad y Estrés de 21 ítems (DASS-21), Cuestionario de Pensamiento Perseverativo (PTQ) y Escala Dimensional de Obsesiones y Compulsiones (DOCS), más una pregunta de seguridad. Calificación automática, señales, hipótesis según el Manual Diagnóstico y Estadístico de los Trastornos Mentales (DSM-5-TR) y la Clasificación Internacional de Enfermedades (CIE-11), informes por escala o unificados, seguimiento e informe para el paciente.",
     responde: "paciente",
     respuestasPorDefecto: 1,
     tituloPublico: "EAPI versión JJ",
@@ -44,10 +44,20 @@ export const INSTRUMENTOS: readonly Instrumento[] = [
     id: "riasec",
     nombre: "Test de intereses vocacionales (RIASEC)",
     descripcion:
-      "36 afirmaciones (modelo de Holland: Realista, Investigador, Artístico, Social, Emprendedor, Convencional), 8 a 10 min. Código Holland, hexágono, diferenciación, consistencia, estilo de respuesta, carreras para explorar, seguimiento e informe para enviar.",
+      "36 afirmaciones del modelo de Holland RIASEC (Realista, Investigador, Artístico, Social, Emprendedor, Convencional), 8 a 10 min. Código Holland, hexágono, diferenciación, consistencia, estilo de respuesta, carreras para explorar, seguimiento e informe para enviar.",
     responde: "paciente",
     respuestasPorDefecto: 1,
     tituloPublico: "Test de intereses vocacionales · versión JJ",
+    informePaciente: true,
+  },
+  {
+    id: "valores",
+    nombre: "Cuestionario de valores laborales",
+    descripcion:
+      "Complemento del test de intereses (RIASEC): 24 afirmaciones sobre 8 valores (Logro, Independencia, Reconocimiento, Relaciones, Servicio a los demás, Apoyo, Estabilidad y condiciones, Creatividad y variedad) y elección de los 3 principales, 5 a 7 min. Prioridades, concordancia entre lo elegido y lo puntuado, estilo de respuesta, cruce con el código RIASEC si existe, seguimiento e informe para enviar.",
+    responde: "paciente",
+    respuestasPorDefecto: 1,
+    tituloPublico: "Cuestionario de valores laborales · versión JJ",
     informePaciente: true,
   },
 ];

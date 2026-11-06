@@ -1,7 +1,13 @@
 // Casos de prueba del Anexo D (EAPI / Batería AEI). Ejecutar: pnpm test:eapi
 import assert from "node:assert/strict";
 import { calificarEapi, seguimientoEapi, EAPI_SIN_DX } from "../src/lib/evaluaciones/eapi/calificacion.ts";
-import { codificarEapi, decodificarEapi, validarEapi } from "../src/lib/evaluaciones/eapi/codigo.ts";
+import { unirEapi } from "../src/lib/evaluaciones/eapi/calificacion.ts";
+import { avanceEapi, codificarEapi, decodificarEapi, limpiarBorradorEapi, modulosDeOpciones, validarEapi } from "../src/lib/evaluaciones/eapi/codigo.ts";
+import { informeEapiHtml, soloModuloEapi } from "../src/lib/evaluaciones/eapi/informe-html.ts";
+import { areasEapi } from "../src/lib/evaluaciones/eapi/informe-paciente.ts";
+
+const COMPLETA = ["gad", "dass", "ptq"];
+const CON_DOCS = ["gad", "dass", "ptq", "docs"];
 
 let ok = 0;
 const caso = (nombre, fn) => { fn(); ok++; console.log(`✔ ${nombre}`); };
@@ -74,9 +80,62 @@ caso("D.6 Entradas inválidas", () => {
   const o = decodificarEapi("AEI1-G3222312-D232120221131232112201-P323231323132312-S0-O123");
   assert.ok(o); assert.equal(o.docs, null);
   const z = (n) => Array(n).fill(0);
-  assert.equal(validarEapi({ gad: z(7), dass: z(21), ptq: z(15), safety: 0 }, false).ok, true);
-  assert.equal(validarEapi({ gad: [5, 0, 0, 0, 0, 0, 0], dass: z(21), ptq: z(15), safety: 0 }, false).ok, false);
-  assert.equal(validarEapi({ gad: z(7), dass: z(21), ptq: z(15), safety: 0 }, true).ok, false); // DOCS activo y faltante
+  assert.equal(validarEapi({ gad: z(7), dass: z(21), ptq: z(15), safety: 0 }, COMPLETA).ok, true);
+  assert.equal(validarEapi({ gad: [5, 0, 0, 0, 0, 0, 0], dass: z(21), ptq: z(15), safety: 0 }, COMPLETA).ok, false);
+  assert.equal(validarEapi({ gad: z(7), dass: z(21), ptq: z(15), safety: 0 }, CON_DOCS).ok, false); // DOCS activo y faltante
 });
 
-console.log(`\n${ok}/6 casos del Anexo D correctos (D.7 se prueba en el navegador).`);
+caso("E.1 Escalas por separado: validación, calificación y avance", () => {
+  const z = (n) => Array(n).fill(0);
+  // Solo GAD-7: no exige las demás y las guarda en null.
+  const v = validarEapi({ gad: [3, 2, 2, 2, 3, 1, 2], dass: z(21), safety: 0, func: 2 }, ["gad"]);
+  assert.equal(v.ok, true);
+  assert.deepEqual([v.datos.dass, v.datos.ptq, v.datos.docs, v.datos.func], [null, null, null, 2]);
+  assert.deepEqual(v.datos.modulos, ["GAD-7"]);
+  assert.equal(validarEapi({ safety: 0 }, ["ptq"]).ok, false);
+  // Solo PTQ: func se descarta (pertenece al GAD-7).
+  const p = validarEapi({ ptq: z(15), safety: 1, func: 3 }, ["ptq"]);
+  assert.equal(p.ok, true); assert.equal(p.datos.func, null);
+  const c = calificarEapi(v.datos);
+  assert.deepEqual(c.modulos, ["gad"]);
+  assert.equal(c.gad.total, 15); assert.equal(c.dass, null); assert.equal(c.ptq, null);
+  assert.deepEqual(c.dx.map((x) => x.id), ["tag"]);
+  // Avance según escalas asignadas.
+  const b = limpiarBorradorEapi({ gad: [1, 1, null], safety: 0 });
+  assert.deepEqual(avanceEapi(b, ["gad"]), { respondidas: 3, total: 8 });
+  assert.deepEqual(avanceEapi(b, COMPLETA), { respondidas: 3, total: 44 });
+  assert.deepEqual(avanceEapi(b, CON_DOCS).total, 64);
+  // Opciones: formato nuevo y compatibilidad con { docs: true }.
+  assert.deepEqual(modulosDeOpciones({ modulos: ["docs", "gad", "x"] }), ["gad", "docs"]);
+  assert.deepEqual(modulosDeOpciones({ docs: true }), CON_DOCS);
+  assert.deepEqual(modulosDeOpciones({}), COMPLETA);
+  assert.deepEqual(modulosDeOpciones({ modulos: [] }), COMPLETA);
+});
+
+caso("E.2 Informe unificado y separado", () => {
+  const z = (n) => Array(n).fill(0);
+  const gad = validarEapi({ gad: [3, 2, 2, 2, 3, 1, 2], safety: 0, func: 2 }, ["gad"]).datos;
+  const dass = validarEapi({ dass: dec("AEI1-G0000000-D232120221131232112201-P000000000000000-S0").dass, safety: 1 }, ["dass"]).datos;
+  const u = unirEapi([gad, dass]);
+  assert.equal(u.gad.length, 7); assert.equal(u.dass.length, 21); assert.equal(u.ptq, null);
+  assert.equal(u.safety, 1); assert.equal(u.func, 2);
+  const cu = calificarEapi(u);
+  assert.deepEqual(cu.modulos, ["gad", "dass"]);
+  assert.ok(cu.flags.some((f) => /Ansiedad DASS|GAD-7 positivo/.test(f.t)) || cu.dx.length > 0);
+  // Informe separado: solo DASS-21.
+  const s = soloModuloEapi(u, "dass");
+  assert.deepEqual(calificarEapi(s).modulos, ["dass"]); assert.equal(s.func, null); assert.equal(s.safety, 1);
+  // Siglas explicadas en la primera mención.
+  const html = informeEapiHtml({ datos: u, nombre: "Prueba", fecha: "2026-11-01" }, null, "", { gad: "2026-11-01", dass: "2026-10-20" });
+  assert.match(html, /Escala del Trastorno de Ansiedad Generalizada de 7 ítems \(GAD-7/);
+  assert.match(html, /Escalas de Depresión, Ansiedad y Estrés de 21 ítems \(DASS-21\)/);
+  assert.match(html, /Cuestionario de Salud del Paciente de 9 ítems \(PHQ-9/);
+  assert.match(html, /<b>DSM-5-TR<\/b>: Manual Diagnóstico/);
+  assert.doesNotMatch(html, /Cuestionario de Pensamiento Perseverativo/); // PTQ no aplicado
+  assert.ok(html.indexOf("(GAD-7") < html.indexOf("GAD-7 ·"), "la sigla se define antes de usarse sola");
+  assert.deepEqual(areasEapi(u).map((a) => a.id), ["gad", "str", "anx", "dep"]);
+  // Todo con z(): sin error.
+  assert.ok(informeEapiHtml({ datos: validarEapi({ docs: z(20), safety: 0 }, ["docs"]).datos, nombre: "", fecha: "" }).includes("DOCS"));
+});
+
+console.log(`\n${ok}/8 casos correctos (Anexo D + escalas separadas; D.7 se prueba en el navegador).`);

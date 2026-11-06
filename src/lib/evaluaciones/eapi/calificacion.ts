@@ -3,12 +3,16 @@
  * transcrita del prototipo). SOLO para el panel del psicólogo: nunca importar
  * desde el formulario del paciente.
  */
+import { MODULOS_EAPI, type ModuloEapi } from "./codigo";
 import { DOCS, GAD_FUNC, GAD_LABELS } from "./escalas";
 
+export { MODULOS_EAPI, type ModuloEapi };
+
+/** Respuestas: un módulo no aplicado queda en null. */
 export type EapiDatos = {
-  gad: number[];
-  dass: number[];
-  ptq: number[];
+  gad: number[] | null;
+  dass: number[] | null;
+  ptq: number[] | null;
   docs: number[] | null;
   safety: number;
   func: number | null;
@@ -18,6 +22,8 @@ export type EapiDatos = {
   fecha?: string;
   abierta?: string;
 };
+
+export const modulosDe = (r: Pick<EapiDatos, ModuloEapi>) => MODULOS_EAPI.filter((m) => Array.isArray(r[m]));
 
 export type Nivel = "alert" | "warn" | "";
 export type DxId = "tag" | "tag_sub" | "panic" | "stress" | "dep" | "rnt" | "ocd" | "ocd_sub" | "safety";
@@ -112,52 +118,67 @@ export function docsBand(t: number): Banda {
 type DassClave = keyof typeof DASS_SUB;
 type PtqClave = keyof typeof PTQ_SUB;
 
+type ResultadoGad = { total: number; band: Banda; positive: boolean };
+type ResultadoDass = Record<DassClave, { name: string; raw: number; x2: number; band: BandaDass }>;
+type ResultadoPtq = { total: number; band: Banda; sub: Record<PtqClave, { name: string; sum: number; max: number }> };
+type ResultadoDocs = {
+  total: number;
+  band: Banda;
+  dims: { id: string; name: string; short: string; sum: number }[];
+  top: { id: string; name: string; short: string; sum: number };
+};
+
 export type CalificacionEapi = {
-  gad: { total: number; band: Banda; positive: boolean };
-  dass: Record<DassClave, { name: string; raw: number; x2: number; band: BandaDass }>;
-  ptq: { total: number; band: Banda; sub: Record<PtqClave, { name: string; sum: number; max: number }> };
-  docs: null | {
-    total: number;
-    band: Banda;
-    dims: { id: string; name: string; short: string; sum: number }[];
-    top: { id: string; name: string; short: string; sum: number };
-  };
+  modulos: ModuloEapi[];
+  gad: ResultadoGad | null;
+  dass: ResultadoDass | null;
+  ptq: ResultadoPtq | null;
+  docs: ResultadoDocs | null;
   dx: (DxBloque & { id: DxId; lvl: Nivel })[];
   flags: { lvl: Nivel; t: string }[];
 };
 
 export function calificarEapi(r: EapiDatos): CalificacionEapi {
-  const gadTotal = total(r.gad);
-  const gad = { total: gadTotal, band: gadBand(gadTotal), positive: gadTotal >= 10 };
-  const dass = {} as CalificacionEapi["dass"];
-  for (const [k, s] of Object.entries(DASS_SUB) as [DassClave, (typeof DASS_SUB)[DassClave]][]) {
-    const raw = sum(r.dass, s.items);
-    const x2 = raw * 2;
-    dass[k] = { name: s.name, raw, x2, band: dassBand(x2, s.cuts) };
+  let gad: ResultadoGad | null = null;
+  if (r.gad) {
+    const t = total(r.gad);
+    gad = { total: t, band: gadBand(t), positive: t >= 10 };
   }
-  const ptqTotal = total(r.ptq);
-  const ptqSub = {} as CalificacionEapi["ptq"]["sub"];
-  for (const [k, s] of Object.entries(PTQ_SUB) as [PtqClave, (typeof PTQ_SUB)[PtqClave]][]) {
-    ptqSub[k] = { name: s.name, sum: sum(r.ptq, s.items), max: s.max };
+  let dass: ResultadoDass | null = null;
+  if (r.dass) {
+    const items = r.dass;
+    dass = {} as ResultadoDass;
+    for (const [k, s] of Object.entries(DASS_SUB) as [DassClave, (typeof DASS_SUB)[DassClave]][]) {
+      const raw = sum(items, s.items);
+      dass[k] = { name: s.name, raw, x2: raw * 2, band: dassBand(raw * 2, s.cuts) };
+    }
   }
-  const ptq = { total: ptqTotal, band: ptqBand(ptqTotal), sub: ptqSub };
-  let docs: CalificacionEapi["docs"] = null;
+  let ptq: ResultadoPtq | null = null;
+  if (r.ptq) {
+    const items = r.ptq;
+    const sub = {} as ResultadoPtq["sub"];
+    for (const [k, s] of Object.entries(PTQ_SUB) as [PtqClave, (typeof PTQ_SUB)[PtqClave]][]) sub[k] = { name: s.name, sum: sum(items, s.items), max: s.max };
+    const t = total(items);
+    ptq = { total: t, band: ptqBand(t), sub };
+  }
+  let docs: ResultadoDocs | null = null;
   if (r.docs) {
-    const dims = DOCS.map((d, i) => ({ id: d.id, name: d.name, short: d.short, sum: total(r.docs!.slice(i * 5, i * 5 + 5)) }));
-    const docsTotal = total(r.docs);
-    docs = { total: docsTotal, band: docsBand(docsTotal), dims, top: [...dims].sort((a, b) => b.sum - a.sum)[0] };
+    const items = r.docs;
+    const dims = DOCS.map((d, i) => ({ id: d.id, name: d.name, short: d.short, sum: total(items.slice(i * 5, i * 5 + 5)) }));
+    const t = total(items);
+    docs = { total: t, band: docsBand(t), dims, top: [...dims].sort((a, b) => b.sum - a.sum)[0] };
   }
 
-  // B.6 Comentarios DSM/CIE condicionados
+  // B.6 Comentarios DSM/CIE condicionados (solo con los módulos aplicados)
   const dx: CalificacionEapi["dx"] = [];
   const agregar = (id: DxId, lvl: Nivel) => dx.push({ id, lvl, ...DX[id] });
   if (r.safety >= 1) agregar("safety", "alert");
-  if (gad.positive) agregar("tag", "warn");
-  else if (gad.total >= 5) agregar("tag_sub", "");
-  if (dass.anx.band.i >= 2) agregar("panic", "warn");
-  if (dass.str.band.i >= 2) agregar("stress", "warn");
-  if (dass.dep.band.i >= 2) agregar("dep", "warn");
-  if (ptq.total >= 37 || (ptq.total >= 22 && (gad.positive || dass.dep.band.i >= 2))) agregar("rnt", "");
+  if (gad?.positive) agregar("tag", "warn");
+  else if (gad && gad.total >= 5) agregar("tag_sub", "");
+  if (dass && dass.anx.band.i >= 2) agregar("panic", "warn");
+  if (dass && dass.str.band.i >= 2) agregar("stress", "warn");
+  if (dass && dass.dep.band.i >= 2) agregar("dep", "warn");
+  if (ptq && (ptq.total >= 37 || (ptq.total >= 22 && (gad?.positive || (dass && dass.dep.band.i >= 2))))) agregar("rnt", "");
   if (docs) {
     if (docs.total >= 18) agregar("ocd", "warn");
     else if (docs.dims.some((d) => d.sum >= 8)) agregar("ocd_sub", "");
@@ -167,52 +188,109 @@ export function calificarEapi(r: EapiDatos): CalificacionEapi {
   const flags: CalificacionEapi["flags"] = [];
   if (r.safety >= 1)
     flags.push({ lvl: "alert", t: `Ítem de seguridad = ${r.safety} (${GAD_LABELS[r.safety]}). Contacto prioritario y evaluación de riesgo suicida antes de la próxima sesión.` });
-  if ((r.dass[9] || 0) >= 2 || (r.dass[20] || 0) >= 2)
+  if (r.dass && ((r.dass[9] || 0) >= 2 || (r.dass[20] || 0) >= 2))
     flags.push({ lvl: "alert", t: `DASS-21 ítems 10 (${r.dass[9]}) y 21 (${r.dass[20]}): desesperanza / falta de sentido con 2 o 3. Explorar riesgo aunque el ítem de seguridad sea 0.` });
-  if (gad.total >= 15) flags.push({ lvl: "warn", t: "GAD-7 ≥ 15: ansiedad grave. Considerar interconsulta médica/psiquiátrica y priorizar intervención sobre la ansiedad." });
-  if (r.func != null && r.func >= 2)
+  if (gad && gad.total >= 15) flags.push({ lvl: "warn", t: "GAD-7 ≥ 15: ansiedad grave. Considerar interconsulta médica/psiquiátrica y priorizar intervención sobre la ansiedad." });
+  if (gad && r.func != null && r.func >= 2)
     flags.push({ lvl: "warn", t: `Repercusión funcional (ítem adicional del GAD-7) = ${r.func} (${GAD_FUNC.labels[r.func]}). Deterioro claro en trabajo, hogar o relaciones.` });
-  if ((r.dass[14] || 0) >= 2 || (r.dass[8] || 0) >= 2)
+  if (r.dass && ((r.dass[14] || 0) >= 2 || (r.dass[8] || 0) >= 2))
     flags.push({ lvl: "warn", t: "DASS-21 ítems 9 o 15 con 2 o 3: experiencia subjetiva de pánico. Indagar crisis de pánico (frecuencia, inesperadas, evitación)." });
-  if (dass.anx.band.i >= 3 && gad.total < 10)
+  if (dass && gad && dass.anx.band.i >= 3 && gad.total < 10)
     flags.push({ lvl: "", t: "Ansiedad DASS severa con GAD-7 bajo el corte: perfil más somático/situacional que de preocupación. Pensar en pánico, fobias o causa médica." });
-  if (gad.total >= 10 && dass.anx.band.i <= 1)
+  if (dass && gad && gad.total >= 10 && dass.anx.band.i <= 1)
     flags.push({ lvl: "", t: "GAD-7 positivo con Ansiedad DASS normal o leve: perfil cognitivo (preocupación) con poca activación autonómica; coherente con TAG." });
-  if (ptq.sub.capture.sum >= 8)
+  if (ptq && ptq.sub.capture.sum >= 8)
     flags.push({ lvl: "", t: `PTQ «Captura de la capacidad mental» = ${ptq.sub.capture.sum}/12: los pensamientos interfieren con la concentración; evaluar impacto en estudio o trabajo.` });
   if (docs && docs.top.sum >= 8) flags.push({ lvl: "", t: `DOCS: dimensión predominante «${docs.top.name}» (${docs.top.sum}/20).` });
   if (docs && r.docs && (r.docs[12] || 0) >= 2)
     flags.push({ lvl: "", t: "DOCS, pensamientos inaceptables, pregunta 3 ≥ 2: malestar marcado ante intrusiones egodistónicas. Psicoeducar sobre la normalidad de los pensamientos intrusivos y evaluar neutralizaciones." });
   if (r.edad && r.edad < 18)
     flags.push({ lvl: "warn", t: `Edad ${r.edad}: las escalas fueron validadas principalmente en adultos. Interpretar con cautela y considerar instrumentos para adolescentes.` });
-  // Rojas primero
   const orden = { alert: 0, warn: 1, "": 2 } as const;
   flags.sort((a, b) => orden[a.lvl] - orden[b.lvl]);
-  return { gad, dass, ptq, docs, dx, flags };
+  return { modulos: modulosDe(r), gad, dass, ptq, docs, dx, flags };
 }
 
 export const EAPI_SIN_DX = "Todas las puntuaciones están en rango normal o mínimo; no se activan hipótesis diagnósticas específicas.";
 export const EAPI_ENCABEZADO_DX =
   "Hipótesis que las puntuaciones sugieren explorar en entrevista. Los códigos se incluyen como referencia bibliográfica; ninguna escala autoaplicada establece un diagnóstico.";
 
-/** B.7 Seguimiento: aplicación actual frente a la anterior. */
+/** B.7 Seguimiento: solo las medidas presentes en ambas aplicaciones. */
 export function seguimientoEapi(actual: EapiDatos, anterior: EapiDatos) {
   const sc = calificarEapi(actual);
   const sp = calificarEapi(anterior);
   const banda = (a: string, b: string) => (a !== b ? `Banda: ${b} → ${a}` : "");
-  const filas = [
-    { name: "GAD-7 total", before: sp.gad.total, after: sc.gad.total, max: 21, note: Math.abs(sc.gad.total - sp.gad.total) >= 4 ? "Cambio ≥ 4: clínicamente relevante (MCID)" : "" },
-    { name: "DASS-21 Depresión (×2)", before: sp.dass.dep.x2, after: sc.dass.dep.x2, max: 42, note: banda(sc.dass.dep.band.label, sp.dass.dep.band.label) },
-    { name: "DASS-21 Ansiedad (×2)", before: sp.dass.anx.x2, after: sc.dass.anx.x2, max: 42, note: banda(sc.dass.anx.band.label, sp.dass.anx.band.label) },
-    { name: "DASS-21 Estrés (×2)", before: sp.dass.str.x2, after: sc.dass.str.x2, max: 42, note: banda(sc.dass.str.band.label, sp.dass.str.band.label) },
-    { name: "PTQ total", before: sp.ptq.total, after: sc.ptq.total, max: 60, note: "" },
-    { name: "Ítem de seguridad", before: anterior.safety, after: actual.safety, max: 3, note: actual.safety > anterior.safety ? "Aumentó: reevaluar riesgo" : "" },
-  ];
+  const filas: { name: string; before: number; after: number; max: number; note: string }[] = [];
+  if (sc.gad && sp.gad)
+    filas.push({ name: "GAD-7 total", before: sp.gad.total, after: sc.gad.total, max: 21, note: Math.abs(sc.gad.total - sp.gad.total) >= 4 ? "Cambio ≥ 4: clínicamente relevante (MCID)" : "" });
+  if (sc.dass && sp.dass) {
+    filas.push({ name: "DASS-21 Depresión (×2)", before: sp.dass.dep.x2, after: sc.dass.dep.x2, max: 42, note: banda(sc.dass.dep.band.label, sp.dass.dep.band.label) });
+    filas.push({ name: "DASS-21 Ansiedad (×2)", before: sp.dass.anx.x2, after: sc.dass.anx.x2, max: 42, note: banda(sc.dass.anx.band.label, sp.dass.anx.band.label) });
+    filas.push({ name: "DASS-21 Estrés (×2)", before: sp.dass.str.x2, after: sc.dass.str.x2, max: 42, note: banda(sc.dass.str.band.label, sp.dass.str.band.label) });
+  }
+  if (sc.ptq && sp.ptq) filas.push({ name: "PTQ total", before: sp.ptq.total, after: sc.ptq.total, max: 60, note: "" });
+  filas.push({ name: "Ítem de seguridad", before: anterior.safety, after: actual.safety, max: 3, note: actual.safety > anterior.safety ? "Aumentó: reevaluar riesgo" : "" });
   if (sc.docs && sp.docs) filas.push({ name: "DOCS total", before: sp.docs.total, after: sc.docs.total, max: 80, note: "" });
   return filas.map((f) => ({ ...f, delta: f.after - f.before }));
 }
 
+/**
+ * Une varias aplicaciones en una sola para el informe unificado: cada módulo
+ * se toma de la primera aplicación de la lista que lo tenga (la actual va
+ * primero). La pregunta de seguridad toma el valor más alto (criterio prudente).
+ */
+export function unirEapi(aplicaciones: EapiDatos[]): EapiDatos {
+  const [base] = aplicaciones;
+  const tomar = <K extends ModuloEapi>(m: K) => aplicaciones.find((a) => a[m])?.[m] ?? null;
+  const conGad = aplicaciones.find((a) => a.gad);
+  return {
+    ...base,
+    gad: tomar("gad"),
+    dass: tomar("dass"),
+    ptq: tomar("ptq"),
+    docs: tomar("docs"),
+    func: conGad?.func ?? null,
+    safety: Math.max(...aplicaciones.map((a) => a.safety)),
+  };
+}
+
+/** Nombres completos de los instrumentos con su sigla, para la primera mención. */
+export const NOMBRES_MODULOS: Record<ModuloEapi, { sigla: string; completo: string; mide: string }> = {
+  gad: {
+    sigla: "GAD-7",
+    completo: "Escala del Trastorno de Ansiedad Generalizada de 7 ítems (GAD-7, por sus siglas en inglés)",
+    mide: "preocupación y ansiedad generalizada en las últimas 2 semanas",
+  },
+  dass: {
+    sigla: "DASS-21",
+    completo: "Escalas de Depresión, Ansiedad y Estrés de 21 ítems (DASS-21)",
+    mide: "depresión, activación ansiosa y estrés en la última semana",
+  },
+  ptq: {
+    sigla: "PTQ",
+    completo: "Cuestionario de Pensamiento Perseverativo (PTQ, Perseverative Thinking Questionnaire)",
+    mide: "tendencia a pensar de forma repetitiva e intrusiva (rasgo)",
+  },
+  docs: {
+    sigla: "DOCS",
+    completo: "Escala Dimensional de Obsesiones y Compulsiones (DOCS)",
+    mide: "síntomas obsesivo-compulsivos en el último mes",
+  },
+};
+
+/** Siglas que aparecen en el informe profesional, con su significado. */
+export const SIGLAS_EAPI: [string, string][] = [
+  ["PHQ-9", "Cuestionario de Salud del Paciente de 9 ítems; de él proviene la pregunta de seguridad (ítem 9)"],
+  ["DSM-5-TR", "Manual Diagnóstico y Estadístico de los Trastornos Mentales, 5.ª edición, texto revisado"],
+  ["CIE-11", "Clasificación Internacional de Enfermedades, 11.ª revisión (OMS)"],
+  ["CIE-10-MC", "Clasificación Internacional de Enfermedades, 10.ª revisión, Modificación Clínica"],
+  ["TAG", "trastorno de ansiedad generalizada"],
+  ["TOC", "trastorno obsesivo-compulsivo"],
+  ["TCC", "terapia cognitivo-conductual"],
+  ["MCID", "diferencia mínima clínicamente importante (Minimal Clinically Important Difference)"],
+];
+
 /** B.8 Aviso obligatorio en el informe. */
-export function avisoEapi(conDocs: boolean) {
-  return `Instrumentos de cribado autoaplicados (GAD-7, DASS-21, PTQ${conDocs ? ", DOCS" : ""}): orientan la entrevista y permiten seguir el cambio, pero ninguna puntuación constituye un diagnóstico. Los criterios y códigos DSM-5-TR y CIE-11 se incluyen como referencia para la formulación clínica y deben verificarse con entrevista clínica, historia y, cuando corresponda, exploración médica. Toda puntuación ≥ 1 en el ítem de seguridad exige evaluación de riesgo inmediata. Los resultados no se muestran al paciente; la interpretación corresponde al psicólogo tratante.`;
+export function avisoEapi(modulos: ModuloEapi[]) {
+  return `Instrumentos de cribado autoaplicados (${modulos.map((m) => NOMBRES_MODULOS[m].sigla).join(", ")}): orientan la entrevista y permiten seguir el cambio, pero ninguna puntuación constituye un diagnóstico. Los criterios y códigos del DSM-5-TR y la CIE-11 se incluyen como referencia para la formulación clínica y deben verificarse con entrevista clínica, historia y, cuando corresponda, exploración médica. Toda puntuación ≥ 1 en el ítem de seguridad exige evaluación de riesgo inmediata. Los resultados no se muestran al paciente salvo en el informe que el psicólogo decida enviarle; la interpretación corresponde al psicólogo tratante.`;
 }

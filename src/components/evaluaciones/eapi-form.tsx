@@ -1,8 +1,19 @@
 "use client";
 
-import { CheckCircle2, CloudOff, LifeBuoy, RefreshCw, Send } from "lucide-react";
+import {
+  CheckCircle2,
+  CloudOff,
+  LifeBuoy,
+  RefreshCw,
+  Send,
+} from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
-import type { EapiBorrador } from "@/lib/evaluaciones/eapi/codigo";
+import {
+  minutosEapi,
+  preguntasEapi,
+  type EapiBorrador,
+  type ModuloEapi,
+} from "@/lib/evaluaciones/eapi/codigo";
 import {
   DASS21,
   DASS_LABELS,
@@ -30,7 +41,12 @@ const hoyLocal = () => {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 };
 
-type EstadoGuardado = "sin-cambios" | "pendiente" | "guardando" | "guardado" | "sin-conexion";
+type EstadoGuardado =
+  | "sin-cambios"
+  | "pendiente"
+  | "guardando"
+  | "guardado"
+  | "sin-conexion";
 type Fase = "llenando" | "enviando" | "enviado" | "fallo-envio" | "cerrado";
 type Lista = "gad" | "dass" | "ptq" | "docs";
 
@@ -56,7 +72,11 @@ export function Pregunta({
   valor: number | null;
 }) {
   const largas = etiquetas.some((e) => e.length > 28);
-  const columnas = largas ? "grid-cols-1 sm:grid-cols-2" : etiquetas.length === 5 ? "grid-cols-2 sm:grid-cols-5" : "grid-cols-2 sm:grid-cols-4";
+  const columnas = largas
+    ? "grid-cols-1 sm:grid-cols-2"
+    : etiquetas.length === 5
+      ? "grid-cols-2 sm:grid-cols-5"
+      : "grid-cols-2 sm:grid-cols-4";
   return (
     <fieldset
       className={`rounded-xl border p-3 ${falta ? "border-red-300 bg-red-50/60" : "border-transparent"}`}
@@ -88,7 +108,13 @@ export function Pregunta({
               }`}
               key={v}
             >
-              <input checked={activo} className="sr-only" name={id} onChange={() => onElegir(v)} type="radio" />
+              <input
+                checked={activo}
+                className="sr-only"
+                name={id}
+                onChange={() => onElegir(v)}
+                type="radio"
+              />
               <span className="text-base font-bold text-slate-900">{v}</span>
               <span>{etiqueta}</span>
             </label>
@@ -100,30 +126,42 @@ export function Pregunta({
 }
 
 function Escala({ etiquetas }: { etiquetas: readonly string[] }) {
-  return <p className="mt-1 text-xs leading-5 text-slate-500">{etiquetas.map((e, i) => `${i} = ${e}`).join(" · ")}</p>;
+  return (
+    <p className="mt-1 text-xs leading-5 text-slate-500">
+      {etiquetas.map((e, i) => `${i} = ${e}`).join(" · ")}
+    </p>
+  );
 }
 
 export function EapiForm({
   borradorInicial,
   codigoCaso,
-  conDocs,
+  modulos,
   token,
 }: {
   borradorInicial: EapiBorrador | null;
   codigoCaso: string;
-  conDocs: boolean;
+  /** Escalas asignadas por el psicólogo (la pregunta de seguridad va siempre). */
+  modulos: readonly ModuloEapi[];
   token: string;
 }) {
+  const tiene = (m: ModuloEapi) => modulos.includes(m);
+  // Numeración de bloques según las escalas asignadas.
+  const numeroBloque = (m: ModuloEapi) => modulos.indexOf(m) + 1;
+  const tituloBloque = (m: ModuloEapi) =>
+    EAPI_BLOQUES[m].titulo.replace(/^Bloque \d+/, `Bloque ${numeroBloque(m)}`);
   const b = borradorInicial;
   const [nombre, setNombre] = useState(b?.nombre ?? "");
   const [edad, setEdad] = useState(b?.edad ?? "");
   const [fecha, setFecha] = useState(b?.fecha || hoyLocal());
-  const [listas, setListas] = useState<Record<Lista, (number | null)[]>>(() => ({
-    gad: b?.gad ?? vacio(7),
-    dass: b?.dass ?? vacio(21),
-    ptq: b?.ptq ?? vacio(15),
-    docs: b?.docs ?? vacio(20),
-  }));
+  const [listas, setListas] = useState<Record<Lista, (number | null)[]>>(
+    () => ({
+      gad: b?.gad ?? vacio(7),
+      dass: b?.dass ?? vacio(21),
+      ptq: b?.ptq ?? vacio(15),
+      docs: b?.docs ?? vacio(20),
+    }),
+  );
   const [func, setFunc] = useState<number | null>(b?.func ?? null);
   const [safety, setSafety] = useState<number | null>(b?.safety ?? null);
   const [abierta, setAbierta] = useState(b?.abierta ?? "");
@@ -133,14 +171,29 @@ export function EapiForm({
   const [seguridadEnviada, setSeguridadEnviada] = useState(0);
   const [guardado, setGuardado] = useState<EstadoGuardado>("sin-cambios");
   const [continua] = useState(() =>
-    Boolean(b && (b.nombre || [...b.gad, ...b.dass, ...b.ptq].some((v) => v !== null)))
+    Boolean(
+      b &&
+      (b.nombre ||
+        [...b.gad, ...b.dass, ...b.ptq, ...b.docs].some((v) => v !== null)),
+    ),
   );
   const temporizador = useRef<ReturnType<typeof setTimeout> | null>(null);
   const version = useRef(0);
 
   const borrador = useCallback(
-    (): EapiBorrador => ({ nombre, edad, fecha, gad: listas.gad, func, dass: listas.dass, ptq: listas.ptq, docs: listas.docs, safety, abierta }),
-    [nombre, edad, fecha, listas, func, safety, abierta]
+    (): EapiBorrador => ({
+      nombre,
+      edad,
+      fecha,
+      gad: listas.gad,
+      func,
+      dass: listas.dass,
+      ptq: listas.ptq,
+      docs: listas.docs,
+      safety,
+      abierta,
+    }),
+    [nombre, edad, fecha, listas, func, safety, abierta],
   );
 
   const guardarAvance = useCallback(
@@ -152,17 +205,20 @@ export function EapiForm({
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(datos),
         });
-        const data = (await res.json().catch(() => ({}))) as { estado?: string };
+        const data = (await res.json().catch(() => ({}))) as {
+          estado?: string;
+        };
         if (data.estado === "completa" || data.estado === "cerrada") {
           setFase("cerrado");
           return;
         }
-        if (v === version.current) setGuardado(res.ok ? "guardado" : "sin-conexion");
+        if (v === version.current)
+          setGuardado(res.ok ? "guardado" : "sin-conexion");
       } catch {
         if (v === version.current) setGuardado("sin-conexion");
       }
     },
-    [token]
+    [token],
   );
 
   // Guardado automático: solo si algo cambió respecto de lo último guardado.
@@ -180,7 +236,10 @@ export function EapiForm({
     const v = ++version.current;
     setGuardado("pendiente");
     if (temporizador.current) clearTimeout(temporizador.current);
-    temporizador.current = setTimeout(() => void guardarAvance(datos, v), ESPERA_GUARDADO_MS);
+    temporizador.current = setTimeout(
+      () => void guardarAvance(datos, v),
+      ESPERA_GUARDADO_MS,
+    );
     return () => {
       if (temporizador.current) clearTimeout(temporizador.current);
     };
@@ -188,7 +247,8 @@ export function EapiForm({
 
   useEffect(() => {
     const alVolver = () => {
-      if (guardado === "sin-conexion") void guardarAvance(borrador(), version.current);
+      if (guardado === "sin-conexion")
+        void guardarAvance(borrador(), version.current);
     };
     window.addEventListener("online", alVolver);
     return () => window.removeEventListener("online", alVolver);
@@ -203,28 +263,33 @@ export function EapiForm({
     });
 
   const elegir = (lista: Lista, i: number, v: number) => {
-    setListas((prev) => ({ ...prev, [lista]: prev[lista].map((x, j) => (j === i ? v : x)) }));
+    setListas((prev) => ({
+      ...prev,
+      [lista]: prev[lista].map((x, j) => (j === i ? v : x)),
+    }));
     quitarFalta(`${lista}${i + 1}`);
   };
 
-  const requeridas = 44 + (conDocs ? 20 : 0);
+  const requeridas = preguntasEapi(modulos);
   const respondidas =
-    [...listas.gad, ...listas.dass, ...listas.ptq, ...(conDocs ? listas.docs : [])].filter((v) => v !== null).length +
-    (safety !== null ? 1 : 0);
+    modulos.reduce(
+      (n, m) => n + listas[m].filter((v) => v !== null).length,
+      0,
+    ) + (safety !== null ? 1 : 0);
 
   const enviar = async () => {
     if (fase === "enviando") return;
     const faltantes: string[] = [];
     if (!nombre.trim()) faltantes.push("nombre");
-    listas.gad.forEach((v, i) => v === null && faltantes.push(`gad${i + 1}`));
-    listas.dass.forEach((v, i) => v === null && faltantes.push(`dass${i + 1}`));
-    listas.ptq.forEach((v, i) => v === null && faltantes.push(`ptq${i + 1}`));
-    if (conDocs) listas.docs.forEach((v, i) => v === null && faltantes.push(`docs${i + 1}`));
+    for (const m of modulos)
+      listas[m].forEach((v, i) => v === null && faltantes.push(`${m}${i + 1}`));
     if (safety === null) faltantes.push("safety");
     if (faltantes.length > 0) {
       setFaltan(new Set(faltantes));
       setError("Faltan preguntas por responder. Las hemos marcado en rojo.");
-      document.getElementById(`ea-${faltantes[0]}`)?.scrollIntoView({ behavior: "smooth", block: "center" });
+      document
+        .getElementById(`ea-${faltantes[0]}`)
+        ?.scrollIntoView({ behavior: "smooth", block: "center" });
       return;
     }
     if (temporizador.current) clearTimeout(temporizador.current);
@@ -235,12 +300,12 @@ export function EapiForm({
     const respuesta = {
       v: 1,
       instrumento: "AEI",
-      gad: listas.gad,
-      dass: listas.dass,
-      ptq: listas.ptq,
-      docs: conDocs ? listas.docs : null,
+      gad: tiene("gad") ? listas.gad : null,
+      dass: tiene("dass") ? listas.dass : null,
+      ptq: tiene("ptq") ? listas.ptq : null,
+      docs: tiene("docs") ? listas.docs : null,
       safety,
-      func,
+      func: tiene("gad") ? func : null,
       ref: codigoCaso,
       nombre: nombre.trim(),
       edad: edad && Number.isInteger(edadNum) ? edadNum : null,
@@ -254,7 +319,10 @@ export function EapiForm({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(respuesta),
       });
-      const data = (await res.json().catch(() => ({}))) as { estado?: string; error?: string };
+      const data = (await res.json().catch(() => ({}))) as {
+        estado?: string;
+        error?: string;
+      };
       if (res.status === 422 && data.error) {
         setFase("llenando");
         setError(data.error);
@@ -263,7 +331,11 @@ export function EapiForm({
       if (res.ok && data.estado === "guardado") {
         setSeguridadEnviada(safety ?? 0);
         setFase("enviado");
-      } else if (res.ok && (data.estado === "completa" || data.estado === "cerrada")) setFase("cerrado");
+      } else if (
+        res.ok &&
+        (data.estado === "completa" || data.estado === "cerrada")
+      )
+        setFase("cerrado");
       else setFase("fallo-envio");
     } catch {
       setFase("fallo-envio");
@@ -277,10 +349,17 @@ export function EapiForm({
         <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-emerald-50">
           <CheckCircle2 className="h-7 w-7 text-emerald-600" />
         </div>
-        <p className="text-lg font-semibold text-slate-900">Formulario enviado correctamente</p>
-        <p className="mx-auto max-w-md text-base leading-7 text-slate-700">Gracias por responder. {EAPI_GRACIAS}</p>
+        <p className="text-lg font-semibold text-slate-900">
+          Formulario enviado correctamente
+        </p>
+        <p className="mx-auto max-w-md text-base leading-7 text-slate-700">
+          Gracias por responder. {EAPI_GRACIAS}
+        </p>
         {seguridadEnviada >= 1 ? (
-          <div className="mx-auto grid max-w-lg gap-2 rounded-xl border border-amber-300 bg-amber-50 p-4 text-left text-sm leading-6 text-amber-950" data-testid="ea-crisis">
+          <div
+            className="mx-auto grid max-w-lg gap-2 rounded-xl border border-amber-300 bg-amber-50 p-4 text-left text-sm leading-6 text-amber-950"
+            data-testid="ea-crisis"
+          >
             <p className="flex items-center gap-2 font-semibold">
               <LifeBuoy className="h-4 w-4" />
               Un mensaje importante para usted.
@@ -301,9 +380,12 @@ export function EapiForm({
   if (fase === "cerrado") {
     return (
       <div className="grid gap-3 py-8 text-center" data-testid="ea-cerrado">
-        <p className="text-base font-semibold text-slate-900">Este formulario ya fue enviado</p>
+        <p className="text-base font-semibold text-slate-900">
+          Este formulario ya fue enviado
+        </p>
         <p className="mx-auto max-w-sm text-sm leading-6 text-slate-500">
-          Si necesita responderlo de nuevo, pida a su psicólogo que lo vuelva a habilitar.
+          Si necesita responderlo de nuevo, pida a su psicólogo que lo vuelva a
+          habilitar.
         </p>
       </div>
     );
@@ -320,7 +402,11 @@ export function EapiForm({
             ? "Continúa donde se quedó"
             : "Su avance se guarda automáticamente";
 
-  const bloque = (titulo: string, intro: string, etiquetas?: readonly string[]) => (
+  const bloque = (
+    titulo: string,
+    intro: string,
+    etiquetas?: readonly string[],
+  ) => (
     <div className="pt-2">
       <h2 className="text-lg font-semibold text-slate-900">{titulo}</h2>
       <p className="mt-1 text-sm leading-6 text-slate-600">{intro}</p>
@@ -333,24 +419,39 @@ export function EapiForm({
       <div
         aria-live="polite"
         className={`sticky top-0 z-10 -mx-4 -mt-4 grid gap-1 rounded-t-2xl border-b px-3 py-2 text-xs font-semibold sm:-mx-7 sm:-mt-7 ${
-          guardado === "sin-conexion" ? "border-amber-200 bg-amber-50 text-amber-800" : "border-slate-100 bg-white shadow-sm text-slate-500"
+          guardado === "sin-conexion"
+            ? "border-amber-200 bg-amber-50 text-amber-800"
+            : "border-slate-100 bg-white shadow-sm text-slate-500"
         }`}
         data-testid="ea-guardado"
       >
         <span className="flex items-center justify-center gap-1.5">
-          {guardado === "sin-conexion" ? <CloudOff className="h-3.5 w-3.5" /> : <CheckCircle2 className="h-3.5 w-3.5 text-teal-600" />}
+          {guardado === "sin-conexion" ? (
+            <CloudOff className="h-3.5 w-3.5" />
+          ) : (
+            <CheckCircle2 className="h-3.5 w-3.5 text-teal-600" />
+          )}
           {indicador} · {respondidas} de {requeridas} respondidas
         </span>
         <span className="h-1.5 overflow-hidden rounded-full bg-slate-100">
-          <span className="block h-full bg-teal-600 transition-all" style={{ width: `${Math.round((respondidas / requeridas) * 100)}%` }} />
+          <span
+            className="block h-full bg-teal-600 transition-all"
+            style={{
+              width: `${Math.round((respondidas / requeridas) * 100)}%`,
+            }}
+          />
         </span>
       </div>
 
       {fase === "fallo-envio" ? (
-        <div className="grid gap-2 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900" role="alert">
+        <div
+          className="grid gap-2 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900"
+          role="alert"
+        >
           <p>
-            <strong>No se pudo enviar todavía</strong> (posible problema de conexión). Sus respuestas están guardadas en este enlace;
-            no las pierde.
+            <strong>No se pudo enviar todavía</strong> (posible problema de
+            conexión). Sus respuestas están guardadas en este enlace; no las
+            pierde.
           </p>
           <button
             className="inline-flex w-fit items-center gap-2 rounded-lg bg-amber-700 px-4 py-2.5 font-bold text-white"
@@ -364,20 +465,27 @@ export function EapiForm({
       ) : null}
 
       <div>
-        <h1 className="text-2xl font-semibold leading-tight text-slate-900 sm:text-3xl">{EAPI_TITULO_PACIENTE}</h1>
+        <h1 className="text-2xl font-semibold leading-tight text-slate-900 sm:text-3xl">
+          {EAPI_TITULO_PACIENTE}
+        </h1>
         <p className="mt-2 text-sm text-slate-500">
-          Tiempo aproximado: {conDocs ? "15 a 20" : "10 a 12"} minutos. Sus respuestas las revisará únicamente su psicólogo. Puede
-          cerrar la página y continuar después con el mismo enlace.
+          Tiempo aproximado: {minutosEapi(modulos)} minutos. Sus respuestas las
+          revisará únicamente su psicólogo. Puede cerrar la página y continuar
+          después con el mismo enlace.
         </p>
       </div>
-      <div className="rounded-r-xl border-l-4 border-teal-600 bg-teal-50 p-4 text-sm leading-6 text-slate-700">{EAPI_INTRO}</div>
+      <div className="rounded-r-xl border-l-4 border-teal-600 bg-teal-50 p-4 text-sm leading-6 text-slate-700">
+        {EAPI_INTRO}
+      </div>
 
       <div className="grid gap-4 sm:grid-cols-3">
         <label
           className={`grid gap-1.5 rounded-lg border p-1 sm:col-span-2 ${faltan.has("nombre") ? "border-red-300 bg-red-50/60" : "border-transparent"}`}
           id="ea-nombre"
         >
-          <span className="text-xs font-semibold uppercase text-slate-500">Su nombre *</span>
+          <span className="text-xs font-semibold uppercase text-slate-500">
+            Su nombre *
+          </span>
           <input
             autoComplete="name"
             className="field-light"
@@ -389,77 +497,107 @@ export function EapiForm({
           />
         </label>
         <label className="grid gap-1.5 p-1">
-          <span className="text-xs font-semibold uppercase text-slate-500">Edad</span>
-          <input className="field-light" inputMode="numeric" maxLength={3} onChange={(e) => setEdad(e.target.value.replace(/\D/g, ""))} value={edad} />
+          <span className="text-xs font-semibold uppercase text-slate-500">
+            Edad
+          </span>
+          <input
+            className="field-light"
+            inputMode="numeric"
+            maxLength={3}
+            onChange={(e) => setEdad(e.target.value.replace(/\D/g, ""))}
+            value={edad}
+          />
         </label>
         <label className="grid gap-1.5 p-1">
-          <span className="text-xs font-semibold uppercase text-slate-500">Fecha</span>
-          <input className="field-light" onChange={(e) => setFecha(e.target.value)} type="date" value={fecha} />
+          <span className="text-xs font-semibold uppercase text-slate-500">
+            Fecha
+          </span>
+          <input
+            className="field-light"
+            onChange={(e) => setFecha(e.target.value)}
+            type="date"
+            value={fecha}
+          />
         </label>
       </div>
 
-      {bloque(EAPI_BLOQUES.gad.titulo, EAPI_BLOQUES.gad.intro, GAD_LABELS)}
-      <div className="grid gap-2">
-        {GAD7.map((t, i) => (
-          <Pregunta
-            etiquetas={GAD_LABELS}
-            falta={faltan.has(`gad${i + 1}`)}
-            id={`gad${i + 1}`}
-            key={i}
-            numero={String(i + 1)}
-            onElegir={(v) => elegir("gad", i, v)}
-            texto={t}
-            valor={listas.gad[i]}
-          />
-        ))}
-        <Pregunta
-          etiquetas={GAD_FUNC.labels}
-          falta={false}
-          id="func"
-          numero="+"
-          onElegir={setFunc}
-          texto={`${GAD_FUNC.t} (opcional)`}
-          valor={func}
-        />
-      </div>
-
-      {bloque(EAPI_BLOQUES.dass.titulo, EAPI_BLOQUES.dass.intro, DASS_LABELS)}
-      <div className="grid gap-2">
-        {DASS21.map((t, i) => (
-          <Pregunta
-            etiquetas={DASS_LABELS}
-            falta={faltan.has(`dass${i + 1}`)}
-            id={`dass${i + 1}`}
-            key={i}
-            numero={String(i + 1)}
-            onElegir={(v) => elegir("dass", i, v)}
-            texto={t}
-            valor={listas.dass[i]}
-          />
-        ))}
-      </div>
-
-      {bloque(EAPI_BLOQUES.ptq.titulo, EAPI_BLOQUES.ptq.intro, PTQ_LABELS)}
-      <div className="grid gap-2">
-        {PTQ.map((t, i) => (
-          <Pregunta
-            etiquetas={PTQ_LABELS}
-            falta={faltan.has(`ptq${i + 1}`)}
-            id={`ptq${i + 1}`}
-            key={i}
-            numero={String(i + 1)}
-            onElegir={(v) => elegir("ptq", i, v)}
-            texto={t}
-            valor={listas.ptq[i]}
-          />
-        ))}
-      </div>
-
-      {conDocs ? (
+      {tiene("gad") ? (
         <>
-          {bloque(EAPI_BLOQUES.docs.titulo, EAPI_BLOQUES.docs.intro)}
+          {bloque(tituloBloque("gad"), EAPI_BLOQUES.gad.intro, GAD_LABELS)}
+          <div className="grid gap-2">
+            {GAD7.map((t, i) => (
+              <Pregunta
+                etiquetas={GAD_LABELS}
+                falta={faltan.has(`gad${i + 1}`)}
+                id={`gad${i + 1}`}
+                key={i}
+                numero={String(i + 1)}
+                onElegir={(v) => elegir("gad", i, v)}
+                texto={t}
+                valor={listas.gad[i]}
+              />
+            ))}
+            <Pregunta
+              etiquetas={GAD_FUNC.labels}
+              falta={false}
+              id="func"
+              numero="+"
+              onElegir={setFunc}
+              texto={`${GAD_FUNC.t} (opcional)`}
+              valor={func}
+            />
+          </div>
+        </>
+      ) : null}
+
+      {tiene("dass") ? (
+        <>
+          {bloque(tituloBloque("dass"), EAPI_BLOQUES.dass.intro, DASS_LABELS)}
+          <div className="grid gap-2">
+            {DASS21.map((t, i) => (
+              <Pregunta
+                etiquetas={DASS_LABELS}
+                falta={faltan.has(`dass${i + 1}`)}
+                id={`dass${i + 1}`}
+                key={i}
+                numero={String(i + 1)}
+                onElegir={(v) => elegir("dass", i, v)}
+                texto={t}
+                valor={listas.dass[i]}
+              />
+            ))}
+          </div>
+        </>
+      ) : null}
+
+      {tiene("ptq") ? (
+        <>
+          {bloque(tituloBloque("ptq"), EAPI_BLOQUES.ptq.intro, PTQ_LABELS)}
+          <div className="grid gap-2">
+            {PTQ.map((t, i) => (
+              <Pregunta
+                etiquetas={PTQ_LABELS}
+                falta={faltan.has(`ptq${i + 1}`)}
+                id={`ptq${i + 1}`}
+                key={i}
+                numero={String(i + 1)}
+                onElegir={(v) => elegir("ptq", i, v)}
+                texto={t}
+                valor={listas.ptq[i]}
+              />
+            ))}
+          </div>
+        </>
+      ) : null}
+
+      {tiene("docs") ? (
+        <>
+          {bloque(tituloBloque("docs"), EAPI_BLOQUES.docs.intro)}
           {DOCS.map((cat, ci) => (
-            <div className="grid gap-2 rounded-2xl border border-slate-200 p-3" key={cat.id}>
+            <div
+              className="grid gap-2 rounded-2xl border border-slate-200 p-3"
+              key={cat.id}
+            >
               <h3 className="text-base font-semibold text-slate-900">
                 Categoría {ci + 1}: {cat.name}
               </h3>
@@ -506,14 +644,25 @@ export function EapiForm({
         valor={safety}
       />
 
-      <h2 className="pt-2 text-lg font-semibold text-slate-900">Para terminar</h2>
+      <h2 className="pt-2 text-lg font-semibold text-slate-900">
+        Para terminar
+      </h2>
       <label className="grid gap-1.5">
-        <span className="text-sm font-medium text-slate-700">{EAPI_ABIERTA} (opcional)</span>
-        <textarea className="field-light min-h-28 resize-y" onChange={(e) => setAbierta(e.target.value)} value={abierta} />
+        <span className="text-sm font-medium text-slate-700">
+          {EAPI_ABIERTA} (opcional)
+        </span>
+        <textarea
+          className="field-light min-h-28 resize-y"
+          onChange={(e) => setAbierta(e.target.value)}
+          value={abierta}
+        />
       </label>
 
       {error ? (
-        <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700" role="alert">
+        <div
+          className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700"
+          role="alert"
+        >
           {error}
         </div>
       ) : null}
@@ -527,10 +676,13 @@ export function EapiForm({
         <Send className="h-4 w-4" />
         {fase === "enviando" ? "Enviando..." : "Enviar respuestas"}
       </button>
-      <p className="-mt-2 text-center text-xs text-slate-400">Al enviar, el formulario se cierra y ya no se puede modificar.</p>
+      <p className="-mt-2 text-center text-xs text-slate-400">
+        Al enviar, el formulario se cierra y ya no se puede modificar.
+      </p>
       <p className="border-t border-slate-100 pt-4 text-xs leading-5 text-slate-400">
-        Cuestionario de orientación para su atención psicológica. Sus respuestas son confidenciales; los resultados los interpreta y
-        conversa con usted su psicólogo.
+        Cuestionario de orientación para su atención psicológica. Sus respuestas
+        son confidenciales; los resultados los interpreta y conversa con usted
+        su psicólogo.
       </p>
     </div>
   );

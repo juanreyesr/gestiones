@@ -58,8 +58,14 @@ const TEXTOS = {
   ],
 };
 
+/** Áreas que corresponden a los módulos aplicados. */
+export function areasEapi(datos: EapiDatos) {
+  const hay = { gad: !!datos.gad, str: !!datos.dass, anx: !!datos.dass, dep: !!datos.dass, ptq: !!datos.ptq, docs: !!datos.docs };
+  return AREAS_EAPI.filter((a) => hay[a.id]);
+}
+
 export function opcionesPorDefectoEapi(datos: EapiDatos): OpcionesInforme {
-  const hayRiesgo = datos.safety >= 1 || (datos.dass[9] ?? 0) >= 2 || (datos.dass[20] ?? 0) >= 2;
+  const hayRiesgo = datos.safety >= 1 || (datos.dass?.[9] ?? 0) >= 2 || (datos.dass?.[20] ?? 0) >= 2;
   return {
     incluir: { gad: true, str: true, anx: true, dep: true, ptq: true, docs: true },
     mostrarPuntuaciones: false,
@@ -77,7 +83,7 @@ export function informePacienteEapi(
   const incluir = (id: string) => opciones.incluir[id] !== false;
   const pts = (v: number, max: number) => (opciones.mostrarPuntuaciones ? `${v} de ${max}` : undefined);
 
-  if (incluir("gad")) {
+  if (c.gad && incluir("gad")) {
     const i = c.gad.total <= 4 ? 0 : c.gad.total <= 9 ? 1 : c.gad.total <= 14 ? 2 : 3;
     resultados.push({
       area: "Preocupación y nerviosismo",
@@ -88,22 +94,23 @@ export function informePacienteEapi(
       puntuacion: pts(c.gad.total, 21),
     });
   }
+  const cDass = c.dass;
   const dass = (id: "str" | "anx" | "dep", area: string) => {
-    if (!incluir(id)) return;
-    const i = c.dass[id].band.i;
+    if (!cDass || !incluir(id)) return;
+    const i = cDass[id].band.i;
     resultados.push({
       area,
       periodo: "Última semana",
       nivel: NIVELES_DASS[i],
       tono: TONOS_DASS[i],
       texto: TEXTOS[id][i],
-      puntuacion: pts(c.dass[id].x2, 42),
+      puntuacion: pts(cDass[id].x2, 42),
     });
   };
   dass("str", "Estrés y tensión");
   dass("anx", "Síntomas físicos de ansiedad");
   dass("dep", "Estado de ánimo");
-  if (incluir("ptq")) {
+  if (c.ptq && incluir("ptq")) {
     const i = c.ptq.total < 22 ? 0 : c.ptq.total < 37 ? 1 : 2;
     resultados.push({
       area: "Pensamientos repetitivos",
