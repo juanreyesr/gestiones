@@ -5,7 +5,7 @@
  * src/components/clinica/evaluaciones/ (INFORMES), y su validación en
  * /api/evaluacion/[token]. Solo metadatos aquí (lo usa también la página pública).
  */
-export type InstrumentoId = "b-breve" | "eapi";
+export type InstrumentoId = "b-breve" | "eapi" | "riasec";
 
 export type Instrumento = {
   id: InstrumentoId;
@@ -38,6 +38,16 @@ export const INSTRUMENTOS: readonly Instrumento[] = [
     responde: "paciente",
     respuestasPorDefecto: 1,
     tituloPublico: "EAPI versión JJ",
+    informePaciente: true,
+  },
+  {
+    id: "riasec",
+    nombre: "Test de intereses vocacionales (RIASEC)",
+    descripcion:
+      "36 afirmaciones (modelo de Holland: Realista, Investigador, Artístico, Social, Emprendedor, Convencional), 8 a 10 min. Código Holland, hexágono, diferenciación, consistencia, estilo de respuesta, carreras para explorar, seguimiento e informe para enviar.",
+    responde: "paciente",
+    respuestasPorDefecto: 1,
+    tituloPublico: "Test de intereses vocacionales · versión JJ",
     informePaciente: true,
   },
 ];

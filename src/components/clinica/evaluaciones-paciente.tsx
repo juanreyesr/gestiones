@@ -21,6 +21,8 @@ import { avanceBBreve, limpiarBorradorBBreve, validarBBreve, type BBreveDatos } 
 import { informeBBreveHtml, type AplicacionBBreve } from "@/lib/evaluaciones/b-breve/informe-html";
 import { calificarEapi } from "@/lib/evaluaciones/eapi/calificacion";
 import { avanceEapi, limpiarBorradorEapi } from "@/lib/evaluaciones/eapi/codigo";
+import { calificarRiasec } from "@/lib/evaluaciones/riasec/calificacion";
+import { avanceRiasec, limpiarBorradorRiasec } from "@/lib/evaluaciones/riasec/codigo";
 import {
   asignarEvaluacion,
   cambiarEstadoEvaluacion,
@@ -35,6 +37,7 @@ import { urlPublica } from "@/lib/url-publica";
 import { IconoWhatsApp } from "./boton-whatsapp-paciente";
 import { datosEapi, InformeEapi } from "./informe-eapi";
 import { InformeFrame } from "./informe-frame";
+import { datosRiasec, InformeRiasec } from "./informe-riasec";
 import { NotasPrivadas } from "./notas-privadas";
 import { BTN_ACCENT, BTN_DANGER, BTN_GHOST, Field, SectionCard } from "./ui";
 
@@ -295,7 +298,9 @@ export function EvaluacionesPaciente({ paciente }: { paciente: PacienteRow }) {
                 ? avanceBBreve(limpiarBorradorBBreve(ev.borrador))
                 : ev.instrumento === "eapi"
                   ? avanceEapi(limpiarBorradorEapi(ev.borrador), ev.opciones?.docs === true)
-                  : null;
+                  : ev.instrumento === "riasec"
+                    ? avanceRiasec(limpiarBorradorRiasec(ev.borrador))
+                    : null;
             const estadoTexto = !abierta
               ? ev.estado === "completa"
                 ? "✓ Enviado"
@@ -393,6 +398,8 @@ export function EvaluacionesPaciente({ paciente }: { paciente: PacienteRow }) {
             const c = datos ? calificarBBreve(datos) : null;
             const de = r.instrumento === "eapi" ? datosEapi(r) : null;
             const ce = de ? calificarEapi(de) : null;
+            const dr = r.instrumento === "riasec" ? datosRiasec(r) : null;
+            const cr = dr ? calificarRiasec(dr) : null;
             const alarma = (datos && (datos.S1 === 1 || datos.S2 === 1)) || (ce && ce.flags.some((f) => f.lvl === "alert"));
             return (
               <button
@@ -420,6 +427,11 @@ export function EvaluacionesPaciente({ paciente }: { paciente: PacienteRow }) {
                   {c ? (
                     <span className="text-sm text-slate-200">
                       <strong>{c.total}</strong>/48 · {c.banda.etiqueta}
+                    </span>
+                  ) : null}
+                  {cr ? (
+                    <span className="text-xs text-slate-200">
+                      Código <strong className="tracking-wider">{cr.codigo}</strong> · diferenciación {cr.diferenciacion.k}
                     </span>
                   ) : null}
                   {ce ? (
@@ -508,7 +520,7 @@ function InformeRespuesta({
               const blob = new Blob([JSON.stringify(actual.datos, null, 2)], { type: "application/json" });
               const a = document.createElement("a");
               a.href = URL.createObjectURL(blob);
-              a.download = `${actual.instrumento === "eapi" ? "EAPI" : "B16"}_${(actual.respondienteNombre || "respuesta").replace(/\s+/g, "_")}_${fechaDe(actual)}.json`;
+              a.download = `${actual.instrumento === "eapi" ? "EAPI" : actual.instrumento === "riasec" ? "RIASEC" : "B16"}_${(actual.respondienteNombre || "respuesta").replace(/\s+/g, "_")}_${fechaDe(actual)}.json`;
               a.click();
               URL.revokeObjectURL(a.href);
             }}
@@ -533,6 +545,8 @@ function InformeRespuesta({
 
         {actual.instrumento === "eapi" ? (
           <InformeEapi actual={actual} paciente={paciente} respuestas={respuestas} />
+        ) : actual.instrumento === "riasec" ? (
+          <InformeRiasec actual={actual} paciente={paciente} respuestas={respuestas} />
         ) : actual.instrumento !== "b-breve" || !datos ? (
           <p className="text-sm text-red-200">Esta respuesta no tiene un formato válido para calificar.</p>
         ) : (

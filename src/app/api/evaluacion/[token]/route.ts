@@ -2,6 +2,7 @@ import { after, NextResponse } from "next/server";
 import { limpiarBorradorBBreve, validarBBreve } from "@/lib/evaluaciones/b-breve/codigo";
 import { B_BREVE_RELACIONES } from "@/lib/evaluaciones/b-breve/contenido";
 import { limpiarBorradorEapi, validarEapi } from "@/lib/evaluaciones/eapi/codigo";
+import { limpiarBorradorRiasec, validarRiasec } from "@/lib/evaluaciones/riasec/codigo";
 import { rateLimit, rateLimitResponse } from "@/lib/server/rate-limit";
 import { avisarEvaluacionRespondida } from "@/lib/server/telegram-avisos";
 import { getSupabaseClient } from "@/lib/supabase";
@@ -26,6 +27,7 @@ const conDocs = (fila: RawGet) => fila.instrumento === "eapi" && fila.opciones?.
 function limpiarBorrador(fila: RawGet, datos: unknown) {
   if (fila.instrumento === "b-breve") return limpiarBorradorBBreve(datos);
   if (fila.instrumento === "eapi") return limpiarBorradorEapi(datos);
+  if (fila.instrumento === "riasec") return limpiarBorradorRiasec(datos);
   return null;
 }
 
@@ -119,6 +121,14 @@ export async function POST(request: Request, { params }: { params: Promise<{ tok
     fecha = v.datos.fecha;
     guardar = { ...v.datos };
     alertaSeguridad = v.datos.safety;
+  } else if (fila.instrumento === "riasec") {
+    const v = validarRiasec(body);
+    if (!v.ok) return NextResponse.json({ error: v.error }, { status: 422 });
+    if (!v.datos.nombre) return NextResponse.json({ error: "Escribe tu nombre." }, { status: 422 });
+    nombre = v.datos.nombre;
+    relacion = "Paciente";
+    fecha = v.datos.fecha;
+    guardar = { ...v.datos };
   } else {
     return NextResponse.json({ error: "Instrumento no disponible." }, { status: 422 });
   }
