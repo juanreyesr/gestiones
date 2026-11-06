@@ -35,7 +35,13 @@ import { avanceRiasec, limpiarBorradorRiasec } from "@/lib/evaluaciones/riasec/c
 import { calificarValores, VALORES_INFO } from "@/lib/evaluaciones/valores/calificacion";
 import { avanceValores, limpiarBorradorValores } from "@/lib/evaluaciones/valores/codigo";
 import {
+  actualizarSeguimiento,
   asignarEvaluacion,
+  crearSeguimiento,
+  eliminarSeguimiento,
+  fechaEnDias,
+  fetchSeguimientos,
+  type SeguimientoRow,
   cambiarEstadoEvaluacion,
   eliminarEvaluacion,
   eliminarRespuesta,
@@ -94,6 +100,10 @@ function aplicacion(r: EvaluacionRespuestaRow, datos: BBreveDatos): AplicacionBB
   };
 }
 
+/** Frecuencias ofrecidas para el seguimiento programado (días). */
+const FRECUENCIAS = [14, 21, 28, 42, 56, 84];
+const textoCada = (dias: number) => (dias % 7 === 0 ? `cada ${dias / 7 === 1 ? "semana" : `${dias / 7} semanas`}` : `cada ${dias} días`);
+
 const fechaDe = (r: EvaluacionRespuestaRow) => r.fecha ?? r.createdAt.slice(0, 10);
 
 export function EvaluacionesPaciente({ paciente }: { paciente: PacienteRow }) {
@@ -110,11 +120,15 @@ export function EvaluacionesPaciente({ paciente }: { paciente: PacienteRow }) {
   const [modulosEapi, setModulosEapi] = useState<ModuloEapi[]>(["gad", "dass", "ptq"]);
   const [nota, setNota] = useState("");
   const [aviso, setAviso] = useState("");
+  // Seguimiento programado: 0 = no repetir.
+  const [repetirDias, setRepetirDias] = useState(0);
+  const [seguimientos, setSeguimientos] = useState<SeguimientoRow[]>([]);
 
   const cargar = useCallback(async () => {
     setCargando(true);
-    const r = await fetchEvaluacionesDePaciente(paciente.id);
+    const [r, segs] = await Promise.all([fetchEvaluacionesDePaciente(paciente.id), fetchSeguimientos(paciente.id)]);
     setCargando(false);
+    setSeguimientos(segs);
     setEvaluaciones(r.evaluaciones);
     setRespuestas(r.respuestas);
     setError(r.error ?? "");
@@ -161,26 +175,39 @@ export function EvaluacionesPaciente({ paciente }: { paciente: PacienteRow }) {
       setError("Elige al menos una escala del EAPI.");
       return;
     }
-    const { error: err } = await asignarEvaluacion(
-      paciente.id,
-      instrumento,
-      etiquetas,
-      nota,
-      instrumento === "eapi" ? { modulos: modulosEapi } : {}
-    );
+    const opciones = instrumento === "eapi" ? { modulos: modulosEapi } : {};
+    const { error: err, creadas } = await asignarEvaluacion(paciente.id, instrumento, etiquetas, nota, opciones);
     if (err) {
       setError(err);
       return;
     }
+    // Seguimiento programado: uno por cada persona que responde.
+    let errSeg: string | null = null;
+    if (repetirDias > 0) {
+      for (const c of creadas ?? []) {
+        const r = await crearSeguimiento({
+          pacienteId: paciente.id,
+          instrumento,
+          opciones,
+          etiqueta: c.etiqueta,
+          cadaDias: repetirDias,
+          ultimaEvaluacionId: c.id,
+        });
+        errSeg ??= r.error;
+      }
+    }
     setAsignando(false);
     setNota("");
+    setRepetirDias(0);
     await cargar();
+    if (errSeg) setError(`El enlace se creó, pero no se pudo programar el seguimiento: ${errSeg}`);
     setAviso(
-      etiquetas.length > 1
+      (etiquetas.length > 1
         ? `Se crearon ${etiquetas.length} enlaces, uno por persona. Envía a cada quien el suyo con su botón de WhatsApp.`
-        : "Enlace creado. Envíalo con el botón de WhatsApp o cópialo."
+        : "Enlace creado. Envíalo con el botón de WhatsApp o cópialo.") +
+        (repetirDias > 0 && !errSeg ? ` Seguimiento programado ${textoCada(repetirDias)}: te avisaré por Telegram con el mensaje listo.` : "")
     );
-    setTimeout(() => setAviso(""), 6000);
+    setTimeout(() => setAviso(""), 8000);
   };
 
   /** Nueva aplicación del mismo instrumento (y mismas escalas) para comparar la evolución. */
@@ -197,11 +224,46 @@ export function EvaluacionesPaciente({ paciente }: { paciente: PacienteRow }) {
     setTimeout(() => setAviso(""), 8000);
   };
 
+  /** Programa (o reprograma) un seguimiento a partir de una respuesta ya recibida. */
+  const programarSeguimiento = async (instrumentoId: string, opciones: Record<string, unknown>, etiqueta: string, cadaDias: number, ultimaId: string | null) => {
+    setError("");
+    const { error: err } = await crearSeguimiento({
+      pacienteId: paciente.id,
+      instrumento: instrumentoId,
+      opciones,
+      etiqueta,
+      cadaDias,
+      ultimaEvaluacionId: ultimaId,
+    });
+    if (err) {
+      setError(err);
+      return;
+    }
+    setVista({ tipo: "lista" });
+    await cargar();
+    setAviso(`Seguimiento programado ${textoCada(cadaDias)} (primer envío el ${formatoFechaCorta(fechaEnDias(cadaDias))}). Te avisaré por Telegram con el mensaje de WhatsApp listo.`);
+    setTimeout(() => setAviso(""), 8000);
+  };
+
   if (vista.tipo === "informe") {
     const actual = respuestas.find((r) => r.id === vista.respuestaId);
     const original = actual ? evaluaciones.find((ev) => ev.id === actual.evaluacionId) : undefined;
     return (
       <InformeRespuesta
+        onProgramar={
+          actual
+            ? (cadaDias: number) =>
+                void programarSeguimiento(
+                  actual.instrumento,
+                  actual.instrumento === "eapi"
+                    ? { modulos: MODULOS_EAPI.filter((m) => Array.isArray((actual.datos as Record<string, unknown>)[m])) }
+                    : (original?.opciones ?? {}),
+                  original?.etiqueta ?? "",
+                  cadaDias,
+                  original?.id ?? null
+                )
+            : undefined
+        }
         onNuevaAplicacion={
           actual
             ? () =>
@@ -322,6 +384,22 @@ export function EvaluacionesPaciente({ paciente }: { paciente: PacienteRow }) {
               </p>
             </fieldset>
           ) : null}
+          <Field label="Seguimiento programado">
+            <select className="field" onChange={(e) => setRepetirDias(Number(e.target.value))} value={repetirDias}>
+              <option value={0}>No repetir</option>
+              {FRECUENCIAS.map((d) => (
+                <option key={d} value={d}>
+                  Repetir {textoCada(d)}
+                </option>
+              ))}
+            </select>
+          </Field>
+          {repetirDias > 0 ? (
+            <p className="-mt-1 text-xs text-slate-400">
+              Cada {repetirDias} días se creará un enlace nuevo con el mismo test y te llegará un aviso por Telegram con el mensaje de WhatsApp
+              y el enlace ya escritos. Si el anterior sigue sin responder, en lugar de otro enlace te llega un recordatorio.
+            </p>
+          ) : null}
           <Field label="Nota privada (opcional)">
             <input className="field" maxLength={500} onChange={(e) => setNota(e.target.value)} placeholder="Ej. aplicación inicial, seguimiento semana 4" value={nota} />
           </Field>
@@ -348,6 +426,93 @@ export function EvaluacionesPaciente({ paciente }: { paciente: PacienteRow }) {
           Aún no hay evaluaciones. Con «Asignar evaluación» se crea un enlace para el paciente (o sus padres); al responderlo, la
           respuesta queda aquí con su calificación. Mientras responden ves su avance; ellos no ven puntuaciones.
         </p>
+      ) : null}
+
+      {seguimientos.length > 0 ? (
+        <div className="mb-4 grid gap-2" data-testid="seguimientos">
+          <div className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Seguimientos programados</div>
+          {seguimientos.map((sg) => (
+            <div className="flex flex-wrap items-center justify-between gap-2 border border-white/10 bg-white/4 p-3" key={sg.id}>
+              <div className="min-w-0">
+                <div className="text-sm font-semibold text-white">
+                  <RefreshCw className="mr-1 inline h-3.5 w-3.5 text-indigo-300" />
+                  {sg.etiqueta ? `${sg.etiqueta} · ` : ""}
+                  {instrumentoPorId(sg.instrumento)?.nombre.split(" · ")[0] ?? sg.instrumento}
+                  {sg.instrumento === "eapi" ? ` (${modulosDeOpciones(sg.opciones).map((m) => FORMA_MODULOS[m].sigla).join(", ")})` : ""}
+                </div>
+                <div className="text-xs text-slate-400">
+                  {sg.activo ? (
+                    <>
+                      {textoCada(sg.cadaDias)[0].toUpperCase() + textoCada(sg.cadaDias).slice(1)} · próximo aviso:{" "}
+                      <span className="text-indigo-200">{formatoFechaCorta(sg.proximaFecha)}</span>
+                    </>
+                  ) : (
+                    <span className="text-amber-300">En pausa</span>
+                  )}
+                  {sg.avisos ? ` · ${sg.avisos} aviso${sg.avisos === 1 ? "" : "s"} enviado${sg.avisos === 1 ? "" : "s"}` : ""}
+                  {sg.error ? <span className="block text-red-300">No se pudo avisar: {sg.error}</span> : null}
+                </div>
+              </div>
+              <div className="flex flex-wrap items-center gap-1.5">
+                <select
+                  aria-label="Frecuencia"
+                  className="field !w-auto !py-1 text-xs"
+                  onChange={async (e) => {
+                    await actualizarSeguimiento(sg.id, { cadaDias: Number(e.target.value) });
+                    void cargar();
+                  }}
+                  value={sg.cadaDias}
+                >
+                  {[...new Set([...FRECUENCIAS, sg.cadaDias])].sort((a, b) => a - b).map((d) => (
+                    <option key={d} value={d}>
+                      {textoCada(d)}
+                    </option>
+                  ))}
+                </select>
+                {sg.activo ? (
+                  <button
+                    className={BTN_GHOST}
+                    onClick={async () => {
+                      await actualizarSeguimiento(sg.id, { proximaFecha: fechaEnDias(0) });
+                      await cargar();
+                      setAviso("Listo: en la próxima hora (de 8:00 a 20:00) te llegará el aviso por Telegram con el mensaje de WhatsApp.");
+                      setTimeout(() => setAviso(""), 8000);
+                    }}
+                    title="Adelantar el envío a hoy"
+                    type="button"
+                  >
+                    Enviar hoy
+                  </button>
+                ) : null}
+                <button
+                  className={BTN_GHOST}
+                  onClick={async () => {
+                    await actualizarSeguimiento(
+                      sg.id,
+                      sg.activo ? { activo: false } : { activo: true, proximaFecha: sg.proximaFecha < fechaEnDias(0) ? fechaEnDias(0) : sg.proximaFecha }
+                    );
+                    void cargar();
+                  }}
+                  type="button"
+                >
+                  {sg.activo ? "Pausar" : "Reanudar"}
+                </button>
+                <button
+                  className={BTN_DANGER}
+                  onClick={async () => {
+                    if (!window.confirm("¿Eliminar este seguimiento programado? Los enlaces y respuestas ya creados se conservan.")) return;
+                    await eliminarSeguimiento(sg.id);
+                    void cargar();
+                  }}
+                  title="Eliminar seguimiento"
+                  type="button"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
       ) : null}
 
       {evaluaciones.length > 0 ? (
@@ -547,6 +712,7 @@ export function EvaluacionesPaciente({ paciente }: { paciente: PacienteRow }) {
 function InformeRespuesta({
   onEliminada,
   onNuevaAplicacion,
+  onProgramar,
   onVolver,
   paciente,
   respuestaId,
@@ -554,6 +720,7 @@ function InformeRespuesta({
 }: {
   onEliminada: () => void;
   onNuevaAplicacion?: () => void;
+  onProgramar?: (cadaDias: number) => void;
   onVolver: () => void;
   paciente: PacienteRow;
   respuestaId: string;
@@ -620,6 +787,25 @@ function InformeRespuesta({
               <Plus className="h-4 w-4" />
               Nueva aplicación (seguimiento)
             </button>
+          ) : null}
+          {onProgramar ? (
+            <select
+              aria-label="Programar seguimiento"
+              className="field !w-auto"
+              onChange={(e) => {
+                const d = Number(e.target.value);
+                if (d && window.confirm(`¿Programar que este test se repita ${textoCada(d)}? Te avisaré por Telegram con el mensaje de WhatsApp listo.`)) onProgramar(d);
+                e.target.value = "0";
+              }}
+              value="0"
+            >
+              <option value="0">Programar seguimiento…</option>
+              {FRECUENCIAS.map((d) => (
+                <option key={d} value={d}>
+                  Repetir {textoCada(d)}
+                </option>
+              ))}
+            </select>
           ) : null}
           <button
             className={BTN_GHOST}
