@@ -7,12 +7,11 @@ import {
   FileJson,
   Lock,
   Plus,
-  Printer,
   RefreshCw,
   Trash2,
   Unlock,
 } from "lucide-react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { mensajeEvaluacion } from "@/lib/clinica/mensaje-paciente";
 import { enlaceWhatsApp } from "@/lib/clinica/recordatorio";
 import { formatoFechaCorta } from "@/lib/clinica/slots";
@@ -20,6 +19,8 @@ import type { PacienteRow } from "@/lib/clinica/types";
 import { calificarBBreve } from "@/lib/evaluaciones/b-breve/calificacion";
 import { avanceBBreve, limpiarBorradorBBreve, validarBBreve, type BBreveDatos } from "@/lib/evaluaciones/b-breve/codigo";
 import { informeBBreveHtml, type AplicacionBBreve } from "@/lib/evaluaciones/b-breve/informe-html";
+import { calificarEapi } from "@/lib/evaluaciones/eapi/calificacion";
+import { avanceEapi, limpiarBorradorEapi } from "@/lib/evaluaciones/eapi/codigo";
 import {
   asignarEvaluacion,
   cambiarEstadoEvaluacion,
@@ -32,6 +33,9 @@ import {
 import { INSTRUMENTOS, instrumentoPorId } from "@/lib/evaluaciones/instrumentos";
 import { urlPublica } from "@/lib/url-publica";
 import { IconoWhatsApp } from "./boton-whatsapp-paciente";
+import { datosEapi, InformeEapi } from "./informe-eapi";
+import { InformeFrame } from "./informe-frame";
+import { NotasPrivadas } from "./notas-privadas";
 import { BTN_ACCENT, BTN_DANGER, BTN_GHOST, Field, SectionCard } from "./ui";
 
 type Vista = { tipo: "lista" } | { tipo: "informe"; respuestaId: string };
@@ -45,8 +49,12 @@ function haceCuanto(iso: string) {
   return formatoFechaCorta(iso);
 }
 
-/** Etiquetas sugeridas para N personas: los padres o tutores del expediente y luego "Cuidador n". */
-function etiquetasSugeridas(paciente: PacienteRow, n: number) {
+/**
+ * Etiquetas sugeridas para N personas. Si responde el paciente, su nombre; si
+ * responden cuidadores, los padres o tutores del expediente y luego "Cuidador n".
+ */
+function etiquetasSugeridas(paciente: PacienteRow, n: number, responde: "paciente" | "cuidador" = "cuidador") {
+  if (responde === "paciente") return Array.from({ length: n }, (_, i) => (i === 0 ? paciente.nombre : `Persona ${i + 1}`));
   const nombres = paciente.responsables
     .map((r) => [r.nombre.trim().split(/\s+/)[0], r.parentesco ? `(${r.parentesco})` : ""].filter(Boolean).join(" "))
     .filter(Boolean);
@@ -73,33 +81,6 @@ function aplicacion(r: EvaluacionRespuestaRow, datos: BBreveDatos): AplicacionBB
 
 const fechaDe = (r: EvaluacionRespuestaRow) => r.fecha ?? r.createdAt.slice(0, 10);
 
-/** Documento del informe dentro de un iframe (fondo claro, listo para imprimir). */
-function InformeFrame({ html, titulo }: { html: string; titulo: string }) {
-  const ref = useRef<HTMLIFrameElement>(null);
-  const [alto, setAlto] = useState(900);
-  return (
-    <div className="grid gap-2">
-      <div className="flex flex-wrap gap-2">
-        <button className={BTN_ACCENT} onClick={() => ref.current?.contentWindow?.print()} type="button">
-          <Printer className="h-4 w-4" />
-          Imprimir o guardar PDF
-        </button>
-      </div>
-      <iframe
-        className="w-full rounded border border-white/10 bg-white"
-        onLoad={() => {
-          const doc = ref.current?.contentDocument;
-          if (doc) setAlto(doc.documentElement.scrollHeight + 8);
-        }}
-        ref={ref}
-        srcDoc={html}
-        style={{ height: alto }}
-        title={titulo}
-      />
-    </div>
-  );
-}
-
 export function EvaluacionesPaciente({ paciente }: { paciente: PacienteRow }) {
   const [evaluaciones, setEvaluaciones] = useState<EvaluacionRow[]>([]);
   const [respuestas, setRespuestas] = useState<EvaluacionRespuestaRow[]>([]);
@@ -111,6 +92,7 @@ export function EvaluacionesPaciente({ paciente }: { paciente: PacienteRow }) {
   const [etiquetas, setEtiquetas] = useState<string[]>(() =>
     etiquetasSugeridas(paciente, paciente.esMenor ? INSTRUMENTOS[0].respuestasPorDefecto : 1)
   );
+  const [conDocs, setConDocs] = useState(false);
   const [nota, setNota] = useState("");
   const [aviso, setAviso] = useState("");
 
@@ -160,7 +142,13 @@ export function EvaluacionesPaciente({ paciente }: { paciente: PacienteRow }) {
 
   const handleAsignar = async () => {
     setError("");
-    const { error: err } = await asignarEvaluacion(paciente.id, instrumento, etiquetas, nota);
+    const { error: err } = await asignarEvaluacion(
+      paciente.id,
+      instrumento,
+      etiquetas,
+      nota,
+      instrumento === "eapi" ? { docs: conDocs } : {}
+    );
     if (err) {
       setError(err);
       return;
@@ -184,6 +172,7 @@ export function EvaluacionesPaciente({ paciente }: { paciente: PacienteRow }) {
           void cargar();
         }}
         onVolver={() => setVista({ tipo: "lista" })}
+        paciente={paciente}
         respuestaId={vista.respuestaId}
         respuestas={respuestas}
       />
@@ -211,7 +200,10 @@ export function EvaluacionesPaciente({ paciente }: { paciente: PacienteRow }) {
               onChange={(e) => {
                 setInstrumento(e.target.value);
                 const i = instrumentoPorId(e.target.value);
-                setEtiquetas(etiquetasSugeridas(paciente, i?.responde === "cuidador" && paciente.esMenor ? i.respuestasPorDefecto : 1));
+                const responde = i?.responde ?? "cuidador";
+                setEtiquetas(
+                  etiquetasSugeridas(paciente, responde === "cuidador" && paciente.esMenor ? (i?.respuestasPorDefecto ?? 1) : 1, responde)
+                );
               }}
               value={instrumento}
             >
@@ -229,7 +221,7 @@ export function EvaluacionesPaciente({ paciente }: { paciente: PacienteRow }) {
               onChange={(e) => {
                 const n = Number(e.target.value);
                 setEtiquetas((prev) => {
-                  const sugeridas = etiquetasSugeridas(paciente, n);
+                  const sugeridas = etiquetasSugeridas(paciente, n, instrumentoPorId(instrumento)?.responde);
                   return sugeridas.map((s, i) => prev[i] ?? s);
                 });
               }}
@@ -254,6 +246,15 @@ export function EvaluacionesPaciente({ paciente }: { paciente: PacienteRow }) {
               </Field>
             ))}
           </div>
+          {instrumento === "eapi" ? (
+            <label className="flex items-start gap-2 text-sm text-slate-200">
+              <input checked={conDocs} className="mt-1" onChange={(e) => setConDocs(e.target.checked)} type="checkbox" />
+              <span>
+                Incluir el módulo TOC (DOCS, 20 preguntas más sobre obsesiones y compulsiones)
+                <span className="block text-xs text-slate-400">Recomendado solo si sospechas síntomas obsesivo-compulsivos.</span>
+              </span>
+            </label>
+          ) : null}
           <Field label="Nota privada (opcional)">
             <input className="field" maxLength={500} onChange={(e) => setNota(e.target.value)} placeholder="Ej. aplicación inicial, seguimiento semana 4" value={nota} />
           </Field>
@@ -288,7 +289,13 @@ export function EvaluacionesPaciente({ paciente }: { paciente: PacienteRow }) {
           {evaluaciones.map((ev) => {
             const usadas = usadasDe(ev);
             const abierta = ev.estado === "abierta";
-            const avance = ev.borrador && ev.instrumento === "b-breve" ? avanceBBreve(limpiarBorradorBBreve(ev.borrador)) : null;
+            const avance = !ev.borrador
+              ? null
+              : ev.instrumento === "b-breve"
+                ? avanceBBreve(limpiarBorradorBBreve(ev.borrador))
+                : ev.instrumento === "eapi"
+                  ? avanceEapi(limpiarBorradorEapi(ev.borrador), ev.opciones?.docs === true)
+                  : null;
             const estadoTexto = !abierta
               ? ev.estado === "completa"
                 ? "✓ Enviado"
@@ -302,6 +309,7 @@ export function EvaluacionesPaciente({ paciente }: { paciente: PacienteRow }) {
                   <div className="text-sm font-semibold text-white">
                     {ev.etiqueta ? `${ev.etiqueta} · ` : ""}
                     {instrumentoPorId(ev.instrumento)?.nombre.split(" · ")[0] ?? ev.instrumento}
+                    {ev.instrumento === "eapi" && ev.opciones?.docs === true ? " + TOC" : ""}
                   </div>
                   <div className="text-xs text-slate-400">
                     Creado {formatoFechaCorta(ev.createdAt)} ·{" "}
@@ -383,7 +391,9 @@ export function EvaluacionesPaciente({ paciente }: { paciente: PacienteRow }) {
           {respuestas.map((r) => {
             const datos = r.instrumento === "b-breve" ? datosBBreve(r) : null;
             const c = datos ? calificarBBreve(datos) : null;
-            const alarma = datos && (datos.S1 === 1 || datos.S2 === 1);
+            const de = r.instrumento === "eapi" ? datosEapi(r) : null;
+            const ce = de ? calificarEapi(de) : null;
+            const alarma = (datos && (datos.S1 === 1 || datos.S2 === 1)) || (ce && ce.flags.some((f) => f.lvl === "alert"));
             return (
               <button
                 className="flex flex-wrap items-center justify-between gap-2 border border-white/10 bg-white/4 p-3 text-left transition hover:border-emerald-300/50"
@@ -412,6 +422,11 @@ export function EvaluacionesPaciente({ paciente }: { paciente: PacienteRow }) {
                       <strong>{c.total}</strong>/48 · {c.banda.etiqueta}
                     </span>
                   ) : null}
+                  {ce ? (
+                    <span className="text-xs text-slate-200">
+                      GAD-7 <strong>{ce.gad.total}</strong> · Estrés <strong>{ce.dass.str.band.label}</strong> · PTQ <strong>{ce.ptq.total}</strong>
+                    </span>
+                  ) : null}
                   <span className="text-xs font-semibold text-emerald-300">Ver informe →</span>
                 </span>
               </button>
@@ -427,17 +442,22 @@ export function EvaluacionesPaciente({ paciente }: { paciente: PacienteRow }) {
 function InformeRespuesta({
   onEliminada,
   onVolver,
+  paciente,
   respuestaId,
   respuestas,
 }: {
   onEliminada: () => void;
   onVolver: () => void;
+  paciente: PacienteRow;
   respuestaId: string;
   respuestas: EvaluacionRespuestaRow[];
 }) {
   const actual = respuestas.find((r) => r.id === respuestaId) ?? null;
   const mismas = useMemo(
-    () => respuestas.filter((r) => actual && r.id !== actual.id && r.instrumento === actual.instrumento && datosBBreve(r)),
+    () =>
+      respuestas.filter(
+        (r) => actual && actual.instrumento === "b-breve" && r.id !== actual.id && r.instrumento === actual.instrumento && datosBBreve(r)
+      ),
     [respuestas, actual]
   );
 
@@ -462,6 +482,7 @@ function InformeRespuesta({
 
   const [c2Id, setC2Id] = useState(sugerencias.c2);
   const [antId, setAntId] = useState(sugerencias.ant);
+  const [notasPrivadas, setNotasPrivadas] = useState("");
 
   if (!actual) return null;
   const datos = datosBBreve(actual);
@@ -487,7 +508,7 @@ function InformeRespuesta({
               const blob = new Blob([JSON.stringify(actual.datos, null, 2)], { type: "application/json" });
               const a = document.createElement("a");
               a.href = URL.createObjectURL(blob);
-              a.download = `B16_${(actual.respondienteNombre || "respuesta").replace(/\s+/g, "_")}_${fechaDe(actual)}.json`;
+              a.download = `${actual.instrumento === "eapi" ? "EAPI" : "B16"}_${(actual.respondienteNombre || "respuesta").replace(/\s+/g, "_")}_${fechaDe(actual)}.json`;
               a.click();
               URL.revokeObjectURL(a.href);
             }}
@@ -510,7 +531,9 @@ function InformeRespuesta({
           </button>
         </div>
 
-        {actual.instrumento !== "b-breve" || !datos ? (
+        {actual.instrumento === "eapi" ? (
+          <InformeEapi actual={actual} paciente={paciente} respuestas={respuestas} />
+        ) : actual.instrumento !== "b-breve" || !datos ? (
           <p className="text-sm text-red-200">Esta respuesta no tiene un formato válido para calificar.</p>
         ) : (
           <>
@@ -536,8 +559,9 @@ function InformeRespuesta({
                 </select>
               </Field>
             </div>
+            <NotasPrivadas onCambio={setNotasPrivadas} pacienteId={paciente.id} respuestaId={actual.id} />
             <InformeFrame
-              html={informeBBreveHtml(aplicacion(actual, datos), buscar(c2Id), buscar(antId))}
+              html={informeBBreveHtml(aplicacion(actual, datos), buscar(c2Id), buscar(antId), notasPrivadas)}
               titulo="Informe B-Breve"
             />
           </>

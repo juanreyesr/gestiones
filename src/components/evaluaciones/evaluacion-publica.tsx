@@ -3,13 +3,16 @@
 import { ClipboardList, HeartPulse } from "lucide-react";
 import { useEffect, useState } from "react";
 import type { BBreveBorrador } from "@/lib/evaluaciones/b-breve/codigo";
+import type { EapiBorrador } from "@/lib/evaluaciones/eapi/codigo";
 import { BBreveForm } from "./b-breve-form";
+import { EapiForm } from "./eapi-form";
 
 type Info = {
   estado: "cargando" | "ok" | "completa" | "cerrada" | "invalido";
   instrumento?: string | null;
   ref?: string | null;
-  borrador?: BBreveBorrador | null;
+  borrador?: BBreveBorrador | EapiBorrador | null;
+  opciones?: { docs?: boolean } | null;
 };
 
 /** Página pública /evaluacion/<token>: elige el formulario según el instrumento asignado. */
@@ -31,7 +34,18 @@ export function EvaluacionPublica({ token }: { token: string }) {
   if (info.estado === "cargando") {
     contenido = <p className="py-10 text-center text-sm text-slate-400">Cargando...</p>;
   } else if (info.estado === "ok" && info.instrumento === "b-breve") {
-    contenido = <BBreveForm borradorInicial={info.borrador ?? null} codigoCaso={info.ref ?? ""} token={token} />;
+    contenido = (
+      <BBreveForm borradorInicial={(info.borrador as BBreveBorrador | null) ?? null} codigoCaso={info.ref ?? ""} token={token} />
+    );
+  } else if (info.estado === "ok" && info.instrumento === "eapi") {
+    contenido = (
+      <EapiForm
+        borradorInicial={(info.borrador as EapiBorrador | null) ?? null}
+        codigoCaso={info.ref ?? ""}
+        conDocs={info.opciones?.docs === true}
+        token={token}
+      />
+    );
   } else {
     const titulo =
       info.estado === "completa" ? "Este formulario ya fue enviado" : info.estado === "cerrada" ? "Formulario no disponible" : "Enlace no válido";

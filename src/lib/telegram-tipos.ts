@@ -12,6 +12,7 @@ export type TipoNotificacion =
   | "estudiantes_entregas"
   | "cursos_solicitudes"
   | "encuestas_respuestas"
+  | "evaluaciones_respuestas"
   | "pagos_paypal"
   | "cumpleanos_pacientes"
   | "cumpleanos_docentes"
@@ -35,6 +36,11 @@ export const NOTIFICACIONES: { id: TipoNotificacion; etiqueta: string; porDefect
   { id: "cursos_solicitudes", etiqueta: "Solicitudes de inscripción a cursos", porDefecto: true },
   { id: "pagos_paypal", etiqueta: "Pagos de consultas recibidos por PayPal", porDefecto: true },
   { id: "encuestas_respuestas", etiqueta: "Respuestas de encuestas", porDefecto: false },
+  {
+    id: "evaluaciones_respuestas",
+    etiqueta: "Evaluaciones respondidas por pacientes (con alerta si marcan la pregunta de seguridad)",
+    porDefecto: true,
+  },
   { id: "cumpleanos_pacientes", etiqueta: "Cumpleaños de pacientes, con botón para felicitarlos por WhatsApp (7:00 a. m.)", porDefecto: true },
   {
     id: "cumpleanos_docentes",

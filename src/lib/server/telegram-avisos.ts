@@ -137,3 +137,32 @@ export async function avisarPago(aviso: AvisoPago, resultado: ResultadoPago | nu
     botones: [...(resultado?.botones ?? []), [{ text: "Ver en PayPal", url: "https://www.paypal.com/activities" }]],
   });
 }
+
+/**
+ * Un paciente (o su padre o madre) terminó una evaluación enviada por enlace.
+ * Si marcó ≥ 1 en la pregunta de seguridad (pensamientos de muerte o de
+ * hacerse daño), el aviso lo destaca para un contacto prioritario. No incluye
+ * puntuaciones: el informe se revisa en el expediente.
+ */
+export async function avisarEvaluacionRespondida(token: string, seguridad: number) {
+  const admin = getSupabaseAdmin();
+  if (!isTelegramConfigured() || !admin) return;
+  const { data } = await admin
+    .from("gestionesjj_evaluaciones")
+    .select("instrumento,etiqueta,gestionesjj_pacientes(nombre)")
+    .eq("token", token)
+    .maybeSingle();
+  const ev = data as { instrumento: string; etiqueta: string | null; gestionesjj_pacientes: { nombre: string } | null } | null;
+  if (!ev) return;
+  const nombre = ev.gestionesjj_pacientes?.nombre ?? "Un paciente";
+  const instrumento = ev.instrumento === "eapi" ? "EAPI (estrés, ansiedad y pensamientos intrusivos)" : ev.instrumento === "b-breve" ? "B-Breve" : ev.instrumento;
+  await notificar(
+    "evaluaciones_respuestas",
+    [
+      seguridad >= 1
+        ? `🚨 <b>${esc(nombre)}</b> respondió la ${esc(instrumento)} y <b>marcó la pregunta de seguridad</b> (pensamientos de muerte o de hacerse daño). Contacto prioritario y evaluación de riesgo.`
+        : `📋 <b>${esc(nombre)}</b>${ev.etiqueta ? ` (${esc(ev.etiqueta)})` : ""} respondió la evaluación ${esc(instrumento)}.`,
+      "El informe ya está en su expediente (Clínica → Pacientes).",
+    ].join("\n"),
+  );
+}
