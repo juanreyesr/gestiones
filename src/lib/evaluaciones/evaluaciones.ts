@@ -230,7 +230,14 @@ export async function crearSeguimiento(input: {
     proxima_fecha: fechaEnDias(input.cadaDias),
     ultima_evaluacion_id: input.ultimaEvaluacionId,
   });
-  return { error: error?.message ?? null };
+  return { error: error ? mensajeSeguimientoNoDisponible(error) : null };
+}
+
+/** Si la tabla aún no existe (migración 063 pendiente), un mensaje claro en vez del error técnico. */
+function mensajeSeguimientoNoDisponible(error: { message: string; code?: string }) {
+  return error.code === "42P01" || error.code === "PGRST205" || /does not exist|schema cache/i.test(error.message)
+    ? "El seguimiento programado se activará cuando se aplique la migración 063 en Supabase (está en supabase/PENDIENTES.md)."
+    : error.message;
 }
 
 export async function actualizarSeguimiento(id: string, cambios: { activo?: boolean; cadaDias?: number; proximaFecha?: string }) {
