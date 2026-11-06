@@ -336,6 +336,14 @@ export async function fetchInforme(respuestaId: string) {
   return { data: data ? mapInforme(data as RawInforme) : null, error: error?.message ?? null };
 }
 
+/** Informes (notas privadas, publicación) de varias respuestas a la vez, por id de respuesta. */
+export async function fetchInformesDeRespuestas(respuestaIds: string[]) {
+  const supabase = getSupabaseClient();
+  if (!supabase || !respuestaIds.length) return {} as Record<string, InformeRow>;
+  const { data } = await supabase.from("gestionesjj_evaluacion_informes").select(INFORME_COLUMNAS).in("respuesta_id", respuestaIds);
+  return Object.fromEntries(((data ?? []) as RawInforme[]).map((r) => [r.respuesta_id, mapInforme(r)]));
+}
+
 /** Guarda notas y opciones (crea la fila si no existe). */
 export async function guardarNotasInforme(
   respuestaId: string,

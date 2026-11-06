@@ -31,6 +31,7 @@ import {
   type ConsentimientoRow,
 } from "@/lib/clinica/pacientes";
 import { exportarExpedientePdf } from "@/lib/clinica/expediente-pdf";
+import { fetchEvaluacionesDePaciente, fetchInformesDeRespuestas } from "@/lib/evaluaciones/evaluaciones";
 import { fetchSesionEnCurso, fetchSesionesDePaciente, iniciarSesion, vincularCitaASesion } from "@/lib/clinica/sesiones";
 import { claveDiaLocal, formatoFechaCorta, formatoFechaHora } from "@/lib/clinica/slots";
 import type { CitaRow, CompromisoRow, PacienteRow, SesionRow } from "@/lib/clinica/types";
@@ -95,6 +96,7 @@ export function PacienteExpediente({
   const [datosMsg, setDatosMsg] = useState("");
   const [sesionEditando, setSesionEditando] = useState<SesionRow | null>(null);
   const [consentimientos, setConsentimientos] = useState<ConsentimientoRow[]>([]);
+  const [exportando, setExportando] = useState(false);
   // Cita (y su pago) de cada sesión del historial, por id de cita.
   const [citasDeSesiones, setCitasDeSesiones] = useState<Record<string, CitaRow>>({});
 
@@ -364,9 +366,24 @@ export function PacienteExpediente({
           ) : null}
         </div>
         <div className="flex flex-wrap gap-2">
-          <button className={BTN_GHOST} onClick={() => void exportarExpedientePdf(paciente, sesiones)} type="button">
+          <button
+            className={BTN_GHOST}
+            disabled={exportando}
+            onClick={async () => {
+              // Expediente completo: también consentimientos firmados, evaluaciones, evolución y notas privadas.
+              setExportando(true);
+              try {
+                const { respuestas } = await fetchEvaluacionesDePaciente(paciente.id);
+                const informes = await fetchInformesDeRespuestas(respuestas.map((r) => r.id));
+                await exportarExpedientePdf(paciente, sesiones, { consentimientos, respuestas, informes });
+              } finally {
+                setExportando(false);
+              }
+            }}
+            type="button"
+          >
             <FileDown className="h-4 w-4" />
-            Exportar PDF
+            {exportando ? "Generando PDF..." : "Exportar expediente completo (PDF)"}
           </button>
           <button className={BTN_GHOST} onClick={() => setVista("editar")} type="button">
             <Pencil className="h-4 w-4" />
