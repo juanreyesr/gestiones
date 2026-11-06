@@ -6,7 +6,7 @@
 
 ## Flujo de trabajo
 - Cuando un PR propio esté en verde (despliegue de Vercel exitoso) y sin conflictos, marcarlo como listo y **fusionarlo sin preguntar** (squash).
-- Supabase: el conector pide confirmación en cada cambio (y en el móvil no aparece). Por eso las migraciones nuevas **no se aplican durante el trabajo**: se agregan a `supabase/PENDIENTES.md` (y al archivo único `supabase/pendientes.sql`) y el código debe funcionar sin ellas (mensaje claro si falta la tabla). El propietario las aplica todas juntas desde la computadora; después, verificar y vaciar la lista. Las consultas de solo lectura se pueden hacer cuando se necesiten.
+- Supabase: el conector pide confirmación en cada cambio (en el teléfono no aparece; en tablet o computadora sí). Por eso las migraciones nuevas **no se aplican durante el trabajo**: se agregan a `supabase/PENDIENTES.md` (y al archivo único `supabase/pendientes.sql`) y el código debe funcionar sin ellas (mensaje claro si falta la tabla). El propietario las aplica todas juntas desde la tablet o la computadora (pidiendo «aplica las migraciones pendientes» o pegando `pendientes.sql` en el SQL Editor); después, verificar y vaciar la lista. Las consultas de solo lectura se pueden hacer cuando se necesiten.
 - Antes de subir cambios: `npx tsc --noEmit -p .`, `pnpm lint` (0 errores) y `pnpm build`.
 
 ## Proyecto
