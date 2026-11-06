@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { comparaSeguro, enviarMensaje, fechaLocal, isTelegramConfigured, leerConfig } from "@/lib/server/telegram";
+import { appUrl, comparaSeguro, enviarMensaje, fechaLocal, isTelegramConfigured, leerConfig } from "@/lib/server/telegram";
 import { avisoCumpleanosDocentes } from "@/lib/server/cumpleanos-docentes";
 import { avisoCumpleanosEstudiantesSemana, diaSemana } from "@/lib/server/cumpleanos-estudiantes";
 import { avisoCumpleanosPacientes } from "@/lib/server/cumpleanos-pacientes";
@@ -80,6 +80,20 @@ export async function GET(request: Request) {
       return NextResponse.json({ status: "error", error: res.error }, { status: 502 });
     }
     enviados.push("resumen");
+  }
+
+  // Día 1 de cada mes: recordatorio para descargar el respaldo completo de datos.
+  if (config.preferencias.respaldo_mensual && hoy.endsWith("-01")) {
+    const res = await enviarMensaje(
+      config.chatId,
+      [
+        "🗄️ <b>Respaldo mensual de datos</b>",
+        "Es buen momento para descargar el respaldo completo (pacientes, sesiones, consentimientos, evaluaciones, aula virtual y demás).",
+        "Clínica → Configuración → <b>Descargar respaldo completo</b>. Guárdalo en un lugar cifrado.",
+      ].join("\n"),
+      { botones: [[{ text: "Abrir GestionesJJ", url: appUrl("/admin") ?? "https://www.juanjreyes.org/admin" }]] }
+    );
+    if (res.ok) enviados.push("respaldo_mensual");
   }
 
   // ultimo_resumen marca que los avisos de las 7:00 a. m. de hoy ya salieron.

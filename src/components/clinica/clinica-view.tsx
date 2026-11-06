@@ -11,6 +11,7 @@ import { AgendaView } from "./agenda-view";
 import { ClinicaDashboard } from "./clinica-dashboard";
 import { ConsentimientoEditor } from "./consentimiento-editor";
 import { DisponibilidadConfigView } from "./disponibilidad-config";
+import { RespaldoDatos } from "./respaldo-datos";
 import { PacienteExpediente } from "./paciente-expediente";
 import { PacienteForm } from "./paciente-form";
 import { PacientesList } from "./pacientes-list";
@@ -180,6 +181,7 @@ export function ClinicaView() {
         <div className="grid gap-5">
           <DisponibilidadConfigView />
           <ConsentimientoEditor />
+          <RespaldoDatos />
         </div>
       ) : null}
     </div>

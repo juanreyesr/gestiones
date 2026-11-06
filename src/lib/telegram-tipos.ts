@@ -17,7 +17,8 @@ export type TipoNotificacion =
   | "cumpleanos_pacientes"
   | "cumpleanos_docentes"
   | "cumpleanos_estudiantes"
-  | "resumen_diario";
+  | "resumen_diario"
+  | "respaldo_mensual";
 
 export const NOTIFICACIONES: { id: TipoNotificacion; etiqueta: string; porDefecto: boolean }[] = [
   { id: "citas_solicitudes", etiqueta: "Solicitudes de cita (Clínica)", porDefecto: true },
@@ -53,6 +54,7 @@ export const NOTIFICACIONES: { id: TipoNotificacion; etiqueta: string; porDefect
     porDefecto: true,
   },
   { id: "resumen_diario", etiqueta: "Resumen diario (7:00 a. m.)", porDefecto: true },
+  { id: "respaldo_mensual", etiqueta: "Recordatorio para descargar el respaldo de datos (día 1 de cada mes, 7:00 a. m.)", porDefecto: true },
 ];
 
 export type Preferencias = Record<TipoNotificacion, boolean>;
