@@ -127,7 +127,7 @@ export async function asignarEvaluacion(
   opciones: Record<string, unknown> = {}
 ) {
   const supabase = getSupabaseClient();
-  if (!supabase) return { error: SIN_SUPABASE };
+  if (!supabase) return { error: SIN_SUPABASE, creadas: [] as { id: string; etiqueta: string | null }[] };
   const filas = etiquetas.slice(0, 4).map((etiqueta) => ({
     paciente_id: pacienteId,
     instrumento,
@@ -136,8 +136,127 @@ export async function asignarEvaluacion(
     nota: nota.trim() || null,
     opciones,
   }));
-  if (filas.length === 0) return { error: "Indica al menos una persona que responderá." };
-  const { error } = await supabase.from("gestionesjj_evaluaciones").insert(filas);
+  if (filas.length === 0) return { error: "Indica al menos una persona que responderá.", creadas: [] };
+  const { data, error } = await supabase.from("gestionesjj_evaluaciones").insert(filas).select("id,etiqueta");
+  return { error: error?.message ?? null, creadas: (data ?? []) as { id: string; etiqueta: string | null }[] };
+}
+
+// ============================================================
+// Seguimiento programado (gestionesjj_evaluacion_seguimientos, migración 063)
+// ============================================================
+
+export type SeguimientoRow = {
+  id: string;
+  pacienteId: string;
+  instrumento: string;
+  opciones: Record<string, unknown>;
+  etiqueta: string | null;
+  cadaDias: number;
+  proximaFecha: string;
+  activo: boolean;
+  ultimaEvaluacionId: string | null;
+  ultimoAvisoAt: string | null;
+  avisos: number;
+  intentos: number;
+  error: string | null;
+};
+
+type RawSeguimiento = {
+  id: string;
+  paciente_id: string;
+  instrumento: string;
+  opciones: Record<string, unknown> | null;
+  etiqueta: string | null;
+  cada_dias: number;
+  proxima_fecha: string;
+  activo: boolean;
+  ultima_evaluacion_id: string | null;
+  ultimo_aviso_at: string | null;
+  avisos: number;
+  intentos: number;
+  error: string | null;
+};
+
+const mapSeguimiento = (r: RawSeguimiento): SeguimientoRow => ({
+  id: r.id,
+  pacienteId: r.paciente_id,
+  instrumento: r.instrumento,
+  opciones: r.opciones ?? {},
+  etiqueta: r.etiqueta,
+  cadaDias: r.cada_dias,
+  proximaFecha: r.proxima_fecha,
+  activo: r.activo,
+  ultimaEvaluacionId: r.ultima_evaluacion_id,
+  ultimoAvisoAt: r.ultimo_aviso_at,
+  avisos: r.avisos,
+  intentos: r.intentos,
+  error: r.error,
+});
+
+export async function fetchSeguimientos(pacienteId: string) {
+  const supabase = getSupabaseClient();
+  if (!supabase) return [] as SeguimientoRow[];
+  const { data } = await supabase
+    .from("gestionesjj_evaluacion_seguimientos")
+    .select("id,paciente_id,instrumento,opciones,etiqueta,cada_dias,proxima_fecha,activo,ultima_evaluacion_id,ultimo_aviso_at,avisos,intentos,error")
+    .eq("paciente_id", pacienteId)
+    .order("created_at", { ascending: true });
+  return ((data ?? []) as RawSeguimiento[]).map(mapSeguimiento);
+}
+
+/** Fecha local AAAA-MM-DD dentro de N días. */
+export function fechaEnDias(dias: number) {
+  const d = new Date();
+  d.setDate(d.getDate() + dias);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
+export async function crearSeguimiento(input: {
+  pacienteId: string;
+  instrumento: string;
+  opciones: Record<string, unknown>;
+  etiqueta: string | null;
+  cadaDias: number;
+  ultimaEvaluacionId: string | null;
+}) {
+  const supabase = getSupabaseClient();
+  if (!supabase) return { error: SIN_SUPABASE };
+  const { error } = await supabase.from("gestionesjj_evaluacion_seguimientos").insert({
+    paciente_id: input.pacienteId,
+    instrumento: input.instrumento,
+    opciones: input.opciones,
+    etiqueta: input.etiqueta?.trim().slice(0, 60) || null,
+    cada_dias: input.cadaDias,
+    proxima_fecha: fechaEnDias(input.cadaDias),
+    ultima_evaluacion_id: input.ultimaEvaluacionId,
+  });
+  return { error: error ? mensajeSeguimientoNoDisponible(error) : null };
+}
+
+/** Si la tabla aún no existe (migración 063 pendiente), un mensaje claro en vez del error técnico. */
+function mensajeSeguimientoNoDisponible(error: { message: string; code?: string }) {
+  return error.code === "42P01" || error.code === "PGRST205" || /does not exist|schema cache/i.test(error.message)
+    ? "El seguimiento programado se activará cuando se aplique la migración 063 en Supabase (está en supabase/PENDIENTES.md)."
+    : error.message;
+}
+
+export async function actualizarSeguimiento(id: string, cambios: { activo?: boolean; cadaDias?: number; proximaFecha?: string }) {
+  const supabase = getSupabaseClient();
+  if (!supabase) return { error: SIN_SUPABASE };
+  const fila: Record<string, unknown> = {};
+  if (cambios.activo !== undefined) fila.activo = cambios.activo;
+  if (cambios.cadaDias !== undefined) fila.cada_dias = cambios.cadaDias;
+  if (cambios.proximaFecha !== undefined) fila.proxima_fecha = cambios.proximaFecha;
+  // Reactivar o reprogramar también limpia el error y los intentos fallidos.
+  if (cambios.activo || cambios.proximaFecha) Object.assign(fila, { intentos: 0, error: null });
+  const { error } = await supabase.from("gestionesjj_evaluacion_seguimientos").update(fila).eq("id", id);
+  return { error: error?.message ?? null };
+}
+
+export async function eliminarSeguimiento(id: string) {
+  const supabase = getSupabaseClient();
+  if (!supabase) return { error: SIN_SUPABASE };
+  const { error } = await supabase.from("gestionesjj_evaluacion_seguimientos").delete().eq("id", id);
   return { error: error?.message ?? null };
 }
 

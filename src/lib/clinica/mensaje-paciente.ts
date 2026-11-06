@@ -68,3 +68,25 @@ export function mensajeInforme(nombre: string, url: string, hora = horaGuatemala
     "Saludos.",
   ].join("\n\n");
 }
+
+/**
+ * Mensaje de WhatsApp de un seguimiento programado: nueva aplicación del
+ * cuestionario (para ver el avance) o recordatorio de uno que sigue pendiente.
+ */
+export function mensajeSeguimientoEvaluacion(
+  nombre: string,
+  url: string,
+  opciones: { esMenor: boolean; recordatorio: boolean },
+  hora = horaGuatemala()
+) {
+  const primerNombre = primerNombreDe(nombre);
+  const saludo = `${saludoPorHora(hora)}${!opciones.esMenor && primerNombre ? `, ${primerNombre}` : ""}`;
+  const cuerpo = opciones.recordatorio
+    ? opciones.esMenor
+      ? `te recuerdo el cuestionario sobre ${primerNombre || "tu hijo o hija"} que quedó pendiente. Te toma unos minutos y puedes continuar donde te quedaste:`
+      : "te recuerdo el cuestionario que quedó pendiente. Te toma unos minutos y puedes continuar donde te quedaste:"
+    : opciones.esMenor
+      ? `como parte del seguimiento, te comparto de nuevo el cuestionario sobre ${primerNombre || "tu hijo o hija"}. Así podemos ver juntos cómo ha avanzado:`
+      : "como parte de tu seguimiento, te comparto de nuevo el cuestionario. Así podemos ver juntos cómo has avanzado:";
+  return [`${saludo}, ${cuerpo}`, url, "Tus respuestas son confidenciales. Muchas gracias, saludos."].join("\n\n");
+}

@@ -6,7 +6,7 @@
 
 ## Flujo de trabajo
 - Cuando un PR propio esté en verde (despliegue de Vercel exitoso) y sin conflictos, marcarlo como listo y **fusionarlo sin preguntar** (squash).
-- Supabase: el propietario autoriza aplicar migraciones y cambios en la base de datos sin pedir confirmación (asume el riesgo). Antes de aplicar, probar las funciones con un bloque que termine en excepción (se revierte) y, al terminar, informar qué se aplicó y cómo se verificó.
+- Supabase: el conector pide confirmación en cada cambio (y en el móvil no aparece). Por eso las migraciones nuevas **no se aplican durante el trabajo**: se agregan a `supabase/PENDIENTES.md` (y al archivo único `supabase/pendientes.sql`) y el código debe funcionar sin ellas (mensaje claro si falta la tabla). El propietario las aplica todas juntas desde la computadora; después, verificar y vaciar la lista. Las consultas de solo lectura se pueden hacer cuando se necesiten.
 - Antes de subir cambios: `npx tsc --noEmit -p .`, `pnpm lint` (0 errores) y `pnpm build`.
 
 ## Proyecto
