@@ -1,3 +1,4 @@
+import { instrumentoPorId } from "@/lib/evaluaciones/instrumentos";
 import { getSupabaseAdmin } from "./supabase-admin";
 import { appUrl, esc, isTelegramConfigured, notificar, recortar } from "./telegram";
 import { buscarCoincidencia } from "@/lib/clinica/coincidencias";
@@ -155,7 +156,8 @@ export async function avisarEvaluacionRespondida(token: string, seguridad: numbe
   const ev = data as { instrumento: string; etiqueta: string | null; gestionesjj_pacientes: { nombre: string } | null } | null;
   if (!ev) return;
   const nombre = ev.gestionesjj_pacientes?.nombre ?? "Un paciente";
-  const instrumento = ev.instrumento === "eapi" ? "EAPI (estrés, ansiedad y pensamientos intrusivos)" : ev.instrumento === "b-breve" ? "B-Breve" : ev.instrumento === "riasec" ? "Test de intereses vocacionales" : ev.instrumento === "valores" ? "Cuestionario de valores laborales" : ev.instrumento;
+  // Nombre del registro de instrumentos (sin el detalle tras « · » ni la sigla entre paréntesis).
+  const instrumento = (instrumentoPorId(ev.instrumento)?.nombre ?? ev.instrumento).split(" · ")[0];
   await notificar(
     "evaluaciones_respuestas",
     [

@@ -1,9 +1,15 @@
 /**
  * Instrumentos que se pueden asignar a un paciente desde su expediente.
- * Para agregar uno nuevo: su contenido en src/lib/evaluaciones/<id>/, su
- * formulario en src/components/evaluaciones/ (FORMULARIOS) y su informe en
- * src/components/clinica/evaluaciones/ (INFORMES), y su validación en
- * /api/evaluacion/[token] y en la página pública (evaluacion-publica.tsx). Solo metadatos aquí (lo usa también la página pública).
+ * Solo metadatos aquí (lo usa también la página pública).
+ *
+ * Para agregar uno nuevo:
+ *  1. Contenido, validación (validar*, limpiarBorrador*) y calificación en src/lib/evaluaciones/<id>/.
+ *  2. Registro del servidor: src/lib/evaluaciones/registro-servidor.ts (validar y limpiar el avance).
+ *  3. Formulario con el molde común (src/components/evaluaciones/formulario-comun.tsx; ejemplo corto:
+ *     valores-form.tsx) y su rama en evaluacion-publica.tsx.
+ *  4. Informe en src/components/clinica/ (informe profesional + InformePacientePanel) y su rama en
+ *     evaluaciones-paciente.tsx; si tiene puntuación en el tiempo, agregarlo a evolucion-paciente.ts.
+ *  5. Su entrada en INSTRUMENTOS (abajo) y un script de pruebas en scripts/.
  */
 export type InstrumentoId = "b-breve" | "eapi" | "riasec" | "valores";
 

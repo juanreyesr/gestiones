@@ -1,7 +1,6 @@
 "use client";
 
-import { CheckCircle2, CloudOff, RefreshCw, Send } from "lucide-react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useState } from "react";
 import type { BBreveBorrador } from "@/lib/evaluaciones/b-breve/codigo";
 import {
   B_BREVE_ABIERTA,
@@ -17,13 +16,11 @@ import {
   B_BREVE_TITULO,
 } from "@/lib/evaluaciones/b-breve/contenido";
 
+import { AvisoFalloEnvio, BarraGuardado, PantallaCerrada, PantallaEnviada, PieEnvio, useFormularioEvaluacion } from "./formulario-comun";
+
 // Importante: este formulario NO importa la calificación. Los padres nunca ven
 // puntuaciones, bandas, señales ni interpretaciones (regla 3 de la especificación).
 
-type EstadoGuardado = "sin-cambios" | "pendiente" | "guardando" | "guardado" | "sin-conexion";
-type Fase = "llenando" | "enviando" | "enviado" | "fallo-envio" | "cerrado";
-
-const ESPERA_GUARDADO_MS = 1200;
 
 export function BBreveForm({
   borradorInicial,
@@ -43,15 +40,9 @@ export function BBreveForm({
   });
   const [abierta, setAbierta] = useState(borradorInicial?.abierta ?? "");
   const [extra, setExtra] = useState(borradorInicial?.extra ?? "");
-  const [faltan, setFaltan] = useState<Set<string>>(new Set());
-  const [error, setError] = useState("");
-  const [fase, setFase] = useState<Fase>("llenando");
-  const [guardado, setGuardado] = useState<EstadoGuardado>("sin-cambios");
   const [continua] = useState(() =>
     Boolean(borradorInicial && (borradorInicial.nombre || borradorInicial.items.some((v) => v !== null)))
   );
-  const temporizador = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const version = useRef(0);
 
   const borrador = useCallback(
     // La fecha la pone el servidor (día del envío).
@@ -60,65 +51,11 @@ export function BBreveForm({
   );
 
   // Guardado automático: un momento después del último cambio se envía el avance al servidor.
-  const guardarAvance = useCallback(
-    async (datos: BBreveBorrador, v: number) => {
-      setGuardado("guardando");
-      try {
-        const res = await fetch(`/api/evaluacion/${token}`, {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(datos),
-        });
-        const data = (await res.json().catch(() => ({}))) as { estado?: string };
-        if (data.estado === "completa" || data.estado === "cerrada") {
-          setFase("cerrado");
-          return;
-        }
-        if (v === version.current) setGuardado(res.ok ? "guardado" : "sin-conexion");
-      } catch {
-        if (v === version.current) setGuardado("sin-conexion");
-      }
-    },
-    [token]
-  );
-
-  // Último contenido ya guardado: solo se guarda de nuevo si algo cambió.
-  const ultimoGuardado = useRef<string | null>(null);
-  useEffect(() => {
-    if (fase !== "llenando" && fase !== "fallo-envio") return;
-    const datos = borrador();
-    const json = JSON.stringify(datos);
-    if (ultimoGuardado.current === null) {
-      ultimoGuardado.current = json; // estado inicial (lo que ya estaba guardado)
-      return;
-    }
-    if (json === ultimoGuardado.current) return;
-    ultimoGuardado.current = json;
-    const v = ++version.current;
-    setGuardado("pendiente");
-    if (temporizador.current) clearTimeout(temporizador.current);
-    temporizador.current = setTimeout(() => void guardarAvance(datos, v), ESPERA_GUARDADO_MS);
-    return () => {
-      if (temporizador.current) clearTimeout(temporizador.current);
-    };
-  }, [borrador, guardarAvance, fase]);
-
-  // Si se recupera la conexión, se reintenta el guardado del avance.
-  useEffect(() => {
-    const alVolver = () => {
-      if (guardado === "sin-conexion") void guardarAvance(borrador(), version.current);
-    };
-    window.addEventListener("online", alVolver);
-    return () => window.removeEventListener("online", alVolver);
-  }, [guardado, guardarAvance, borrador]);
-
-  const quitarFalta = (clave: string) =>
-    setFaltan((prev) => {
-      if (!prev.has(clave)) return prev;
-      const n = new Set(prev);
-      n.delete(clave);
-      return n;
-    });
+  const { error, enviar: enviarRespuesta, faltan, fase, guardado, marcarFaltantes, quitarFalta } = useFormularioEvaluacion({
+    borrador,
+    prefijoId: "bb",
+    token,
+  });
 
   const enviar = async () => {
     if (fase === "enviando") return;
@@ -128,16 +65,7 @@ export function BBreveForm({
     items.forEach((v, i) => v === null && faltantes.push(`i${i + 1}`));
     if (seg.S1 === null) faltantes.push("S1");
     if (seg.S2 === null) faltantes.push("S2");
-    if (faltantes.length > 0) {
-      setFaltan(new Set(faltantes));
-      setError("Faltan preguntas por responder. Las hemos marcado en rojo.");
-      document.getElementById(`bb-${faltantes[0]}`)?.scrollIntoView({ behavior: "smooth", block: "center" });
-      return;
-    }
-    if (temporizador.current) clearTimeout(temporizador.current);
-    setFaltan(new Set());
-    setError("");
-    setFase("enviando");
+    if (marcarFaltantes(faltantes)) return;
     const respuesta = {
       v: 1,
       instrumento: "B-Breve",
@@ -152,50 +80,11 @@ export function BBreveForm({
       extra: extra.trim(),
       enviado: new Date().toISOString(),
     };
-    try {
-      const res = await fetch(`/api/evaluacion/${token}`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(respuesta),
-      });
-      const data = (await res.json().catch(() => ({}))) as { estado?: string; error?: string };
-      if (res.status === 422 && data.error) {
-        setFase("llenando");
-        setError(data.error);
-        return;
-      }
-      if (res.ok && data.estado === "guardado") setFase("enviado");
-      else if (res.ok && (data.estado === "completa" || data.estado === "cerrada")) setFase("cerrado");
-      else setFase("fallo-envio");
-    } catch {
-      setFase("fallo-envio");
-    }
-    window.scrollTo({ top: 0, behavior: "smooth" });
+    await enviarRespuesta(respuesta);
   };
 
-  if (fase === "enviado") {
-    return (
-      <div className="grid gap-3 py-8 text-center" data-testid="bb-gracias">
-        <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-emerald-50">
-          <CheckCircle2 className="h-7 w-7 text-emerald-600" />
-        </div>
-        <p className="text-lg font-semibold text-slate-900">Formulario enviado correctamente</p>
-        <p className="mx-auto max-w-md text-base leading-7 text-slate-700">{B_BREVE_GRACIAS}</p>
-        <p className="text-xs text-slate-400">Ya puede cerrar esta página.</p>
-      </div>
-    );
-  }
-
-  if (fase === "cerrado") {
-    return (
-      <div className="grid gap-3 py-8 text-center" data-testid="bb-cerrado">
-        <p className="text-base font-semibold text-slate-900">Este formulario ya fue enviado</p>
-        <p className="mx-auto max-w-sm text-sm leading-6 text-slate-500">
-          Si necesita responderlo de nuevo, pida a su psicólogo que lo vuelva a habilitar.
-        </p>
-      </div>
-    );
-  }
+  if (fase === "enviado") return <PantallaEnviada mensaje={B_BREVE_GRACIAS} testId="bb-gracias" trato="usted" />;
+  if (fase === "cerrado") return <PantallaCerrada testId="bb-cerrado" trato="usted" />;
 
   const marco = (clave: string) => (faltan.has(clave) ? "border-red-300 bg-red-50/60" : "border-transparent");
 
@@ -232,47 +121,10 @@ export function BBreveForm({
     </label>
   );
 
-  const indicador =
-    guardado === "guardando" || guardado === "pendiente"
-      ? "Guardando…"
-      : guardado === "guardado"
-        ? "Avance guardado"
-        : guardado === "sin-conexion"
-          ? "Sin conexión: su avance se guardará al reconectar"
-          : continua
-            ? "Continúa donde se quedó"
-            : "Su avance se guarda automáticamente";
-
   return (
     <div className="grid gap-6">
-      {/* Indicador fijo del guardado automático */}
-      <div
-        aria-live="polite"
-        className={`sticky top-0 z-10 -mx-4 -mt-4 flex items-center justify-center gap-1.5 rounded-t-2xl border-b px-3 py-2 text-xs font-semibold sm:-mx-7 sm:-mt-7 ${
-          guardado === "sin-conexion" ? "border-amber-200 bg-amber-50 text-amber-800" : "border-slate-100 bg-white/95 text-slate-500"
-        }`}
-        data-testid="bb-guardado"
-      >
-        {guardado === "sin-conexion" ? <CloudOff className="h-3.5 w-3.5" /> : <CheckCircle2 className="h-3.5 w-3.5 text-teal-600" />}
-        {indicador}
-      </div>
-
-      {fase === "fallo-envio" ? (
-        <div className="grid gap-2 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900" role="alert">
-          <p>
-            <strong>No se pudo enviar todavía</strong> (posible problema de conexión). Sus respuestas están guardadas en este enlace;
-            no las pierde.
-          </p>
-          <button
-            className="inline-flex w-fit items-center gap-2 rounded-lg bg-amber-700 px-4 py-2.5 font-bold text-white"
-            onClick={() => void enviar()}
-            type="button"
-          >
-            <RefreshCw className="h-4 w-4" />
-            Reintentar envío
-          </button>
-        </div>
-      ) : null}
+      <BarraGuardado continua={continua} guardado={guardado} testId="bb-guardado" trato="usted" />
+      {fase === "fallo-envio" ? <AvisoFalloEnvio onReintentar={() => void enviar()} trato="usted" /> : null}
 
       <div>
         <h1 className="text-2xl font-semibold leading-tight text-slate-900 sm:text-3xl">{B_BREVE_TITULO}</h1>
@@ -416,22 +268,7 @@ export function BBreveForm({
         <textarea className="field-light min-h-20 resize-y" onChange={(e) => setExtra(e.target.value)} value={extra} />
       </label>
 
-      {error ? (
-        <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700" role="alert">
-          {error}
-        </div>
-      ) : null}
-
-      <button
-        className="inline-flex items-center justify-center gap-2 rounded-xl bg-teal-700 px-4 py-4 text-base font-bold text-white transition hover:bg-teal-800 disabled:opacity-60"
-        disabled={fase === "enviando"}
-        onClick={() => void enviar()}
-        type="button"
-      >
-        <Send className="h-4 w-4" />
-        {fase === "enviando" ? "Enviando..." : "Enviar respuestas"}
-      </button>
-      <p className="-mt-3 text-center text-xs text-slate-400">Al enviar, el formulario se cierra y ya no se puede modificar.</p>
+      <PieEnvio error={error} fase={fase} onEnviar={() => void enviar()} />
 
       <p className="border-t border-slate-100 pt-4 text-xs leading-5 text-slate-400">{B_BREVE_AVISO_FORMULARIO}</p>
     </div>
