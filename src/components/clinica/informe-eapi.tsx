@@ -39,15 +39,18 @@ export function InformeEapi({
   respuestas: EvaluacionRespuestaRow[];
 }) {
   const datos = useMemo(() => datosEapi(actual), [actual]);
+  // Aplicaciones anteriores a esta, de la más reciente a la más antigua.
   const anteriores = useMemo(
     () =>
-      respuestas.filter(
-        (r) =>
-          r.id !== actual.id &&
-          r.instrumento === "eapi" &&
-          (fechaDe(r) < fechaDe(actual) || (fechaDe(r) === fechaDe(actual) && r.createdAt < actual.createdAt)) &&
-          datosEapi(r)
-      ),
+      respuestas
+        .filter(
+          (r) =>
+            r.id !== actual.id &&
+            r.instrumento === "eapi" &&
+            (fechaDe(r) < fechaDe(actual) || (fechaDe(r) === fechaDe(actual) && r.createdAt < actual.createdAt)) &&
+            datosEapi(r)
+        )
+        .sort((a, b) => (fechaDe(b) + b.createdAt).localeCompare(fechaDe(a) + a.createdAt)),
     [respuestas, actual]
   );
   // Otras aplicaciones EAPI del paciente (cualquier fecha) para el informe unificado.
@@ -58,7 +61,8 @@ export function InformeEapi({
         .sort((a, b) => (fechaDe(b) + b.createdAt).localeCompare(fechaDe(a) + a.createdAt)),
     [respuestas, actual]
   );
-  const [antId, setAntId] = useState(anteriores[0]?.id ?? "");
+  // "auto" = evaluación anterior de cada escala (la más reciente que la tenga).
+  const [antId, setAntId] = useState(anteriores.length ? "auto" : "");
   const [notasPrivadas, setNotasPrivadas] = useState("");
   // "todo" = informe unificado; un módulo = informe separado de esa escala.
   const [vista, setVista] = useState<"todo" | ModuloEapi>("todo");
@@ -78,9 +82,24 @@ export function InformeEapi({
   const vistaValida = vista !== "todo" && unidos[vista] ? vista : "todo";
   const efectivos = vistaValida === "todo" ? unidos : soloModuloEapi(unidos, vistaValida);
 
-  const anterior = anteriores.find((r) => r.id === antId);
-  const datosAnt = anterior ? datosEapi(anterior) : null;
-  const ant: AplicacionEapi | null = anterior && datosAnt ? { datos: datosAnt, nombre: anterior.respondienteNombre, fecha: fechaDe(anterior) } : null;
+  let ant: AplicacionEapi | null = null;
+  const previas = anteriores.filter((r) => !unirIds.includes(r.id));
+  if (antId === "auto" && previas.length) {
+    const origenAnt: Partial<Record<ModuloEapi, string>> = {};
+    for (const r of previas) for (const m of MODULOS_EAPI) if (datosEapi(r)?.[m] && !origenAnt[m]) origenAnt[m] = fechaDe(r);
+    ant = {
+      datos: unirEapi(previas.map((r) => datosEapi(r)!)),
+      nombre: previas[0].respondienteNombre,
+      fecha: fechaDe(previas[0]),
+      origen: origenAnt,
+    };
+  } else {
+    const anterior = anteriores.find((r) => r.id === antId);
+    const datosAnt = anterior ? datosEapi(anterior) : null;
+    if (anterior && datosAnt) ant = { datos: datosAnt, nombre: anterior.respondienteNombre, fecha: fechaDe(anterior) };
+  }
+  // La pregunta de seguridad de la anterior: la de la aplicación más reciente, no el máximo histórico.
+  if (ant && antId === "auto" && previas.length) ant = { ...ant, datos: { ...ant.datos, safety: datosEapi(previas[0])!.safety } };
   const html = informeEapiHtml(
     { datos: efectivos, nombre: actual.respondienteNombre, fecha: fechaDe(actual) },
     ant,
@@ -123,16 +142,22 @@ export function InformeEapi({
           </p>
         </div>
       ) : null}
-      <Field label="Seguimiento: aplicación anterior">
+      <Field label="Evolución: comparar con">
         <select className="field" onChange={(e) => setAntId(e.target.value)} value={antId}>
           <option value="">Sin comparación</option>
+          {anteriores.length ? <option value="auto">La evaluación anterior de cada escala (recomendado)</option> : null}
           {anteriores.map((r) => (
             <option key={r.id} value={r.id}>
-              {formatoFechaCorta(fechaDe(r))} · {r.respondienteNombre}
+              {formatoFechaCorta(fechaDe(r))} · {siglas(datosEapi(r)!)}
             </option>
           ))}
         </select>
       </Field>
+      {!anteriores.length ? (
+        <p className="-mt-2 text-xs text-slate-400">
+          Es la primera aplicación. Con «Nueva aplicación (seguimiento)» envías otra con las mismas escalas y aquí verás la evolución ítem por ítem.
+        </p>
+      ) : null}
       <NotasPrivadas onCambio={setNotasPrivadas} pacienteId={paciente.id} respuestaId={actual.id} />
       <InformeFrame html={html} textoBoton="Imprimir o guardar PDF (informe profesional)" titulo="Informe EAPI" />
       <InformePacientePanel
@@ -144,6 +169,7 @@ export function InformeEapi({
         }
         construir={(opciones, notas) =>
           informePacienteEapi(efectivos, opciones, {
+            anterior: ant ? { datos: ant.datos, fecha: ant.fecha } : null,
             paciente: paciente.nombre,
             fechaAplicacion: fechaDe(actual),
             notas,

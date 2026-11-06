@@ -19,32 +19,28 @@ import { Pregunta } from "./eapi-form";
 // Importante: este formulario NO importa la calificación ni el código de tipo
 // de cada pregunta: quien responde no ve puntuaciones ni a qué tipo pertenece cada frase.
 
-const hoyLocal = () => {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-};
-
 type EstadoGuardado = "sin-cambios" | "pendiente" | "guardando" | "guardado" | "sin-conexion";
 type Fase = "llenando" | "enviando" | "enviado" | "fallo-envio" | "cerrado";
 const ESPERA_GUARDADO_MS = 1200;
 
 export function RiasecForm({ borradorInicial, codigoCaso, token }: { borradorInicial: RiasecBorrador | null; codigoCaso: string; token: string }) {
   const b = borradorInicial;
-  const [nombre, setNombre] = useState(b?.nombre ?? "");
-  const [edad, setEdad] = useState(b?.edad ?? "");
   const [estudios, setEstudios] = useState(b?.estudios ?? "");
   const [carreras, setCarreras] = useState(b?.carreras ?? "");
-  const [fecha, setFecha] = useState(b?.fecha || hoyLocal());
   const [items, setItems] = useState<(number | null)[]>(() => b?.items ?? Array(36).fill(null));
   const [faltan, setFaltan] = useState<Set<string>>(new Set());
   const [error, setError] = useState("");
   const [fase, setFase] = useState<Fase>("llenando");
   const [guardado, setGuardado] = useState<EstadoGuardado>("sin-cambios");
-  const [continua] = useState(() => Boolean(b && (b.nombre || b.items.some((v) => v !== null))));
+  const [continua] = useState(() => Boolean(b && b.items.some((v) => v !== null)));
   const temporizador = useRef<ReturnType<typeof setTimeout> | null>(null);
   const version = useRef(0);
 
-  const borrador = useCallback((): RiasecBorrador => ({ nombre, edad, estudios, carreras, fecha, items }), [nombre, edad, estudios, carreras, fecha, items]);
+  // Nombre, edad y fecha se toman del expediente al enviar.
+  const borrador = useCallback(
+    (): RiasecBorrador => ({ nombre: "", edad: "", estudios, carreras, fecha: "", items }),
+    [estudios, carreras, items]
+  );
 
   const guardarAvance = useCallback(
     async (datos: RiasecBorrador, v: number) => {
@@ -109,7 +105,6 @@ export function RiasecForm({ borradorInicial, codigoCaso, token }: { borradorIni
   const enviar = async () => {
     if (fase === "enviando") return;
     const faltantes: string[] = [];
-    if (!nombre.trim()) faltantes.push("nombre");
     // En el orden en que se muestran, para llevar a la primera que falta.
     RIASEC_ORDEN.forEach((n) => items[n - 1] === null && faltantes.push(`it${n}`));
     if (faltantes.length > 0) {
@@ -122,16 +117,15 @@ export function RiasecForm({ borradorInicial, codigoCaso, token }: { borradorIni
     setFaltan(new Set());
     setError("");
     setFase("enviando");
-    const edadNum = Number(edad);
     const respuesta = {
       v: 1,
       instrumento: "RIASEC",
       items,
-      nombre: nombre.trim(),
-      edad: edad && Number.isInteger(edadNum) ? edadNum : null,
+      nombre: "",
+      edad: null,
       estudios,
       carreras: carreras.trim(),
-      fecha,
+      fecha: "",
       ref: codigoCaso,
       enviado: new Date().toISOString(),
     };
@@ -226,22 +220,6 @@ export function RiasecForm({ borradorInicial, codigoCaso, token }: { borradorIni
       <div className="rounded-r-xl border-l-4 border-teal-600 bg-teal-50 p-4 text-sm leading-6 text-slate-700">{RIASEC_INTRO}</div>
 
       <div className="grid gap-4 sm:grid-cols-2">
-        <label className={`grid gap-1.5 rounded-lg border p-1 ${faltan.has("nombre") ? "border-red-300 bg-red-50/60" : "border-transparent"}`} id="ea-nombre">
-          <span className="text-xs font-semibold uppercase text-slate-500">Tu nombre *</span>
-          <input
-            autoComplete="name"
-            className="field-light"
-            onChange={(e) => {
-              setNombre(e.target.value);
-              quitarFalta("nombre");
-            }}
-            value={nombre}
-          />
-        </label>
-        <label className="grid gap-1.5 p-1">
-          <span className="text-xs font-semibold uppercase text-slate-500">Edad</span>
-          <input className="field-light" inputMode="numeric" maxLength={2} onChange={(e) => setEdad(e.target.value.replace(/\D/g, ""))} value={edad} />
-        </label>
         <label className="grid gap-1.5 p-1">
           <span className="text-xs font-semibold uppercase text-slate-500">Nivel de estudios actual</span>
           <select className="field-light" onChange={(e) => setEstudios(e.target.value)} value={estudios}>
@@ -250,10 +228,6 @@ export function RiasecForm({ borradorInicial, codigoCaso, token }: { borradorIni
               <option key={e}>{e}</option>
             ))}
           </select>
-        </label>
-        <label className="grid gap-1.5 p-1">
-          <span className="text-xs font-semibold uppercase text-slate-500">Fecha</span>
-          <input className="field-light" onChange={(e) => setFecha(e.target.value)} type="date" value={fecha} />
         </label>
       </div>
 

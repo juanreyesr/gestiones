@@ -1,10 +1,10 @@
 // Casos de prueba del Anexo D (EAPI / Batería AEI). Ejecutar: pnpm test:eapi
 import assert from "node:assert/strict";
 import { calificarEapi, seguimientoEapi, EAPI_SIN_DX } from "../src/lib/evaluaciones/eapi/calificacion.ts";
-import { unirEapi } from "../src/lib/evaluaciones/eapi/calificacion.ts";
+import { evolucionEapi, unirEapi } from "../src/lib/evaluaciones/eapi/calificacion.ts";
 import { avanceEapi, codificarEapi, decodificarEapi, limpiarBorradorEapi, modulosDeOpciones, validarEapi } from "../src/lib/evaluaciones/eapi/codigo.ts";
 import { informeEapiHtml, soloModuloEapi } from "../src/lib/evaluaciones/eapi/informe-html.ts";
-import { areasEapi } from "../src/lib/evaluaciones/eapi/informe-paciente.ts";
+import { areasEapi, informePacienteEapi, opcionesPorDefectoEapi } from "../src/lib/evaluaciones/eapi/informe-paciente.ts";
 
 const COMPLETA = ["gad", "dass", "ptq"];
 const CON_DOCS = ["gad", "dass", "ptq", "docs"];
@@ -138,4 +138,32 @@ caso("E.2 Informe unificado y separado", () => {
   assert.ok(informeEapiHtml({ datos: validarEapi({ docs: z(20), safety: 0 }, ["docs"]).datos, nombre: "", fecha: "" }).includes("DOCS"));
 });
 
-console.log(`\n${ok}/8 casos correctos (Anexo D + escalas separadas; D.7 se prueba en el navegador).`);
+caso("E.3 Evolución entre aplicaciones (ítem por ítem y por escala)", () => {
+  const a = dec("AEI1-G3222312-D232120221131232112201-P323231323132312-S0-F2-RDEMO1"); // actual
+  const p = dec("AEI1-G3333323-D332231332232333223312-P434342434243423-S1-F3-RDEMO1"); // anterior
+  const ev = evolucionEapi(a, p);
+  const g = ev.escalas.find((e) => e.id === "gad");
+  assert.deepEqual([g.antes, g.ahora, g.delta, g.tendencia], [20, 15, -5, "mejora"]);
+  assert.equal(ev.escalas.find((e) => e.id === "dass-dep").tendencia, "mejora"); // Extremadamente severo → Moderado
+  assert.equal(ev.escalas.find((e) => e.id === "dass-anx").tendencia, "igual"); // misma banda
+  assert.equal(ev.escalas.find((e) => e.id === "ptq").tendencia, "mejora"); // clínico → elevado
+  assert.equal(ev.global, "mejora");
+  assert.equal(ev.items.length, 7 + 21 + 15);
+  assert.equal(ev.resumenItems.mejora + ev.resumenItems.igual + ev.resumenItems.empeora, 43);
+  assert.deepEqual(ev.seguridad, { antes: 1, ahora: 0, tendencia: "mejora" });
+  // Al revés: empeora; y escalas sin coincidencia no se comparan.
+  assert.equal(evolucionEapi(p, a).global, "empeora");
+  const soloPtq = { ...a, gad: null, dass: null };
+  assert.deepEqual(evolucionEapi(soloPtq, p).modulos, ["ptq"]);
+  // Informes: profesional con evolución arriba y detalle por ítem; paciente con frase de evolución.
+  const html = informeEapiHtml({ datos: a, nombre: "Ana", fecha: "2026-11-01" }, { datos: p, nombre: "Ana", fecha: "2026-10-01" });
+  assert.match(html, /Evolución desde la evaluación anterior/);
+  assert.match(html, /Evolución ítem por ítem/);
+  assert.ok(html.indexOf("Evolución desde") < html.indexOf("Señales de alarma y observaciones"));
+  assert.match(html, /<b>MCID<\/b>/);
+  const inf = informePacienteEapi(a, opcionesPorDefectoEapi(a), { paciente: "Ana", fechaAplicacion: "2026-11-01", notas: "", profesional: "X", anterior: { datos: p, fecha: "2026-10-01" } });
+  assert.match(inf.destacado.titulo, /hay mejoría/);
+  assert.match(inf.resultados[0].texto, /Comparado con su evaluación del .*: ha mejorado/);
+});
+
+console.log(`\n${ok}/9 casos correctos (Anexo D + escalas separadas; D.7 se prueba en el navegador).`);

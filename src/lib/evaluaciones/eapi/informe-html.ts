@@ -9,7 +9,9 @@ import {
   EAPI_ENCABEZADO_DX,
   EAPI_SIN_DX,
   PTQ_SUB,
-  seguimientoEapi,
+  evolucionEapi,
+  TEXTO_TENDENCIA,
+  type Tendencia,
   NOMBRES_MODULOS,
   SIGLAS_EAPI,
   type Banda,
@@ -18,7 +20,17 @@ import {
 } from "./calificacion";
 import { DASS21, DOCS, EAPI_NOMBRE_PROFESIONAL, GAD7, GAD_LABELS, PTQ, SAFETY } from "./escalas";
 
-export type AplicacionEapi = { datos: EapiDatos; nombre: string; fecha: string };
+/** origen: fecha de cada escala cuando la aplicación une varias respuestas. */
+export type AplicacionEapi = { datos: EapiDatos; nombre: string; fecha: string; origen?: Partial<Record<ModuloEapi, string>> | null };
+
+const TEXTOS_ITEM: Record<ModuloEapi, (i: number) => string> = {
+  gad: (i) => GAD7[i],
+  dass: (i) => DASS21[i],
+  ptq: (i) => PTQ[i],
+  docs: (i) => `${DOCS[Math.floor(i / 5)].short}: ${DOCS[Math.floor(i / 5)].q[i % 5].t}`,
+};
+const CLASE_TENDENCIA = { mejora: "baja", igual: "", empeora: "sube", mixto: "" } as const;
+const flecha = (t: Tendencia) => (t === "mejora" ? "↓ Mejora" : t === "empeora" ? "↑ Empeora" : "= Igual");
 
 const esc = (s: unknown) =>
   String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!);
@@ -164,19 +176,49 @@ ${s.docs.dims
     r.safety >= 1 ? " — Al enviar, al paciente se le mostraron las líneas de ayuda." : ""
   }</div>`;
 
+  // Evolución: resumen arriba (después de las puntuaciones) y detalle ítem por ítem aquí.
+  let evolucion = "";
   if (anterior) {
-    const filas = seguimientoEapi(r, anterior.datos);
-    html += `<h2>Seguimiento: comparación con la aplicación anterior</h2>
-<p class="muted">Anterior: ${esc(fechaLarga(anterior.fecha))}. Solo se comparan las escalas presentes en ambas aplicaciones.</p>
-<table><thead><tr><th>Medida</th><th>Antes</th><th>Ahora</th><th>Cambio</th><th>Nota</th></tr></thead><tbody>
-${filas
+    const ev = evolucionEapi(r, anterior.datos);
+    const fechasAnt = anterior.origen
+      ? ev.modulos.map((m) => `${NOMBRES_MODULOS[m].sigla}: ${fechaLarga(anterior.origen?.[m] ?? anterior.fecha)}`).join(" · ")
+      : fechaLarga(anterior.fecha);
+    if (!ev.modulos.length) {
+      evolucion = `<h2>Evolución desde la evaluación anterior</h2><div class="flag neutra">• La evaluación anterior (${esc(fechasAnt)}) no tiene escalas en común con esta; no hay comparación posible.</div>`;
+    } else {
+      evolucion = `<h2>Evolución desde la evaluación anterior</h2>
+<p class="muted">Anterior: ${esc(fechasAnt)}. Se comparan solo las escalas presentes en ambas. En todas, una puntuación más baja indica menos síntomas.</p>
+<div class="evol ${CLASE_TENDENCIA[ev.global]}"><strong>${esc(TEXTO_TENDENCIA[ev.global])}</strong> · Ítems: ${ev.resumenItems.mejora} mejoran, ${ev.resumenItems.igual} siguen igual, ${ev.resumenItems.empeora} empeoran${
+        ev.seguridad.tendencia === "empeora" ? ` · <b class="sube">La pregunta de seguridad subió (${ev.seguridad.antes} → ${ev.seguridad.ahora}): reevaluar riesgo</b>` : ""
+      }</div>
+<table><thead><tr><th>Escala</th><th>Antes</th><th>Ahora</th><th>Cambio</th><th>Banda</th><th>Resultado</th></tr></thead><tbody>
+${ev.escalas
   .map(
-    (f) =>
-      `<tr><td>${esc(f.name)}</td><td>${f.before}</td><td>${f.after}</td><td><strong class="${f.delta < 0 ? "baja" : f.delta > 0 ? "sube" : ""}">${f.delta > 0 ? "+" : ""}${f.delta}</strong></td><td class="muted">${esc(f.note)}</td></tr>`
+    (e) =>
+      `<tr><td>${esc(e.nombre)}<div class="muted">${esc(e.criterio)}</div></td><td>${e.antes}</td><td>${e.ahora}</td><td><strong class="${e.delta < 0 ? "baja" : e.delta > 0 ? "sube" : ""}">${e.delta > 0 ? "+" : ""}${e.delta}</strong></td><td class="muted">${
+        e.bandaAntes === e.bandaAhora ? esc(e.bandaAhora) : `${esc(e.bandaAntes)} → ${esc(e.bandaAhora)}`
+      }</td><td><strong class="${CLASE_TENDENCIA[e.tendencia]}">${flecha(e.tendencia)}</strong></td></tr>`
   )
   .join("")}
+<tr><td>Pregunta de seguridad</td><td>${ev.seguridad.antes}</td><td>${ev.seguridad.ahora}</td><td><strong class="${CLASE_TENDENCIA[ev.seguridad.tendencia]}">${ev.seguridad.ahora - ev.seguridad.antes > 0 ? "+" : ""}${ev.seguridad.ahora - ev.seguridad.antes}</strong></td><td></td><td><strong class="${CLASE_TENDENCIA[ev.seguridad.tendencia]}">${flecha(ev.seguridad.tendencia)}</strong></td></tr>
 </tbody></table>
-<p class="muted">Para el GAD-7, un cambio de 4 puntos o más se considera la diferencia mínima clínicamente importante (MCID; Toussaint et al., 2020). Para las demás escalas se informa el cambio de banda y la dirección; no existen MCID consolidados.</p>`;
+<p class="muted">Criterios: GAD-7, cambio de 4 puntos o más (diferencia mínima clínicamente importante, MCID; Toussaint et al., 2020); DASS-21, PTQ y DOCS, cambio de banda o rango, porque no tienen MCID consolidados. El detalle ítem por ítem está al final del informe.</p>`;
+      html += `<h2>Evolución ítem por ítem</h2>
+${ev.modulos
+  .map((m) => {
+    const filas = ev.items.filter((it) => it.modulo === m);
+    return `<div class="sub">${esc(NOMBRES_MODULOS[m].sigla)} · ${filas.filter((f) => f.tendencia === "mejora").length} mejoran, ${filas.filter((f) => f.tendencia === "igual").length} igual, ${filas.filter((f) => f.tendencia === "empeora").length} empeoran</div>
+<table><thead><tr><th>N.º</th><th>Enunciado</th><th>Antes</th><th>Ahora</th><th>Cambio</th></tr></thead><tbody>
+${filas
+  .map(
+    (it) =>
+      `<tr${it.tendencia === "empeora" ? ' class="empeora"' : it.tendencia === "mejora" ? ' class="mejora"' : ""}><td>${it.n}</td><td>${esc(TEXTOS_ITEM[m](it.n - 1))}</td><td>${it.antes}</td><td>${it.ahora}</td><td><strong class="${CLASE_TENDENCIA[it.tendencia]}">${it.delta > 0 ? "+" : ""}${it.delta}</strong></td></tr>`
+  )
+  .join("")}
+</tbody></table>`;
+  })
+  .join("")}`;
+    }
   }
 
   if (r.abierta) html += `<h2>Comentario del paciente</h2><p class="cita">${esc(r.abierta)}</p>`;
@@ -184,7 +226,7 @@ ${filas
   html += `<p class="aviso">${esc(avisoEapi(s.modulos))}</p>`;
 
   // Glosario: solo las siglas que aparecen en este informe.
-  const siglas = SIGLAS_EAPI.filter(([sigla]) => sigla !== "PHQ-9" && html.includes(sigla));
+  const siglas = SIGLAS_EAPI.filter(([sigla]) => sigla !== "PHQ-9" && (html + evolucion).includes(sigla));
   const glosario = siglas.length
     ? `<div class="glosario"><strong>Siglas usadas en este informe</strong><ul>${siglas
         .map(([sigla, significado]) => `<li><b>${esc(sigla)}</b>: ${esc(significado)}</li>`)
@@ -196,6 +238,7 @@ ${filas
 ${instrumentos}
 ${glosario}
 <div class="kpi">${kpis.join("")}</div>
+${evolucion}
 ${html}`;
 
   return `<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
@@ -214,7 +257,7 @@ th{font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:#64748b}tr
 .dx p{margin:4px 0}.dx ul{margin:4px 0;padding-left:18px}.codes{display:flex;flex-wrap:wrap;gap:4px;margin:4px 0}.codes span{background:#e2e8f0;border-radius:6px;padding:1px 7px;font-size:11.5px}
 .kpi{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:8px;margin:14px 0}.kpi>div{background:#f8fafc;border-radius:8px;padding:10px}
 .kpi .v{font-size:22px;font-weight:700}.kpi .v small{font-size:12px;color:#64748b}.kpi .l{font-size:11.5px;color:#64748b}.rojo{color:#b91c1c}
-strong.baja{color:#15803d}strong.sube{color:#b91c1c}.cita{white-space:pre-wrap;background:#f8fafc;padding:10px;border-radius:8px}
+strong.baja,b.baja{color:#15803d}strong.sube,b.sube{color:#b91c1c}tr.mejora td{background:#f0fdf4}tr.empeora td{background:#fef2f2}.evol{padding:10px 12px;border-radius:8px;margin:8px 0;border:1px solid #e2e8f0;background:#f8fafc}.evol.baja{background:#f0fdf4;border-color:#bbf7d0}.evol.sube{background:#fef2f2;border-color:#fecaca}.cita{white-space:pre-wrap;background:#f8fafc;padding:10px;border-radius:8px}
 .lista{margin:4px 0;padding-left:18px}.lista li{margin:3px 0}.glosario{background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:8px 12px;margin:10px 0;font-size:12.5px}.glosario ul{margin:4px 0;padding-left:18px}
 .aviso{margin-top:24px;padding-top:10px;border-top:1px solid #e2e8f0;font-size:11.5px;color:#64748b}
 @media print{body{padding:0}h2{break-after:avoid}tr,.flag,.dx{break-inside:avoid}*{-webkit-print-color-adjust:exact;print-color-adjust:exact}}
