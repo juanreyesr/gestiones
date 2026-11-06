@@ -1,10 +1,7 @@
 import { after, NextResponse } from "next/server";
-import { limpiarBorradorBBreve, validarBBreve } from "@/lib/evaluaciones/b-breve/codigo";
-import { B_BREVE_RELACIONES } from "@/lib/evaluaciones/b-breve/contenido";
 import { plantillaVigente } from "@/lib/clinica/consentimiento-plantillas";
-import { limpiarBorradorEapi, modulosDeOpciones, validarEapi } from "@/lib/evaluaciones/eapi/codigo";
-import { limpiarBorradorRiasec, validarRiasec } from "@/lib/evaluaciones/riasec/codigo";
-import { limpiarBorradorValores, validarValores } from "@/lib/evaluaciones/valores/codigo";
+import { modulosDeOpciones } from "@/lib/evaluaciones/eapi/codigo";
+import { definicionServidor } from "@/lib/evaluaciones/registro-servidor";
 import { rateLimit, rateLimitResponse } from "@/lib/server/rate-limit";
 import { avisarEvaluacionRespondida } from "@/lib/server/telegram-avisos";
 import { getSupabaseClient } from "@/lib/supabase";
@@ -33,11 +30,7 @@ const modulosEapi = (fila: RawGet) => modulosDeOpciones(fila.opciones);
 
 /** Limpia el avance según el instrumento del enlace. */
 function limpiarBorrador(fila: RawGet, datos: unknown) {
-  if (fila.instrumento === "b-breve") return limpiarBorradorBBreve(datos);
-  if (fila.instrumento === "eapi") return limpiarBorradorEapi(datos);
-  if (fila.instrumento === "riasec") return limpiarBorradorRiasec(datos);
-  if (fila.instrumento === "valores") return limpiarBorradorValores(datos);
-  return null;
+  return definicionServidor(fila.instrumento)?.limpiarBorrador(datos) ?? null;
 }
 
 async function leerEnlace(token: string) {
@@ -119,42 +112,14 @@ export async function POST(request: Request, { params }: { params: Promise<{ tok
   if (fila.estado !== "ok") return NextResponse.json({ estado: fila.estado });
 
   // Validación según el instrumento del enlace (no según lo que diga el cuerpo).
-  let nombre = "";
-  let relacion = "";
-  let guardar: Record<string, unknown>;
-  let alertaSeguridad = 0;
-  if (fila.instrumento === "b-breve") {
-    const v = validarBBreve(body);
-    if (!v.ok) return NextResponse.json({ error: v.error }, { status: 422 });
-    if (!v.datos.nombre) return NextResponse.json({ error: "Escriba el nombre de quien responde." }, { status: 422 });
-    if (!(B_BREVE_RELACIONES as readonly string[]).includes(v.datos.relacion ?? "")) {
-      return NextResponse.json({ error: "Seleccione su relación con el niño o niña." }, { status: 422 });
-    }
-    nombre = v.datos.nombre;
-    relacion = v.datos.relacion ?? "";
-    guardar = { ...v.datos };
-  } else if (fila.instrumento === "eapi") {
-    const v = validarEapi(body, modulosEapi(fila));
-    if (!v.ok) return NextResponse.json({ error: v.error }, { status: 422 });
-    relacion = "Paciente";
-    guardar = { ...v.datos };
-    alertaSeguridad = v.datos.safety;
-  } else if (fila.instrumento === "riasec") {
-    const v = validarRiasec(body);
-    if (!v.ok) return NextResponse.json({ error: v.error }, { status: 422 });
-    relacion = "Paciente";
-    guardar = { ...v.datos };
-  } else if (fila.instrumento === "valores") {
-    const v = validarValores(body);
-    if (!v.ok) return NextResponse.json({ error: v.error }, { status: 422 });
-    relacion = "Paciente";
-    guardar = { ...v.datos };
-  } else {
-    return NextResponse.json({ error: "Instrumento no disponible." }, { status: 422 });
-  }
+  const definicion = definicionServidor(fila.instrumento);
+  if (!definicion) return NextResponse.json({ error: "Instrumento no disponible." }, { status: 422 });
+  const v = definicion.validar(body, fila.opciones);
+  if (!v.ok) return NextResponse.json({ error: v.error }, { status: 422 });
+  const { nombre, relacion, alertaSeguridad } = v;
   // El código de caso y la hora de envío los pone el servidor; el nombre del
   // paciente, la fecha y la edad, la base de datos (desde el expediente).
-  guardar = { ...guardar, ref: fila.ref ?? "", enviado: new Date().toISOString() };
+  const guardar = { ...v.datos, ref: fila.ref ?? "", enviado: new Date().toISOString() };
 
   const { data, error } = await supabase.rpc("gestionesjj_public_evaluacion_responder", {
     p_token: token,
