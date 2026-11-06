@@ -39,6 +39,7 @@ import { CitasSinPagarAviso, MontoCita, PagadaCheckbox, SaldoPaciente, TarifaEdi
 import { PacienteForm } from "./paciente-form";
 import { ConsentimientosPaciente } from "./consentimientos-paciente";
 import { EvaluacionesPaciente } from "./evaluaciones-paciente";
+import { AntesProximaSesion } from "./antes-proxima-sesion";
 import { PanelEvolucion } from "./panel-evolucion";
 import { PlanTratamiento } from "./plan-tratamiento";
 import { SesionActiva } from "./sesion-activa";
@@ -306,6 +307,71 @@ export function PacienteExpediente({
     );
   }
 
+  // Una sesión del historial (también se muestra la última con la sección plegada).
+  const renderSesion = (sesion: SesionRow, index: number) => {
+                  const abierta = sesionAbierta === sesion.id;
+                  const citaSesion = sesion.citaId ? citasDeSesiones[sesion.citaId] : undefined;
+                  return (
+                    <div key={sesion.id} className="border border-white/10 bg-white/4">
+                      <button
+                        className="flex w-full items-center justify-between gap-3 p-3 text-left transition hover:bg-white/6"
+                        onClick={() => setSesionAbierta(abierta ? null : sesion.id)}
+                        type="button"
+                      >
+                        <span className="min-w-0">
+                          <span className="block text-sm font-semibold text-white">
+                            Sesión {sesiones.length - index} · {formatoFechaCorta(sesion.iniciadaAt)}
+                            {sesion.modalidad === "tema_nuevo" && sesion.tema ? ` — ${sesion.tema}` : ""}
+                            {sesion.modalidad === "seguimiento" ? " — Seguimiento" : ""}
+                          </span>
+                          {!abierta && sesion.resumen ? (
+                            <span className="mt-0.5 block truncate text-xs text-slate-400">{sesion.resumen}</span>
+                          ) : null}
+                        </span>
+                        {abierta ? (
+                          <ChevronUp className="h-4 w-4 shrink-0 text-slate-400" />
+                        ) : (
+                          <ChevronDown className="h-4 w-4 shrink-0 text-slate-400" />
+                        )}
+                      </button>
+                      {citaSesion ? (
+                        <div className="flex flex-wrap items-center gap-2 border-t border-white/10 px-3 py-2">
+                          <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Pago</span>
+                          <MontoCita
+                            key={`m-${citaSesion.id}-${citaSesion.monto}-${citaSesion.moneda}`}
+                            cita={citaSesion}
+                            onChanged={() => void cargar()}
+                          />
+                          <PagadaCheckbox
+                            key={`p-${citaSesion.id}-${citaSesion.pagada}-${citaSesion.montoPagado}`}
+                            cita={citaSesion}
+                            label="Marcar pagada"
+                            onChanged={() => void cargar()}
+                          />
+                        </div>
+                      ) : null}
+                      {abierta ? (
+                        <div className="border-t border-white/10 p-4">
+                          <div className="mb-3 flex justify-end">
+                            <button
+                              className="inline-flex items-center gap-1.5 border border-white/10 bg-white/8 px-3 py-1.5 text-xs font-semibold text-slate-200 transition hover:border-emerald-300/50"
+                              onClick={() => {
+                                setSesionEditando(sesion);
+                                setVista("editar-sesion");
+                              }}
+                              type="button"
+                            >
+                              <Pencil className="h-3.5 w-3.5" />
+                              Editar sesión
+                            </button>
+                          </div>
+                          <SesionDetalle sesion={sesion} />
+                        </div>
+                      ) : null}
+                    </div>
+                  );
+  };
+
   return (
     <div className="grid gap-5">
       <button className={`${BTN_GHOST} w-fit`} onClick={onVolver} type="button">
@@ -407,88 +473,52 @@ export function PacienteExpediente({
         </div>
       </header>
 
-      <div className="grid gap-4 xl:grid-cols-[1fr_340px]">
-        <div className="grid content-start gap-4">
+      <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_340px]">
+        <div className="grid min-w-0 content-start gap-4">
+          <AntesProximaSesion
+            citasSinPagar={citasSinPagar}
+            compromisos={compromisos}
+            consentimientos={consentimientos}
+            paciente={paciente}
+            proximaCita={proximaCita}
+            sesiones={sesiones}
+          />
           <PlanTratamiento onCambio={() => void cargar()} sesiones={sesiones} />
           <PanelEvolucion pacienteId={paciente.id} sesiones={sesiones} />
           <EvaluacionesPaciente paciente={paciente} />
-          <SectionCard title={`Historial de sesiones (${sesiones.length})`}>
+          <SectionCard
+            plegable={{
+              id: "sesiones",
+              resumen: sesiones.length ? `${sesiones.length} · última ${formatoFechaCorta(sesiones[0].iniciadaAt)}` : "sin sesiones",
+              vistaCerrada: sesiones.length ? (
+                <div className="grid gap-2">
+                  <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Última sesión</p>
+                  {renderSesion(sesiones[0], 0)}
+                </div>
+              ) : undefined,
+            }}
+            title="Historial de sesiones"
+          >
             {sesiones.length === 0 ? (
               <p className="text-sm text-slate-400">
                 Aún no hay sesiones registradas. Al iniciar la primera sesión aparecerá aquí su registro.
               </p>
             ) : (
               <div className="grid gap-2">
-                {sesiones.map((sesion, index) => {
-                  const abierta = sesionAbierta === sesion.id;
-                  const citaSesion = sesion.citaId ? citasDeSesiones[sesion.citaId] : undefined;
-                  return (
-                    <div key={sesion.id} className="border border-white/10 bg-white/4">
-                      <button
-                        className="flex w-full items-center justify-between gap-3 p-3 text-left transition hover:bg-white/6"
-                        onClick={() => setSesionAbierta(abierta ? null : sesion.id)}
-                        type="button"
-                      >
-                        <span className="min-w-0">
-                          <span className="block text-sm font-semibold text-white">
-                            Sesión {sesiones.length - index} · {formatoFechaCorta(sesion.iniciadaAt)}
-                            {sesion.modalidad === "tema_nuevo" && sesion.tema ? ` — ${sesion.tema}` : ""}
-                            {sesion.modalidad === "seguimiento" ? " — Seguimiento" : ""}
-                          </span>
-                          {!abierta && sesion.resumen ? (
-                            <span className="mt-0.5 block truncate text-xs text-slate-400">{sesion.resumen}</span>
-                          ) : null}
-                        </span>
-                        {abierta ? (
-                          <ChevronUp className="h-4 w-4 shrink-0 text-slate-400" />
-                        ) : (
-                          <ChevronDown className="h-4 w-4 shrink-0 text-slate-400" />
-                        )}
-                      </button>
-                      {citaSesion ? (
-                        <div className="flex flex-wrap items-center gap-2 border-t border-white/10 px-3 py-2">
-                          <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Pago</span>
-                          <MontoCita
-                            key={`m-${citaSesion.id}-${citaSesion.monto}-${citaSesion.moneda}`}
-                            cita={citaSesion}
-                            onChanged={() => void cargar()}
-                          />
-                          <PagadaCheckbox
-                            key={`p-${citaSesion.id}-${citaSesion.pagada}-${citaSesion.montoPagado}`}
-                            cita={citaSesion}
-                            label="Marcar pagada"
-                            onChanged={() => void cargar()}
-                          />
-                        </div>
-                      ) : null}
-                      {abierta ? (
-                        <div className="border-t border-white/10 p-4">
-                          <div className="mb-3 flex justify-end">
-                            <button
-                              className="inline-flex items-center gap-1.5 border border-white/10 bg-white/8 px-3 py-1.5 text-xs font-semibold text-slate-200 transition hover:border-emerald-300/50"
-                              onClick={() => {
-                                setSesionEditando(sesion);
-                                setVista("editar-sesion");
-                              }}
-                              type="button"
-                            >
-                              <Pencil className="h-3.5 w-3.5" />
-                              Editar sesión
-                            </button>
-                          </div>
-                          <SesionDetalle sesion={sesion} />
-                        </div>
-                      ) : null}
-                    </div>
-                  );
-                })}
+                {sesiones.map(renderSesion)}
               </div>
             )}
           </SectionCard>
         </div>
 
         <aside className="grid content-start gap-4">
-          <SectionCard title="Hoja de datos y consentimiento">
+          <SectionCard
+            plegable={{
+              id: "datos",
+              resumen: consentimientos.length || paciente.consentimientoAceptadoAt ? "consentimiento firmado" : "sin consentimiento",
+            }}
+            title="Hoja de datos y consentimiento"
+          >
             <label className="mb-3 flex items-start gap-2 border-b border-white/10 pb-3 text-sm text-slate-200">
               <input
                 checked={paciente.esMenor}
@@ -552,7 +582,10 @@ export function PacienteExpediente({
             />
           </SectionCard>
 
-          <SectionCard title="Pago de la consulta">
+          <SectionCard
+            plegable={{ id: "pago", resumen: citasSinPagar.length ? `${citasSinPagar.length} sin pagar` : "al día" }}
+            title="Pago de la consulta"
+          >
             <div className="grid gap-2">
               <TarifaEditor
                 key={`${paciente.tarifa}-${paciente.tarifaMoneda}`}
@@ -577,7 +610,10 @@ export function PacienteExpediente({
             </div>
           </SectionCard>
 
-          <SectionCard title="Compromisos y tareas pendientes">
+          <SectionCard
+            plegable={{ id: "compromisos", resumen: compromisos.length ? `${compromisos.length} pendiente${compromisos.length === 1 ? "" : "s"}` : "ninguno", abierta: compromisos.length > 0 }}
+            title="Compromisos y tareas pendientes"
+          >
             {compromisos.length === 0 ? (
               <p className="text-sm text-slate-400">Sin pendientes.</p>
             ) : (
@@ -597,7 +633,7 @@ export function PacienteExpediente({
             )}
           </SectionCard>
 
-          <SectionCard title="Situación familiar y laboral">
+          <SectionCard plegable={{ id: "situacion" }} title="Situación familiar y laboral">
             <div className="grid gap-3">
               <DatoFicha label="¿En qué trabaja?" value={paciente.ocupacion} />
               <DatoFicha label="Horario de trabajo" value={paciente.horarioTrabajo} />
@@ -643,7 +679,7 @@ export function PacienteExpediente({
             </div>
           </SectionCard>
 
-          <SectionCard title="Ficha clínica">
+          <SectionCard plegable={{ id: "ficha", resumen: paciente.motivoConsulta ? paciente.motivoConsulta.slice(0, 60) : undefined }} title="Ficha clínica">
             <div className="grid gap-3">
               <DatoFicha label="Motivo de consulta" value={paciente.motivoConsulta} />
               <DatoFicha label="Antecedentes psicológicos" value={paciente.antecedentesPsicologicos} />

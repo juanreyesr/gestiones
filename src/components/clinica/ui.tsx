@@ -2,6 +2,7 @@
 
 import type React from "react";
 import type { CitaEstado, PacienteEstado, SolicitudEstado } from "@/lib/clinica/types";
+import { SeccionPlegable, type PlegableProps } from "./seccion-plegable";
 
 export const BTN_PRIMARY =
   "inline-flex items-center gap-2 bg-amber-300 px-4 py-2 text-sm font-bold text-slate-950 transition hover:bg-amber-200 disabled:opacity-60";
@@ -24,12 +25,22 @@ export function Field({ children, label }: { children: React.ReactNode; label: s
 export function SectionCard({
   action,
   children,
+  plegable,
   title,
 }: {
   action?: React.ReactNode;
   children: React.ReactNode;
+  /** Si se indica, la sección se puede plegar (ver seccion-plegable.tsx). */
+  plegable?: PlegableProps;
   title: string;
 }) {
+  if (plegable) {
+    return (
+      <SeccionPlegable {...plegable} action={action} title={title}>
+        {children}
+      </SeccionPlegable>
+    );
+  }
   return (
     <section className="border border-white/10 bg-white/6 p-4">
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">

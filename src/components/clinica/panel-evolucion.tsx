@@ -152,7 +152,13 @@ export function PanelEvolucion({ pacienteId, sesiones }: { pacienteId: string; s
   const visibles = verTodas ? series : conMasDeUna.length ? conMasDeUna : series;
 
   return (
-    <SectionCard title="Evolución del paciente">
+    <SectionCard
+      plegable={{
+        id: "evolucion",
+        resumen: `${series.length} escala${series.length === 1 ? "" : "s"}${resumen.global ? ` · ${TENDENCIA[resumen.global].texto.toLowerCase()}` : ""}`,
+      }}
+      title="Evolución del paciente"
+    >
       <div className="grid gap-4" data-testid="panel-evolucion">
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
           {[

@@ -47,7 +47,7 @@ export function PlanTratamiento({ onCambio, sesiones }: { onCambio: () => void; 
 
   if (items.length === 0) {
     return (
-      <SectionCard title="Plan de tratamiento">
+      <SectionCard plegable={{ id: "plan", resumen: "sin propuestas" }} title="Plan de tratamiento">
         <p className="text-sm leading-6 text-slate-400">
           Aún no hay propuestas guardadas. Al cerrar una sesión usa «Sugerir seguimiento y técnicas (IA)» y deja
           marcadas las propuestas que quieras incluir en el plan.
@@ -147,6 +147,7 @@ export function PlanTratamiento({ onCambio, sesiones }: { onCambio: () => void; 
           {aplicadas.length} de {items.length - descartadas.length} aplicadas
         </span>
       }
+      plegable={{ id: "plan", resumen: `${pendientes.length} pendiente${pendientes.length === 1 ? "" : "s"} · ${aplicadas.length} aplicada${aplicadas.length === 1 ? "" : "s"}` }}
       title="Plan de tratamiento"
     >
       <div className="grid gap-3">

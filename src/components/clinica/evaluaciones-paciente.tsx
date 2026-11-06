@@ -41,6 +41,9 @@ import {
   eliminarSeguimiento,
   fechaEnDias,
   fetchSeguimientos,
+  atencionDe,
+  fetchInformesDeRespuestas,
+  type InformeRow,
   type SeguimientoRow,
   cambiarEstadoEvaluacion,
   eliminarEvaluacion,
@@ -56,6 +59,8 @@ import { datosEapi, InformeEapi } from "./informe-eapi";
 import { InformeFrame } from "./informe-frame";
 import { datosRiasec, InformeRiasec } from "./informe-riasec";
 import { datosValores, InformeValores } from "./informe-valores";
+import { AlarmaAtencion } from "./alarma-atencion";
+import { EVENTO_ABRIR_RESPUESTA, EVENTO_EVALUACIONES_CAMBIO } from "./seccion-plegable";
 import { NotasPrivadas } from "./notas-privadas";
 import { BTN_ACCENT, BTN_DANGER, BTN_GHOST, Field, SectionCard } from "./ui";
 
@@ -123,12 +128,16 @@ export function EvaluacionesPaciente({ paciente }: { paciente: PacienteRow }) {
   // Seguimiento programado: 0 = no repetir.
   const [repetirDias, setRepetirDias] = useState(0);
   const [seguimientos, setSeguimientos] = useState<SeguimientoRow[]>([]);
+  // Informes por respuesta (para saber si su alarma ya se atendió).
+  const [informes, setInformes] = useState<Record<string, InformeRow>>({});
 
   const cargar = useCallback(async () => {
     setCargando(true);
     const [r, segs] = await Promise.all([fetchEvaluacionesDePaciente(paciente.id), fetchSeguimientos(paciente.id)]);
     setCargando(false);
     setSeguimientos(segs);
+    setInformes(await fetchInformesDeRespuestas(r.respuestas.map((x) => x.id)));
+    window.dispatchEvent(new CustomEvent(EVENTO_EVALUACIONES_CAMBIO));
     setEvaluaciones(r.evaluaciones);
     setRespuestas(r.respuestas);
     setError(r.error ?? "");
@@ -138,6 +147,23 @@ export function EvaluacionesPaciente({ paciente }: { paciente: PacienteRow }) {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- initial data load on mount
     void cargar();
   }, [cargar]);
+
+  // Si se atiende una alarma desde «Antes de la próxima sesión», se actualizan los distintivos.
+  useEffect(() => {
+    const alCambiar = (e: Event) => {
+      if ((e as CustomEvent<string>).detail !== "alarma") return;
+      void fetchInformesDeRespuestas(respuestas.map((x) => x.id)).then(setInformes);
+    };
+    window.addEventListener(EVENTO_EVALUACIONES_CAMBIO, alCambiar);
+    return () => window.removeEventListener(EVENTO_EVALUACIONES_CAMBIO, alCambiar);
+  }, [respuestas]);
+
+  // «Antes de la próxima sesión» puede abrir directamente el informe de una respuesta.
+  useEffect(() => {
+    const abrir = (e: Event) => setVista({ tipo: "informe", respuestaId: (e as CustomEvent<string>).detail });
+    window.addEventListener(EVENTO_ABRIR_RESPUESTA, abrir);
+    return () => window.removeEventListener(EVENTO_ABRIR_RESPUESTA, abrir);
+  }, []);
 
   const urlDe = (ev: EvaluacionRow) => urlPublica(`/evaluacion/${ev.token}`);
   const usadasDe = (ev: EvaluacionRow) => respuestas.filter((r) => r.evaluacionId === ev.id).length;
@@ -245,11 +271,18 @@ export function EvaluacionesPaciente({ paciente }: { paciente: PacienteRow }) {
     setTimeout(() => setAviso(""), 8000);
   };
 
+  const enlacesAbiertos = evaluaciones.filter((ev) => ev.estado === "abierta").length;
+
   if (vista.tipo === "informe") {
     const actual = respuestas.find((r) => r.id === vista.respuestaId);
     const original = actual ? evaluaciones.find((ev) => ev.id === actual.evaluacionId) : undefined;
     return (
       <InformeRespuesta
+        informe={actual ? informes[actual.id] : undefined}
+        onAlarma={(inf) => {
+          if (actual && inf) setInformes((prev) => ({ ...prev, [actual.id]: inf }));
+          window.dispatchEvent(new CustomEvent(EVENTO_EVALUACIONES_CAMBIO, { detail: "informe" }));
+        }}
         onProgramar={
           actual
             ? (cadaDias: number) =>
@@ -296,7 +329,17 @@ export function EvaluacionesPaciente({ paciente }: { paciente: PacienteRow }) {
           Asignar evaluación
         </button>
       }
-      title={`Evaluaciones y formularios (${respuestas.length})`}
+      plegable={{
+        id: "evaluaciones",
+        resumen: [
+          `${respuestas.length} respuesta${respuestas.length === 1 ? "" : "s"}`,
+          enlacesAbiertos ? `${enlacesAbiertos} enlace${enlacesAbiertos === 1 ? "" : "s"} sin responder` : "",
+          seguimientos.filter((sg) => sg.activo).length ? `${seguimientos.filter((sg) => sg.activo).length} seguimiento(s)` : "",
+        ]
+          .filter(Boolean)
+          .join(" · "),
+      }}
+      title="Evaluaciones y formularios"
     >
       {error ? <div className="mb-3 border border-red-400/40 bg-red-400/10 p-3 text-sm text-red-200">{error}</div> : null}
       {aviso ? <div className="mb-3 break-all border border-emerald-300/30 bg-emerald-300/10 p-3 text-sm text-emerald-200">{aviso}</div> : null}
@@ -666,9 +709,15 @@ export function EvaluacionesPaciente({ paciente }: { paciente: PacienteRow }) {
                 </span>
                 <span className="flex items-center gap-2">
                   {alarma ? (
-                    <span className="inline-flex items-center gap-1 text-xs font-semibold text-red-300">
-                      <AlertTriangle className="h-4 w-4" /> Alarma
-                    </span>
+                    atencionDe(informes[r.id]) ? (
+                      <span className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-300">
+                        <AlertTriangle className="h-4 w-4" /> Alarma atendida
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1 text-xs font-semibold text-red-300">
+                        <AlertTriangle className="h-4 w-4" /> Alarma
+                      </span>
+                    )
                   ) : null}
                   {c ? (
                     <span className="text-sm text-slate-200">
@@ -710,6 +759,8 @@ export function EvaluacionesPaciente({ paciente }: { paciente: PacienteRow }) {
 
 /** Informe de una respuesta con comparación opcional (segundo cuidador y aplicación anterior). */
 function InformeRespuesta({
+  informe,
+  onAlarma,
   onEliminada,
   onNuevaAplicacion,
   onProgramar,
@@ -718,6 +769,8 @@ function InformeRespuesta({
   respuestaId,
   respuestas,
 }: {
+  informe: InformeRow | undefined;
+  onAlarma: (informe: InformeRow | null) => void;
   onEliminada: () => void;
   onNuevaAplicacion?: () => void;
   onProgramar?: (cadaDias: number) => void;
@@ -835,6 +888,8 @@ function InformeRespuesta({
             Eliminar respuesta
           </button>
         </div>
+
+        <AlarmaAtencion informe={informe} onCambio={onAlarma} pacienteId={paciente.id} respuesta={actual} />
 
         {actual.instrumento === "eapi" ? (
           <InformeEapi actual={actual} paciente={paciente} respuestas={respuestas} />
