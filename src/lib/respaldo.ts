@@ -129,7 +129,7 @@ export async function descargarRespaldo(alAvanzar?: (hechas: number, total: numb
     for (let desde = 0; ; desde += POR_PAGINA) {
       const { data, error: e } = await supabase.from(tabla).select("*").range(desde, desde + POR_PAGINA - 1);
       if (e) {
-        error = /does not exist|schema cache/i.test(e.message) ? "La tabla aún no existe (migración pendiente)." : e.message;
+        error = /does not exist|schema cache/i.test(e.message) ? "aún no existe: migración pendiente" : e.message;
         break;
       }
       filas.push(...(data ?? []));
