@@ -162,8 +162,33 @@ caso("E.3 Evolución entre aplicaciones (ítem por ítem y por escala)", () => {
   assert.ok(html.indexOf("Evolución desde") < html.indexOf("Señales de alarma y observaciones"));
   assert.match(html, /<b>MCID<\/b>/);
   const inf = informePacienteEapi(a, opcionesPorDefectoEapi(a), { paciente: "Ana", fechaAplicacion: "2026-11-01", notas: "", profesional: "X", anterior: { datos: p, fecha: "2026-10-01" } });
-  assert.match(inf.destacado.titulo, /hay mejoría/);
+  assert.match(inf.evolucion.titulo, /hay mejoría/);
   assert.match(inf.resultados[0].texto, /Comparado con su evaluación del .*: ha mejorado/);
+  // Evolución robusta: historial de 3 aplicaciones, nivel antes → ahora, preguntas destacadas.
+  const p0 = dec("AEI1-G3333333-D333333333333333333333-P444444444444444-S0"); // primera, la más alta
+  const inf3 = informePacienteEapi(a, opcionesPorDefectoEapi(a), {
+    paciente: "Ana", fechaAplicacion: "2026-11-01", notas: "", profesional: "X",
+    anterior: { datos: p, fecha: "2026-10-01" },
+    historial: [{ datos: p0, fecha: "2026-09-01" }, { datos: p, fecha: "2026-10-01" }],
+  });
+  const evp = inf3.evolucion;
+  assert.equal(evp.fechas.length, 3);
+  const gadF = evp.areas.find((x) => x.area === "Preocupación y nerviosismo");
+  assert.deepEqual(gadF.puntos.map((x) => x.nivel), ["Alto", "Alto", "Alto"]); // 21, 20, 15
+  assert.equal(gadF.tendencia, "mejora");
+  assert.match(gadF.frase, /Bajaron sus molestias, aunque sigue en nivel alto\. Desde su primera evaluación .* se mantiene en el mismo nivel/);
+  const dep = evp.areas.find((x) => x.area === "Estado de ánimo");
+  assert.match(dep.frase, /Pasó de muy alto a moderado desde la evaluación anterior\. Desde su primera evaluación .* pasó de muy alto a moderado, un avance importante/);
+  assert.ok(evp.mejoras.length > 0 && evp.mejoras.length <= 4);
+  assert.match(evp.resumen, /últimas 3 evaluaciones/);
+  // No se citan los ítems de desesperanza (DASS 10 y 21).
+  const D = dec("AEI1-G0000000-D000000000300000000003-P000000000000000-S0");
+  const D0 = dec("AEI1-G0000000-D000000000000000000000-P000000000000000-S0");
+  const infD = informePacienteEapi(D, opcionesPorDefectoEapi(D), { paciente: "A", fechaAplicacion: "2026-11-01", notas: "", profesional: "X", anterior: { datos: D0, fecha: "2026-10-01" } });
+  assert.equal(infD.evolucion.atencion.length, 0);
+  // Se puede quitar del informe.
+  const sinEv = informePacienteEapi(a, { ...opcionesPorDefectoEapi(a), incluir: { ...opcionesPorDefectoEapi(a).incluir, evolucion: false } }, { paciente: "A", fechaAplicacion: "2026-11-01", notas: "", profesional: "X", anterior: { datos: p, fecha: "2026-10-01" } });
+  assert.equal(sinEv.evolucion, undefined);
 });
 
 console.log(`\n${ok}/9 casos correctos (Anexo D + escalas separadas; D.7 se prueba en el navegador).`);

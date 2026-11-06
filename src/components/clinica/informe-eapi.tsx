@@ -161,7 +161,7 @@ export function InformeEapi({
       <NotasPrivadas onCambio={setNotasPrivadas} pacienteId={paciente.id} respuestaId={actual.id} />
       <InformeFrame html={html} textoBoton="Imprimir o guardar PDF (informe profesional)" titulo="Informe EAPI" />
       <InformePacientePanel
-        areas={areasEapi(efectivos)}
+        areas={areasEapi(efectivos, Boolean(ant))}
         avisoAyuda={
           efectivos.safety >= 1 ? (
             <span className="text-xs text-red-300">Marcó la pregunta de seguridad: se recomienda dejar las líneas de ayuda.</span>
@@ -170,6 +170,8 @@ export function InformeEapi({
         construir={(opciones, notas) =>
           informePacienteEapi(efectivos, opciones, {
             anterior: ant ? { datos: ant.datos, fecha: ant.fecha } : null,
+            // Historial para la tendencia: cada aplicación anterior por separado (la más antigua primero).
+            historial: [...previas].reverse().map((r) => ({ datos: datosEapi(r)!, fecha: fechaDe(r) })),
             paciente: paciente.nombre,
             fechaAplicacion: fechaDe(actual),
             notas,

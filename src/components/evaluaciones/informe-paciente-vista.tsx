@@ -1,4 +1,4 @@
-import { LifeBuoy } from "lucide-react";
+import { ArrowDownRight, ArrowRight, ArrowUpRight, LifeBuoy, TrendingUp } from "lucide-react";
 import type { InformePaciente, TonoResultado } from "@/lib/evaluaciones/informe-paciente";
 
 const COLOR: Record<TonoResultado, string> = {
@@ -13,6 +13,12 @@ const fechaLarga = (iso: string) => {
   const [a, m, d] = iso.slice(0, 10).split("-").map(Number);
   return new Date(a, m - 1, d).toLocaleDateString("es-GT", { day: "numeric", month: "long", year: "numeric" });
 };
+
+const TENDENCIA = {
+  mejora: { texto: "Mejoró", clase: "text-emerald-700", Icono: ArrowDownRight },
+  igual: { texto: "Se mantiene", clase: "text-slate-500", Icono: ArrowRight },
+  empeora: { texto: "Aumentó", clase: "text-rose-700", Icono: ArrowUpRight },
+} as const;
 
 /** Informe para el paciente (fondo claro). Lo usan la vista previa del panel y /informe/<token>. */
 export function InformePacienteVista({ informe }: { informe: InformePaciente }) {
@@ -31,6 +37,73 @@ export function InformePacienteVista({ informe }: { informe: InformePaciente }) 
         <section className="grid gap-1 rounded-xl border border-indigo-200 bg-indigo-50 p-4 text-indigo-950">
           <h2 className="text-lg font-semibold">{informe.destacado.titulo}</h2>
           <p className="text-sm leading-6">{informe.destacado.texto}</p>
+        </section>
+      ) : null}
+
+      {informe.evolucion ? (
+        <section className="grid gap-3 rounded-xl border border-indigo-200 bg-indigo-50/60 p-4" data-testid="evolucion-paciente">
+          <h2 className="flex items-center gap-2 text-lg font-semibold text-indigo-950">
+            <TrendingUp className="h-5 w-5" />
+            {informe.evolucion.titulo}
+          </h2>
+          <p className="text-sm leading-6 text-slate-700">{informe.evolucion.resumen}</p>
+          <div className="grid gap-2">
+            {informe.evolucion.areas.map((a) => {
+              const t = TENDENCIA[a.tendencia];
+              const fechas = informe.evolucion!.fechas;
+              return (
+                <div className="grid gap-2 rounded-lg border border-slate-200 bg-white p-3" key={a.area}>
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <h3 className="text-sm font-semibold text-slate-900">{a.area}</h3>
+                    <span className={`inline-flex items-center gap-1 whitespace-nowrap text-sm font-bold ${t.clase}`}>
+                      <t.Icono className="h-4 w-4" />
+                      {t.texto}
+                    </span>
+                  </div>
+                  <ol className="flex flex-wrap items-end gap-x-1 gap-y-2">
+                    {a.puntos.map((p, i) => (
+                      <li className="flex items-end gap-1" key={i}>
+                        {i > 0 ? <span className="pb-1 text-slate-300">→</span> : null}
+                        <span className="grid justify-items-center gap-0.5">
+                          <span className="text-[10px] uppercase tracking-wide text-slate-400">{i === fechas.length - 1 ? "Hoy" : fechas[i]}</span>
+                          {p ? (
+                            <span className={`whitespace-nowrap rounded-full border px-2 py-0.5 text-xs font-semibold ${COLOR[p.tono]}`}>{p.nivel}</span>
+                          ) : (
+                            <span className="px-2 text-xs text-slate-300" title="No se aplicó esa vez">—</span>
+                          )}
+                        </span>
+                      </li>
+                    ))}
+                  </ol>
+                  <p className="text-sm leading-6 text-slate-700">{a.frase}</p>
+                </div>
+              );
+            })}
+          </div>
+          {informe.evolucion.mejoras.length || informe.evolucion.atencion.length ? (
+            <div className="grid gap-3 sm:grid-cols-2">
+              {informe.evolucion.mejoras.length ? (
+                <div className="rounded-lg border border-emerald-200 bg-white p-3">
+                  <h3 className="text-sm font-semibold text-emerald-800">Molestias que más disminuyeron</h3>
+                  <ul className="mt-1 list-disc pl-5 text-sm leading-6 text-slate-700">
+                    {informe.evolucion.mejoras.map((m) => (
+                      <li key={m}>{m}</li>
+                    ))}
+                  </ul>
+                </div>
+              ) : null}
+              {informe.evolucion.atencion.length ? (
+                <div className="rounded-lg border border-amber-200 bg-white p-3">
+                  <h3 className="text-sm font-semibold text-amber-900">Molestias que aumentaron (para seguir trabajando)</h3>
+                  <ul className="mt-1 list-disc pl-5 text-sm leading-6 text-slate-700">
+                    {informe.evolucion.atencion.map((m) => (
+                      <li key={m}>{m}</li>
+                    ))}
+                  </ul>
+                </div>
+              ) : null}
+            </div>
+          ) : null}
         </section>
       ) : null}
 
