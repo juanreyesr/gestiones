@@ -10,11 +10,10 @@ así que las migraciones se acumulan aquí y se aplican **juntas desde la comput
   computadora y aprobar cada ventana de Supabase.
 
 ## Pendientes
-| Migración | Qué habilita | Sin ella |
-| --- | --- | --- |
-| `064_gestionesjj_paciente_documentos.sql` | Documentos del expediente: fotografías, cartas, materiales, tareas, PDF y Word (bucket privado `gestionesjj-pacientes` + tabla de documentos) | La sección «Documentos y archivos» del expediente muestra que falta esta migración; lo demás funciona igual. |
+Ninguna por ahora.
 
 ## Aplicadas
 | Migración | Fecha | Verificación |
 | --- | --- | --- |
 | `063_gestionesjj_evaluacion_seguimientos.sql` | 2026-11-06 | Tabla con 18 columnas, RLS activo con 4 políticas, tarea pg_cron «7 * * * *» activa y secreto del cron presente. |
+| `064_gestionesjj_paciente_documentos.sql` | 2026-11-07 | Bucket privado (20 MB, 9 tipos permitidos) con 4 políticas de Storage; tabla con 14 columnas, RLS activo con 4 políticas y sin acceso anónimo. |
