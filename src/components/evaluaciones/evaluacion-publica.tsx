@@ -72,7 +72,7 @@ export function EvaluacionPublica({ token }: { token: string }) {
           <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-emerald-50">
             <HeartPulse className="h-4 w-4 text-emerald-600" />
           </span>
-          Atención psicológica · Lic. Juan J. Reyes
+          Atención psicológica · M. A. Juan J. Reyes
         </div>
         <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-7">{contenido}</div>
       </div>

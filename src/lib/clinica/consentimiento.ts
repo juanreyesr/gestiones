@@ -63,7 +63,7 @@ export const MARCADORES: { marcador: string; descripcion: string }[] = [
 
 export const PLANTILLA_INICIAL: PlantillaConsentimiento = {
   version: "1",
-  profesional: "Lic. Juan J. Reyes, psicólogo",
+  profesional: "M. A. Juan J. Reyes, psicólogo",
   secciones: [
     {
       titulo: "Naturaleza del servicio",

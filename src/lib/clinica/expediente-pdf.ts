@@ -250,7 +250,7 @@ export async function exportarExpedientePdf(paciente: PacienteRow, sesiones: Ses
       doc.setFont("helvetica", "bold");
       doc.setFontSize(10);
       doc.setTextColor(...INK);
-      doc.text(textoPdf(`Intereses JJR por campo · ${perfil.titulo} · experimental`), MARGIN, y);
+      doc.text(textoPdf(`Intereses JJR por campo · ${perfil.titulo}`), MARGIN, y);
       y += 13;
       doc.setFont("helvetica", "normal");
       doc.setFontSize(8.5);

@@ -1,6 +1,6 @@
 /**
  * Banco de actividades y campos de «Intereses Vocacionales JJR Actualizada»
- * (Lic. Juan J. Reyes). GENERADO desde los documentos fuente
+ * (M. A. Juan J. Reyes). GENERADO desde los documentos fuente
  * (JJR-84 v0.2.0-experimental y banco ampliado JJR-INV-176 v0.3.0-investigación):
  * no editar textos a mano; un cambio de texto exige nueva versión.
  *
@@ -22,6 +22,8 @@ export type ItemJjr = {
   grupo: "ancla" | "candidato" | "exploratorio";
   /** «AB» = en ambas formas (no es una forma adicional). */
   forma: "AB" | "A" | "B";
+  /** Texto del documento fuente cuando el autor ajustó la redacción. */
+  original?: string;
 };
 
 /** Orden fijo de presentación y de informe (14 principales + 6 exploratorias). */
@@ -130,7 +132,7 @@ export const INFO_CAMPOS: Record<CampoPrincipal, { definicion: string; limite: s
     "definicion": "Participar en actividades de prevención, atención y recuperación de la salud de personas.",
     "limite": "No mide aptitud clínica ni tolerancia real a todos los contextos sanitarios.",
     "riasec": "S/I",
-    "rutas": "Medicina, enfermería, nutrición, fisioterapia, terapia ocupacional; formación técnica sanitaria según regulación local."
+    "rutas": "Medicina, enfermería, nutrición, fisioterapia, terapia ocupacional; carreras técnicas en salud."
   },
   "AMB": {
     "definicion": "Trabajar sobre conservación, recursos naturales y formas de producción que reduzcan impactos ambientales.",
@@ -600,11 +602,12 @@ export const BANCO_JJR: readonly ItemJjr[] = [
   {
     "id": "SAL04",
     "campo": "SAL",
-    "actividad": "Acompañar a una persona durante un procedimiento de atención sanitaria.",
+    "actividad": "Acompañar a una persona mientras recibe una curación o un tratamiento en un centro de salud.",
     "origen": "v0.2",
     "faceta": "atención",
     "grupo": "ancla",
-    "forma": "AB"
+    "forma": "AB",
+    "original": "Acompañar a una persona durante un procedimiento de atención sanitaria."
   },
   {
     "id": "AMB04",
@@ -1032,11 +1035,12 @@ export const BANCO_JJR: readonly ItemJjr[] = [
   {
     "id": "SAL07",
     "campo": "SAL",
-    "actividad": "Explicar a una persona cómo prepararse para un procedimiento de salud.",
+    "actividad": "Explicar a una persona cómo prepararse para un examen o un tratamiento médico.",
     "origen": "nuevo_0.3",
     "faceta": "candidato",
     "grupo": "candidato",
-    "forma": "A"
+    "forma": "A",
+    "original": "Explicar a una persona cómo prepararse para un procedimiento de salud."
   },
   {
     "id": "SAL08",

@@ -393,11 +393,6 @@ export function EvaluacionesPaciente({ paciente }: { paciente: PacienteRow }) {
               </p>
             ) : null;
           })()}
-          {instrumentoPorId(instrumento)?.experimental ? (
-            <p className="text-xs text-amber-300">
-              Instrumento experimental: solo pilotaje con consentimiento; los resultados se rotulan como experimentales y no deciden una carrera.
-            </p>
-          ) : null}
           {instrumentoPorId(instrumento)?.responde === "cuidador" && !paciente.esMenor ? (
             <p className="text-xs text-amber-300">
               Este instrumento lo responden los padres o cuidadores. El paciente no está marcado como menor de edad.

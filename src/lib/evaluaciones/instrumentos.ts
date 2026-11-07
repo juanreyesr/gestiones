@@ -27,8 +27,6 @@ export type Instrumento = {
   tituloPublico?: string;
   /** Tiene informe para enviar al paciente (con notas del psicólogo). */
   informePaciente?: boolean;
-  /** Instrumento en desarrollo: resultados experimentales, solo pilotaje con consentimiento. */
-  experimental?: boolean;
   /** Edad mínima propuesta (se avisa al asignar si el paciente es menor). */
   edadMinima?: number;
 };
@@ -74,26 +72,24 @@ export const INSTRUMENTOS: readonly Instrumento[] = [
   },
   {
     id: "jjr84",
-    nombre: "Intereses Vocacionales JJR Actualizada (JJR-84) · experimental",
+    nombre: "Intereses Vocacionales JJR Actualizada (JJR-84)",
     descripcion:
-      "Instrumento propio en desarrollo (v0.2.0-experimental): 84 actividades, 14 campos × 6 (ingeniería y oficios, ciencia, salud, ambiente, software, datos e IA, educación, comunidad, negocios, operaciones, comunicación, diseño, música, derecho). Respuesta 0–4 o «no comprendo». Perfil por campo en orden fijo con media y cobertura, sin baremos, sin top 3 ni código Holland. Solo pilotaje con consentimiento; desde 16 años.",
+      "Instrumento propio (v0.2): 84 actividades, 14 campos × 6 (ingeniería y oficios, ciencia, salud, ambiente, software, datos e IA, educación, comunidad, negocios, operaciones, comunicación, diseño, música, derecho). Respuesta 0–4 o «no comprendo». Informe con las áreas de mayor a menor inclinación, gráfica de barras, actividades que más le gustaron y rutas para conocer; informe al paciente listo para enviar. Desde 16 años.",
     responde: "paciente",
     respuestasPorDefecto: 1,
     tituloPublico: "Cuestionario de intereses vocacionales JJR",
     informePaciente: true,
-    experimental: true,
     edadMinima: 16,
   },
   {
     id: "jjr176",
-    nombre: "Intereses Vocacionales JJR, banco ampliado de investigación (JJR-INV-176) · experimental",
+    nombre: "Intereses Vocacionales JJR, banco ampliado de investigación (JJR-INV-176)",
     descripcion:
-      "Versión de investigación (v0.3.0): forma A o B de 130 actividades (84 anclas de JJR-84 + 28 candidatos + 18 de áreas exploratorias: turismo y hospitalidad, deporte, artes escénicas, animales, servicios personales, agropecuaria). Solo las anclas puntúan; candidatos y áreas exploratorias se muestran como respuestas para conversar. Protocolo separado de JJR-84: no se comparan entre sí. Solo pilotaje supervisado; desde 16 años.",
+      "Versión de investigación (v0.3.0): forma A o B de 130 actividades (84 anclas de JJR-84 + 28 candidatos + 18 de áreas exploratorias: turismo y hospitalidad, deporte, artes escénicas, animales, servicios personales, agropecuaria). Solo las anclas puntúan; candidatos y áreas exploratorias se muestran como respuestas para conversar. Mismo informe ordenado por inclinación que JJR-84; protocolo separado (no se comparan entre sí). Desde 16 años.",
     responde: "paciente",
     respuestasPorDefecto: 1,
     tituloPublico: "Cuestionario de intereses vocacionales JJR",
     informePaciente: true,
-    experimental: true,
     edadMinima: 16,
   },
 ];

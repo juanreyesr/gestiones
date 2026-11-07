@@ -13,7 +13,7 @@ import { urlPublica } from "@/lib/url-publica";
 import { IconoWhatsApp } from "./boton-whatsapp-paciente";
 import { BTN_ACCENT, BTN_DANGER, BTN_GHOST, Field } from "./ui";
 
-export const PROFESIONAL_INFORME = "Lic. Juan J. Reyes, psicólogo";
+export const PROFESIONAL_INFORME = "M. A. Juan J. Reyes, psicólogo";
 
 function leerOpciones(valor: Record<string, unknown>, porDefecto: OpcionesInforme): OpcionesInforme {
   const o = valor as Partial<OpcionesInforme>;

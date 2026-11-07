@@ -1,14 +1,15 @@
 /** Informe profesional de Intereses Vocacionales JJR (HTML autónomo, imprimible). Solo panel. */
-import { BANCO_JJR, CAMPOS_PRINCIPALES, INFO_CAMPOS, NOMBRES_CAMPOS } from "./banco";
+import { BANCO_JJR, INFO_CAMPOS, NOMBRES_CAMPOS } from "./banco";
 import {
   calificarJjr,
+  camposPrincipales,
   JJR_CONTRASTE,
-  JJR_ENCABEZADO,
   mediaTexto,
+  ordenPorInteres,
   seguimientoJjr,
   type CalificacionJjr,
 } from "./calificacion";
-import { JJR_ESCALA, JJR_PREGUNTAS_ABIERTAS, type JjrDatos } from "./codigo";
+import { JJR_ESCALA, JJR_PREGUNTAS_ABIERTAS, versionVisible, type JjrDatos } from "./codigo";
 
 export type AplicacionJjr = { datos: JjrDatos; nombre: string; fecha: string; edad?: number | null };
 /** Resultado RIASEC del mismo paciente (solo para contrastar hipótesis; no se convierte). */
@@ -39,9 +40,10 @@ export function informeJjrHtml(a: AplicacionJjr, anterior?: AplicacionJjr | null
   const titulo = investigacion
     ? `Intereses Vocacionales JJR Actualizada · banco ampliado de investigación (${a.datos.instrumento}, forma ${a.datos.forma})`
     : `Intereses Vocacionales JJR Actualizada (${a.datos.instrumento})`;
-  let html = `<div class="exp"><strong>Experimental.</strong> ${esc(JJR_ENCABEZADO)}</div>
-<h1>Informe · ${esc(titulo)}</h1>
-<p class="muted">Respondió: <strong>${esc(a.nombre || "—")}</strong>${a.edad ? ` · Edad: ${a.edad}` : ""} · Fecha: ${esc(fechaLarga(a.fecha))} · Versión ${esc(a.datos.version)} · Orden ${esc(a.datos.orden_id)} · Modo ${esc(a.datos.modo)} · Idioma ${esc(a.datos.idioma)}</p>`;
+  const orden = ordenPorInteres(c.campos);
+  const principales = camposPrincipales(c.campos);
+  let html = `<h1>Informe · ${esc(titulo)}</h1>
+<p class="muted">Respondió: <strong>${esc(a.nombre || "—")}</strong>${a.edad ? ` · Edad: ${a.edad}` : ""} · Fecha: ${esc(fechaLarga(a.fecha))} · Versión ${esc(versionVisible(a.datos.version))}</p>`;
   if (a.edad !== null && a.edad !== undefined && a.edad < 16)
     html += `<div class="flag regla"><b>!</b> La población propuesta para el pilotaje es de 16 años o más; esta aplicación queda fuera de ese rango y requiere revisión específica.</div>`;
   html += `<div class="kpi">
@@ -50,16 +52,17 @@ export function informeJjrHtml(a: AplicacionJjr, anterior?: AplicacionJjr | null
   <div><div class="v">${c.conteo.omitidas}</div><div class="l">Sin respuesta</div></div>
   <div><div class="v" style="font-size:16px">${c.perfilCompleto ? "Perfil completo" : "Perfil incompleto"}</div><div class="l">${investigacion ? (c.protocoloFormaCompleto ? "Forma completa (130 numéricas)" : "Forma incompleta") : "14 campos × 6 anclas"}</div></div>
 </div>
-<h2>Perfil por campo (orden fijo, sin ranking)</h2>
+${principales.length ? `<div class="tipo"><h3>${principales.length > 1 ? "Mayores inclinaciones (empate)" : "Mayor inclinación"}: ${principales.map((k) => `${esc(k.campo)} ${esc(k.nombre)}`).join(" · ")} <small>(media ${mediaTexto(principales[0].media)})</small></h3><p class="muted">Siguen: ${orden.filter((k) => k.media !== null && !principales.includes(k)).slice(0, 3).map((k) => `${esc(k.nombre)} (${mediaTexto(k.media)})`).join(" · ") || "—"}</p></div>` : ""}
+<h2>Perfil por campo (de mayor a menor interés)</h2>
 <table><thead><tr><th>Campo</th><th>Media 0–4</th><th>Respondidas</th><th>NC</th><th>Omit.</th><th>Estado</th></tr></thead><tbody>
-${c.campos
+${orden
   .map(
     (k) =>
-      `<tr><td><strong>${esc(k.campo)}</strong> ${esc(k.nombre)}</td><td>${k.estado === "insuficiente" ? "—" : `${mediaTexto(k.media)}${k.estado === "parcial" ? " <em>(parcial)</em>" : ""}<div class="bar"><i style="width:${(k.indice ?? 0).toFixed(1)}%;background:${k.estado === "parcial" ? "#94a3b8" : "#0d9488"}"></i></div>`}</td><td>${k.n_validas}/6</td><td>${k.n_no_comprende}</td><td>${k.n_omitidas}</td><td>${esc(ESTADO[k.estado])}</td></tr>`
+      `<tr${principales.includes(k) ? ' class="top"' : ""}><td><strong>${esc(k.campo)}</strong> ${esc(k.nombre)}</td><td>${k.estado === "insuficiente" ? "—" : `${mediaTexto(k.media)}${k.estado === "parcial" ? " <em>(parcial)</em>" : ""}<div class="bar"><i style="width:${(k.indice ?? 0).toFixed(1)}%;background:${k.estado === "parcial" ? "#94a3b8" : "#0d9488"}"></i></div>`}</td><td>${k.n_validas}/6</td><td>${k.n_no_comprende}</td><td>${k.n_omitidas}</td><td>${esc(ESTADO[k.estado])}</td></tr>`
   )
   .join("")}
 </tbody></table>
-<p class="muted">Media = promedio de las respuestas a las 6 actividades ancla del campo (0 «No me gustaría nada» … 4 «Me gustaría mucho»). Con 5 respuestas se muestra rotulada como parcial; con 4 o menos no se calcula. Una media de 3 significa respuestas próximas a «bastante», no interés alto respecto a otras personas: no hay normas, percentiles ni puntos de corte. No interpretar diferencias pequeñas entre campos como preferencias firmes (no hay error de medida estimado). Sin código tipo Holland, puntaje total ni compatibilidad con carreras.</p>
+<p class="muted">Media = promedio de las respuestas a las 6 actividades ancla del campo (0 «No me gustaría nada» … 4 «Me gustaría mucho»). Con 5 respuestas se muestra rotulada como parcial; con 4 o menos no se calcula (va al final). Una media de 3 significa respuestas próximas a «bastante»; no hay normas ni percentiles, así que las diferencias pequeñas entre campos conviene explorarlas en sesión.</p>
 <h2>Observaciones</h2>`;
   const obs: string[] = [];
   if (!c.perfilCompleto) obs.push(`<div class="flag neutra"><b>•</b> Perfil incompleto: ${c.campos.filter((k) => k.estado !== "completo").map((k) => `${k.campo} (${k.estado})`).join(", ")}. Revisar con la persona las actividades no comprendidas o sin responder antes de interpretar el conjunto; no significa falta de vocación.</div>`);
@@ -69,8 +72,8 @@ ${c.campos
 
   html += `<h2>Campos: definición, límite y rutas ilustrativas</h2>
 <p class="muted">Propuestas editoriales del instrumento. Las letras RIASEC (Realista, Investigador, Artístico, Social, Emprendedor, Convencional) son hipótesis de relación conceptual para revisión, no puntuaciones convertibles.${riasec ? ` Código RIASEC del paciente (${esc(fechaLarga(riasec.fecha))}): <strong>${esc(riasec.codigo)}</strong>; se marca solo dónde coincide la hipótesis, sin convertir resultados.` : ""}</p>
-${CAMPOS_PRINCIPALES.map((campo) => {
-  const k = c.campos.find((x) => x.campo === campo)!;
+${orden.map((k) => {
+  const campo = k.campo;
   const info = INFO_CAMPOS[campo];
   const coinc = riasec ? coincidenciaRiasec(info.riasec, riasec.codigo) : [];
   return `<div class="tipo"><h3>${esc(campo)} · ${esc(NOMBRES_CAMPOS[campo].nombre)} <small>(media ${mediaTexto(k.media)} · ${k.n_validas}/6)</small></h3><p>${esc(info.definicion)}</p><p class="muted"><strong>Límite:</strong> ${esc(info.limite)} · <strong>Relación conceptual:</strong> ${esc(info.riasec)}${riasec ? (coinc.length ? ` (coincide con ${coinc.join(", ")} de su código)` : " (sin coincidencia con su código)") : ""}</p><p class="muted"><strong>Rutas ilustrativas:</strong> ${esc(info.rutas)}</p></div>`;
@@ -81,7 +84,7 @@ ${CAMPOS_PRINCIPALES.map((campo) => {
     const ca = calificarJjr(anterior.datos);
     const s = seguimientoJjr(c, ca);
     html += `<h2>Seguimiento: aplicación anterior del mismo protocolo</h2>
-<p class="muted">Anterior: ${esc(fechaLarga(anterior.fecha))} · misma versión (${esc(anterior.datos.version)})${investigacion ? ` y forma ${esc(anterior.datos.forma)}` : ""}. Comparación descriptiva: sin error de medida estimado, ningún cambio se califica como real.</p>
+<p class="muted">Anterior: ${esc(fechaLarga(anterior.fecha))} · misma versión (${esc(versionVisible(anterior.datos.version))})${investigacion ? ` y forma ${esc(anterior.datos.forma)}` : ""}. Comparación descriptiva: sin error de medida estimado, ningún cambio se califica como real.</p>
 <table><thead><tr><th>Campo</th><th>Antes</th><th>Ahora</th><th>Diferencia</th></tr></thead><tbody>
 ${s.map((f) => `<tr><td>${esc(f.campo)} ${esc(f.nombre)}</td><td>${mediaTexto(f.antes)}</td><td>${mediaTexto(f.ahora)}</td><td>${f.cambio === null ? "—" : `${f.cambio > 0 ? "+" : ""}${f.cambio.toFixed(2).replace(".", ",")}`}</td></tr>`).join("")}
 </tbody></table>`;
@@ -112,7 +115,7 @@ ${a.datos.orden_ids
   if (a.datos.abiertas.otras) html += `<h2>${esc(JJR_PREGUNTAS_ABIERTAS.otras)} <small class="muted">(no puntúa)</small></h2><p class="cita">${esc(a.datos.abiertas.otras)}</p>`;
   if (a.datos.abiertas.noConocia) html += `<h2>${esc(JJR_PREGUNTAS_ABIERTAS.noConocia)} <small class="muted">(no puntúa)</small></h2><p class="cita">${esc(a.datos.abiertas.noConocia)}</p>`;
   if (notasPrivadas.trim()) html += `<h2>Notas del profesional</h2><p class="cita">${esc(notasPrivadas)}</p>`;
-  html += `<p class="aviso">Instrumento original en desarrollo (Lic. Juan J. Reyes), inspirado en la finalidad de los inventarios de intereses clásicos; no es el inventario de Thurstone ni una adaptación oficial y no hereda sus normas. Sin participantes, coeficientes, baremos ni validez demostrada. No usar para selección, diagnóstico, admisión, exclusión ni para recomendar una única carrera. Uso: pilotaje con consentimiento y devolución supervisada. NC = «no comprendo la actividad» y «sin respuesta» = omisión: ninguna puntúa ni se imputa.</p>`;
+  html += `<p class="aviso">Instrumento original (M. A. Juan J. Reyes), inspirado en la finalidad de los inventarios de intereses clásicos; no es el inventario de Thurstone ni una adaptación oficial y no usa sus normas. Describe intereses, no aptitudes. NC = «no comprendo la actividad» y «sin respuesta» = omisión: ninguna puntúa ni se imputa.</p>`;
 
   return `<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Intereses JJR · ${esc(a.nombre)}</title>
@@ -122,7 +125,7 @@ h1{font-size:20px;margin:0 0 4px}h2{font-size:15px;margin:22px 0 8px;padding-top
 .muted{color:#64748b;font-size:12.5px}table{width:100%;border-collapse:collapse;font-size:13px}th,td{text-align:left;padding:6px;border-bottom:1px solid #e2e8f0;vertical-align:top}
 th{font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:#64748b}td.grupo{background:#f1f5f9;font-weight:600;font-size:12px}
 .bar{height:7px;background:#f1f5f9;border-radius:99px;overflow:hidden;margin-top:4px}.bar i{display:block;height:100%}
-.exp{background:#fef3c7;border:1px solid #fcd34d;color:#78350f;padding:10px 12px;border-radius:8px;margin-bottom:14px;font-size:13px}
+tr.top td{background:#f0fdfa}
 .flag{padding:9px 12px;border-radius:8px;margin:6px 0;font-size:13px;border:1px solid #e2e8f0}
 .flag.regla{background:#fef3c7;border-color:#fcd34d;color:#78350f}.flag.ok{background:#f0fdf4;border-color:#bbf7d0}.flag.neutra{background:#f0f9ff;border-color:#bae6fd}
 .kpi{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;margin:14px 0}.kpi>div{background:#f8fafc;border-radius:8px;padding:10px}

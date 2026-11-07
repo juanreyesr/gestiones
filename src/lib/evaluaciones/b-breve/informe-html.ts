@@ -123,7 +123,7 @@ ${x.datos.extra ? `<div class="sub">Comentarios adicionales</div><p class="cita"
   }
 
   if (notasPrivadas.trim()) html += `<h2>Notas del profesional</h2><p class="cita">${esc(notasPrivadas)}</p>`;
-  html += `<p class="aviso">${esc(B_BREVE_AVISO_INFORME)} Fuente: sección 10.2 de "Polidipsia psicógena infantil: guía para el psicólogo" (Lic. Juan J. Reyes).</p>`;
+  html += `<p class="aviso">${esc(B_BREVE_AVISO_INFORME)} Fuente: sección 10.2 de "Polidipsia psicógena infantil: guía para el psicólogo" (M. A. Juan J. Reyes).</p>`;
 
   return `<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>B-Breve · ${esc(a.datos.ref || a.nombre)}</title>

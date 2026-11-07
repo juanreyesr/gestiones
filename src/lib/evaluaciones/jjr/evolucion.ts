@@ -8,7 +8,7 @@
 import type { EvaluacionRespuestaRow } from "../evaluaciones";
 import { CAMPOS_PRINCIPALES, NOMBRES_CAMPOS, type CampoPrincipal } from "./banco";
 import { calificarJjr, type EstadoCampo } from "./calificacion";
-import { datosJjrGuardados } from "./codigo";
+import { datosJjrGuardados, versionVisible } from "./codigo";
 
 export type AplicacionPerfil = { fecha: string; respuestaId: string; perfilCompleto: boolean };
 export type PerfilJjrEnElTiempo = {
@@ -31,7 +31,7 @@ export function perfilesJjr(respuestas: EvaluacionRespuestaRow[], maximo = 3): P
     const d = datosJjrGuardados(r.datos);
     if (!d) continue;
     const clave = `${d.instrumento}|${d.version}|${d.forma ?? ""}`;
-    const titulo = `${d.instrumento}${d.forma ? ` · forma ${d.forma}` : ""} (v${d.version})`;
+    const titulo = `${d.instrumento}${d.forma ? ` · forma ${d.forma}` : ""} (v${versionVisible(d.version)})`;
     if (!grupos.has(clave)) grupos.set(clave, { titulo, filas: [] });
     grupos.get(clave)!.filas.push({ r, c: calificarJjr(d) });
   }

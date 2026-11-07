@@ -1,5 +1,5 @@
 import { ArrowDownRight, ArrowRight, ArrowUpRight, LifeBuoy, TrendingUp } from "lucide-react";
-import type { InformePaciente, TonoResultado } from "@/lib/evaluaciones/informe-paciente";
+import type { GraficaPaciente, InformePaciente, TonoResultado } from "@/lib/evaluaciones/informe-paciente";
 
 const COLOR: Record<TonoResultado, string> = {
   bien: "border-emerald-200 bg-emerald-50 text-emerald-800",
@@ -39,6 +39,8 @@ export function InformePacienteVista({ informe }: { informe: InformePaciente }) 
           <p className="text-sm leading-6">{informe.destacado.texto}</p>
         </section>
       ) : null}
+
+      {informe.grafica ? <GraficaBarras grafica={informe.grafica} /> : null}
 
       {informe.evolucion ? (
         <section className="grid gap-3 rounded-xl border border-indigo-200 bg-indigo-50/60 p-4" data-testid="evolucion-paciente">
@@ -119,7 +121,7 @@ export function InformePacienteVista({ informe }: { informe: InformePaciente }) 
                 </span>
               </div>
               <p className="text-xs uppercase tracking-wide text-slate-400">{r.periodo}</p>
-              <p className="whitespace-pre-line text-sm leading-6">{r.texto}</p>
+              <TextoResultado texto={r.texto} />
             </div>
           ))}
         </section>
@@ -148,5 +150,63 @@ export function InformePacienteVista({ informe }: { informe: InformePaciente }) 
 
       <p className="border-t border-slate-100 pt-3 text-xs leading-5 text-slate-400">{informe.aviso}</p>
     </article>
+  );
+}
+
+/** Barras horizontales de un solo tono (la más alta, resaltada), con el valor escrito al lado. */
+function GraficaBarras({ grafica }: { grafica: GraficaPaciente }) {
+  return (
+    <section className="grid gap-3 rounded-xl border border-slate-200 p-4" data-corte data-testid="grafica-paciente">
+      <h2 className="text-base font-semibold text-slate-900">{grafica.titulo}</h2>
+      <div className="grid gap-2" role="list">
+        {grafica.barras.map((b) => (
+          <div
+            aria-label={`${b.etiqueta}: ${b.texto}`}
+            className="grid grid-cols-[minmax(0,10rem)_1fr_auto] items-center gap-2 sm:grid-cols-[minmax(0,14rem)_1fr_auto]"
+            key={b.etiqueta}
+            role="listitem"
+          >
+            <span className={`text-xs leading-tight ${b.destacada ? "font-semibold text-slate-900" : "text-slate-600"}`}>{b.etiqueta}</span>
+            <span className="relative h-3 rounded-full bg-slate-100">
+              {b.valor !== null ? (
+                <span
+                  className={`absolute inset-y-0 left-0 rounded-full ${b.destacada ? "bg-teal-700" : "bg-teal-500"}`}
+                  style={{ width: `${Math.max(2, (b.valor / grafica.max) * 100)}%` }}
+                />
+              ) : null}
+            </span>
+            <span className={`whitespace-nowrap text-right text-xs ${b.destacada ? "font-bold text-slate-900" : "text-slate-600"}`}>{b.texto}</span>
+          </div>
+        ))}
+      </div>
+      {grafica.escala ? (
+        <p className="text-[11px] leading-5 text-slate-500">{grafica.escala.map((e, i) => `${i} = ${e}`).join(" · ")}</p>
+      ) : null}
+      {grafica.nota ? <p className="text-xs leading-5 text-slate-500">{grafica.nota}</p> : null}
+    </section>
+  );
+}
+
+/** Texto de un resultado: párrafos separados por línea en blanco y viñetas «• » como lista. */
+function TextoResultado({ texto }: { texto: string }) {
+  return (
+    <div className="grid gap-2 text-sm leading-6">
+      {texto.split(/\n\s*\n/).map((parrafo, i) => {
+        const lineas = parrafo.split("\n");
+        const vinetas = lineas.filter((l) => l.startsWith("• "));
+        if (!vinetas.length) return <p className="whitespace-pre-line" key={i}>{parrafo}</p>;
+        const encabezado = lineas.filter((l) => !l.startsWith("• ")).join(" ");
+        return (
+          <div key={i}>
+            {encabezado ? <p>{encabezado}</p> : null}
+            <ul className="list-disc pl-5">
+              {vinetas.map((v) => (
+                <li key={v}>{v.slice(2)}</li>
+              ))}
+            </ul>
+          </div>
+        );
+      })}
+    </div>
   );
 }

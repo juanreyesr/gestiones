@@ -66,7 +66,7 @@ export function InformeRiasec({
         </Field>
       ) : null}
       <NotasPrivadas onCambio={setNotasPrivadas} pacienteId={paciente.id} respuestaId={actual.id} />
-      <InformeFrame html={html} textoBoton="Imprimir o guardar PDF (informe profesional)" titulo="Informe vocacional" />
+      <InformeFrame html={html} textoBoton="Descargar PDF (informe profesional)" titulo="Informe vocacional" />
       <InformePacientePanel
         areas={AREAS_RIASEC}
         conAyuda={false}

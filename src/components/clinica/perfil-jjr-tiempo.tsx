@@ -21,7 +21,7 @@ export function PerfilJjrTiempo({ perfil }: { perfil: PerfilJjrEnElTiempo }) {
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div>
           <div className="text-sm font-semibold text-white">
-            Intereses JJR por campo <span className="font-normal text-slate-400">· {perfil.titulo} · experimental</span>
+            Intereses JJR por campo <span className="font-normal text-slate-400">· {perfil.titulo}</span>
           </div>
           <div className="text-xs text-slate-400">
             Media 0–4 de las 6 actividades base · {n === perfil.total ? `${n} aplicación${n === 1 ? "" : "es"}` : `últimas ${n} de ${perfil.total}`}
