@@ -6,6 +6,7 @@ import { avanceJjr, datosJjrGuardados, itemsJjr, limpiarBorradorJjr, validarJjr 
 import { informeJjrHtml } from "../src/lib/evaluaciones/jjr/informe-html.ts";
 import { informePacienteJjr, opcionesPorDefectoJjr } from "../src/lib/evaluaciones/jjr/informe-paciente.ts";
 import { perfilesJjr } from "../src/lib/evaluaciones/jjr/evolucion.ts";
+import { informeVencido, leerInformePaciente, sumarMeses } from "../src/lib/evaluaciones/informe-paciente.ts";
 import { INSTRUMENTOS } from "../src/lib/evaluaciones/instrumentos.ts";
 import { evolucionDelPaciente } from "../src/lib/evaluaciones/evolucion-paciente.ts";
 import { nombreConOpciones, REGISTRO } from "../src/lib/evaluaciones/registro.ts";
@@ -111,6 +112,20 @@ caso("Informes ordenados por inclinación, con gráfica y sin «experimental»",
   assert.match(p2.destacado.titulo, /Tus mayores inclinaciones: Ingeniería.* y Derecho/);
   assert.equal(p2.resultados[1].periodo, "Tu mayor inclinación");
   assert.equal(p2.resultados[2].periodo, "3.º lugar");
+});
+
+caso("Informe publicado: conserva gráfica, todas las áreas y textos; vigencia de 6 meses", () => {
+  const r = todas(itemsJjr("jjr176", "A"), (i) => (i.campo === "TEC" ? 4 : 3));
+  const p = informePacienteJjr(validarJjr({ respuestas: r }, "jjr176", "A").datos, opcionesPorDefectoJjr(true), extra);
+  const leido = leerInformePaciente(JSON.parse(JSON.stringify(p)));
+  assert.equal(leido.grafica.barras.length, 14, "la gráfica sobrevive a la publicación");
+  assert.equal(leido.resultados.length, 15, "todas las áreas, no solo 12");
+  assert.equal(leido.resultados[0].texto, p.resultados[0].texto, "texto completo");
+  assert.equal(leido.vigenteHasta, "2027-05-07");
+  assert.match(leido.aviso, /validez de 6 meses \(hasta el 7 de mayo de 2027\)/);
+  assert.equal(informeVencido(leido, new Date(2027, 4, 7)), false);
+  assert.equal(informeVencido(leido, new Date(2027, 4, 8)), true);
+  assert.equal(sumarMeses("2026-08-31", 6), "2027-02-28");
 });
 
 caso("Redacción ajustada: SAL04 y SAL07 sin «sanitaria», con el texto original guardado", () => {

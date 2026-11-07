@@ -56,6 +56,8 @@ export type InformePaciente = {
   intro: string;
   /** Recuadro destacado al inicio (p. ej. el código de intereses). */
   destacado?: { titulo: string; texto: string };
+  /** Último día en que el enlace del informe es válido (AAAA-MM-DD); después se desactiva. */
+  vigenteHasta?: string;
   /** Gráfica de barras (p. ej. interés por área, de mayor a menor). */
   grafica?: GraficaPaciente;
   /** Comparación con evaluaciones anteriores (si el psicólogo la incluye). */
@@ -93,22 +95,65 @@ export function leerInformePaciente(valor: unknown): InformePaciente | null {
       o.destacado && typeof o.destacado === "object"
         ? { titulo: s((o.destacado as Record<string, unknown>).titulo, 200), texto: s((o.destacado as Record<string, unknown>).texto, 1000) }
         : undefined,
+    vigenteHasta: typeof o.vigenteHasta === "string" && /^\d{4}-\d{2}-\d{2}$/.test(o.vigenteHasta) ? o.vigenteHasta : undefined,
+    grafica: leerGrafica(o.grafica),
     evolucion: leerEvolucion(o.evolucion),
     resultados: (o.resultados as unknown[])
       .filter((r): r is Record<string, unknown> => !!r && typeof r === "object")
-      .slice(0, 12)
+      .slice(0, 30)
       .map((r) => ({
         area: s(r.area, 120),
         periodo: s(r.periodo, 80),
         nivel: s(r.nivel, 60),
         tono: tonos.includes(r.tono as TonoResultado) ? (r.tono as TonoResultado) : "leve",
-        texto: s(r.texto, 1000),
+        texto: s(r.texto, 4000),
         puntuacion: typeof r.puntuacion === "string" ? s(r.puntuacion, 60) : undefined,
       })),
     notas: s(o.notas, 6000),
     ayuda: Array.isArray(o.ayuda) ? (o.ayuda as unknown[]).map((l) => s(l, 300)).filter(Boolean).slice(0, 8) : null,
     aviso: s(o.aviso, 1000),
   };
+}
+
+function leerGrafica(valor: unknown): GraficaPaciente | undefined {
+  if (!valor || typeof valor !== "object") return undefined;
+  const o = valor as Record<string, unknown>;
+  const s = (v: unknown, max: number) => (typeof v === "string" ? v.slice(0, max) : "");
+  const max = typeof o.max === "number" && o.max > 0 && o.max <= 1000 ? o.max : 0;
+  if (!max || !Array.isArray(o.barras)) return undefined;
+  const barras = (o.barras as unknown[])
+    .filter((b): b is Record<string, unknown> => !!b && typeof b === "object")
+    .slice(0, 30)
+    .map((b) => ({
+      etiqueta: s(b.etiqueta, 120),
+      valor: typeof b.valor === "number" && Number.isFinite(b.valor) ? Math.min(max, Math.max(0, b.valor)) : null,
+      texto: s(b.texto, 40),
+      destacada: b.destacada === true,
+    }))
+    .filter((b) => b.etiqueta);
+  if (!barras.length) return undefined;
+  return {
+    titulo: s(o.titulo, 200),
+    nota: typeof o.nota === "string" ? s(o.nota, 400) : undefined,
+    max,
+    escala: Array.isArray(o.escala) ? (o.escala as unknown[]).map((e) => s(e, 60)).slice(0, 11) : undefined,
+    barras,
+  };
+}
+
+/** true si el informe tiene fecha de vigencia y ya pasó (comparación por fecha local AAAA-MM-DD). */
+export function informeVencido(informe: Pick<InformePaciente, "vigenteHasta">, hoy = new Date()) {
+  if (!informe.vigenteHasta) return false;
+  const h = `${hoy.getFullYear()}-${String(hoy.getMonth() + 1).padStart(2, "0")}-${String(hoy.getDate()).padStart(2, "0")}`;
+  return h > informe.vigenteHasta;
+}
+
+/** Fecha AAAA-MM-DD sumando meses (si el día no existe, el último del mes). */
+export function sumarMeses(fecha: string, meses: number) {
+  const [a, m, d] = fecha.slice(0, 10).split("-").map(Number);
+  const ultimo = new Date(a, m - 1 + meses + 1, 0).getDate();
+  const r = new Date(a, m - 1 + meses, Math.min(d, ultimo));
+  return `${r.getFullYear()}-${String(r.getMonth() + 1).padStart(2, "0")}-${String(r.getDate()).padStart(2, "0")}`;
 }
 
 function leerEvolucion(valor: unknown): EvolucionPaciente | undefined {

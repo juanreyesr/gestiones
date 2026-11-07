@@ -8,7 +8,7 @@ import { InformePacienteVista } from "./informe-paciente-vista";
 
 /** Página pública /informe/<token>: el informe que el psicólogo publicó para el paciente. */
 export function InformePublico({ token }: { token: string }) {
-  const [estado, setEstado] = useState<"cargando" | "ok" | "invalido">("cargando");
+  const [estado, setEstado] = useState<"cargando" | "ok" | "invalido" | "vencido">("cargando");
   const [informe, setInforme] = useState<InformePaciente | null>(null);
   const [generando, setGenerando] = useState(false);
   const contenido = useRef<HTMLDivElement>(null);
@@ -35,7 +35,7 @@ export function InformePublico({ token }: { token: string }) {
         if (d.estado === "ok" && d.informe) {
           setInforme(d.informe);
           setEstado("ok");
-        } else setEstado("invalido");
+        } else setEstado(d.estado === "vencido" ? "vencido" : "invalido");
       })
       .catch(() => vivo && setEstado("invalido"));
     return () => {
@@ -73,6 +73,16 @@ export function InformePublico({ token }: { token: string }) {
               <p className="text-base font-semibold text-slate-900">Informe no disponible</p>
               <p className="mx-auto max-w-sm text-sm leading-6 text-slate-500">
                 Este enlace no es válido o el informe ya no está disponible. Consulte a su psicólogo.
+              </p>
+            </div>
+          ) : null}
+          {estado === "vencido" ? (
+            <div className="grid gap-3 py-8 text-center">
+              <ClipboardList className="mx-auto h-8 w-8 text-slate-300" />
+              <p className="text-base font-semibold text-slate-900">Este informe ya no está vigente</p>
+              <p className="mx-auto max-w-sm text-sm leading-6 text-slate-500">
+                Los resultados tenían una validez de 6 meses porque los intereses pueden cambiar en ese tiempo. Si deseas una nueva evaluación,
+                consulta a tu psicólogo.
               </p>
             </div>
           ) : null}
