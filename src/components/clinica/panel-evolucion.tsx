@@ -12,6 +12,8 @@ import {
   type SerieEvolucion,
 } from "@/lib/evaluaciones/evolucion-paciente";
 import { SectionCard } from "./ui";
+import { perfilesJjr } from "@/lib/evaluaciones/jjr/evolucion";
+import { PerfilJjrTiempo } from "./perfil-jjr-tiempo";
 
 const TENDENCIA: Record<Tendencia | "mixto", { texto: string; clase: string; Icono: typeof ArrowRight }> = {
   mejora: { texto: "Mejora", clase: "border-emerald-400/40 bg-emerald-400/10 text-emerald-300", Icono: ArrowDownRight },
@@ -127,6 +129,7 @@ export function PanelEvolucion({ pacienteId, sesiones }: { pacienteId: string; s
 
   const { series, hitos } = useMemo(() => evolucionDelPaciente(respuestas ?? []), [respuestas]);
   const resumen = useMemo(() => resumenEvolucion(series), [series]);
+  const perfiles = useMemo(() => perfilesJjr(respuestas ?? []), [respuestas]);
   const fechasSesiones = useMemo(
     () => sesiones.filter((s) => s.estado === "finalizada").map((s) => s.iniciadaAt.slice(0, 10)),
     [sesiones]
@@ -227,6 +230,10 @@ export function PanelEvolucion({ pacienteId, sesiones }: { pacienteId: string; s
                 : `Ver también las ${series.length - conMasDeUna.length} escalas con una sola aplicación`}
           </button>
         ) : null}
+
+        {perfiles.map((p) => (
+          <PerfilJjrTiempo key={p.clave} perfil={p} />
+        ))}
 
         {hitos.length ? (
           <div className="grid gap-1.5">
