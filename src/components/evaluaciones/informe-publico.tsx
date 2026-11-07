@@ -1,7 +1,8 @@
 "use client";
 
-import { ClipboardList, HeartPulse, Printer } from "lucide-react";
-import { useEffect, useState } from "react";
+import { ClipboardList, Download, HeartPulse } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { descargarPdfDeElemento, nombrePdf } from "@/lib/pdf-desde-html";
 import type { InformePaciente } from "@/lib/evaluaciones/informe-paciente";
 import { InformePacienteVista } from "./informe-paciente-vista";
 
@@ -9,6 +10,21 @@ import { InformePacienteVista } from "./informe-paciente-vista";
 export function InformePublico({ token }: { token: string }) {
   const [estado, setEstado] = useState<"cargando" | "ok" | "invalido">("cargando");
   const [informe, setInforme] = useState<InformePaciente | null>(null);
+  const [generando, setGenerando] = useState(false);
+  const contenido = useRef<HTMLDivElement>(null);
+
+  // Descarga directa del PDF (la ventana de impresión no sirve en teléfonos).
+  const descargar = async () => {
+    if (!contenido.current || !informe) return;
+    setGenerando(true);
+    try {
+      await descargarPdfDeElemento(contenido.current, nombrePdf(`${informe.titulo} ${informe.paciente}`));
+    } catch {
+      window.print();
+    } finally {
+      setGenerando(false);
+    }
+  };
 
   useEffect(() => {
     let vivo = true;
@@ -35,16 +51,17 @@ export function InformePublico({ token }: { token: string }) {
             <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-emerald-50">
               <HeartPulse className="h-4 w-4 text-emerald-600" />
             </span>
-            Atención psicológica · Lic. Juan J. Reyes
+            Atención psicológica · M. A. Juan J. Reyes
           </span>
           {estado === "ok" ? (
             <button
               className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-50"
-              onClick={() => window.print()}
+              disabled={generando}
+              onClick={() => void descargar()}
               type="button"
             >
-              <Printer className="h-3.5 w-3.5" />
-              Imprimir o guardar PDF
+              <Download className="h-3.5 w-3.5" />
+              {generando ? "Generando PDF…" : "Descargar PDF"}
             </button>
           ) : null}
         </div>
@@ -59,7 +76,11 @@ export function InformePublico({ token }: { token: string }) {
               </p>
             </div>
           ) : null}
-          {estado === "ok" && informe ? <InformePacienteVista informe={informe} /> : null}
+          {estado === "ok" && informe ? (
+            <div ref={contenido}>
+              <InformePacienteVista informe={informe} />
+            </div>
+          ) : null}
         </div>
       </div>
     </main>

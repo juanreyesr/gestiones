@@ -58,10 +58,11 @@ export function InformeJjr({ actual, paciente, respuestas }: { actual: Evaluacio
 
   return (
     <div className="grid gap-4">
-      <p className="border border-amber-300/40 bg-amber-400/10 p-3 text-xs leading-5 text-amber-100">
-        Instrumento experimental (sin baremos ni validez demostrada): úsalo como pilotaje con consentimiento y devolución supervisada; no
-        para decidir una carrera.{edad !== null && edad < 16 ? ` El paciente tenía ${edad} años: la población propuesta es de 16 o más.` : ""}
-      </p>
+      {edad !== null && edad < 16 ? (
+        <p className="border border-amber-300/40 bg-amber-400/10 p-3 text-xs leading-5 text-amber-100">
+          El paciente tenía {edad} años: el cuestionario está pensado para personas de 16 años o más.
+        </p>
+      ) : null}
       {anteriores.length > 0 ? (
         <Field label="Seguimiento: aplicación anterior (mismo protocolo)">
           <select className="field" onChange={(e) => setAntId(e.target.value)} value={antId}>
@@ -75,14 +76,14 @@ export function InformeJjr({ actual, paciente, respuestas }: { actual: Evaluacio
         </Field>
       ) : null}
       <NotasPrivadas onCambio={setNotasPrivadas} pacienteId={paciente.id} respuestaId={actual.id} />
-      <InformeFrame html={html} textoBoton="Imprimir o guardar PDF (informe profesional)" titulo="Informe de intereses JJR" />
+      <InformeFrame html={html} textoBoton="Descargar PDF (informe profesional)" titulo="Informe de intereses JJR" />
       <InformePacientePanel
         areas={areasJjr(investigacion)}
         conAyuda={false}
         construir={(opciones, notas) =>
           informePacienteJjr(datos, opciones, { paciente: paciente.nombre, fechaAplicacion: fechaDe(actual), notas, profesional: PROFESIONAL_INFORME })
         }
-        descripcion="Ya calificado: explica en lenguaje sencillo cada campo (qué es, a qué respuesta se acercan sus elecciones, las actividades que más le gustaron y rutas para conocer), en orden fijo y con el aviso experimental. Elige qué campos incluir, agrega tus comentarios y envíaselo por WhatsApp con un toque."
+        descripcion="Ya calificado: muestra la gráfica de barras y las áreas de mayor a menor inclinación, con qué es cada una, las actividades que más le gustaron y rutas para conocer. Elige qué campos incluir, agrega tus comentarios y envíaselo por WhatsApp con un toque."
         opcionesPorDefecto={opcionesPorDefectoJjr(investigacion)}
         paciente={paciente}
         placeholderNotas="Ej. Te llamaron la atención las actividades de… Para conocerlas mejor, te propongo… En la próxima sesión revisaremos…"

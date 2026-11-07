@@ -4,7 +4,7 @@
  * (este archivo lo usa también el formulario público).
  *
  * Dos protocolos separados (no se mezclan ni se comparan entre sí):
- * - «jjr84»: JJR-84 v0.2.0-experimental, 84 anclas, 14 campos × 6.
+ * - «jjr84»: JJR-84 v0.2.0 (versión guardada «0.2.0-experimental»), 84 anclas, 14 campos × 6.
  * - «jjr176»: JJR-INV-176 v0.3.0-investigación, forma A o B de 130
  *   actividades (84 anclas + 28 candidatos + 18 exploratorias).
  */
@@ -24,6 +24,9 @@ export const VERSIONES_JJR = {
     nombre: "Intereses Vocacionales JJR Actualizada · banco ampliado de investigación (JJR-INV-176)",
   },
 } as const;
+
+/** Versión para mostrar (la guardada se conserva tal cual por trazabilidad). */
+export const versionVisible = (v: string) => v.replace(/-experimental$/, "").replace(/-investigacion$/, "");
 
 export const JJR_TITULO_PACIENTE = "Cuestionario de intereses vocacionales JJR";
 

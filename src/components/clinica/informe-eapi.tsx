@@ -159,7 +159,7 @@ export function InformeEapi({
         </p>
       ) : null}
       <NotasPrivadas onCambio={setNotasPrivadas} pacienteId={paciente.id} respuestaId={actual.id} />
-      <InformeFrame html={html} textoBoton="Imprimir o guardar PDF (informe profesional)" titulo="Informe EAPI" />
+      <InformeFrame html={html} textoBoton="Descargar PDF (informe profesional)" titulo="Informe EAPI" />
       <InformePacientePanel
         areas={areasEapi(efectivos, Boolean(ant))}
         avisoAyuda={

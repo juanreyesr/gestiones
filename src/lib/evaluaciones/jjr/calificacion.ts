@@ -5,9 +5,10 @@
  * - 6 respuestas numéricas → media = suma/6, «completo»; 5 → media de 5,
  *   «parcial» (rotulado); 0–4 → sin media, «insuficiente».
  * - NC y omisión no puntúan, no se imputan ni se reemplazan con cero.
- * - Sin percentiles, niveles alto/medio/bajo, top 3, total, código tipo
- *   Holland ni compatibilidad con carreras. Precisión interna completa;
- *   redondear solo al mostrar.
+ * - Sin percentiles, niveles alto/medio/bajo, total, código tipo Holland ni
+ *   compatibilidad con carreras. Los informes ordenan los campos de mayor a
+ *   menor media (decisión del autor para que la devolución sea orientativa).
+ *   Precisión interna completa; redondear solo al mostrar.
  * - Candidatos y áreas exploratorias (JJR-INV-176) NO puntúan: se muestran
  *   como respuestas individuales para conversar.
  */
@@ -95,26 +96,35 @@ export const mediaTexto = (m: number | null) => (m === null ? "—" : m.toFixed(
 /** Texto de la respuesta (0–4, NC o sin respuesta). */
 export const textoValorJjr = (v: ValorJjr) => (v === null ? "Sin respuesta" : v === "NC" ? "NC" : String(v));
 
-export const JJR_ENCABEZADO =
-  "Resultado experimental de exploración de intereses. Instrumento en desarrollo, sin baremos ni precisión individual establecida. No es diagnóstico, certificación de capacidad ni recomendación definitiva de carrera.";
+/**
+ * Campos de mayor a menor media (empates: orden fijo del instrumento); los
+ * campos sin media van al final. Los parciales se ordenan con su media de 5.
+ */
+export function ordenPorInteres<T extends { media: number | null }>(campos: readonly T[]): T[] {
+  return campos
+    .map((c, i) => ({ c, i }))
+    .sort((a, b) => (b.c.media ?? -1) - (a.c.media ?? -1) || a.i - b.i)
+    .map(({ c }) => c);
+}
 
-export const JJR_TEXTO_COMPLETO =
-  "El perfil muestra cuánto te interesaron las actividades de cada campo en esta aplicación. Revisa las áreas y actividades que te llamen la atención y coméntalas con la persona que te orienta. Las diferencias pequeñas entre puntajes no deben interpretarse como preferencias firmes; el resultado no mide capacidades ni predice éxito.";
+/** Campos empatados en la media más alta (si hay media). */
+export function camposPrincipales<T extends { media: number | null }>(campos: readonly T[]): T[] {
+  const orden = ordenPorInteres(campos).filter((c) => c.media !== null);
+  if (!orden.length) return [];
+  return orden.filter((c) => Math.abs(c.media! - orden[0].media!) < 1e-9);
+}
+
+export const JJR_TEXTO_GENERAL =
+  "Cada campo agrupa actividades de un tipo de trabajo. Tus respuestas describen cuánto te interesaría explorar cada uno; conocer sus tareas reales mediante una experiencia breve ayuda a confirmarlo. El resultado no mide habilidades ni obliga a elegir una de las rutas mencionadas.";
 
 export const JJR_TEXTO_INCOMPLETO =
-  "Hay actividades sin respuesta o no comprendidas. Mostramos únicamente los datos disponibles y el perfil aparece incompleto. Esto no significa falta de vocación. Revisa qué actividades necesitas conocer mejor antes de interpretar el conjunto.";
+  "Algunas actividades quedaron sin respuesta o no se entendieron; esos campos aparecen al final, sin resultado. Esto no significa falta de interés: podemos revisarlas juntos.";
 
-export const JJR_TEXTO_UNIFORME = "Este cuestionario no diferenció preferencias entre campos en tus respuestas.";
-
-export const JJR_TEXTO_INVESTIGACION =
-  "Las respuestas muestran cuánto te interesó cada actividad en esta aplicación. Esta herramienta está en estudio y sus resultados no determinan tus capacidades ni la carrera que debes elegir. Puedes comentar con la persona orientadora las actividades que quieras conocer mejor, incluso si pertenecen a áreas que no se resumen mediante un puntaje.";
+export const JJR_TEXTO_UNIFORME =
+  "Tus respuestas fueron muy parecidas en todos los campos, así que el cuestionario no marcó una preferencia clara. Lo conversaremos en sesión para explorar qué te atrae.";
 
 export const JJR_CONTRASTE =
-  "Para explorar de forma voluntaria: observar una tarea real, entrevistar a una persona de una ruta, realizar una actividad introductoria accesible o comparar planes de formación locales.";
-
-/** Texto por campo para el informe (sección 6 de JJR-84). */
-export const textoReporteCampo = (campo: CampoJjr) =>
-  `Tus respuestas a las actividades de ${NOMBRES_CAMPOS[campo].nombre.toLowerCase()} describen cuánto te interesaría explorarlas. Si este campo aparece entre los más preferidos de tu perfil, puede ser útil conocer sus tareas reales mediante una experiencia breve. El resultado no acredita habilidades ni obliga a elegir una de las rutas mencionadas.`;
+  "Para explorar: observar una tarea real, conversar con alguien que trabaje en esa área, probar una actividad introductoria o comparar planes de estudio.";
 
 /**
  * Comparación descriptiva con una aplicación anterior DEL MISMO protocolo y

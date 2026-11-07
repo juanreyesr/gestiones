@@ -88,18 +88,36 @@ caso("Borrador y avance", () => {
   assert.deepEqual(avanceJjr(b, "jjr84", null), { respondidas: 2, total: 84 });
 });
 
-caso("Informes: encabezado experimental, sin top 3 ni Holland; paciente explícito", () => {
-  const r = todas(itemsJjr("jjr176", "B"), (i) => (i.campo === "TEC" ? 4 : 1));
+caso("Informes ordenados por inclinación, con gráfica y sin «experimental»", () => {
+  const r = todas(itemsJjr("jjr176", "B"), (i) => (i.campo === "TEC" ? 4 : i.campo === "MUS" ? 3 : 1));
   const d = validarJjr({ respuestas: r, abiertas: { otras: "Robótica" } }, "jjr176", "B").datos;
   const html = informeJjrHtml({ datos: d, nombre: "Ana", fecha: "2026-11-07", edad: 15 }, null, "", { codigo: "IRC", fecha: "2026-10-01" });
-  assert.match(html, /Resultado experimental/); assert.match(html, /16 años o más/); assert.match(html, /Robótica/);
-  assert.match(html, /Áreas exploratorias/); assert.doesNotMatch(html, /top 3|Código Holland:/i);
+  assert.doesNotMatch(html, /xperimental/); assert.match(html, /16 años o más/); assert.match(html, /Robótica/);
+  assert.match(html, /Mayor inclinación: TEC Software/); assert.match(html, /M\. A\. Juan J\. Reyes/);
+  assert.ok(html.indexOf("<strong>TEC</strong>") < html.indexOf("<strong>MUS</strong>"), "tabla de mayor a menor");
   const p = informePacienteJjr(d, opcionesPorDefectoJjr(true), extra);
   assert.equal(p.resultados.length, 15);
-  assert.equal(p.resultados.map((x) => x.area)[4], "Software, sistemas digitales y seguridad", "orden fijo");
-  assert.match(p.resultados[4].texto, /Escribir instrucciones para que un programa/);
-  assert.match(p.resultados[4].nivel, /Me gustaría mucho/);
+  assert.equal(p.resultados[0].area, "Software, sistemas digitales y seguridad");
+  assert.equal(p.resultados[1].area, "Música y creación sonora");
+  assert.equal(p.resultados[0].periodo, "Tu mayor inclinación");
+  assert.match(p.resultados[0].texto, /Escribir instrucciones para que un programa/);
+  assert.doesNotMatch(JSON.stringify(p), /xperimental|Si este campo aparece entre los más preferidos/);
+  assert.match(p.destacado.titulo, /Tu mayor inclinación: Software/);
+  assert.equal(p.grafica.barras.length, 14); assert.equal(p.grafica.barras[0].texto, "4,00"); assert.equal(p.grafica.barras[0].destacada, true);
   assert.equal(p.resultados[0].puntuacion, undefined);
+  // Empate en el primer lugar: ambas destacadas y mismo puesto.
+  const r2 = todas(itemsJjr("jjr84", null), (i) => (i.campo === "ING" || i.campo === "JUR" ? 4 : 2));
+  const p2 = informePacienteJjr(validarJjr({ respuestas: r2 }, "jjr84", null).datos, opcionesPorDefectoJjr(false), extra);
+  assert.match(p2.destacado.titulo, /Tus mayores inclinaciones: Ingeniería.* y Derecho/);
+  assert.equal(p2.resultados[1].periodo, "Tu mayor inclinación");
+  assert.equal(p2.resultados[2].periodo, "3.º lugar");
+});
+
+caso("Redacción ajustada: SAL04 y SAL07 sin «sanitaria», con el texto original guardado", () => {
+  const sal04 = BANCO_JJR.find((i) => i.id === "SAL04");
+  assert.doesNotMatch(sal04.actividad, /sanitari|procedimiento/);
+  assert.match(sal04.original, /atención sanitaria/);
+  assert.doesNotMatch(BANCO_JJR.find((i) => i.id === "SAL07").actividad, /procedimiento/);
 });
 
 caso("Registro único: cada instrumento declarado en todos los registros", () => {
@@ -118,7 +136,7 @@ caso("Servidor: la forma la fija el enlace; resumen, PDF y evolución vía regis
   assert.ok(v.ok); assert.equal(v.relacion, "Paciente");
   const fila = { id: "r1", instrumento: "jjr176", datos: v.datos, fecha: "2026-11-07", createdAt: "2026-11-07T10:00:00Z", respondienteNombre: "Ana" };
   const res = resumenRespuesta(fila);
-  assert.match(res.puntuaciones[0], /Experimental/);
+  assert.match(res.puntuaciones[0], /Mayor inclinación/);
   assert.equal(REGISTRO.jjr176.resumen(fila).alarma, false);
   assert.deepEqual(REGISTRO.jjr176.opcionesNueva(fila, {}), { forma: "A", asignacion: "seguimiento" });
   const ev = evolucionDelPaciente([fila]);

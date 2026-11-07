@@ -1,6 +1,6 @@
 /**
  * Cuestionario B-Breve: contenido LITERAL del instrumento (Anexo A de la
- * especificación). Autor del contenido clínico: Lic. Juan J. Reyes. Fuente:
+ * especificación). Autor del contenido clínico: M. A. Juan J. Reyes. Fuente:
  * sección 10.2 de "Polidipsia psicógena infantil: guía para el psicólogo".
  *
  * No modificar textos, orden ni numeración: son el instrumento.
@@ -84,4 +84,4 @@ export const B_BREVE_GRACIAS =
   "Gracias por responder. Sus respuestas quedaron registradas. El psicólogo las revisará y las conversará con usted en la próxima sesión.";
 
 export const B_BREVE_AVISO_FORMULARIO =
-  "Instrumento orientativo, sin validación psicométrica. Fuente: sección 10.2 de \"Polidipsia psicógena infantil: guía para el psicólogo\" (Lic. Juan J. Reyes).";
+  "Instrumento orientativo, sin validación psicométrica. Fuente: sección 10.2 de \"Polidipsia psicógena infantil: guía para el psicólogo\" (M. A. Juan J. Reyes).";

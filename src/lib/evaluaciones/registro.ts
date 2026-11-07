@@ -18,7 +18,7 @@ import { avanceEapi, FORMA_MODULOS, limpiarBorradorEapi, MODULOS_EAPI, modulosDe
 import type { EvaluacionRespuestaRow } from "./evaluaciones";
 import { instrumentoPorId } from "./instrumentos";
 import { NOMBRES_CAMPOS } from "./jjr/banco";
-import { calificarJjr, mediaTexto } from "./jjr/calificacion";
+import { calificarJjr, camposPrincipales, mediaTexto, ordenPorInteres } from "./jjr/calificacion";
 import { avanceJjr, datosJjrGuardados, formaDeOpciones, limpiarBorradorJjr, type InstrumentoJjr } from "./jjr/codigo";
 import { calificarRiasec, RIASEC_INFO } from "./riasec/calificacion";
 import { avanceRiasec, limpiarBorradorRiasec, validarRiasec } from "./riasec/codigo";
@@ -89,14 +89,15 @@ function jjr(id: InstrumentoJjr): DefinicionInstrumento {
       const d = datosJjrGuardados(r.datos);
       if (!d) return null;
       const c = calificarJjr(d);
-      const conMedia = c.campos.filter((k) => k.media !== null);
+      const orden = ordenPorInteres(c.campos).filter((k) => k.media !== null);
+      const top = camposPrincipales(c.campos);
       return {
         puntuaciones: [
-          `Experimental (sin baremos) · ${c.perfilCompleto ? "perfil completo" : "perfil incompleto"} · ${c.conteo.numericas}/${c.conteo.total} numéricas, ${c.conteo.nc} NC, ${c.conteo.omitidas} sin respuesta`,
-          `Medias 0–4 (orden fijo): ${conMedia.map((k) => `${k.campo} ${mediaTexto(k.media)}${k.estado === "parcial" ? "*" : ""}`).join(", ")}`,
+          `Mayor inclinación: ${top.map((k) => `${k.nombre} (${mediaTexto(k.media)})`).join(", ") || "sin resultado"} · ${c.conteo.numericas}/${c.conteo.total} respondidas, ${c.conteo.nc} NC, ${c.conteo.omitidas} sin respuesta`,
+          `Medias 0–4 de mayor a menor: ${orden.map((k) => `${k.campo} ${mediaTexto(k.media)}${k.estado === "parcial" ? "*" : ""}`).join(", ")}`,
         ],
         alertas: [],
-        insignia: `Experimental · ${c.perfilCompleto ? "perfil completo" : "perfil incompleto"}${c.uniforme ? " · uniforme" : ""}`,
+        insignia: top.length ? `Mayor inclinación: ${top.map((k) => k.nombre).join(", ")}` : "Sin resultado",
         alarma: false,
       };
     },
@@ -104,14 +105,13 @@ function jjr(id: InstrumentoJjr): DefinicionInstrumento {
       const d = datosJjrGuardados(r.datos);
       if (!d) return null;
       const c = calificarJjr(d);
-      // Campos con media ≥ 3 («bastante» o más), en orden fijo: no es ranking.
-      const altos = c.campos.filter((k) => k.media !== null && k.media >= 3).map((k) => NOMBRES_CAMPOS[k.campo].nombre);
+      const orden = ordenPorInteres(c.campos).filter((k) => k.media !== null);
       return {
         puntos: [],
         hito: {
           tipo: id,
-          titulo: `Intereses JJR (experimental): ${c.perfilCompleto ? "perfil completo" : "perfil incompleto"}`,
-          detalle: altos.length ? `Media ≥ 3 en: ${altos.join(" · ")}` : "Ningún campo con media de 3 o más",
+          titulo: `Intereses JJR: ${camposPrincipales(c.campos).map((k) => k.nombre).join(", ") || "sin resultado"}`,
+          detalle: orden.slice(0, 3).map((k) => `${NOMBRES_CAMPOS[k.campo].nombre} ${mediaTexto(k.media)}`).join(" · "),
         },
       };
     },

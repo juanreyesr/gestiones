@@ -77,7 +77,7 @@ export function InformeValores({
         </Field>
       ) : null}
       <NotasPrivadas onCambio={setNotasPrivadas} pacienteId={paciente.id} respuestaId={actual.id} />
-      <InformeFrame html={html} textoBoton="Imprimir o guardar PDF (informe profesional)" titulo="Informe de valores laborales" />
+      <InformeFrame html={html} textoBoton="Descargar PDF (informe profesional)" titulo="Informe de valores laborales" />
       <InformePacientePanel
         areas={AREAS_VALORES}
         conAyuda={false}

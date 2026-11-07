@@ -33,6 +33,17 @@ export type EvolucionPaciente = {
   atencion: string[];
 };
 
+/** Barras horizontales en lenguaje sencillo; valor null = sin resultado. */
+export type GraficaPaciente = {
+  titulo: string;
+  nota?: string;
+  /** Valor máximo de la escala (p. ej. 4). */
+  max: number;
+  /** Etiquetas de la escala, de 0 a max (opcional). */
+  escala?: string[];
+  barras: { etiqueta: string; valor: number | null; texto: string; destacada?: boolean }[];
+};
+
 export type InformePaciente = {
   v: 1;
   titulo: string;
@@ -45,6 +56,8 @@ export type InformePaciente = {
   intro: string;
   /** Recuadro destacado al inicio (p. ej. el código de intereses). */
   destacado?: { titulo: string; texto: string };
+  /** Gráfica de barras (p. ej. interés por área, de mayor a menor). */
+  grafica?: GraficaPaciente;
   /** Comparación con evaluaciones anteriores (si el psicólogo la incluye). */
   evolucion?: EvolucionPaciente;
   resultados: ResultadoPaciente[];
