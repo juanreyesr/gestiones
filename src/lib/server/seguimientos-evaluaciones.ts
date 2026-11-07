@@ -1,8 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { mensajeSeguimientoEvaluacion } from "@/lib/clinica/mensaje-paciente";
 import { enlaceWhatsApp } from "@/lib/clinica/recordatorio";
-import { FORMA_MODULOS, modulosDeOpciones } from "@/lib/evaluaciones/eapi/codigo";
-import { instrumentoPorId } from "@/lib/evaluaciones/instrumentos";
+import { nombreCortoInstrumento } from "@/lib/evaluaciones/registro";
 import { appUrl, enviarMensaje, esc, fechaLocal, type TelegramConfig } from "./telegram";
 
 /** Intentos de aviso antes de dejar el error a la vista (igual que la migración 063). */
@@ -46,11 +45,8 @@ const fechaLarga = (fecha: string) => {
 /** «cada 4 semanas», «cada 10 días». */
 export const textoFrecuencia = (dias: number) => (dias % 7 === 0 ? `cada ${dias / 7 === 1 ? "semana" : `${dias / 7} semanas`}` : `cada ${dias} días`);
 
-/** Nombre del instrumento con sus escalas (EAPI). */
-function nombreInstrumento(instrumento: string, opciones: Record<string, unknown>) {
-  const base = instrumentoPorId(instrumento)?.nombre.split(" · ")[0] ?? instrumento;
-  return instrumento === "eapi" ? `EAPI (${modulosDeOpciones(opciones).map((m) => FORMA_MODULOS[m].sigla).join(", ")})` : base;
-}
+/** Nombre del instrumento con sus opciones (escalas del EAPI, forma A/B…). */
+const nombreInstrumento = (instrumento: string, opciones: Record<string, unknown>) => nombreCortoInstrumento(instrumento, opciones);
 
 /** Teléfono al que va el mensaje: el del padre/madre del enlace (si es de un cuidador) o el del paciente. */
 function destinatario(p: Paciente, etiqueta: string | null) {

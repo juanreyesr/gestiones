@@ -1,12 +1,13 @@
 /**
  * Lo que el servidor necesita de cada instrumento para el enlace público
  * (/api/evaluacion/<token>): limpiar el avance guardado y validar la respuesta
- * completa. Para un instrumento nuevo basta con agregarlo aquí (además de su
- * formulario, su informe y su entrada en instrumentos.ts).
+ * completa. Para un instrumento nuevo: agregarlo aquí y en el registro único
+ * (registro.ts; ver la guía en instrumentos.ts).
  */
 import { validarBBreve, limpiarBorradorBBreve } from "./b-breve/codigo";
 import { B_BREVE_RELACIONES } from "./b-breve/contenido";
 import { limpiarBorradorEapi, modulosDeOpciones, validarEapi } from "./eapi/codigo";
+import { formaDeOpciones, limpiarBorradorJjr, validarJjr } from "./jjr/codigo";
 import { limpiarBorradorRiasec, validarRiasec } from "./riasec/codigo";
 import { limpiarBorradorValores, validarValores } from "./valores/codigo";
 
@@ -53,6 +54,9 @@ export const REGISTRO_SERVIDOR: Record<string, DefinicionServidor> = {
   },
   riasec: { limpiarBorrador: limpiarBorradorRiasec, validar: (cuerpo) => delPaciente(validarRiasec(cuerpo)) },
   valores: { limpiarBorrador: limpiarBorradorValores, validar: (cuerpo) => delPaciente(validarValores(cuerpo)) },
+  jjr84: { limpiarBorrador: limpiarBorradorJjr, validar: (cuerpo) => delPaciente(validarJjr(cuerpo, "jjr84", null)) },
+  // La forma (A o B) la fija el enlace, no el cuerpo enviado.
+  jjr176: { limpiarBorrador: limpiarBorradorJjr, validar: (cuerpo, opciones) => delPaciente(validarJjr(cuerpo, "jjr176", formaDeOpciones(opciones))) },
 };
 
 export const definicionServidor = (instrumento: string | null | undefined) => (instrumento ? REGISTRO_SERVIDOR[instrumento] ?? null : null);

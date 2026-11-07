@@ -5,7 +5,6 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import type { ConsentimientoRow } from "@/lib/clinica/pacientes";
 import { formatoFechaCorta, formatoHora } from "@/lib/clinica/slots";
 import type { CitaRow, CompromisoRow, PacienteRow, SesionRow } from "@/lib/clinica/types";
-import { FORMA_MODULOS, modulosDeOpciones } from "@/lib/evaluaciones/eapi/codigo";
 import {
   atencionDe,
   fetchEvaluacionesDePaciente,
@@ -17,7 +16,7 @@ import {
   type SeguimientoRow,
 } from "@/lib/evaluaciones/evaluaciones";
 import { diasDesde, evolucionDelPaciente } from "@/lib/evaluaciones/evolucion-paciente";
-import { instrumentoPorId } from "@/lib/evaluaciones/instrumentos";
+import { nombreCortoInstrumento } from "@/lib/evaluaciones/registro";
 import { resumenRespuesta } from "@/lib/evaluaciones/resumen-respuesta";
 import { AlarmaAtencion } from "./alarma-atencion";
 import { abrirSeccion, EVENTO_ABRIR_RESPUESTA, EVENTO_EVALUACIONES_CAMBIO, plegarTodas } from "./seccion-plegable";
@@ -25,8 +24,7 @@ import { abrirSeccion, EVENTO_ABRIR_RESPUESTA, EVENTO_EVALUACIONES_CAMBIO, plega
 const DIAS_REEVALUACION = 28;
 const fechaDe = (r: EvaluacionRespuestaRow) => r.fecha ?? r.createdAt.slice(0, 10);
 const nombreInstrumento = (instrumento: string, opciones?: Record<string, unknown>) =>
-  (instrumento === "eapi" ? "EAPI" : (instrumentoPorId(instrumento)?.nombre ?? instrumento).split(" · ")[0].replace(/ \([^)]*\)$/, "")) +
-  (instrumento === "eapi" && opciones ? ` (${modulosDeOpciones(opciones).map((m) => FORMA_MODULOS[m].sigla).join(", ")})` : "");
+  instrumento === "eapi" ? nombreCortoInstrumento(instrumento, opciones) : nombreCortoInstrumento(instrumento, opciones).replace(/ \([^)]*\)$/, "");
 
 type Punto = { clave: string; nivel: "urgente" | "revisar" | "info"; texto: string; detalle?: string; ir?: () => void; etiquetaIr?: string };
 
