@@ -1,5 +1,6 @@
 import type { EvaluacionRespuestaRow, InformeRow } from "@/lib/evaluaciones/evaluaciones";
 import { evolucionDelPaciente } from "@/lib/evaluaciones/evolucion-paciente";
+import { perfilesJjr } from "@/lib/evaluaciones/jjr/evolucion";
 import { resumenRespuesta } from "@/lib/evaluaciones/resumen-respuesta";
 import { nombreCategoria, tamanoLegible, type DocumentoRow } from "./documentos";
 import type { ConsentimientoRow } from "./pacientes";
@@ -35,6 +36,13 @@ const MARGIN = 48;
 const INK: [number, number, number] = [15, 23, 42];
 const MUTED: [number, number, number] = [90, 100, 118];
 const ACCENT: [number, number, number] = [16, 130, 100];
+/** Secuencial de un tono para la gráfica JJR en papel: más clara = más antigua, más oscura = la última. */
+const TONOS_JJR: [number, number, number][] = [
+  [94, 234, 212],
+  [20, 184, 166],
+  [15, 118, 110],
+];
+const num = (m: number) => m.toFixed(2).replace(".", ",");
 
 // jsPDF pesa varios cientos de KB: se carga solo cuando realmente se exporta
 // el expediente, en vez de ir en el paquete inicial de la app.
@@ -81,11 +89,12 @@ export async function exportarExpedientePdf(paciente: PacienteRow, sesiones: Ses
   };
 
   const paragraph = (text: string) => {
-    const lines = doc.splitTextToSize(textoPdf(text), contentWidth);
-    ensure(lines.length * 13);
+    // La fuente se fija antes de partir las líneas (si no, se parten con el tamaño anterior y se salen del margen).
     doc.setFont("helvetica", "normal");
     doc.setFontSize(10);
     doc.setTextColor(...INK);
+    const lines = doc.splitTextToSize(textoPdf(text), contentWidth);
+    ensure(lines.length * 13);
     doc.text(lines, MARGIN, y);
     y += lines.length * 13 + 2;
   };
@@ -226,6 +235,79 @@ export async function exportarExpedientePdf(paciente: PacienteRow, sesiones: Ses
         field(serie.sigla, `${puntos}. Última banda: ${serie.puntos[serie.puntos.length - 1].banda}.${t.length ? ` ${t.join("; ")}.` : ""}`);
       }
       paragraph("Criterios: GAD-7, cambio de 4 puntos o más; demás escalas, cambio de banda. Puntuación más baja = menos síntomas.");
+      y += 6;
+    }
+    // Intereses JJR por campo: barras 0–4 de las últimas 3 aplicaciones del mismo protocolo, versión y forma.
+    for (const perfil of perfilesJjr(respuestas)) {
+      const n = perfil.aplicaciones.length;
+      const tono = (i: number) => TONOS_JJR[TONOS_JJR.length - n + i];
+      const fila = n * 4 + (n - 1) * 1.5 + 6;
+      const etiquetaW = 170;
+      const valorW = 32;
+      const barraX = MARGIN + etiquetaW;
+      const barraW = contentWidth - etiquetaW - valorW;
+      ensure(60 + fila * 3);
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(10);
+      doc.setTextColor(...INK);
+      doc.text(textoPdf(`Intereses JJR por campo · ${perfil.titulo} · experimental`), MARGIN, y);
+      y += 13;
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(8.5);
+      doc.setTextColor(...MUTED);
+      let lx = MARGIN;
+      perfil.aplicaciones.forEach((a, i) => {
+        doc.setFillColor(...tono(i));
+        doc.rect(lx, y - 6.5, 7, 7, "F");
+        const t = textoPdf(`${formatoFechaCorta(a.fecha)}${a.perfilCompleto ? "" : " (incompleto)"}`);
+        doc.text(t, lx + 10, y);
+        lx += doc.getTextWidth(t) + 24;
+      });
+      const nota = n === perfil.total ? "" : `últimas ${n} de ${perfil.total} aplicaciones`;
+      if (nota) doc.text(textoPdf(nota), width - MARGIN, y, { align: "right" });
+      y += 12;
+      // Escala 0–4
+      doc.setFontSize(7.5);
+      for (let v = 0; v <= 4; v++) doc.text(String(v), barraX + (barraW * v) / 4, y, { align: "center" });
+      y += 5;
+      for (const c of perfil.campos) {
+        ensure(fila);
+        if (y === MARGIN) {
+          // Nueva página: repetir la escala.
+          doc.setFontSize(7.5);
+          doc.setTextColor(...MUTED);
+          for (let v = 0; v <= 4; v++) doc.text(String(v), barraX + (barraW * v) / 4, y, { align: "center" });
+          y += 5;
+        }
+        doc.setDrawColor(232, 236, 240);
+        for (let v = 0; v <= 4; v++) doc.line(barraX + (barraW * v) / 4, y, barraX + (barraW * v) / 4, y + fila - 4);
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(8.5);
+        doc.setTextColor(...INK);
+        const ty = y + (fila - 4) / 2 + 3;
+        doc.text(c.campo, MARGIN, ty);
+        doc.setFont("helvetica", "normal");
+        doc.setTextColor(...MUTED);
+        const nombre = doc.splitTextToSize(textoPdf(c.nombre), etiquetaW - 30)[0] as string;
+        doc.text(nombre + (nombre.length < c.nombre.length ? "..." : ""), MARGIN + 26, ty);
+        c.puntos.forEach((p, i) => {
+          if (p.media === null) return;
+          const [r, g, b] = tono(i);
+          // Parcial (5 de 6): más clara.
+          const k = p.estado === "parcial" ? 0.5 : 0;
+          doc.setFillColor(Math.round(r + (255 - r) * k), Math.round(g + (255 - g) * k), Math.round(b + (255 - b) * k));
+          doc.rect(barraX, y + i * 5.5, Math.max(1.5, (barraW * p.media) / 4), 4, "F");
+        });
+        const ult = c.puntos[c.puntos.length - 1];
+        doc.setFont("helvetica", "bold");
+        doc.setTextColor(...INK);
+        doc.text(ult.media === null ? "-" : num(ult.media), width - MARGIN, ty, { align: "right" });
+        y += fila;
+      }
+      y += 10;
+      paragraph(
+        "Media 0-4 de las 6 actividades base de cada campo; a la derecha, la última aplicación. Barra más clara = aplicación anterior; parcial (5 de 6) más tenue; sin barra = sin media. Solo se comparan aplicaciones del mismo protocolo, versión y forma. Descriptivo: sin baremos ni error de medida estimado, las diferencias pequeñas no son cambios firmes y más interés no es «mejor»."
+      );
       y += 6;
     }
     for (const r of respuestas) {
