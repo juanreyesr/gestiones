@@ -2,27 +2,20 @@
 
 import { ClipboardList, HeartPulse } from "lucide-react";
 import { useEffect, useState } from "react";
-import type { BBreveBorrador } from "@/lib/evaluaciones/b-breve/codigo";
-import { modulosDeOpciones, type EapiBorrador } from "@/lib/evaluaciones/eapi/codigo";
-import { BBreveForm } from "./b-breve-form";
-import { EapiForm } from "./eapi-form";
-import type { RiasecBorrador } from "@/lib/evaluaciones/riasec/codigo";
-import { RiasecForm } from "./riasec-form";
-import type { ValoresBorrador } from "@/lib/evaluaciones/valores/codigo";
-import { ValoresForm } from "./valores-form";
+import { FORMULARIOS } from "./formularios";
 import { ConsentimientoEvaluacion, type DatosConsentimientoEvaluacion } from "./consentimiento-evaluacion";
 
 type Info = {
   estado: "cargando" | "ok" | "completa" | "cerrada" | "invalido";
   instrumento?: string | null;
   ref?: string | null;
-  borrador?: BBreveBorrador | EapiBorrador | RiasecBorrador | ValoresBorrador | null;
-  opciones?: { modulos?: string[] } | null;
+  borrador?: unknown;
+  opciones?: Record<string, unknown> | null;
   /** firmado = false: antes de responder hay que firmar el consentimiento informado. */
   consentimiento?: ({ firmado: false } & DatosConsentimientoEvaluacion) | { firmado: true };
 };
 
-/** Página pública /evaluacion/<token>: elige el formulario según el instrumento asignado. */
+/** Página pública /evaluacion/<token>: elige el formulario del registro según el instrumento asignado. */
 export function EvaluacionPublica({ token }: { token: string }) {
   const [info, setInfo] = useState<Info>({ estado: "cargando" });
 
@@ -52,23 +45,8 @@ export function EvaluacionPublica({ token }: { token: string }) {
         token={token}
       />
     );
-  } else if (info.estado === "ok" && info.instrumento === "b-breve") {
-    contenido = (
-      <BBreveForm borradorInicial={(info.borrador as BBreveBorrador | null) ?? null} codigoCaso={info.ref ?? ""} token={token} />
-    );
-  } else if (info.estado === "ok" && info.instrumento === "riasec") {
-    contenido = <RiasecForm borradorInicial={(info.borrador as RiasecBorrador | null) ?? null} codigoCaso={info.ref ?? ""} token={token} />;
-  } else if (info.estado === "ok" && info.instrumento === "valores") {
-    contenido = <ValoresForm borradorInicial={(info.borrador as ValoresBorrador | null) ?? null} codigoCaso={info.ref ?? ""} token={token} />;
-  } else if (info.estado === "ok" && info.instrumento === "eapi") {
-    contenido = (
-      <EapiForm
-        borradorInicial={(info.borrador as EapiBorrador | null) ?? null}
-        codigoCaso={info.ref ?? ""}
-        modulos={modulosDeOpciones(info.opciones)}
-        token={token}
-      />
-    );
+  } else if (info.estado === "ok" && info.instrumento && FORMULARIOS[info.instrumento]) {
+    contenido = FORMULARIOS[info.instrumento]({ borrador: info.borrador ?? null, codigoCaso: info.ref ?? "", opciones: info.opciones, token });
   } else {
     const titulo =
       info.estado === "completa" ? "Este formulario ya fue enviado" : info.estado === "cerrada" ? "Formulario no disponible" : "Enlace no válido";

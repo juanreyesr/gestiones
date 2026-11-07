@@ -11,29 +11,11 @@ import {
   Trash2,
   Unlock,
 } from "lucide-react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { mensajeEvaluacion } from "@/lib/clinica/mensaje-paciente";
 import { enlaceWhatsApp } from "@/lib/clinica/recordatorio";
 import { formatoFechaCorta } from "@/lib/clinica/slots";
 import type { PacienteRow } from "@/lib/clinica/types";
-import { calificarBBreve } from "@/lib/evaluaciones/b-breve/calificacion";
-import { avanceBBreve, limpiarBorradorBBreve, validarBBreve, type BBreveDatos } from "@/lib/evaluaciones/b-breve/codigo";
-import { informeBBreveHtml, type AplicacionBBreve } from "@/lib/evaluaciones/b-breve/informe-html";
-import { calificarEapi, NOMBRES_MODULOS } from "@/lib/evaluaciones/eapi/calificacion";
-import {
-  avanceEapi,
-  FORMA_MODULOS,
-  limpiarBorradorEapi,
-  minutosEapi,
-  MODULOS_EAPI,
-  modulosDeOpciones,
-  preguntasEapi,
-  type ModuloEapi,
-} from "@/lib/evaluaciones/eapi/codigo";
-import { calificarRiasec } from "@/lib/evaluaciones/riasec/calificacion";
-import { avanceRiasec, limpiarBorradorRiasec } from "@/lib/evaluaciones/riasec/codigo";
-import { calificarValores, VALORES_INFO } from "@/lib/evaluaciones/valores/calificacion";
-import { avanceValores, limpiarBorradorValores } from "@/lib/evaluaciones/valores/codigo";
 import {
   actualizarSeguimiento,
   asignarEvaluacion,
@@ -53,15 +35,13 @@ import {
   type EvaluacionRow,
 } from "@/lib/evaluaciones/evaluaciones";
 import { INSTRUMENTOS, instrumentoPorId } from "@/lib/evaluaciones/instrumentos";
+import { definicion, nombreConOpciones } from "@/lib/evaluaciones/registro";
 import { urlPublica } from "@/lib/url-publica";
 import { IconoWhatsApp } from "./boton-whatsapp-paciente";
-import { datosEapi, InformeEapi } from "./informe-eapi";
-import { InformeFrame } from "./informe-frame";
-import { datosRiasec, InformeRiasec } from "./informe-riasec";
-import { datosValores, InformeValores } from "./informe-valores";
+import { edadEn } from "./informe-jjr";
 import { AlarmaAtencion } from "./alarma-atencion";
 import { EVENTO_ABRIR_RESPUESTA, EVENTO_EVALUACIONES_CAMBIO } from "./seccion-plegable";
-import { NotasPrivadas } from "./notas-privadas";
+import { INFORMES, OPCIONES_ASIGNAR } from "./registro-informes";
 import { BTN_ACCENT, BTN_DANGER, BTN_GHOST, Field, SectionCard } from "./ui";
 
 type Vista = { tipo: "lista" } | { tipo: "informe"; respuestaId: string };
@@ -87,24 +67,6 @@ function etiquetasSugeridas(paciente: PacienteRow, n: number, responde: "pacient
   return Array.from({ length: n }, (_, i) => nombres[i] ?? (n === 1 && !paciente.esMenor ? paciente.nombre : `Cuidador ${i + 1}`));
 }
 
-const normalizar = (s: string | null | undefined) =>
-  (s ?? "").normalize("NFD").replace(/[̀-ͯ]/g, "").trim().toLowerCase();
-
-/** Datos B-Breve de una respuesta guardada (null si el registro no es válido). */
-function datosBBreve(r: EvaluacionRespuestaRow): BBreveDatos | null {
-  const v = validarBBreve(r.datos);
-  return v.ok ? v.datos : null;
-}
-
-function aplicacion(r: EvaluacionRespuestaRow, datos: BBreveDatos): AplicacionBBreve {
-  return {
-    datos,
-    nombre: r.respondienteNombre,
-    relacion: r.respondienteRelacion ?? "",
-    fecha: r.fecha ?? r.createdAt.slice(0, 10),
-  };
-}
-
 /** Frecuencias ofrecidas para el seguimiento programado (días). */
 const FRECUENCIAS = [14, 21, 28, 42, 56, 84];
 const textoCada = (dias: number) => (dias % 7 === 0 ? `cada ${dias / 7 === 1 ? "semana" : `${dias / 7} semanas`}` : `cada ${dias} días`);
@@ -122,7 +84,8 @@ export function EvaluacionesPaciente({ paciente }: { paciente: PacienteRow }) {
   const [etiquetas, setEtiquetas] = useState<string[]>(() =>
     etiquetasSugeridas(paciente, paciente.esMenor ? INSTRUMENTOS[0].respuestasPorDefecto : 1)
   );
-  const [modulosEapi, setModulosEapi] = useState<ModuloEapi[]>(["gad", "dass", "ptq"]);
+  // Opciones propias del instrumento al asignar (escalas del EAPI, forma A/B…).
+  const [opcionesAsignar, setOpcionesAsignar] = useState<Record<string, unknown>>(() => OPCIONES_ASIGNAR[INSTRUMENTOS[0].id]?.inicial() ?? {});
   const [nota, setNota] = useState("");
   const [aviso, setAviso] = useState("");
   // Seguimiento programado: 0 = no repetir.
@@ -197,11 +160,13 @@ export function EvaluacionesPaciente({ paciente }: { paciente: PacienteRow }) {
 
   const handleAsignar = async () => {
     setError("");
-    if (instrumento === "eapi" && modulosEapi.length === 0) {
-      setError("Elige al menos una escala del EAPI.");
+    const extra = OPCIONES_ASIGNAR[instrumento];
+    const errOpciones = extra?.error?.(opcionesAsignar) ?? null;
+    if (errOpciones) {
+      setError(errOpciones);
       return;
     }
-    const opciones = instrumento === "eapi" ? { modulos: modulosEapi } : {};
+    const opciones = extra ? (extra.preparar?.(opcionesAsignar) ?? opcionesAsignar) : {};
     const { error: err, creadas } = await asignarEvaluacion(paciente.id, instrumento, etiquetas, nota, opciones);
     if (err) {
       setError(err);
@@ -288,9 +253,7 @@ export function EvaluacionesPaciente({ paciente }: { paciente: PacienteRow }) {
             ? (cadaDias: number) =>
                 void programarSeguimiento(
                   actual.instrumento,
-                  actual.instrumento === "eapi"
-                    ? { modulos: MODULOS_EAPI.filter((m) => Array.isArray((actual.datos as Record<string, unknown>)[m])) }
-                    : (original?.opciones ?? {}),
+                  definicion(actual.instrumento)?.opcionesNueva(actual, original?.opciones) ?? (original?.opciones ?? {}),
                   original?.etiqueta ?? "",
                   cadaDias,
                   original?.id ?? null
@@ -302,9 +265,7 @@ export function EvaluacionesPaciente({ paciente }: { paciente: PacienteRow }) {
             ? () =>
                 void nuevaAplicacion(
                   actual.instrumento,
-                  actual.instrumento === "eapi"
-                    ? { modulos: MODULOS_EAPI.filter((m) => Array.isArray((actual.datos as Record<string, unknown>)[m])) }
-                    : (original?.opciones ?? {}),
+                  definicion(actual.instrumento)?.opcionesNueva(actual, original?.opciones) ?? (original?.opciones ?? {}),
                   original?.etiqueta ?? ""
                 )
             : undefined
@@ -351,6 +312,7 @@ export function EvaluacionesPaciente({ paciente }: { paciente: PacienteRow }) {
               className="field"
               onChange={(e) => {
                 setInstrumento(e.target.value);
+                setOpcionesAsignar(OPCIONES_ASIGNAR[e.target.value]?.inicial() ?? {});
                 const i = instrumentoPorId(e.target.value);
                 const responde = i?.responde ?? "cuidador";
                 setEtiquetas(
@@ -398,35 +360,10 @@ export function EvaluacionesPaciente({ paciente }: { paciente: PacienteRow }) {
               </Field>
             ))}
           </div>
-          {instrumento === "eapi" ? (
-            <fieldset className="grid gap-2">
-              <legend className="mb-1 text-sm font-semibold text-slate-200">Escalas a aplicar (cada una puede enviarse por separado)</legend>
-              {MODULOS_EAPI.map((m) => (
-                <label className="flex items-start gap-2 text-sm text-slate-200" key={m}>
-                  <input
-                    checked={modulosEapi.includes(m)}
-                    className="mt-1"
-                    onChange={(e) =>
-                      setModulosEapi((l) => MODULOS_EAPI.filter((x) => (x === m ? e.target.checked : l.includes(x))))
-                    }
-                    type="checkbox"
-                  />
-                  <span>
-                    {NOMBRES_MODULOS[m].completo}
-                    <span className="block text-xs text-slate-400">
-                      {FORMA_MODULOS[m].items} preguntas · {NOMBRES_MODULOS[m].mide}
-                      {m === "docs" ? ". Recomendado solo si sospechas síntomas obsesivo-compulsivos." : "."}
-                    </span>
-                  </span>
-                </label>
-              ))}
-              <p className="text-xs text-slate-400">
-                {modulosEapi.length
-                  ? `Total: ${preguntasEapi(modulosEapi)} preguntas (incluye siempre la pregunta de seguridad), unos ${minutosEapi(modulosEapi)} minutos. Los informes pueden verse por escala o unificados, también uniendo escalas enviadas en enlaces distintos.`
-                  : "Elige al menos una escala."}
-              </p>
-            </fieldset>
-          ) : null}
+          {(() => {
+            const Opciones = OPCIONES_ASIGNAR[instrumento]?.Componente;
+            return Opciones ? <Opciones onCambio={setOpcionesAsignar} valor={opcionesAsignar} /> : null;
+          })()}
           <Field label="Seguimiento programado">
             <select className="field" onChange={(e) => setRepetirDias(Number(e.target.value))} value={repetirDias}>
               <option value={0}>No repetir</option>
@@ -446,6 +383,21 @@ export function EvaluacionesPaciente({ paciente }: { paciente: PacienteRow }) {
           <Field label="Nota privada (opcional)">
             <input className="field" maxLength={500} onChange={(e) => setNota(e.target.value)} placeholder="Ej. aplicación inicial, seguimiento semana 4" value={nota} />
           </Field>
+          {(() => {
+            const i = instrumentoPorId(instrumento);
+            const edad = edadEn(paciente.fechaNacimiento, new Date().toISOString().slice(0, 10));
+            return i?.edadMinima && edad !== null && edad < i.edadMinima ? (
+              <p className="text-xs text-amber-300">
+                La población propuesta para este instrumento es de {i.edadMinima} años o más; el paciente tiene {edad}. Si lo aplicas, el informe lo
+                señalará.
+              </p>
+            ) : null;
+          })()}
+          {instrumentoPorId(instrumento)?.experimental ? (
+            <p className="text-xs text-amber-300">
+              Instrumento experimental: solo pilotaje con consentimiento; los resultados se rotulan como experimentales y no deciden una carrera.
+            </p>
+          ) : null}
           {instrumentoPorId(instrumento)?.responde === "cuidador" && !paciente.esMenor ? (
             <p className="text-xs text-amber-300">
               Este instrumento lo responden los padres o cuidadores. El paciente no está marcado como menor de edad.
@@ -480,8 +432,7 @@ export function EvaluacionesPaciente({ paciente }: { paciente: PacienteRow }) {
                 <div className="text-sm font-semibold text-white">
                   <RefreshCw className="mr-1 inline h-3.5 w-3.5 text-indigo-300" />
                   {sg.etiqueta ? `${sg.etiqueta} · ` : ""}
-                  {instrumentoPorId(sg.instrumento)?.nombre.split(" · ")[0] ?? sg.instrumento}
-                  {sg.instrumento === "eapi" ? ` (${modulosDeOpciones(sg.opciones).map((m) => FORMA_MODULOS[m].sigla).join(", ")})` : ""}
+                  {nombreConOpciones(sg.instrumento, sg.opciones)}
                 </div>
                 <div className="text-xs text-slate-400">
                   {sg.activo ? (
@@ -564,17 +515,7 @@ export function EvaluacionesPaciente({ paciente }: { paciente: PacienteRow }) {
           {evaluaciones.map((ev) => {
             const usadas = usadasDe(ev);
             const abierta = ev.estado === "abierta";
-            const avance = !ev.borrador
-              ? null
-              : ev.instrumento === "b-breve"
-                ? avanceBBreve(limpiarBorradorBBreve(ev.borrador))
-                : ev.instrumento === "eapi"
-                  ? avanceEapi(limpiarBorradorEapi(ev.borrador), modulosDeOpciones(ev.opciones))
-                  : ev.instrumento === "riasec"
-                    ? avanceRiasec(limpiarBorradorRiasec(ev.borrador))
-                    : ev.instrumento === "valores"
-                      ? avanceValores(limpiarBorradorValores(ev.borrador))
-                      : null;
+            const avance = ev.borrador ? (definicion(ev.instrumento)?.avance(ev.borrador, ev.opciones) ?? null) : null;
             const estadoTexto = !abierta
               ? ev.estado === "completa"
                 ? "✓ Enviado"
@@ -587,8 +528,7 @@ export function EvaluacionesPaciente({ paciente }: { paciente: PacienteRow }) {
                 <div className="min-w-0">
                   <div className="text-sm font-semibold text-white">
                     {ev.etiqueta ? `${ev.etiqueta} · ` : ""}
-                    {instrumentoPorId(ev.instrumento)?.nombre.split(" · ")[0] ?? ev.instrumento}
-                    {ev.instrumento === "eapi" ? ` (${modulosDeOpciones(ev.opciones).map((m) => FORMA_MODULOS[m].sigla).join(", ")})` : ""}
+                    {nombreConOpciones(ev.instrumento, ev.opciones)}
                   </div>
                   <div className="text-xs text-slate-400">
                     Creado {formatoFechaCorta(ev.createdAt)} ·{" "}
@@ -681,15 +621,8 @@ export function EvaluacionesPaciente({ paciente }: { paciente: PacienteRow }) {
             </button>
           </div>
           {respuestas.map((r) => {
-            const datos = r.instrumento === "b-breve" ? datosBBreve(r) : null;
-            const c = datos ? calificarBBreve(datos) : null;
-            const de = r.instrumento === "eapi" ? datosEapi(r) : null;
-            const ce = de ? calificarEapi(de) : null;
-            const dr = r.instrumento === "riasec" ? datosRiasec(r) : null;
-            const cr = dr ? calificarRiasec(dr) : null;
-            const dv = r.instrumento === "valores" ? datosValores(r) : null;
-            const cv = dv ? calificarValores(dv) : null;
-            const alarma = (datos && (datos.S1 === 1 || datos.S2 === 1)) || (ce && ce.flags.some((f) => f.lvl === "alert"));
+            const resumen = definicion(r.instrumento)?.resumen(r) ?? null;
+            const alarma = resumen?.alarma ?? false;
             return (
               <button
                 className="flex flex-wrap items-center justify-between gap-2 border border-white/10 bg-white/4 p-3 text-left transition hover:border-emerald-300/50"
@@ -719,33 +652,7 @@ export function EvaluacionesPaciente({ paciente }: { paciente: PacienteRow }) {
                       </span>
                     )
                   ) : null}
-                  {c ? (
-                    <span className="text-sm text-slate-200">
-                      <strong>{c.total}</strong>/48 · {c.banda.etiqueta}
-                    </span>
-                  ) : null}
-                  {cr ? (
-                    <span className="text-xs text-slate-200">
-                      Código <strong className="tracking-wider">{cr.codigo}</strong> · diferenciación {cr.diferenciacion.k}
-                    </span>
-                  ) : null}
-                  {cv ? (
-                    <span className="text-xs text-slate-200">
-                      Valores: <strong>{cv.principales.map((v) => VALORES_INFO[v].nombre).join(", ")}</strong>
-                    </span>
-                  ) : null}
-                  {ce ? (
-                    <span className="text-xs text-slate-200">
-                      {[
-                        ce.gad ? `GAD-7 ${ce.gad.total}` : "",
-                        ce.dass ? `Estrés ${ce.dass.str.band.label}` : "",
-                        ce.ptq ? `PTQ ${ce.ptq.total}` : "",
-                        ce.docs ? `DOCS ${ce.docs.total}` : "",
-                      ]
-                        .filter(Boolean)
-                        .join(" · ")}
-                    </span>
-                  ) : null}
+                  {resumen?.insignia ? <span className="text-xs text-slate-200">{resumen.insignia}</span> : null}
                   <span className="text-xs font-semibold text-emerald-300">Ver informe →</span>
                 </span>
               </button>
@@ -780,46 +687,8 @@ function InformeRespuesta({
   respuestas: EvaluacionRespuestaRow[];
 }) {
   const actual = respuestas.find((r) => r.id === respuestaId) ?? null;
-  const mismas = useMemo(
-    () =>
-      respuestas.filter(
-        (r) => actual && actual.instrumento === "b-breve" && r.id !== actual.id && r.instrumento === actual.instrumento && datosBBreve(r)
-      ),
-    [respuestas, actual]
-  );
-
-  // Por defecto: cuidador 2 = otra respuesta del mismo enlace (o de ±14 días) de otra persona;
-  // anterior = la más reciente previa de la misma persona (relación y nombre), si no, misma relación.
-  const sugerencias = useMemo(() => {
-    if (!actual) return { c2: "", ant: "" };
-    const mismaPersona = (r: EvaluacionRespuestaRow) =>
-      normalizar(r.respondienteRelacion) === normalizar(actual.respondienteRelacion) &&
-      normalizar(r.respondienteNombre) === normalizar(actual.respondienteNombre);
-    const dias = (r: EvaluacionRespuestaRow) =>
-      Math.abs(new Date(fechaDe(r)).getTime() - new Date(fechaDe(actual)).getTime()) / 86_400_000;
-    const c2 =
-      mismas.find((r) => r.evaluacionId && r.evaluacionId === actual.evaluacionId && !mismaPersona(r)) ??
-      mismas.find((r) => !mismaPersona(r) && dias(r) <= 14);
-    const previas = mismas.filter((r) => fechaDe(r) < fechaDe(actual) || (fechaDe(r) === fechaDe(actual) && r.createdAt < actual.createdAt));
-    const ant =
-      previas.find(mismaPersona) ??
-      previas.find((r) => normalizar(r.respondienteRelacion) === normalizar(actual.respondienteRelacion) && r.id !== c2?.id);
-    return { c2: c2?.id ?? "", ant: ant?.id ?? "" };
-  }, [actual, mismas]);
-
-  const [c2Id, setC2Id] = useState(sugerencias.c2);
-  const [antId, setAntId] = useState(sugerencias.ant);
-  const [notasPrivadas, setNotasPrivadas] = useState("");
-
   if (!actual) return null;
-  const datos = datosBBreve(actual);
-  const etiqueta = (r: EvaluacionRespuestaRow) =>
-    `${formatoFechaCorta(fechaDe(r))} · ${r.respondienteNombre}${r.respondienteRelacion ? ` (${r.respondienteRelacion})` : ""}`;
-  const buscar = (id: string) => {
-    const r = mismas.find((x) => x.id === id);
-    const d = r ? datosBBreve(r) : null;
-    return r && d ? aplicacion(r, d) : null;
-  };
+  const Informe = INFORMES[actual.instrumento];
 
   return (
     <SectionCard title="Informe de evaluación">
@@ -866,7 +735,7 @@ function InformeRespuesta({
               const blob = new Blob([JSON.stringify(actual.datos, null, 2)], { type: "application/json" });
               const a = document.createElement("a");
               a.href = URL.createObjectURL(blob);
-              a.download = `${actual.instrumento === "eapi" ? "EAPI" : actual.instrumento === "riasec" ? "RIASEC" : actual.instrumento === "valores" ? "VALORES" : "B16"}_${(actual.respondienteNombre || "respuesta").replace(/\s+/g, "_")}_${fechaDe(actual)}.json`;
+              a.download = `${definicion(actual.instrumento)?.sigla ?? actual.instrumento.toUpperCase()}_${(actual.respondienteNombre || "respuesta").replace(/\s+/g, "_")}_${fechaDe(actual)}.json`;
               a.click();
               URL.revokeObjectURL(a.href);
             }}
@@ -891,44 +760,10 @@ function InformeRespuesta({
 
         <AlarmaAtencion informe={informe} onCambio={onAlarma} pacienteId={paciente.id} respuesta={actual} />
 
-        {actual.instrumento === "eapi" ? (
-          <InformeEapi actual={actual} paciente={paciente} respuestas={respuestas} />
-        ) : actual.instrumento === "riasec" ? (
-          <InformeRiasec actual={actual} paciente={paciente} respuestas={respuestas} />
-        ) : actual.instrumento === "valores" ? (
-          <InformeValores actual={actual} paciente={paciente} respuestas={respuestas} />
-        ) : actual.instrumento !== "b-breve" || !datos ? (
-          <p className="text-sm text-red-200">Esta respuesta no tiene un formato válido para calificar.</p>
+        {Informe ? (
+          <Informe actual={actual} paciente={paciente} respuestas={respuestas} />
         ) : (
-          <>
-            <div className="grid gap-3 sm:grid-cols-2">
-              <Field label="Comparar con segundo cuidador">
-                <select className="field" onChange={(e) => setC2Id(e.target.value)} value={c2Id}>
-                  <option value="">Sin comparación</option>
-                  {mismas.map((r) => (
-                    <option key={r.id} value={r.id}>
-                      {etiqueta(r)}
-                    </option>
-                  ))}
-                </select>
-              </Field>
-              <Field label="Seguimiento: aplicación anterior">
-                <select className="field" onChange={(e) => setAntId(e.target.value)} value={antId}>
-                  <option value="">Sin comparación</option>
-                  {mismas.map((r) => (
-                    <option key={r.id} value={r.id}>
-                      {etiqueta(r)}
-                    </option>
-                  ))}
-                </select>
-              </Field>
-            </div>
-            <NotasPrivadas onCambio={setNotasPrivadas} pacienteId={paciente.id} respuestaId={actual.id} />
-            <InformeFrame
-              html={informeBBreveHtml(aplicacion(actual, datos), buscar(c2Id), buscar(antId), notasPrivadas)}
-              titulo="Informe B-Breve"
-            />
-          </>
+          <p className="text-sm text-red-200">Esta respuesta no tiene un formato válido para calificar.</p>
         )}
       </div>
     </SectionCard>

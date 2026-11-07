@@ -2,16 +2,18 @@
  * Instrumentos que se pueden asignar a un paciente desde su expediente.
  * Solo metadatos aquí (lo usa también la página pública).
  *
- * Para agregar uno nuevo:
- *  1. Contenido, validación (validar*, limpiarBorrador*) y calificación en src/lib/evaluaciones/<id>/.
- *  2. Registro del servidor: src/lib/evaluaciones/registro-servidor.ts (validar y limpiar el avance).
- *  3. Formulario con el molde común (src/components/evaluaciones/formulario-comun.tsx; ejemplo corto:
- *     valores-form.tsx) y su rama en evaluacion-publica.tsx.
- *  4. Informe en src/components/clinica/ (informe profesional + InformePacientePanel) y su rama en
- *     evaluaciones-paciente.tsx; si tiene puntuación en el tiempo, agregarlo a evolucion-paciente.ts.
- *  5. Su entrada en INSTRUMENTOS (abajo) y un script de pruebas en scripts/.
+ * Para agregar uno nuevo (cada pieza se declara una sola vez):
+ *  1. Contenido, validación (validar*, limpiarBorrador*, avance*) y calificación en src/lib/evaluaciones/<id>/.
+ *  2. Su entrada en INSTRUMENTOS (abajo).
+ *  3. Registro único de cálculo: src/lib/evaluaciones/registro.ts (resumen, avance, evolución, nombre corto).
+ *  4. Registro del servidor: src/lib/evaluaciones/registro-servidor.ts (validar y limpiar el avance).
+ *  5. Formulario con el molde común (formulario-comun.tsx) y su entrada en
+ *     src/components/evaluaciones/formularios.tsx.
+ *  6. Informe (profesional + InformePacientePanel) y, si hace falta, opciones al asignar, en
+ *     src/components/clinica/registro-informes.tsx.
+ *  7. Un script de pruebas en scripts/ (ejemplo completo: jjr, scripts/probar-jjr.mjs).
  */
-export type InstrumentoId = "b-breve" | "eapi" | "riasec" | "valores";
+export type InstrumentoId = "b-breve" | "eapi" | "riasec" | "valores" | "jjr84" | "jjr176";
 
 export type Instrumento = {
   id: InstrumentoId;
@@ -25,6 +27,10 @@ export type Instrumento = {
   tituloPublico?: string;
   /** Tiene informe para enviar al paciente (con notas del psicólogo). */
   informePaciente?: boolean;
+  /** Instrumento en desarrollo: resultados experimentales, solo pilotaje con consentimiento. */
+  experimental?: boolean;
+  /** Edad mínima propuesta (se avisa al asignar si el paciente es menor). */
+  edadMinima?: number;
 };
 
 export const INSTRUMENTOS: readonly Instrumento[] = [
@@ -65,6 +71,30 @@ export const INSTRUMENTOS: readonly Instrumento[] = [
     respuestasPorDefecto: 1,
     tituloPublico: "Cuestionario de valores laborales · versión JJ",
     informePaciente: true,
+  },
+  {
+    id: "jjr84",
+    nombre: "Intereses Vocacionales JJR Actualizada (JJR-84) · experimental",
+    descripcion:
+      "Instrumento propio en desarrollo (v0.2.0-experimental): 84 actividades, 14 campos × 6 (ingeniería y oficios, ciencia, salud, ambiente, software, datos e IA, educación, comunidad, negocios, operaciones, comunicación, diseño, música, derecho). Respuesta 0–4 o «no comprendo». Perfil por campo en orden fijo con media y cobertura, sin baremos, sin top 3 ni código Holland. Solo pilotaje con consentimiento; desde 16 años.",
+    responde: "paciente",
+    respuestasPorDefecto: 1,
+    tituloPublico: "Cuestionario de intereses vocacionales JJR",
+    informePaciente: true,
+    experimental: true,
+    edadMinima: 16,
+  },
+  {
+    id: "jjr176",
+    nombre: "Intereses Vocacionales JJR, banco ampliado de investigación (JJR-INV-176) · experimental",
+    descripcion:
+      "Versión de investigación (v0.3.0): forma A o B de 130 actividades (84 anclas de JJR-84 + 28 candidatos + 18 de áreas exploratorias: turismo y hospitalidad, deporte, artes escénicas, animales, servicios personales, agropecuaria). Solo las anclas puntúan; candidatos y áreas exploratorias se muestran como respuestas para conversar. Protocolo separado de JJR-84: no se comparan entre sí. Solo pilotaje supervisado; desde 16 años.",
+    responde: "paciente",
+    respuestasPorDefecto: 1,
+    tituloPublico: "Cuestionario de intereses vocacionales JJR",
+    informePaciente: true,
+    experimental: true,
+    edadMinima: 16,
   },
 ];
 

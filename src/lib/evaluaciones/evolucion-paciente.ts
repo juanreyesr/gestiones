@@ -1,5 +1,6 @@
 /**
  * Panel de evolución del expediente: arma, a partir de todas las respuestas
+ * (cada instrumento aporta sus puntos e hitos desde el registro único),
  * del paciente, una serie en el tiempo por escala (con sus bandas de
  * severidad y la tendencia) y los hitos no numéricos (código vocacional,
  * valores principales). SOLO panel del psicólogo (usa la calificación).
@@ -9,15 +10,9 @@
  * - Demás escalas: cambio de banda (no tienen diferencias mínimas consolidadas).
  * En todas, una puntuación más alta indica más síntomas o más carga.
  */
-import { calificarBBreve } from "./b-breve/calificacion";
-import { validarBBreve } from "./b-breve/codigo";
-import { calificarEapi, DASS_SUB, type Tendencia } from "./eapi/calificacion";
-import { MODULOS_EAPI, validarEapi } from "./eapi/codigo";
+import { DASS_SUB, type Tendencia } from "./eapi/calificacion";
 import type { EvaluacionRespuestaRow } from "./evaluaciones";
-import { calificarRiasec, RIASEC_INFO } from "./riasec/calificacion";
-import { validarRiasec } from "./riasec/codigo";
-import { calificarValores, VALORES_INFO } from "./valores/calificacion";
-import { validarValores } from "./valores/codigo";
+import { definicion } from "./registro";
 
 export type BandaSerie = { hasta: number; etiqueta: string; k: "low" | "mid" | "high" };
 export type PuntoSerie = { fecha: string; valor: number; banda: string; respuestaId: string; quien: string };
@@ -36,7 +31,7 @@ export type SerieEvolucion = {
   tendencia: Tendencia | null;
   tendenciaInicio: Tendencia | null;
 };
-export type HitoEvolucion = { fecha: string; tipo: "riasec" | "valores"; titulo: string; detalle: string; respuestaId: string };
+export type HitoEvolucion = { fecha: string; tipo: string; titulo: string; detalle: string; respuestaId: string };
 
 const bandaDe = (bandas: BandaSerie[], v: number) => {
   const i = bandas.findIndex((b) => v <= b.hasta);
@@ -126,46 +121,10 @@ export function evolucionDelPaciente(respuestas: EvaluacionRespuestaRow[]) {
   const hitos: HitoEvolucion[] = [];
 
   for (const r of orden) {
-    if (r.instrumento === "eapi") {
-      const d = (r.datos ?? {}) as Record<string, unknown>;
-      const modulos = MODULOS_EAPI.filter((m) => Array.isArray(d[m]));
-      const v = modulos.length ? validarEapi(r.datos, modulos) : null;
-      if (!v?.ok) continue;
-      const c = calificarEapi(v.datos);
-      if (c.gad) agregar("gad", r, c.gad.total);
-      if (c.dass) {
-        agregar("dass-dep", r, c.dass.dep.x2);
-        agregar("dass-anx", r, c.dass.anx.x2);
-        agregar("dass-str", r, c.dass.str.x2);
-      }
-      if (c.ptq) agregar("ptq", r, c.ptq.total);
-      if (c.docs) agregar("docs", r, c.docs.total);
-    } else if (r.instrumento === "b-breve") {
-      const v = validarBBreve(r.datos);
-      if (v.ok) agregar("b-breve", r, calificarBBreve(v.datos).total);
-    } else if (r.instrumento === "riasec") {
-      const v = validarRiasec(r.datos);
-      if (!v.ok) continue;
-      const c = calificarRiasec(v.datos);
-      hitos.push({
-        fecha: fechaDe(r),
-        tipo: "riasec",
-        titulo: `Intereses vocacionales: código ${c.codigo}`,
-        detalle: c.orden.slice(0, 3).map((t) => RIASEC_INFO[t].nombre).join(" · "),
-        respuestaId: r.id,
-      });
-    } else if (r.instrumento === "valores") {
-      const v = validarValores(r.datos);
-      if (!v.ok) continue;
-      const c = calificarValores(v.datos);
-      hitos.push({
-        fecha: fechaDe(r),
-        tipo: "valores",
-        titulo: "Valores laborales principales",
-        detalle: c.principales.map((x) => VALORES_INFO[x].nombre).join(" · "),
-        respuestaId: r.id,
-      });
-    }
+    const e = definicion(r.instrumento)?.evolucion?.(r);
+    if (!e) continue;
+    for (const p of e.puntos) agregar(p.serie, r, p.valor);
+    if (e.hito) hitos.push({ fecha: fechaDe(r), ...e.hito, respuestaId: r.id });
   }
 
   const series: SerieEvolucion[] = DEFINICIONES.filter((d) => valores[d.id]?.length).map((d) => {

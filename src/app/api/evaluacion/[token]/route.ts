@@ -1,6 +1,6 @@
 import { after, NextResponse } from "next/server";
 import { plantillaVigente } from "@/lib/clinica/consentimiento-plantillas";
-import { modulosDeOpciones } from "@/lib/evaluaciones/eapi/codigo";
+import { definicion } from "@/lib/evaluaciones/registro";
 import { definicionServidor } from "@/lib/evaluaciones/registro-servidor";
 import { rateLimit, rateLimitResponse } from "@/lib/server/rate-limit";
 import { avisarEvaluacionRespondida } from "@/lib/server/telegram-avisos";
@@ -24,9 +24,6 @@ type RawGet = {
   identificacion?: string | null;
   responsables?: unknown;
 };
-
-/** Escalas del EAPI asignadas al enlace (los enlaces anteriores usaban { docs: true }). */
-const modulosEapi = (fila: RawGet) => modulosDeOpciones(fila.opciones);
 
 /** Limpia el avance según el instrumento del enlace. */
 function limpiarBorrador(fila: RawGet, datos: unknown) {
@@ -71,7 +68,8 @@ export async function GET(request: Request, { params }: { params: Promise<{ toke
         : { firmado: true },
       instrumento: fila.instrumento,
       ref: fila.ref,
-      opciones: fila.instrumento === "eapi" ? { modulos: modulosEapi(fila) } : {},
+      // Solo lo necesario para mostrar el formulario (p. ej. escalas del EAPI, forma A/B).
+      opciones: definicion(fila.instrumento)?.opcionesPublicas(fila.opciones) ?? {},
       // Avance guardado (solo con el enlace abierto), para continuar donde se quedó.
       borrador: fila.estado === "ok" && fila.borrador ? limpiarBorrador(fila, fila.borrador) : null,
     },
