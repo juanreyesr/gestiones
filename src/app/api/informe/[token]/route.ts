@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { leerInformePaciente } from "@/lib/evaluaciones/informe-paciente";
+import { informeVencido, leerInformePaciente } from "@/lib/evaluaciones/informe-paciente";
 import { rateLimit, rateLimitResponse } from "@/lib/server/rate-limit";
 import { getSupabaseClient } from "@/lib/supabase";
 
@@ -20,5 +20,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ toke
   const fila = (Array.isArray(data) ? data[0] : data) as { estado: string; contenido: unknown } | null;
   const informe = !error && fila?.estado === "ok" ? leerInformePaciente(fila.contenido) : null;
   if (!informe) return NextResponse.json({ estado: "invalido" }, { headers: SIN_CACHE });
+  // Informes con vigencia (p. ej. intereses vocacionales, 6 meses): después el enlace se desactiva.
+  if (informeVencido(informe)) return NextResponse.json({ estado: "vencido", vigenteHasta: informe.vigenteHasta }, { headers: SIN_CACHE });
   return NextResponse.json({ estado: "ok", informe }, { headers: SIN_CACHE });
 }

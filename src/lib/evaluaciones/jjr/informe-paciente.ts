@@ -3,7 +3,7 @@
  * con las áreas ordenadas de la de mayor a la de menor inclinación y una
  * gráfica de barras al inicio. Solo panel (usa la calificación).
  */
-import type { InformePaciente, OpcionesInforme, ResultadoPaciente } from "../informe-paciente";
+import { sumarMeses, type InformePaciente, type OpcionesInforme, type ResultadoPaciente } from "../informe-paciente";
 import { BANCO_JJR, CAMPOS_PRINCIPALES, INFO_CAMPOS, NOMBRES_CAMPOS } from "./banco";
 import {
   calificarJjr,
@@ -18,6 +18,12 @@ import {
 import { JJR_ESCALA, JJR_TITULO_PACIENTE, type JjrDatos } from "./codigo";
 
 const ID_OTRAS = "otras-actividades";
+/** Validez del informe al paciente: los intereses pueden cambiar en ese período. */
+export const JJR_VIGENCIA_MESES = 6;
+const fechaLarga = (iso: string) => {
+  const [a, m, d] = iso.split("-").map(Number);
+  return new Date(a, m - 1, d).toLocaleDateString("es-GT", { day: "numeric", month: "long", year: "numeric" });
+};
 
 export const areasJjr = (investigacion: boolean) => [
   ...CAMPOS_PRINCIPALES.map((c) => ({ id: c, nombre: NOMBRES_CAMPOS[c].nombre })),
@@ -89,6 +95,7 @@ export function informePacienteJjr(
   }
 
   const nombresPrincipales = principales.map((k) => k.nombre);
+  const vigenteHasta = /^\d{4}-\d{2}-\d{2}/.test(extra.fechaAplicacion) ? sumarMeses(extra.fechaAplicacion, JJR_VIGENCIA_MESES) : undefined;
   const siguientes = conMedia.filter((k) => !principales.includes(k)).slice(0, 2).map((k) => k.nombre);
   return {
     v: 1,
@@ -96,6 +103,7 @@ export function informePacienteJjr(
     paciente: extra.paciente,
     fechaAplicacion: extra.fechaAplicacion,
     emitido: new Date().toISOString(),
+    vigenteHasta,
     profesional: extra.profesional,
     intro: [
       "Este informe muestra tus áreas de interés ordenadas de la que más te atrajo a la que menos, según tus respuestas.",
@@ -126,6 +134,10 @@ export function informePacienteJjr(
     resultados,
     notas: extra.notas.trim(),
     ayuda: null,
-    aviso: `Este informe describe tus intereses según tus respuestas; no mide habilidades ni decide por ti. ${JJR_CONTRASTE} Lo conversaremos en sesión.`,
+    aviso: `Este informe describe tus intereses según tus respuestas; no mide habilidades ni decide por ti. ${JJR_CONTRASTE} Lo conversaremos en sesión.${
+      vigenteHasta
+        ? ` Este resultado tiene una validez de ${JJR_VIGENCIA_MESES} meses (hasta el ${fechaLarga(vigenteHasta)}) debido a los posibles cambios de intereses que pueden surgir en este período; después, el enlace de este informe se desactiva.`
+        : ""
+    }`,
   };
 }

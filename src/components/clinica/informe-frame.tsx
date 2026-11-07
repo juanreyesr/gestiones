@@ -1,7 +1,7 @@
 "use client";
 
 import { Download, Printer } from "lucide-react";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { descargarPdfDeHtml, nombrePdf } from "@/lib/pdf-desde-html";
 import { BTN_ACCENT, BTN_GHOST } from "./ui";
 
@@ -15,6 +15,29 @@ export function InformeFrame({ html, titulo, textoBoton = "Descargar PDF" }: { h
   const [alto, setAlto] = useState(900);
   const [generando, setGenerando] = useState(false);
   const [error, setError] = useState("");
+  // Altura del contenido (no del marco), también al abrir o plegar secciones
+  // («Mostrar respuestas ítem por ítem»). Se mide al cargar y con cada cambio de tamaño.
+  useEffect(() => {
+    const marco = ref.current;
+    if (!marco) return;
+    let observador: ResizeObserver | null = null;
+    const preparar = () => {
+      const doc = marco.contentDocument;
+      if (!doc?.body) return;
+      const medir = () => setAlto(Math.ceil(doc.body.getBoundingClientRect().height) + 8);
+      medir();
+      observador?.disconnect();
+      observador = new ResizeObserver(medir);
+      observador.observe(doc.body);
+    };
+    if (marco.contentDocument?.readyState === "complete" && marco.contentDocument.body?.childElementCount) preparar();
+    marco.addEventListener("load", preparar);
+    return () => {
+      marco.removeEventListener("load", preparar);
+      observador?.disconnect();
+    };
+  }, [html]);
+
   const descargar = async () => {
     setGenerando(true);
     setError("");
@@ -41,10 +64,6 @@ export function InformeFrame({ html, titulo, textoBoton = "Descargar PDF" }: { h
       {error ? <p className="text-xs text-red-300">{error}</p> : null}
       <iframe
         className="w-full rounded border border-white/10 bg-white"
-        onLoad={() => {
-          const doc = ref.current?.contentDocument;
-          if (doc) setAlto(doc.documentElement.scrollHeight + 8);
-        }}
         ref={ref}
         srcDoc={html}
         style={{ height: alto }}

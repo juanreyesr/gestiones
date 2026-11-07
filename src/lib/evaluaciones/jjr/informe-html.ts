@@ -70,14 +70,19 @@ ${orden
   if (c.conteo.nc >= 5) obs.push(`<div class="flag regla"><b>•</b> ${c.conteo.nc} actividades marcadas como «no comprendo»: revisar vocabulario y familiaridad (no es un fallo de la persona).</div>`);
   html += obs.length ? obs.join("") : `<div class="flag ok">✓ Perfil completo y con diferencias entre campos (descriptivas).</div>`;
 
-  html += `<h2>Campos: definición, límite y rutas ilustrativas</h2>
-<p class="muted">Propuestas editoriales del instrumento. Las letras RIASEC (Realista, Investigador, Artístico, Social, Emprendedor, Convencional) son hipótesis de relación conceptual para revisión, no puntuaciones convertibles.${riasec ? ` Código RIASEC del paciente (${esc(fechaLarga(riasec.fecha))}): <strong>${esc(riasec.codigo)}</strong>; se marca solo dónde coincide la hipótesis, sin convertir resultados.` : ""}</p>
-${orden.map((k) => {
-  const campo = k.campo;
-  const info = INFO_CAMPOS[campo];
-  const coinc = riasec ? coincidenciaRiasec(info.riasec, riasec.codigo) : [];
-  return `<div class="tipo"><h3>${esc(campo)} · ${esc(NOMBRES_CAMPOS[campo].nombre)} <small>(media ${mediaTexto(k.media)} · ${k.n_validas}/6)</small></h3><p>${esc(info.definicion)}</p><p class="muted"><strong>Límite:</strong> ${esc(info.limite)} · <strong>Relación conceptual:</strong> ${esc(info.riasec)}${riasec ? (coinc.length ? ` (coincide con ${coinc.join(", ")} de su código)` : " (sin coincidencia con su código)") : ""}</p><p class="muted"><strong>Rutas ilustrativas:</strong> ${esc(info.rutas)}</p></div>`;
-}).join("")}
+  // Solo las áreas más relevantes: las 3 de mayor y las 3 de menor media.
+  const conMedia = orden.filter((k) => k.media !== null);
+  const mayores = conMedia.slice(0, 3);
+  const menores = conMedia.length > 6 ? conMedia.slice(-3) : conMedia.slice(3);
+  const tarjeta = (k: (typeof orden)[number]) => {
+    const info = INFO_CAMPOS[k.campo];
+    const coinc = riasec ? coincidenciaRiasec(info.riasec, riasec.codigo) : [];
+    return `<div class="tipo"><h3>${esc(k.campo)} · ${esc(NOMBRES_CAMPOS[k.campo].nombre)} <small>(media ${mediaTexto(k.media)} · ${k.n_validas}/6)</small></h3><p>${esc(info.definicion)}</p><p class="muted"><strong>Límite:</strong> ${esc(info.limite)} · <strong>Relación conceptual:</strong> ${esc(info.riasec)}${riasec ? (coinc.length ? ` (coincide con ${coinc.join(", ")} de su código)` : " (sin coincidencia con su código)") : ""}</p><p class="muted"><strong>Rutas ilustrativas:</strong> ${esc(info.rutas)}</p></div>`;
+  };
+  html += `<h2>Áreas de mayor interés</h2>
+<p class="muted">Las letras RIASEC (Realista, Investigador, Artístico, Social, Emprendedor, Convencional) son hipótesis de relación conceptual, no puntuaciones convertibles.${riasec ? ` Código RIASEC del paciente (${esc(fechaLarga(riasec.fecha))}): <strong>${esc(riasec.codigo)}</strong>; se marca solo dónde coincide la hipótesis.` : ""}</p>
+${mayores.map(tarjeta).join("")}
+${menores.length ? `<h2>Áreas de menor interés</h2>${menores.map(tarjeta).join("")}` : ""}
 <p class="muted">${esc(JJR_CONTRASTE)} Registrar qué actividad se probó y si cambió el interés, como información adicional (no corrige el puntaje).</p>`;
 
   if (anterior) {
@@ -95,15 +100,17 @@ ${s.map((f) => `<tr><td>${esc(f.campo)} ${esc(f.nombre)}</td><td>${mediaTexto(f.
       grupos
         .map((g) => `<tr><td colspan="3" class="grupo">${esc(g.campo)} · ${esc(g.nombre)}</td></tr>${g.items.map((i) => `<tr><td>${esc(i.id)}</td><td>${esc(i.actividad)}</td><td>${etiquetaValor(i.valor)}</td></tr>`).join("")}`)
         .join("");
-    html += `<h2>Candidatos nuevos de los campos principales (no puntúan)</h2>
+    html += `<details><summary>Mostrar actividades candidatas y áreas exploratorias (JJR-INV-176)</summary>
+<h2>Candidatos nuevos de los campos principales (no puntúan)</h2>
 <p class="muted">Se incluyen ${c.candidatos.reduce((n, g) => n + g.items.length, 0)} actividades candidatas de la forma ${esc(a.datos.forma)}. No forman parte de la media del campo: su inclusión alteraría la fórmula y la comparabilidad.</p>
 <table><thead><tr><th>ID</th><th>Actividad</th><th>Respuesta</th></tr></thead><tbody>${lista(c.candidatos)}</tbody></table>
 <h2>Áreas exploratorias (sin puntaje ni ranking)</h2>
 <p class="muted">Turismo y hospitalidad, deporte, artes escénicas, trabajo con animales, servicios personales y producción agropecuaria: respuestas individuales como temas de conversación, no resultados de una escala.</p>
-<table><thead><tr><th>ID</th><th>Actividad</th><th>Respuesta</th></tr></thead><tbody>${lista(c.exploratorias)}</tbody></table>`;
+<table><thead><tr><th>ID</th><th>Actividad</th><th>Respuesta</th></tr></thead><tbody>${lista(c.exploratorias)}</tbody></table></details>`;
   }
 
-  html += `<h2>Respuestas ítem por ítem (orden mostrado)</h2>
+  html += `<details><summary>Mostrar respuestas ítem por ítem (${a.datos.orden_ids.length})</summary>
+<h2>Respuestas ítem por ítem (orden mostrado)</h2>
 <table><thead><tr><th>N.º</th><th>ID</th><th>Actividad</th><th>Respuesta</th></tr></thead><tbody>
 ${a.datos.orden_ids
   .map((id, i) => {
@@ -111,7 +118,7 @@ ${a.datos.orden_ids
     return `<tr><td>${i + 1}</td><td>${esc(id)}${it.grupo !== "ancla" ? ` <span class="muted">${it.grupo === "candidato" ? "cand." : "expl."}</span>` : ""}</td><td>${esc(it.actividad)}</td><td>${etiquetaValor(a.datos.respuestas[id] ?? null)}</td></tr>`;
   })
   .join("")}
-</tbody></table>`;
+</tbody></table></details>`;
   if (a.datos.abiertas.otras) html += `<h2>${esc(JJR_PREGUNTAS_ABIERTAS.otras)} <small class="muted">(no puntúa)</small></h2><p class="cita">${esc(a.datos.abiertas.otras)}</p>`;
   if (a.datos.abiertas.noConocia) html += `<h2>${esc(JJR_PREGUNTAS_ABIERTAS.noConocia)} <small class="muted">(no puntúa)</small></h2><p class="cita">${esc(a.datos.abiertas.noConocia)}</p>`;
   if (notasPrivadas.trim()) html += `<h2>Notas del profesional</h2><p class="cita">${esc(notasPrivadas)}</p>`;
@@ -126,6 +133,8 @@ h1{font-size:20px;margin:0 0 4px}h2{font-size:15px;margin:22px 0 8px;padding-top
 th{font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:#64748b}td.grupo{background:#f1f5f9;font-weight:600;font-size:12px}
 .bar{height:7px;background:#f1f5f9;border-radius:99px;overflow:hidden;margin-top:4px}.bar i{display:block;height:100%}
 tr.top td{background:#f0fdfa}
+details{margin-top:18px}summary{cursor:pointer;display:inline-block;padding:8px 12px;border:1px solid #cbd5e1;border-radius:8px;font-weight:600;font-size:13px;color:#0f766e;background:#f8fafc}details[open] summary{margin-bottom:6px}
+@media print{details:not([open]){display:none}}
 .flag{padding:9px 12px;border-radius:8px;margin:6px 0;font-size:13px;border:1px solid #e2e8f0}
 .flag.regla{background:#fef3c7;border-color:#fcd34d;color:#78350f}.flag.ok{background:#f0fdf4;border-color:#bbf7d0}.flag.neutra{background:#f0f9ff;border-color:#bae6fd}
 .kpi{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;margin:14px 0}.kpi>div{background:#f8fafc;border-radius:8px;padding:10px}

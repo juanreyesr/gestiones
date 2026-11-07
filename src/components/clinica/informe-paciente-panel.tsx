@@ -5,10 +5,10 @@ import { useEffect, useState, type ReactNode } from "react";
 import { InformePacienteVista } from "@/components/evaluaciones/informe-paciente-vista";
 import { mensajeInforme } from "@/lib/clinica/mensaje-paciente";
 import { enlaceWhatsApp } from "@/lib/clinica/recordatorio";
-import { formatoFechaHora } from "@/lib/clinica/slots";
+import { formatoFechaCorta, formatoFechaHora } from "@/lib/clinica/slots";
 import type { PacienteRow } from "@/lib/clinica/types";
 import { fetchInforme, guardarNotasInforme, publicarInforme, retirarInforme, type InformeRow } from "@/lib/evaluaciones/evaluaciones";
-import type { InformePaciente, OpcionesInforme } from "@/lib/evaluaciones/informe-paciente";
+import { informeVencido, type InformePaciente, type OpcionesInforme } from "@/lib/evaluaciones/informe-paciente";
 import { urlPublica } from "@/lib/url-publica";
 import { IconoWhatsApp } from "./boton-whatsapp-paciente";
 import { BTN_ACCENT, BTN_DANGER, BTN_GHOST, Field } from "./ui";
@@ -123,7 +123,11 @@ export function InformePacientePanel({
         <h3 className="text-sm font-semibold uppercase tracking-wide text-emerald-200">Informe para el paciente</h3>
         <span className="text-xs text-slate-400">
           {informe?.publicadoAt
-            ? `Publicado el ${formatoFechaHora(informe.publicadoAt)}${publicadoIgual ? "" : " · hay cambios sin publicar"}`
+            ? `Publicado el ${formatoFechaHora(informe.publicadoAt)}${publicadoIgual ? "" : " · hay cambios sin publicar"}${(() => {
+                const v = (informe.contenido as Partial<InformePaciente> | null)?.vigenteHasta;
+                if (!v) return "";
+                return informeVencido({ vigenteHasta: v }) ? " · enlace vencido" : ` · vigente hasta el ${formatoFechaCorta(v)}`;
+              })()}`
             : "Aún no se ha enviado"}
         </span>
       </div>
