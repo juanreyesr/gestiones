@@ -5,6 +5,7 @@ import { calificarJjr } from "../src/lib/evaluaciones/jjr/calificacion.ts";
 import { avanceJjr, datosJjrGuardados, itemsJjr, limpiarBorradorJjr, validarJjr } from "../src/lib/evaluaciones/jjr/codigo.ts";
 import { informeJjrHtml } from "../src/lib/evaluaciones/jjr/informe-html.ts";
 import { informePacienteJjr, opcionesPorDefectoJjr } from "../src/lib/evaluaciones/jjr/informe-paciente.ts";
+import { perfilesJjr } from "../src/lib/evaluaciones/jjr/evolucion.ts";
 import { INSTRUMENTOS } from "../src/lib/evaluaciones/instrumentos.ts";
 import { evolucionDelPaciente } from "../src/lib/evaluaciones/evolucion-paciente.ts";
 import { nombreConOpciones, REGISTRO } from "../src/lib/evaluaciones/registro.ts";
@@ -122,6 +123,26 @@ caso("Servidor: la forma la fija el enlace; resumen, PDF y evolución vía regis
   assert.deepEqual(REGISTRO.jjr176.opcionesNueva(fila, {}), { forma: "A", asignacion: "seguimiento" });
   const ev = evolucionDelPaciente([fila]);
   assert.equal(ev.hitos.length, 1); assert.match(ev.hitos[0].detalle, /Ingeniería/);
+});
+
+caso("Perfiles en el tiempo: solo mismo protocolo, versión y forma; últimas 3", () => {
+  const fila = (id, inst, forma, fecha, v) => {
+    const items = itemsJjr(inst, forma);
+    const d = validarJjr({ respuestas: todas(items, v) }, inst, forma).datos;
+    return { id, instrumento: inst, datos: d, fecha, createdAt: fecha + "T10:00:00Z", respondienteNombre: "Ana" };
+  };
+  const filas = [
+    fila("a", "jjr84", null, "2026-01-01", 1), fila("b", "jjr84", null, "2026-02-01", 2),
+    fila("c", "jjr84", null, "2026-03-01", 3), fila("d", "jjr84", null, "2026-04-01", 4),
+    fila("e", "jjr176", "A", "2026-03-15", 2), fila("f", "jjr176", "B", "2026-04-15", 2),
+  ];
+  const p = perfilesJjr(filas);
+  assert.equal(p.length, 3, "JJR-84, forma A y forma B por separado");
+  const j84 = p.find((x) => x.clave.startsWith("JJR-84"));
+  assert.equal(j84.total, 4);
+  assert.deepEqual(j84.aplicaciones.map((a) => a.respuestaId), ["b", "c", "d"]);
+  assert.deepEqual(j84.campos[0].puntos.map((x) => x.media), [2, 3, 4]);
+  assert.equal(j84.campos.length, 14);
 });
 
 console.log(`\n${ok} pruebas correctas.`);
