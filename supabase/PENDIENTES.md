@@ -10,7 +10,9 @@ así que las migraciones se acumulan aquí y se aplican **juntas desde la comput
   computadora y aprobar cada ventana de Supabase.
 
 ## Pendientes
-Ninguna por ahora.
+| Migración | Qué habilita | Sin ella |
+| --- | --- | --- |
+| `064_gestionesjj_paciente_documentos.sql` | Documentos del expediente: fotografías, cartas, materiales, tareas, PDF y Word (bucket privado `gestionesjj-pacientes` + tabla de documentos) | La sección «Documentos y archivos» del expediente muestra que falta esta migración; lo demás funciona igual. |
 
 ## Aplicadas
 | Migración | Fecha | Verificación |

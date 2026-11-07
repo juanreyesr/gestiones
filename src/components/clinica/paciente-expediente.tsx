@@ -30,6 +30,7 @@ import {
   reactivarDatos,
   type ConsentimientoRow,
 } from "@/lib/clinica/pacientes";
+import { fetchDocumentos } from "@/lib/clinica/documentos";
 import { exportarExpedientePdf } from "@/lib/clinica/expediente-pdf";
 import { fetchEvaluacionesDePaciente, fetchInformesDeRespuestas } from "@/lib/evaluaciones/evaluaciones";
 import { fetchSesionEnCurso, fetchSesionesDePaciente, iniciarSesion, vincularCitaASesion } from "@/lib/clinica/sesiones";
@@ -40,6 +41,7 @@ import { PacienteForm } from "./paciente-form";
 import { ConsentimientosPaciente } from "./consentimientos-paciente";
 import { EvaluacionesPaciente } from "./evaluaciones-paciente";
 import { AntesProximaSesion } from "./antes-proxima-sesion";
+import { DocumentosPaciente } from "./documentos-paciente";
 import { PanelEvolucion } from "./panel-evolucion";
 import { PlanTratamiento } from "./plan-tratamiento";
 import { SesionActiva } from "./sesion-activa";
@@ -441,7 +443,8 @@ export function PacienteExpediente({
               try {
                 const { respuestas } = await fetchEvaluacionesDePaciente(paciente.id);
                 const informes = await fetchInformesDeRespuestas(respuestas.map((r) => r.id));
-                await exportarExpedientePdf(paciente, sesiones, { consentimientos, respuestas, informes });
+                const { data: documentos } = await fetchDocumentos(paciente.id);
+                await exportarExpedientePdf(paciente, sesiones, { consentimientos, respuestas, informes, documentos });
               } finally {
                 setExportando(false);
               }
@@ -486,6 +489,7 @@ export function PacienteExpediente({
           <PlanTratamiento onCambio={() => void cargar()} sesiones={sesiones} />
           <PanelEvolucion pacienteId={paciente.id} sesiones={sesiones} />
           <EvaluacionesPaciente paciente={paciente} />
+          <DocumentosPaciente pacienteId={paciente.id} sesiones={sesiones} />
           <SectionCard
             plegable={{
               id: "sesiones",

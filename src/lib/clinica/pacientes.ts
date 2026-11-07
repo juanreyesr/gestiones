@@ -1,3 +1,4 @@
+import { eliminarArchivosDePaciente } from "./documentos";
 import { getSupabaseClient } from "@/lib/supabase";
 import type { Responsable } from "./consentimiento";
 import type { HijoInfo, Moneda, PacienteEstado, PacientePayload, PacienteRow } from "./types";
@@ -138,6 +139,8 @@ export async function setEstadoPaciente(id: string, estado: PacienteEstado) {
 export async function deletePaciente(id: string) {
   const supabase = getSupabaseClient();
   if (!supabase) return { error: "Faltan las variables de Supabase." };
+  // Los archivos del expediente (Storage) no se borran en cascada: se quitan antes.
+  await eliminarArchivosDePaciente(id);
   const { error } = await supabase.from("gestionesjj_pacientes").delete().eq("id", id);
   return { error: error?.message ?? null };
 }

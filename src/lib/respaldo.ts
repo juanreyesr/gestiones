@@ -25,6 +25,7 @@ export const TABLAS_RESPALDO: { grupo: string; tablas: string[] }[] = [
       "gestionesjj_evaluacion_respuestas",
       "gestionesjj_evaluacion_informes",
       "gestionesjj_evaluacion_seguimientos",
+      "gestionesjj_paciente_documentos",
       "gestionesjj_solicitudes_cita",
       "gestionesjj_disponibilidad",
       "gestionesjj_google_reservas",
