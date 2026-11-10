@@ -74,7 +74,7 @@ caso("Informe de avance: mejoras primero y sin preguntas sensibles", () => {
   assert.equal(dep.tendencia, "empeora"); // 18 → 22: de moderado a severo
   assert.ok(dep.subieron.length === 2 && dep.subieron.every((p) => p.sensible)); // solo subieron los ítems 10 y 21
   const infSube = informeAvancePaciente(c, opcionesPorDefectoAvance(c), { paciente: "Ana", notas: "", profesional: "M. A." });
-  const tarjeta = infSube.resultados.find((x) => x.area.startsWith("Ánimo"));
+  const tarjeta = infSube.resultados.find((x) => x.area === "Tristeza y desgano");
   assert.ok(tarjeta && !/Lo que más subió|nada por que vivir|ningún sentido/.test(tarjeta.texto));
   // Orden: mejoras, luego aumentos, al final lo que se mantiene.
   const orden = infSube.resultados.map((x) => (x.nivel === "Mejoró" ? 0 : x.nivel === "Para prestar atención" ? 1 : 2));
@@ -86,7 +86,7 @@ caso("Informe de avance: mejoras primero y sin preguntas sensibles", () => {
   assert.ok(!/nada por que vivir|ningún sentido/i.test(todo), "no cita desesperanza");
   assert.ok(!/GAD-7|DASS|PTQ/.test(todo), "sin siglas técnicas");
   assert.ok(leerInformePaciente(JSON.parse(todo)), "pasa el filtro de la página pública");
-  const conDep = inf.resultados.find((x) => x.area.startsWith("Ánimo"));
+  const conDep = inf.resultados.find((x) => x.area === "Tristeza y desgano");
   assert.ok(conDep && !conDep.puntuacion);
 });
 

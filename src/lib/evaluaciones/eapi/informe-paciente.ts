@@ -27,11 +27,11 @@ const formatoFecha = (iso: string) => {
 
 export const AREAS_EAPI = [
   { id: "gad", nombre: "Preocupación y ansiedad" },
-  { id: "str", nombre: "Estrés y tensión" },
-  { id: "anx", nombre: "Síntomas físicos de ansiedad" },
-  { id: "dep", nombre: "Estado de ánimo" },
-  { id: "ptq", nombre: "Pensamientos repetitivos" },
-  { id: "docs", nombre: "Pensamientos intrusivos y rituales" },
+  { id: "str", nombre: "Estrés y ansiedad" },
+  { id: "anx", nombre: "Tensión y palpitaciones" },
+  { id: "dep", nombre: "Tristeza y desgano" },
+  { id: "ptq", nombre: "Pensamientos que vuelven" },
+  { id: "docs", nombre: "Pensamientos o rituales repetitivos" },
 ] as const;
 
 const NIVELES_DASS = ["Dentro de lo esperado", "Leve", "Moderado", "Alto", "Muy alto"];
@@ -81,11 +81,11 @@ type AreaId = "gad" | "str" | "anx" | "dep" | "ptq" | "docs";
 const ID_ESCALA: Record<AreaId, string> = { gad: "gad", str: "dass-str", anx: "dass-anx", dep: "dass-dep", ptq: "ptq", docs: "docs" };
 const NOMBRE_AREA: Record<AreaId, string> = {
   gad: "Preocupación y ansiedad",
-  str: "Estrés y tensión",
-  anx: "Síntomas físicos de ansiedad",
-  dep: "Estado de ánimo",
-  ptq: "Pensamientos repetitivos",
-  docs: "Pensamientos intrusivos y rituales",
+  str: "Estrés y ansiedad",
+  anx: "Tensión y palpitaciones",
+  dep: "Tristeza y desgano",
+  ptq: "Pensamientos que vuelven",
+  docs: "Pensamientos o rituales repetitivos",
 };
 const ORDEN_AREAS: AreaId[] = ["gad", "str", "anx", "dep", "ptq", "docs"];
 

@@ -45,13 +45,13 @@ export type CambioArea = {
 /** Nombres sencillos de cada escala. */
 export const AREA_SENCILLA: Record<string, string> = {
   phq9: "Ánimo",
-  "dass-dep": "Ánimo (tristeza y desgano)",
+  "dass-dep": "Tristeza y desgano",
   gad: "Preocupación y ansiedad",
-  "dass-anx": "Nervios en el cuerpo (tensión, palpitaciones)",
-  "dass-str": "Estrés y tensión",
-  ptq: "Pensamientos que dan vueltas",
+  "dass-anx": "Tensión y palpitaciones",
+  "dass-str": "Estrés y ansiedad",
+  ptq: "Pensamientos que vuelven",
   docs: "Pensamientos o rituales repetitivos",
-  "b-breve": "Entorno en casa (respuestas de los cuidadores)",
+  "b-breve": "Entorno en casa",
 };
 
 const NIVEL_K: Record<BandaSerie["k"], NivelSimple> = { low: "bajo", mid: "intermedio", high: "alto" };
