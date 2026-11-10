@@ -163,13 +163,13 @@ caso("Perfil integrado: una medida por área (la más reciente), escalas compart
   assert.equal(p.areas.find((a) => a.id === "animo").principal.sigla, "PHQ-9");
   assert.ok(p.areas.some((a) => a.id === "estres"));
   assert.ok(p.patrones && p.patrones.items.some((x) => /Recursos/.test(x.nombre)));
-  assert.ok(p.sintesis.some((s) => /Deterioro fiable reciente: GAD-7/.test(s)));
+  assert.ok(p.sintesis.some((s) => /Empeoró claramente \(más que la variación normal\): GAD-7/.test(s)));
   assert.equal(p.riesgo, null);
   assert.equal(p.desde, "2026-10-08"); assert.equal(p.hasta, "2026-11-01");
   // Riesgo: la última aplicación con pregunta de seguridad lo marcó.
   const eapiRiesgo = { ...eapi, id: "e2", fecha: "2026-11-05", createdAt: "2026-11-05T10:00:00Z", datos: { ...eapi.datos, safety: 2 } };
   const p2 = perfilIntegrado([eapi, m1, eapiRiesgo]);
-  assert.match(p2.riesgo.texto, /EAPI = 2/); assert.match(p2.sintesis[0], /Riesgo/);
+  assert.match(p2.riesgo.texto, /EAPI = 2/); assert.match(p2.sintesis[0], /pregunta de seguridad/);
   assert.equal(perfilIntegrado([]).areas.length, 0);
 });
 

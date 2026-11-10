@@ -1,8 +1,8 @@
 "use client";
 
-import { ArrowDownRight, ArrowRight, ArrowUpRight, Lightbulb, TrendingUp } from "lucide-react";
+import { ArrowDownRight, ArrowRight, ArrowUpRight, Lightbulb } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
-import type { SesionRow } from "@/lib/clinica/types";
+import type { PacienteRow, SesionRow } from "@/lib/clinica/types";
 import type { Tendencia } from "@/lib/evaluaciones/eapi/calificacion";
 import { fetchEvaluacionesDePaciente, type EvaluacionRespuestaRow } from "@/lib/evaluaciones/evaluaciones";
 import {
@@ -16,6 +16,8 @@ import { perfilesJjr } from "@/lib/evaluaciones/jjr/evolucion";
 import { PerfilJjrTiempo } from "./perfil-jjr-tiempo";
 import { perfilIntegrado } from "@/lib/evaluaciones/perfil-integrado";
 import { PerfilIntegradoTarjeta } from "./perfil-integrado";
+import { AREA_SENCILLA, cambiosRecientes } from "@/lib/evaluaciones/evolucion-explicada";
+import { CambiosRecientes } from "./cambios-recientes";
 
 const TENDENCIA: Record<Tendencia | "mixto", { texto: string; clase: string; Icono: typeof ArrowRight }> = {
   mejora: { texto: "Mejora", clase: "border-emerald-400/40 bg-emerald-400/10 text-emerald-300", Icono: ArrowDownRight },
@@ -117,7 +119,8 @@ function Grafica({ serie, desde, hasta, sesiones }: { serie: SerieEvolucion; des
  * aplicación anterior y a la primera, hitos (vocacional, valores) y
  * sugerencia de reevaluación.
  */
-export function PanelEvolucion({ pacienteId, sesiones }: { pacienteId: string; sesiones: SesionRow[] }) {
+export function PanelEvolucion({ paciente, sesiones }: { paciente: PacienteRow; sesiones: SesionRow[] }) {
+  const pacienteId = paciente.id;
   const [respuestas, setRespuestas] = useState<EvaluacionRespuestaRow[] | null>(null);
   const [verTodas, setVerTodas] = useState(false);
 
@@ -133,6 +136,7 @@ export function PanelEvolucion({ pacienteId, sesiones }: { pacienteId: string; s
   const resumen = useMemo(() => resumenEvolucion(series), [series]);
   const perfiles = useMemo(() => perfilesJjr(respuestas ?? []), [respuestas]);
   const integrado = useMemo(() => perfilIntegrado(respuestas ?? []), [respuestas]);
+  const cambios = useMemo(() => cambiosRecientes(respuestas ?? [], series), [respuestas, series]);
   const fechasSesiones = useMemo(
     () => sesiones.filter((s) => s.estado === "finalizada").map((s) => s.iniciadaAt.slice(0, 10)),
     [sesiones]
@@ -166,13 +170,14 @@ export function PanelEvolucion({ pacienteId, sesiones }: { pacienteId: string; s
       title="Evolución del paciente"
     >
       <div className="grid gap-4" data-testid="panel-evolucion">
+        <CambiosRecientes cambios={cambios} paciente={paciente} sesiones={fechasSesiones} />
         <PerfilIntegradoTarjeta perfil={integrado} />
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
           {[
             { v: fechasSesiones.length, l: "Sesiones finalizadas" },
             { v: respuestas.length, l: "Evaluaciones respondidas" },
             { v: ultimaEval ? formatoFechaCorta(ultimaEval) : "—", l: `Última evaluación${ultimaEval ? ` (hace ${diasDesde(ultimaEval)} d)` : ""}` },
-            { v: resumen.global ? TENDENCIA[resumen.global].texto : "—", l: "Frente a la aplicación anterior" },
+            { v: resumen.global ? TENDENCIA[resumen.global].texto : "—", l: "Comparado con la vez anterior" },
           ].map((k) => (
             <div className="rounded-lg border border-white/10 bg-white/4 p-3" key={k.l}>
               <div className="text-lg font-bold text-white">{k.v}</div>
@@ -181,15 +186,8 @@ export function PanelEvolucion({ pacienteId, sesiones }: { pacienteId: string; s
           ))}
         </div>
 
-        {resumen.comparables ? (
-          <p className="flex flex-wrap items-center gap-2 text-sm text-slate-300">
-            <TrendingUp className="h-4 w-4 text-indigo-300" />
-            De {resumen.comparables} escala{resumen.comparables === 1 ? "" : "s"} con más de una aplicación: {resumen.mejora} mejora
-            {resumen.mejora === 1 ? "" : "n"}, {resumen.igual} sigue{resumen.igual === 1 ? "" : "n"} igual y {resumen.empeora} empeora
-            {resumen.empeora === 1 ? "" : "n"}.
-          </p>
-        ) : (
-          <p className="text-sm text-slate-400">Con una segunda aplicación de cada escala verás aquí si mejora, sigue igual o empeora.</p>
+        {resumen.comparables ? null : (
+          <p className="text-sm text-slate-400">Cuando haya una segunda aplicación de alguna escala verás aquí, primero, qué mejoró, qué empeoró y por qué.</p>
         )}
 
         {diasEapi !== null && diasEapi >= DIAS_SEGUIMIENTO ? (
@@ -210,16 +208,16 @@ export function PanelEvolucion({ pacienteId, sesiones }: { pacienteId: string; s
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <div>
                     <div className="text-sm font-semibold text-white">
-                      {s.sigla} <span className="font-normal text-slate-400">· {s.nombre}</span>
+                      {AREA_SENCILLA[s.id] ?? s.nombre} <span className="font-normal text-slate-400">· {s.sigla}</span>
                     </div>
                     <div className="text-xs text-slate-400">
-                      Último: <strong className="text-slate-200">{ult.valor}</strong>/{s.max} · {ult.banda} · {s.puntos.length} aplicación
+                      Último resultado: <strong className="text-slate-200">{ult.valor}</strong>/{s.max} · {ult.banda} · {s.puntos.length} aplicación
                       {s.puntos.length === 1 ? "" : "es"}
                     </div>
                   </div>
                   <div className="flex flex-wrap gap-1">
-                    {s.tendencia ? <Insignia prefijo="vs. anterior" t={s.tendencia} /> : null}
-                    {s.tendenciaInicio ? <Insignia prefijo="vs. primera" t={s.tendenciaInicio} /> : null}
+                    {s.tendencia ? <Insignia prefijo="Desde la anterior" t={s.tendencia} /> : null}
+                    {s.tendenciaInicio ? <Insignia prefijo="Desde el inicio" t={s.tendenciaInicio} /> : null}
                   </div>
                 </div>
                 <Grafica desde={desde} hasta={hasta} serie={s} sesiones={sesionesEnRango} />
@@ -252,9 +250,10 @@ export function PanelEvolucion({ pacienteId, sesiones }: { pacienteId: string; s
         ) : null}
 
         <p className="text-[11px] leading-5 text-slate-500">
-          Marcas azules bajo cada gráfica: sesiones finalizadas. Fondo: bandas de severidad de cada escala. Criterios de cambio: GAD-7 ≥ 4
-          puntos (diferencia mínima clínicamente importante); las demás escalas, cambio de banda. En todas, una puntuación más baja indica
-          menos síntomas. Hoy: {formatoFechaCorta(hoyIso())}.
+          Cómo leer las gráficas: un número más bajo = menos molestias. El fondo indica el nivel (verde bajo, amarillo intermedio, rojo
+          alto) y las marcas azules abajo son las sesiones. Cuenta como cambio claro: preocupación y nervios (GAD-7) 4 puntos o más, ánimo
+          (PHQ-9) 6 o más, pensamientos que dan vueltas (PTQ) 11 o más; en las demás escalas, pasar a otro nivel. Hoy:{" "}
+          {formatoFechaCorta(hoyIso())}.
         </p>
       </div>
     </SectionCard>

@@ -10,9 +10,9 @@ const COLOR: Record<Nivel, string> = {
   alto: "border-red-400/50 text-red-200",
 };
 const TEND = {
-  mejora: { Icono: ArrowDownRight, clase: "text-emerald-300", texto: "mejora" },
-  igual: { Icono: ArrowRight, clase: "text-slate-400", texto: "igual" },
-  empeora: { Icono: ArrowUpRight, clase: "text-red-300", texto: "empeora" },
+  mejora: { Icono: ArrowDownRight, clase: "text-emerald-300", texto: "mejoró" },
+  igual: { Icono: ArrowRight, clase: "text-slate-400", texto: "igual que antes" },
+  empeora: { Icono: ArrowUpRight, clase: "text-red-300", texto: "empeoró" },
 } as const;
 
 function Medida({ m, secundaria = false }: { m: MedidaArea; secundaria?: boolean }) {
@@ -30,7 +30,7 @@ function Medida({ m, secundaria = false }: { m: MedidaArea; secundaria?: boolean
           {t.texto}
         </span>
       ) : null}
-      {m.deterioroFiable ? <span className="font-semibold text-red-300">deterioro fiable</span> : null}
+      {m.deterioroFiable ? <span className="font-semibold text-red-300">empeoró claramente</span> : null}
     </span>
   );
 }
@@ -43,7 +43,7 @@ export function PerfilIntegradoTarjeta({ perfil }: { perfil: PerfilIntegrado }) 
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-2 text-sm font-semibold text-white">
           <Layers className="h-4 w-4 text-indigo-300" />
-          Perfil integrado
+          Cómo está hoy (todas las evaluaciones juntas)
         </div>
         {perfil.desde ? (
           <span className="text-[11px] text-slate-400">
@@ -111,9 +111,9 @@ export function PerfilIntegradoTarjeta({ perfil }: { perfil: PerfilIntegrado }) 
       ) : null}
 
       <p className="text-[11px] leading-5 text-slate-500">
-        Reglas fijas: por área se muestra la medida más reciente (si la misma escala se aplicó en varias evaluaciones, cuenta como una sola) y
-        debajo las otras escalas del área. Los niveles son las bandas de cada escala; «deterioro fiable» usa el cambio mínimo fiable. Es un
-        resumen para orientar la sesión, no un diagnóstico.
+        Cómo se arma: en cada área se muestra el resultado más reciente (si la misma escala se aplicó en varias evaluaciones, cuenta como
+        una sola) y debajo las otras escalas del área. «Empeoró claramente» = el aumento es mayor que la variación normal de una vez a otra.
+        Es un resumen para orientar la sesión, no un diagnóstico.
       </p>
     </div>
   );

@@ -24,12 +24,28 @@ function leerOpciones(valor: Record<string, unknown>, porDefecto: OpcionesInform
   };
 }
 
+/** Dónde se guarda el informe (por defecto, el de una respuesta). */
+export type AlmacenInforme = {
+  cargar: () => Promise<{ data: InformeRow | null; error: string | null }>;
+  guardar: (c: { notasPaciente: string; opciones: OpcionesInforme }) => Promise<{ data: InformeRow | null; error: string | null }>;
+  publicar: (contenido: Record<string, unknown>, token: string | null) => Promise<{ data: InformeRow | null; error: string | null }>;
+  retirar: () => Promise<{ error: string | null }>;
+};
+
+const almacenRespuesta = (respuestaId: string, pacienteId: string): AlmacenInforme => ({
+  cargar: () => fetchInforme(respuestaId),
+  guardar: (c) => guardarNotasInforme(respuestaId, pacienteId, c),
+  publicar: (contenido, token) => publicarInforme(respuestaId, pacienteId, contenido, token),
+  retirar: () => retirarInforme(respuestaId),
+});
+
 /**
  * Informe para el paciente de cualquier instrumento: elegir áreas y opciones,
  * escribir comentarios, vista previa, publicar (copia fija en
  * /informe/<token>) y enviar por WhatsApp, actualizar o retirar.
  */
 export function InformePacientePanel({
+  almacen,
   areas,
   avisoAyuda,
   conAyuda = true,
@@ -39,7 +55,9 @@ export function InformePacientePanel({
   paciente,
   placeholderNotas,
   respuestaId,
+  titulo = "Informe para el paciente",
 }: {
+  almacen?: AlmacenInforme;
   areas: readonly { id: string; nombre: string }[];
   avisoAyuda?: ReactNode;
   conAyuda?: boolean;
@@ -49,7 +67,9 @@ export function InformePacientePanel({
   paciente: PacienteRow;
   placeholderNotas: string;
   respuestaId: string;
+  titulo?: string;
 }) {
+  const alm = almacen ?? almacenRespuesta(respuestaId, paciente.id);
   const [informe, setInforme] = useState<InformeRow | null>(null);
   const [notas, setNotas] = useState("");
   const [opciones, setOpciones] = useState<OpcionesInforme | null>(null);
@@ -58,8 +78,9 @@ export function InformePacientePanel({
 
   useEffect(() => {
     let vivo = true;
-    void fetchInforme(respuestaId).then(({ data }) => {
+    void alm.cargar().then(({ data, error }) => {
       if (!vivo) return;
+      if (error) setMensaje(error);
       setInforme(data);
       setNotas(data?.notasPaciente ?? "");
       setOpciones(leerOpciones(data?.opciones ?? {}, opcionesPorDefecto));
@@ -85,7 +106,7 @@ export function InformePacientePanel({
 
   const guardarBorrador = async () => {
     setOcupado(true);
-    const { data, error } = await guardarNotasInforme(respuestaId, paciente.id, { notasPaciente: notas, opciones });
+    const { data, error } = await alm.guardar({ notasPaciente: notas, opciones });
     setOcupado(false);
     if (error) return avisar(error);
     setInforme(data);
@@ -96,8 +117,8 @@ export function InformePacientePanel({
     // En WhatsApp la pestaña se abre ya, dentro del toque, para que el navegador no la bloquee.
     const ventana = enviar ? window.open("", "_blank") : null;
     setOcupado(true);
-    await guardarNotasInforme(respuestaId, paciente.id, { notasPaciente: notas, opciones });
-    const { data, error } = await publicarInforme(respuestaId, paciente.id, vistaPrevia as unknown as Record<string, unknown>, informe?.token ?? null);
+    await alm.guardar({ notasPaciente: notas, opciones });
+    const { data, error } = await alm.publicar(vistaPrevia as unknown as Record<string, unknown>, informe?.token ?? null);
     setOcupado(false);
     if (error || !data?.token) {
       ventana?.close();
@@ -111,7 +132,7 @@ export function InformePacientePanel({
 
   const retirar = async () => {
     if (!window.confirm("¿Retirar el informe? El enlace que tiene el paciente dejará de funcionar.")) return;
-    const { error } = await retirarInforme(respuestaId);
+    const { error } = await alm.retirar();
     if (error) return avisar(error);
     setInforme((prev) => (prev ? { ...prev, publicadoAt: null, contenido: null, token: null } : prev));
     avisar("Informe retirado.");
@@ -120,7 +141,7 @@ export function InformePacientePanel({
   return (
     <section className="grid gap-3 border border-emerald-300/30 bg-emerald-300/5 p-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h3 className="text-sm font-semibold uppercase tracking-wide text-emerald-200">Informe para el paciente</h3>
+        <h3 className="text-sm font-semibold uppercase tracking-wide text-emerald-200">{titulo}</h3>
         <span className="text-xs text-slate-400">
           {informe?.publicadoAt
             ? `Publicado el ${formatoFechaHora(informe.publicadoAt)}${publicadoIgual ? "" : " · hay cambios sin publicar"}${(() => {
