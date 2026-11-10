@@ -57,3 +57,19 @@ export function mensajeUbicacion(nombreCompleto: string | null, ubicacion: Ubica
     .filter(Boolean)
     .join("\n");
 }
+
+/** Recordatorio de la cita seguido de la ubicación del consultorio (null si no hay dirección configurada). */
+export function recordatorioConUbicacion(recordatorio: string, ubicacion: UbicacionConsultorio) {
+  const enlaces = enlacesUbicacion(ubicacion);
+  if (!enlaces) return null;
+  return [
+    recordatorio,
+    "",
+    "Esta es la ubicación del consultorio:",
+    ubicacion.direccion?.trim() ? `📍 ${ubicacion.direccion.trim()}` : null,
+    `Google Maps: ${enlaces.google}`,
+    `Waze: ${enlaces.waze}`,
+  ]
+    .filter((l) => l !== null)
+    .join("\n");
+}

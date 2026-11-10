@@ -6,6 +6,7 @@ import { buscarPacienteParaMensaje, enviarTarjetaMensaje, pedidoMensajePaciente 
 import { buscarCitaParaConfirmar, enviarConfirmacionCita, pedidoDeConfirmacion } from "./telegram-confirmar-cita";
 import { buscarCoincidencia, type Coincidencia } from "@/lib/clinica/coincidencias";
 import { enlaceWhatsApp, textoRecordatorioCita } from "@/lib/clinica/recordatorio";
+import { recordatorioConUbicacion, type UbicacionConsultorio } from "@/lib/clinica/ubicacion";
 import { mismaHoraQueConsultorio, nombreZona, PAIS_POR_DEFECTO, paisDe, paisPorCodigo, zonaDe } from "@/lib/paises";
 import { type EventoGoogle, getStoredTokens, insertEvent, isGoogleConfigured, listarEventos } from "./google-calendar";
 import { bloquePendientesPago, citasSinPagar, contarCitasSinCerrar, marcarPagadaDesdeTelegram } from "./pagos-citas";
@@ -447,6 +448,14 @@ function botonWhatsAppCita(cita: RawCita, etiqueta: string): BotonInline | null 
   return { text: etiqueta, url: enlaceWhatsApp(telefono, mensaje, pais) };
 }
 
+/** Botón de WhatsApp con el recordatorio de la cita y la ubicación del consultorio (null sin teléfono o sin dirección). */
+function botonRecordatorioConUbicacion(cita: RawCita, ubicacion: UbicacionConsultorio): BotonInline | null {
+  const { telefono, pais, zona } = ubicacionPaciente(cita);
+  if (!telefono) return null;
+  const mensaje = recordatorioConUbicacion(textoRecordatorioCita(nombreCita(cita), cita.inicio, zona), ubicacion);
+  return mensaje ? { text: "📍 Mandarle recordatorio con ubicación", url: enlaceWhatsApp(telefono, mensaje, pais) } : null;
+}
+
 /** "🌎 🇪🇸 España · su hora: 11:00 p. m." para pacientes fuera de Guatemala (null si es de Guatemala). */
 function lineaPaisCita(cita: RawCita) {
   const { pais, zona } = ubicacionPaciente(cita);
@@ -586,6 +595,18 @@ export async function enviarRecordatoriosCitas(admin: SupabaseClient, config: Te
     new Date(ahora + ANTICIPACION_RECORDATORIO_MIN * 60_000).toISOString(),
   );
 
+  // Citas cuya solicitud pidió la ubicación del consultorio (presenciales).
+  const pidieronUbicacion = new Set<string>();
+  if (citas.some((c) => c.modalidad !== "virtual")) {
+    const { data } = await admin
+      .from("gestionesjj_solicitudes_cita")
+      .select("cita_id")
+      .in("cita_id", citas.map((c) => c.id))
+      .eq("necesita_ubicacion", true);
+    for (const fila of (data ?? []) as { cita_id: string | null }[]) if (fila.cita_id) pidieronUbicacion.add(fila.cita_id);
+  }
+  let ubicacion: UbicacionConsultorio | undefined;
+
   let enviados = 0;
   for (const cita of citas) {
     // Se registra antes de enviar: si dos ejecuciones se cruzan, solo una gana.
@@ -606,7 +627,18 @@ export async function enviarRecordatoriosCitas(admin: SupabaseClient, config: Te
       .join("\n");
 
     const boton = botonWhatsAppCita(cita, "📲 Mandarle recordatorio por WhatsApp");
-    const res = await enviarMensaje(config.chatId, texto, boton ? { botones: [[boton]] } : undefined);
+    const botones: BotonInline[][] = boton ? [[boton]] : [];
+    // Si al agendar pidió la dirección: también el recordatorio con la ubicación.
+    if (pidieronUbicacion.has(cita.id)) {
+      ubicacion ??= await leerUbicacionConsultorio(admin);
+      const conUbicacion = botonRecordatorioConUbicacion(cita, ubicacion);
+      if (conUbicacion) botones.push([conUbicacion]);
+    }
+    const res = await enviarMensaje(
+      config.chatId,
+      pidieronUbicacion.has(cita.id) ? `${texto}\n📍 <b>Pidió la ubicación</b> al agendar.` : texto,
+      botones.length ? { botones } : undefined,
+    );
     if (res.ok) enviados += 1;
   }
   return enviados;
