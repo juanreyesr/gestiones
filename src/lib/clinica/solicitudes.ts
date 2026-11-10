@@ -1,4 +1,5 @@
 import { getSupabaseClient } from "@/lib/supabase";
+import { avisarCitaNueva } from "./aviso-cita-nueva";
 import type { SolicitudEstado, SolicitudRow } from "./types";
 
 type RawSolicitud = {
@@ -108,6 +109,7 @@ export async function aprobarSolicitud(solicitudId: string, pacienteId: string |
   });
 
   if (error) return { citaId: null as string | null, error: error.message };
+  avisarCitaNueva(data as string | null);
   return { citaId: (data as string | null) ?? null, error: null };
 }
 

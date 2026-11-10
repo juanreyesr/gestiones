@@ -115,12 +115,80 @@ export async function avisarDatosCompletados(token: string) {
   await notificar("datos_completados", lineas.join("\n"), panel ? { botones: [[{ text: "Abrir expediente", url: panel }]] } : undefined);
 }
 
+type CitaConPaciente = { id: string; inicio: string; gestionesjj_pacientes: PacienteDatos | null };
+type Aviso = { texto: string; botones: BotonInline[][] };
+
+/**
+ * Aviso de una cita cuyo paciente aún no llenó la hoja de datos o no firmó el
+ * consentimiento (null si no hace falta). Crea el enlace si no lo tenía y
+ * reabre la hoja si solo falta firmar.
+ */
+async function avisoDeCita(admin: SupabaseClient, c: CitaConPaciente, conConsentimiento: Set<string>, cuando: string): Promise<Aviso | null> {
+  const p = c.gestionesjj_pacientes;
+  if (!p) return null;
+  const faltanDatos = !p.datos_completados_at;
+  const faltaConsentimiento = !conConsentimiento.has(p.id);
+  if (!faltanDatos && !faltaConsentimiento) return null;
+  const url = await urlHojaDatos(admin, p, !faltanDatos && faltaConsentimiento);
+  if (!url) return null;
+  const boton = urlRecordatorioDatos(c.id);
+  const falta = faltanDatos
+    ? "aún no ha llenado su hoja de datos generales ni firmado el consentimiento"
+    : "llenó sus datos, pero no tiene consentimiento firmado (se reabrió su hoja para firmarlo)";
+  return {
+    texto: [
+      `📋⏰ <b>${esc(p.nombre)}</b> tiene cita ${cuando} a las ${esc(hora(c.inicio))} y ${falta}.`,
+      "",
+      "<i>Mensaje listo (el saludo se ajusta a la hora en que lo envíes):</i>",
+      esc(mensajeDatosAntesDeCita(p.nombre, url, cuando)),
+    ].join("\n"),
+    botones: boton ? [[{ text: "📲 Enviar recordatorio por WhatsApp", url: boton }]] : [],
+  };
+}
+
+async function pacientesConConsentimiento(admin: SupabaseClient, ids: string[]) {
+  if (!ids.length) return new Set<string>();
+  const { data } = await admin.from("gestionesjj_consentimientos").select("paciente_id").in("paciente_id", ids);
+  return new Set(((data ?? []) as { paciente_id: string }[]).map((f) => f.paciente_id));
+}
+
+const horaLocal = (d = new Date()) =>
+  Number(new Intl.DateTimeFormat("en-US", { timeZone: ZONA, hour: "numeric", hourCycle: "h23" }).format(d));
+
+/**
+ * Aviso inmediato al crear o aprobar una cita que el aviso de las 7:00 a. m.
+ * ya no alcanza: citas de hoy, o de mañana creadas después de las 7:00 a. m.
+ * (las de mañana creadas antes de esa hora las cubre el aviso diario).
+ */
+export async function avisarDatosPendientesDeCitaNueva(citaId: string, ahora = new Date()) {
+  const admin = getSupabaseAdmin();
+  if (!isTelegramConfigured() || !admin) return;
+  const { data } = await admin
+    .from("gestionesjj_citas")
+    .select("id,inicio,estado,gestionesjj_pacientes(id,nombre,telefono,pais,datos_token,datos_completados_at)")
+    .eq("id", citaId)
+    .maybeSingle();
+  const cita = data as (CitaConPaciente & { estado: string }) | null;
+  if (!cita?.gestionesjj_pacientes || !["pendiente", "confirmada"].includes(cita.estado)) return;
+  const aviso = await avisoInmediato(admin, cita, ahora);
+  if (aviso) await notificar("datos_pendientes", aviso.texto, { botones: aviso.botones });
+}
+
+/** Decide si toca el aviso inmediato y lo arma (exportado para pruebas). */
+export async function avisoInmediato(admin: SupabaseClient, cita: CitaConPaciente, ahora = new Date()) {
+  if (new Date(cita.inicio).getTime() <= ahora.getTime()) return null;
+  const cuando = cuandoEsLaCita(cita.inicio, ahora);
+  if (cuando !== "hoy" && !(cuando === "mañana" && horaLocal(ahora) >= 7)) return null;
+  const p = cita.gestionesjj_pacientes!;
+  return avisoDeCita(admin, cita, await pacientesConConsentimiento(admin, [p.id]), cuando);
+}
+
 /**
  * Para el resumen de las 7:00 a. m.: citas de mañana cuyos pacientes aún no
  * llenaron la hoja de datos o no firmaron el consentimiento. Un mensaje por
  * paciente, con el recordatorio de WhatsApp listo.
  */
-export async function avisosDatosPendientesManana(admin: SupabaseClient): Promise<{ texto: string; botones: BotonInline[][] }[]> {
+export async function avisosDatosPendientesManana(admin: SupabaseClient): Promise<Aviso[]> {
   const manana = fechaLocal(1);
   const pasado = fechaLocal(2);
   const { data } = await admin
@@ -131,36 +199,20 @@ export async function avisosDatosPendientesManana(admin: SupabaseClient): Promis
     .gte("inicio", inicioDiaIso(manana))
     .lt("inicio", inicioDiaIso(pasado))
     .order("inicio");
-  const citas = (data ?? []) as unknown as { id: string; inicio: string; gestionesjj_pacientes: PacienteDatos | null }[];
+  const citas = (data ?? []) as unknown as CitaConPaciente[];
   if (!citas.length) return [];
-
-  const ids = [...new Set(citas.map((c) => c.gestionesjj_pacientes?.id).filter((x): x is string => Boolean(x)))];
-  const { data: firmados } = await admin.from("gestionesjj_consentimientos").select("paciente_id").in("paciente_id", ids);
-  const conConsentimiento = new Set(((firmados ?? []) as { paciente_id: string }[]).map((f) => f.paciente_id));
-
-  const avisos: { texto: string; botones: BotonInline[][] }[] = [];
+  const conConsentimiento = await pacientesConConsentimiento(
+    admin,
+    [...new Set(citas.map((c) => c.gestionesjj_pacientes?.id).filter((x): x is string => Boolean(x)))]
+  );
+  const avisos: Aviso[] = [];
   const vistos = new Set<string>();
   for (const c of citas) {
     const p = c.gestionesjj_pacientes;
     if (!p || vistos.has(p.id)) continue;
     vistos.add(p.id);
-    const faltanDatos = !p.datos_completados_at;
-    const faltaConsentimiento = !conConsentimiento.has(p.id);
-    if (!faltanDatos && !faltaConsentimiento) continue;
-    // Si ya llenó los datos pero no hay consentimiento firmado, se reabre la hoja para que lo firme.
-    const url = await urlHojaDatos(admin, p, !faltanDatos && faltaConsentimiento);
-    if (!url) continue;
-    const boton = urlRecordatorioDatos(c.id);
-    const falta = faltanDatos ? "aún no ha llenado su hoja de datos generales ni firmado el consentimiento" : "llenó sus datos, pero no tiene consentimiento firmado (se reabrió su hoja para firmarlo)";
-    avisos.push({
-      texto: [
-        `📋⏰ <b>${esc(p.nombre)}</b> tiene cita mañana a las ${esc(hora(c.inicio))} y ${falta}.`,
-        "",
-        "<i>Mensaje listo (el saludo se ajusta a la hora en que lo envíes):</i>",
-        esc(mensajeDatosAntesDeCita(p.nombre, url, "mañana")),
-      ].join("\n"),
-      botones: boton ? [[{ text: "📲 Enviar recordatorio por WhatsApp", url: boton }]] : [],
-    });
+    const aviso = await avisoDeCita(admin, c, conConsentimiento, "mañana");
+    if (aviso) avisos.push(aviso);
   }
   return avisos;
 }

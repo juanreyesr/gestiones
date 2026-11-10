@@ -1,4 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { avisarDatosPendientesDeCitaNueva } from "./datos-pendientes";
 import { tokenCita, urlConfirmarPorWhatsApp } from "./cita-publica";
 import { buscarCoincidencia, type Coincidencia, type PacienteComparable } from "@/lib/clinica/coincidencias";
 import { parsearReserva } from "@/lib/clinica/reserva-google";
@@ -383,6 +384,8 @@ export async function resolverReserva(
     }
 
     await marcarEventoGestiones(reserva.calendario_id, reserva.evento_id, cita.id as string).catch(() => undefined);
+    // Cita de hoy o de mañana (después de las 7:00 a. m.) sin hoja de datos: aviso inmediato.
+    await avisarDatosPendientesDeCitaNueva(cita.id as string).catch(() => undefined);
 
     await admin
       .from("gestionesjj_google_reservas")

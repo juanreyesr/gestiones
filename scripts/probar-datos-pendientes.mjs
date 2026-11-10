@@ -5,7 +5,7 @@ process.env.TELEGRAM_BOT_TOKEN = "x";
 process.env.TELEGRAM_WEBHOOK_SECRET = "y";
 process.env.NEXT_PUBLIC_APP_URL = "https://www.juanjreyes.org";
 process.env.CRON_SECRET = "secreto-de-prueba";
-const { avisosDatosPendientesManana, citaDeTokenDatos, cuandoEsLaCita, urlRecordatorioDatos } = await import("../src/lib/server/datos-pendientes.ts");
+const { avisoInmediato, avisosDatosPendientesManana, citaDeTokenDatos, cuandoEsLaCita, urlRecordatorioDatos } = await import("../src/lib/server/datos-pendientes.ts");
 const { mensajeDatosAntesDeCita } = await import("../src/lib/clinica/mensaje-paciente.ts");
 const { fechaLocal, inicioDiaIso } = await import("../src/lib/server/telegram.ts");
 const { textoSolicitudCita } = await import("../src/lib/server/telegram-bot.ts");
@@ -101,4 +101,25 @@ await caso("Solicitud de cita: aviso si no llenó el motivo; seguimiento sin avi
   assert.doesNotMatch(seg, /No llenó/);
 });
 
-console.log(`\n${ok}/5 casos correctos.`);
+await caso("Aviso inmediato: hoy siempre; mañana solo si ya pasaron las 7:00 a. m.; nunca si ya tiene todo", async () => {
+  const hoyYmd = fechaLocal();
+  const en = (ymd, h) => new Date(`${ymd}T${String(h).padStart(2, "0")}:00:00-06:00`);
+  const paciente = () => ({ id: "p1", nombre: "Ana Pérez", telefono: "+502 1", pais: "GT", datos_token: "tk", datos_completados_at: null });
+  const tablas = () => ({ gestionesjj_pacientes: [paciente()], gestionesjj_consentimientos: [] });
+  const cita = (inicio) => ({ id: uuid(7), inicio: inicio.toISOString(), gestionesjj_pacientes: paciente() });
+  // Cita hoy a las 17:00, creada a las 10:00 → aviso «hoy».
+  const a1 = await avisoInmediato(falsoAdmin(tablas()), cita(en(hoyYmd, 17)), en(hoyYmd, 10));
+  assert.match(a1.texto, /tiene cita hoy/); assert.match(a1.texto, /Te recuerdo que hoy tienes una cita/);
+  // Cita mañana: creada hoy a las 6:00 → la cubre el aviso de las 7:00; a las 9:00 → aviso inmediato.
+  assert.equal(await avisoInmediato(falsoAdmin(tablas()), cita(en(manana, 10)), en(hoyYmd, 6)), null);
+  assert.match((await avisoInmediato(falsoAdmin(tablas()), cita(en(manana, 10)), en(hoyYmd, 9))).texto, /tiene cita mañana/);
+  // Cita en 3 días o ya pasada → nada.
+  assert.equal(await avisoInmediato(falsoAdmin(tablas()), cita(en(fechaLocal(3), 10)), en(hoyYmd, 9)), null);
+  assert.equal(await avisoInmediato(falsoAdmin(tablas()), cita(en(hoyYmd, 8)), en(hoyYmd, 9)), null);
+  // Con datos y consentimiento → nada.
+  const completo = { ...paciente(), datos_completados_at: "2026-10-01T00:00:00Z" };
+  const t = { gestionesjj_pacientes: [completo], gestionesjj_consentimientos: [{ paciente_id: "p1" }] };
+  assert.equal(await avisoInmediato(falsoAdmin(t), { id: uuid(7), inicio: en(hoyYmd, 17).toISOString(), gestionesjj_pacientes: completo }, en(hoyYmd, 10)), null);
+});
+
+console.log(`\n${ok}/6 casos correctos.`);
