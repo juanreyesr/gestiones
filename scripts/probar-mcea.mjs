@@ -13,6 +13,7 @@ import { REGISTRO } from "../src/lib/evaluaciones/registro.ts";
 import { REGISTRO_SERVIDOR } from "../src/lib/evaluaciones/registro-servidor.ts";
 import { deteriorosFiables, evolucionDelPaciente } from "../src/lib/evaluaciones/evolucion-paciente.ts";
 import { solapesAlAsignar } from "../src/lib/evaluaciones/registro.ts";
+import { perfilIntegrado } from "../src/lib/evaluaciones/perfil-integrado.ts";
 
 // Motor original del artefacto, cargado tal cual (rama module.exports, sin interfaz).
 const html = fs.readFileSync(new URL("../docs/instrumentos/MCEA_v1.0_artefacto.html", import.meta.url), "utf8");
@@ -149,4 +150,27 @@ caso("Doble aplicación: EAPI abierto o reciente frente a MCEA (GAD-7, PTQ, PHQ-
   assert.equal(solapesAlAsignar("riasec", {}, abiertos, [reciente], hoy).length, 0);
 });
 
-console.log(`\n${ok}/7 casos correctos.`);
+caso("Perfil integrado: una medida por área (la más reciente), escalas compartidas unidas, patrones y riesgo", () => {
+  // EAPI con GAD-7 (8 de oct.) y MCEA con GAD-7 y PHQ-9 (1 de nov.): el GAD-7 del MCEA es la medida principal de ansiedad.
+  const eapi = { id: "e1", instrumento: "eapi", fecha: "2026-10-08", createdAt: "2026-10-08T10:00:00Z", respondienteNombre: "Ana",
+    datos: { gad: [1, 1, 1, 1, 1, 1, 1], dass: Array(21).fill(2), safety: 0 } };
+  const m1 = filaMcea("m1", "2026-11-01", 0, 2);
+  const p = perfilIntegrado([eapi, m1]);
+  const ans = p.areas.find((a) => a.id === "ansiedad");
+  assert.equal(ans.principal.sigla, "GAD-7"); assert.equal(ans.principal.valor, 14); assert.equal(ans.principal.fecha, "2026-11-01");
+  assert.ok(ans.principal.deterioroFiable, "GAD-7 7 → 14 entre EAPI y MCEA");
+  assert.deepEqual(ans.otras.map((x) => x.sigla), ["DASS-21 Ans."]);
+  assert.equal(p.areas.find((a) => a.id === "animo").principal.sigla, "PHQ-9");
+  assert.ok(p.areas.some((a) => a.id === "estres"));
+  assert.ok(p.patrones && p.patrones.items.some((x) => /Recursos/.test(x.nombre)));
+  assert.ok(p.sintesis.some((s) => /Deterioro fiable reciente: GAD-7/.test(s)));
+  assert.equal(p.riesgo, null);
+  assert.equal(p.desde, "2026-10-08"); assert.equal(p.hasta, "2026-11-01");
+  // Riesgo: la última aplicación con pregunta de seguridad lo marcó.
+  const eapiRiesgo = { ...eapi, id: "e2", fecha: "2026-11-05", createdAt: "2026-11-05T10:00:00Z", datos: { ...eapi.datos, safety: 2 } };
+  const p2 = perfilIntegrado([eapi, m1, eapiRiesgo]);
+  assert.match(p2.riesgo.texto, /EAPI = 2/); assert.match(p2.sintesis[0], /Riesgo/);
+  assert.equal(perfilIntegrado([]).areas.length, 0);
+});
+
+console.log(`\n${ok}/8 casos correctos.`);
