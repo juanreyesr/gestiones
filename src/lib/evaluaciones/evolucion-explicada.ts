@@ -187,7 +187,7 @@ export const respuestaTexto = (p: Pregunta) => `«${corto(p.texto)}» (${p.antes
 
 export const AREAS_INFORME_AVANCE = [
   { id: "mejoras", nombre: "Lo que mejoró" },
-  { id: "empeoran", nombre: "Lo que seguiremos trabajando (aumentó)" },
+  { id: "empeoran", nombre: "Áreas para prestar especial atención en la próxima sesión" },
   { id: "iguales", nombre: "Lo que se mantiene parecido" },
 ];
 
@@ -227,12 +227,12 @@ function tarjeta(c: CambioArea, opciones: OpcionesInforme): ResultadoPaciente {
   }
   if (c.tendencia === "empeora") {
     const partes = [
-      `Sus molestias en esta área aumentaron (${nivel}).`,
-      m.subieron.length ? `Lo que más subió:\n${vinetas(m.subieron.map((p) => preguntaPaciente(p, pts)))}` : "",
-      m.bajaron.length ? `Aun así, esto mejoró:\n${vinetas(m.bajaron.slice(0, 2).map((p) => preguntaPaciente(p, pts)))}` : "",
-      "Un aumento no significa que el proceso no funcione: a veces pasan cosas que nos afectan. Lo veremos juntos en sesión para entender qué pasó y ajustar el plan.",
+      `En esta área notamos más molestias que la vez anterior (${nivel}), así que le prestaremos especial atención en nuestra próxima sesión.`,
+      m.subieron.length ? `En qué lo notamos:\n${vinetas(m.subieron.map((p) => preguntaPaciente(p, pts)))}` : "",
+      m.bajaron.length ? `Y algo que sí mejoró:\n${vinetas(m.bajaron.slice(0, 2).map((p) => preguntaPaciente(p, pts)))}` : "",
+      "Esto no significa que el proceso no funcione: a veces pasan cosas que nos afectan. Conversarlo nos ayuda a entender qué pasó y a ajustar el plan.",
     ];
-    return { area: c.area, periodo, nivel: c.claro ? "Aumentó" : "Aumentó un poco", tono: c.claro ? "alto" : "atencion", texto: partes.filter(Boolean).join("\n\n"), puntuacion };
+    return { area: c.area, periodo, nivel: "Para prestar atención", tono: "atencion", texto: partes.filter(Boolean).join("\n\n"), puntuacion };
   }
   return {
     area: c.area,
@@ -258,9 +258,9 @@ export function informeAvancePaciente(
     g.mejoras.length && !g.empeoran.length
       ? `Buenas noticias: mejoró en ${g.mejoras.length === 1 ? "1 área" : `${g.mejoras.length} áreas`} y ninguna aumentó.`
       : g.mejoras.length && g.empeoran.length
-        ? `Mejoró en ${g.mejoras.length === 1 ? "1 área" : `${g.mejoras.length} áreas`} y ${g.empeoran.length === 1 ? "1 área aumentó" : `${g.empeoran.length} áreas aumentaron`}; abajo le explicamos cada una.`
+        ? `Mejoró en ${g.mejoras.length === 1 ? "1 área" : `${g.mejoras.length} áreas`}, y ${g.empeoran.length === 1 ? "hay 1 área" : `hay ${g.empeoran.length} áreas`} a la que prestaremos especial atención en nuestra próxima sesión.`
         : g.empeoran.length
-          ? `${g.empeoran.length === 1 ? "1 área aumentó" : `${g.empeoran.length} áreas aumentaron`}. Es información valiosa para ajustar lo que hacemos en sesión.`
+          ? `Estas son las áreas en las que debemos prestar especial atención en nuestra próxima sesión. Es información valiosa para ajustar lo que hacemos juntos.`
           : "Sus resultados se mantienen parecidos a la vez anterior.";
   return {
     v: 1,
@@ -269,10 +269,12 @@ export function informeAvancePaciente(
     fechaAplicacion: ultima,
     emitido: new Date().toISOString(),
     profesional: extra.profesional,
-    intro: `Comparamos sus respuestas más recientes (${fechaLarga(ultima)}) con las de la vez anterior. ${resumen} Primero le mostramos lo que mejoró y por qué, y después lo que seguiremos trabajando.`,
+    intro: `Comparamos sus respuestas más recientes (${fechaLarga(ultima)}) con las de la vez anterior. ${resumen}${g.mejoras.length && g.empeoran.length ? " Primero le mostramos lo que mejoró y por qué, y después lo que veremos con más atención." : ""}`,
     destacado: g.mejoras.length
       ? { titulo: "Lo que mejoró", texto: g.mejoras.map((c) => c.area).join(" · ") }
-      : undefined,
+      : g.empeoran.length
+        ? { titulo: "Para prestar especial atención en nuestra próxima sesión", texto: g.empeoran.map((c) => c.area).join(" · ") }
+        : undefined,
     resultados,
     notas: extra.notas.trim(),
     ayuda: opciones.incluirAyuda ? [...MCEA_CRISIS] : null,

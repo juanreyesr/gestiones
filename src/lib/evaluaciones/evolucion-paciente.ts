@@ -126,6 +126,17 @@ const DEFINICIONES: Definicion[] = [
   },
 ];
 
+/**
+ * Tendencia de la serie: un cambio que supera el cambio mínimo fiable cuenta
+ * aunque no cambie de banda (p. ej. PTQ 5 → 16 sigue «no clínico», pero
+ * empeoró claramente); si no, el criterio de la escala.
+ */
+function tendenciaFinal(d: Definicion, antes: number, ahora: number): Tendencia {
+  const fiable = CAMBIO_FIABLE[d.id];
+  if (fiable && Math.abs(ahora - antes) >= fiable) return ahora > antes ? "empeora" : "mejora";
+  return tendenciaEntre(d, antes, ahora);
+}
+
 const fechaDe = (r: EvaluacionRespuestaRow) => r.fecha ?? r.createdAt.slice(0, 10);
 
 /** Series y hitos del paciente, ordenados por fecha. */
@@ -149,8 +160,8 @@ export function evolucionDelPaciente(respuestas: EvaluacionRespuestaRow[]) {
     return {
       ...d,
       puntos,
-      tendencia: n >= 2 ? tendenciaEntre(d, puntos[n - 2].valor, puntos[n - 1].valor) : null,
-      tendenciaInicio: n >= 3 ? tendenciaEntre(d, puntos[0].valor, puntos[n - 1].valor) : null,
+      tendencia: n >= 2 ? tendenciaFinal(d, puntos[n - 2].valor, puntos[n - 1].valor) : null,
+      tendenciaInicio: n >= 3 ? tendenciaFinal(d, puntos[0].valor, puntos[n - 1].valor) : null,
     };
   });
   return { series, hitos };
