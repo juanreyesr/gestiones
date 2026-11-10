@@ -26,7 +26,7 @@ import { CitaForm } from "./cita-form";
 import { MontoCita, PagadaCheckbox } from "./pagos";
 import { BTN_GHOST, BTN_PRIMARY, CITA_BADGES, CitaBadge, EmptyState, Field } from "./ui";
 
-function MotivoEstadoModal({
+export function MotivoEstadoModal({
   estado,
   onCancelar,
   onConfirmar,
@@ -44,7 +44,7 @@ function MotivoEstadoModal({
             {estado === "cancelada" ? "Marcar como cancelada" : "Marcar como no asistió"}
           </h3>
           <div className="mt-3">
-            <Field label="Motivo (opcional)">
+            <Field label="Nota para la bitácora de citas del paciente (opcional)">
               <textarea
                 className="field resize-y"
                 onChange={(e) => setMotivo(e.target.value)}

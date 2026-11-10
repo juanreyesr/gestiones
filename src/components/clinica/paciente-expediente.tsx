@@ -43,6 +43,7 @@ import { EvaluacionesPaciente } from "./evaluaciones-paciente";
 import { AntesProximaSesion } from "./antes-proxima-sesion";
 import { DocumentosPaciente } from "./documentos-paciente";
 import { PanelEvolucion } from "./panel-evolucion";
+import { BitacoraCitas } from "./bitacora-citas";
 import { PlanTratamiento } from "./plan-tratamiento";
 import { SesionActiva } from "./sesion-activa";
 import { SesionDetalle } from "./sesion-detalle";
@@ -585,6 +586,8 @@ export function PacienteExpediente({
               consentimientos={consentimientos}
             />
           </SectionCard>
+
+          <BitacoraCitas pacienteId={paciente.id} recarga={proximaCita} />
 
           <SectionCard
             plegable={{ id: "pago", resumen: citasSinPagar.length ? `${citasSinPagar.length} sin pagar` : "al día" }}

@@ -61,7 +61,7 @@ export async function telegramApi<T = unknown>(
 export async function enviarMensaje(
   chatId: number,
   texto: string,
-  opciones?: { botones?: BotonInline[][]; responderA?: number },
+  opciones?: { botones?: BotonInline[][]; responderA?: number; forzarRespuesta?: string },
 ) {
   return telegramApi<{ message_id: number }>("sendMessage", {
     chat_id: chatId,
@@ -69,6 +69,10 @@ export async function enviarMensaje(
     parse_mode: "HTML",
     link_preview_options: { is_disabled: true },
     ...(opciones?.botones ? { reply_markup: { inline_keyboard: opciones.botones } } : {}),
+    // Abre el teclado para responder a este mensaje (con un texto de ayuda en el campo).
+    ...(opciones?.forzarRespuesta
+      ? { reply_markup: { force_reply: true, input_field_placeholder: opciones.forzarRespuesta.slice(0, 64) } }
+      : {}),
     ...(opciones?.responderA ? { reply_parameters: { message_id: opciones.responderA, allow_sending_without_reply: true } } : {}),
   });
 }

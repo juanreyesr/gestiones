@@ -1,6 +1,6 @@
 "use client";
 
-import { CalendarDays, Check, ChevronRight, CircleDollarSign, Clock, Inbox, Users } from "lucide-react";
+import { CalendarDays, Check, ChevronRight, CircleDollarSign, Clock, Inbox, Users, X } from "lucide-react";
 import type React from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
@@ -14,6 +14,7 @@ import { totalPorMoneda } from "@/lib/clinica/dinero";
 import { syncCitaConGoogle } from "@/lib/clinica/google-client";
 import { formatoFechaHora, formatoHora } from "@/lib/clinica/slots";
 import type { CitaEstado, CitaRow, PacienteRow } from "@/lib/clinica/types";
+import { MotivoEstadoModal } from "./agenda-view";
 import { MontoCita, PagadaCheckbox } from "./pagos";
 import { CitaBadge, EmptyState, Metric, SectionCard } from "./ui";
 
@@ -35,6 +36,7 @@ export function ClinicaDashboard({
   const [sinCerrar, setSinCerrar] = useState<CitaRow[]>([]);
   const [cobradasMes, setCobradasMes] = useState<CitaRow[]>([]);
   const [error, setError] = useState("");
+  const [cancelarCita, setCancelarCita] = useState<CitaRow | null>(null);
   const agendaRef = useRef<HTMLDivElement>(null);
   const pagosRef = useRef<HTMLDivElement>(null);
 
@@ -99,8 +101,8 @@ export function ClinicaDashboard({
 
   const handleCompletar = (cita: CitaRow) => cerrarCita(cita, "completada");
 
-  const cerrarCita = async (cita: CitaRow, estado: CitaEstado) => {
-    const { error: err } = await cambiarEstadoCita(cita.id, estado);
+  const cerrarCita = async (cita: CitaRow, estado: CitaEstado, nota?: string) => {
+    const { error: err } = await cambiarEstadoCita(cita.id, estado, nota);
     if (err) {
       setError(err);
       return;
@@ -111,6 +113,17 @@ export function ClinicaDashboard({
 
   return (
     <div className="grid gap-5">
+      {cancelarCita ? (
+        <MotivoEstadoModal
+          estado="cancelada"
+          onCancelar={() => setCancelarCita(null)}
+          onConfirmar={(nota) => {
+            const cita = cancelarCita;
+            setCancelarCita(null);
+            void cerrarCita(cita, "cancelada", nota);
+          }}
+        />
+      ) : null}
       {error ? <div className="border border-red-400/40 bg-red-400/10 p-3 text-sm text-red-200">{error}</div> : null}
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
@@ -276,6 +289,18 @@ export function ClinicaDashboard({
                         <CitaBadge estado={cita.estado} />
                         {conPago ? (
                           <PagadaCheckbox key={`${cita.id}-${cita.pagada}`} cita={cita} onChanged={() => void cargar()} />
+                        ) : null}
+                        {cita.estado === "pendiente" || cita.estado === "confirmada" ? (
+                          <button
+                            aria-label="Marcar cancelada"
+                            className="flex items-center gap-1 border border-white/15 bg-white/8 px-2 py-1.5 text-xs font-semibold text-slate-300 transition hover:border-red-300/40 hover:text-red-200"
+                            onClick={() => setCancelarCita(cita)}
+                            title="Marcar cancelada (con nota opcional)"
+                            type="button"
+                          >
+                            <X className="h-4 w-4" />
+                            Cancelada
+                          </button>
                         ) : null}
                         {cita.estado === "confirmada" ? (
                           <button
