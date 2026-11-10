@@ -8,7 +8,7 @@ import { buscarCoincidencia, type Coincidencia } from "@/lib/clinica/coincidenci
 import { enlaceWhatsApp, textoRecordatorioCita } from "@/lib/clinica/recordatorio";
 import { recordatorioConUbicacion, type UbicacionConsultorio } from "@/lib/clinica/ubicacion";
 import { mismaHoraQueConsultorio, nombreZona, PAIS_POR_DEFECTO, paisDe, paisPorCodigo, zonaDe } from "@/lib/paises";
-import { type EventoGoogle, getStoredTokens, insertEvent, isGoogleConfigured, listarEventos } from "./google-calendar";
+import { deleteEvent, type EventoGoogle, getStoredTokens, insertEvent, isGoogleConfigured, listarEventos } from "./google-calendar";
 import { bloquePendientesPago, citasSinPagar, contarCitasSinCerrar, marcarPagadaDesdeTelegram } from "./pagos-citas";
 import { lineaModalidad, pacientesComparables, resolverReserva } from "./reservas-google";
 import { getSupabaseAdmin } from "./supabase-admin";
@@ -65,9 +65,9 @@ type Mensaje = {
   chat: Chat;
   from?: Usuario;
   text?: string;
-  reply_to_message?: { message_id: number };
+  reply_to_message?: { message_id: number; entities?: { type: string; url?: string }[] };
 };
-type CallbackQuery = { id: string; from: Usuario; data?: string; message?: { message_id: number; chat: Chat } };
+type CallbackQuery = { id: string; from: Usuario; data?: string; message?: { message_id: number; chat: Chat; text?: string } };
 export type TelegramUpdate = { update_id: number; message?: Mensaje; callback_query?: CallbackQuery };
 
 export async function procesarUpdate(update: TelegramUpdate) {
@@ -115,6 +115,13 @@ export async function procesarUpdate(update: TelegramUpdate) {
       await iniciarProgramacion(admin, chatId, texto.match(/\+?\d[\d\s().-]{6,}\d/)?.[0] ?? "");
       return;
     }
+  }
+
+  // Responder al pedido de nota de una cita cancelada = guardarla en la bitácora de citas.
+  const citaNota = mensaje.reply_to_message ? citaDeNota(mensaje.reply_to_message.entities) : null;
+  if (citaNota && texto && !texto.startsWith("/")) {
+    await enviarMensaje(chatId, await guardarNotaCancelacion(admin, citaNota, texto), { responderA: mensaje.message_id });
+    return;
   }
 
   // Responder a un aviso de mensaje de estudiante = contestarle.
@@ -628,6 +635,7 @@ export async function enviarRecordatoriosCitas(admin: SupabaseClient, config: Te
 
     const boton = botonWhatsAppCita(cita, "📲 Mandarle recordatorio por WhatsApp");
     const botones: BotonInline[][] = boton ? [[boton]] : [];
+    botones.push([{ text: "❌ Cancelada", callback_data: `cita:ca:${cita.id}` }]);
     // Si al agendar pidió la dirección: también el recordatorio con la ubicación.
     if (pidieronUbicacion.has(cita.id)) {
       ubicacion ??= await leerUbicacionConsultorio(admin);
@@ -637,7 +645,7 @@ export async function enviarRecordatoriosCitas(admin: SupabaseClient, config: Te
     const res = await enviarMensaje(
       config.chatId,
       pidieronUbicacion.has(cita.id) ? `${texto}\n📍 <b>Pidió la ubicación</b> al agendar.` : texto,
-      botones.length ? { botones } : undefined,
+      { botones },
     );
     if (res.ok) enviados += 1;
   }
@@ -950,6 +958,107 @@ async function enviarSolicitudes(admin: SupabaseClient, chatId: number) {
 }
 
 /** Crea el evento de Google Calendar de una cita recien aprobada (si esta conectado). */
+// ============================================================
+// Cita cancelada desde el recordatorio (botón «❌ Cancelada»)
+// ============================================================
+
+const URL_NOTA_CITA = "https://www.juanjreyes.org/admin?cita=";
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/** Id de la cita escondido en el enlace del pedido de nota (null si el mensaje respondido no es uno de esos). */
+function citaDeNota(entidades: { type: string; url?: string }[] | undefined) {
+  for (const e of entidades ?? []) {
+    if (e.type !== "text_link" || !e.url?.startsWith(URL_NOTA_CITA)) continue;
+    const id = e.url.slice(URL_NOTA_CITA.length);
+    if (UUID_RE.test(id)) return id;
+  }
+  return null;
+}
+
+async function procesarCallbackCita(
+  admin: SupabaseClient,
+  chatId: number,
+  messageId: number,
+  accion: string,
+  id: string,
+  textoActual: string,
+  responder: (text: string) => Promise<unknown>,
+) {
+  const { data } = await admin
+    .from("gestionesjj_citas")
+    .select("id,estado,gcal_event_id,contacto_nombre,gestionesjj_pacientes(nombre)")
+    .eq("id", id)
+    .maybeSingle();
+  const cita = data as unknown as {
+    id: string;
+    estado: string;
+    gcal_event_id: string | null;
+    contacto_nombre: string | null;
+    gestionesjj_pacientes: { nombre: string } | null;
+  } | null;
+  if (!cita) {
+    await responder("La cita ya no existe.");
+    return;
+  }
+  const nombre = cita.gestionesjj_pacientes?.nombre ?? cita.contacto_nombre ?? "Paciente";
+  // El texto original del aviso, sin la marca de un cambio anterior.
+  const base = esc(textoActual.split("\n\n❌")[0].split("\n\n↩️")[0]);
+
+  if (accion === "ca") {
+    const { data: cambiadas } = await admin
+      .from("gestionesjj_citas")
+      .update({ estado: "cancelada" })
+      .eq("id", id)
+      .in("estado", ["pendiente", "confirmada"])
+      .select("id");
+    if (!cambiadas?.length) {
+      await responder("La cita ya no está activa.");
+      return;
+    }
+    await responder("Cita cancelada.");
+    if (cita.gcal_event_id) {
+      const { error } = await deleteEvent(cita.gcal_event_id);
+      if (!error) await admin.from("gestionesjj_citas").update({ gcal_event_id: null, gcal_sync_status: "pendiente" }).eq("id", id);
+    }
+    await editarMensaje(chatId, messageId, `${base}\n\n❌ <b>Cancelada</b>`, [[{ text: "↩️ Deshacer", callback_data: `cita:dz:${id}` }]]);
+    await enviarMensaje(
+      chatId,
+      `✍️ ¿Quieres anotar algo sobre la cancelación de <a href="${URL_NOTA_CITA}${id}">${esc(nombre)}</a>? Responde a este mensaje y lo guardo en su bitácora de citas (es opcional).`,
+      { forzarRespuesta: "Ej. avisó a última hora por WhatsApp" },
+    );
+    return;
+  }
+
+  // Deshacer: vuelve a confirmada y a Google Calendar.
+  const { data: cambiadas } = await admin
+    .from("gestionesjj_citas")
+    .update({ estado: "confirmada", motivo_estado: null })
+    .eq("id", id)
+    .eq("estado", "cancelada")
+    .select("id");
+  if (!cambiadas?.length) {
+    await responder("La cita ya no está cancelada.");
+    return;
+  }
+  await responder("Cancelación deshecha.");
+  await sincronizarCitaGoogle(admin, id).catch(() => undefined);
+  await editarMensaje(chatId, messageId, `${base}\n\n↩️ <i>Cancelación deshecha: la cita sigue en tu agenda.</i>`, [
+    [{ text: "❌ Cancelada", callback_data: `cita:ca:${id}` }],
+  ]);
+}
+
+async function guardarNotaCancelacion(admin: SupabaseClient, citaId: string, texto: string) {
+  const { data } = await admin
+    .from("gestionesjj_citas")
+    .update({ motivo_estado: texto.trim().slice(0, 1000) })
+    .eq("id", citaId)
+    .in("estado", ["cancelada", "no_asistio"])
+    .select("contacto_nombre,gestionesjj_pacientes(nombre)");
+  const fila = (data?.[0] ?? null) as unknown as { contacto_nombre: string | null; gestionesjj_pacientes: { nombre: string } | null } | null;
+  if (!fila) return "No guardé la nota: esa cita ya no está cancelada.";
+  return `📝 Nota guardada en la bitácora de citas de <b>${esc(fila.gestionesjj_pacientes?.nombre ?? fila.contacto_nombre ?? "el paciente")}</b>.`;
+}
+
 async function sincronizarCitaGoogle(admin: SupabaseClient, citaId: string) {
   if (!isGoogleConfigured()) return;
   const tokens = await getStoredTokens();
@@ -1194,6 +1303,11 @@ async function procesarCallback(admin: SupabaseClient, query: CallbackQuery) {
 
   const [ambito, accion, id] = (query.data ?? "").split(":");
   const messageId = query.message!.message_id;
+
+  if (ambito === "cita" && id && (accion === "ca" || accion === "dz")) {
+    await procesarCallbackCita(admin, chatId, messageId, accion, id, query.message?.text ?? "", responder);
+    return;
+  }
 
   if (ambito === "mpr") {
     await procesarCallbackProgramar(admin, config, chatId, messageId, accion, id, responder);

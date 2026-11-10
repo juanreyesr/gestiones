@@ -274,3 +274,17 @@ export async function fetchCobradasDelMes() {
   if (error) return { data: [] as CitaRow[], error: error.message };
   return { data: ((data ?? []) as unknown as RawCita[]).map(mapCita), error: null };
 }
+
+/** Todas las citas de un paciente, de la más reciente a la más antigua (bitácora de citas). */
+export async function fetchCitasDePaciente(pacienteId: string, limite = 60) {
+  const supabase = getSupabaseClient();
+  if (!supabase) return { data: [] as CitaRow[], error: "Faltan las variables de Supabase." };
+  const { data, error } = await supabase
+    .from("gestionesjj_citas")
+    .select(CITA_COLUMNS)
+    .eq("paciente_id", pacienteId)
+    .order("inicio", { ascending: false })
+    .limit(limite);
+  if (error) return { data: [] as CitaRow[], error: error.message };
+  return { data: ((data ?? []) as unknown as RawCita[]).map(mapCita), error: null };
+}
