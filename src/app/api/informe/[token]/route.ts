@@ -16,9 +16,14 @@ export async function GET(request: Request, { params }: { params: Promise<{ toke
   if (!UUID_RE.test(token)) return NextResponse.json({ estado: "invalido" }, { headers: SIN_CACHE });
   const supabase = getSupabaseClient();
   if (!supabase) return NextResponse.json({ estado: "invalido" }, { headers: SIN_CACHE });
-  const { data, error } = await supabase.rpc("gestionesjj_public_informe_get", { p_token: token });
-  const fila = (Array.isArray(data) ? data[0] : data) as { estado: string; contenido: unknown } | null;
-  const informe = !error && fila?.estado === "ok" ? leerInformePaciente(fila.contenido) : null;
+  // Primero los informes de una evaluación; si no, el informe de avance (evolución, migración 065).
+  let informe = null;
+  for (const rpc of ["gestionesjj_public_informe_get", "gestionesjj_public_informe_avance_get"]) {
+    const { data, error } = await supabase.rpc(rpc, { p_token: token });
+    const fila = (Array.isArray(data) ? data[0] : data) as { estado: string; contenido: unknown } | null;
+    informe = !error && fila?.estado === "ok" ? leerInformePaciente(fila.contenido) : null;
+    if (informe) break;
+  }
   if (!informe) return NextResponse.json({ estado: "invalido" }, { headers: SIN_CACHE });
   // Informes con vigencia (p. ej. intereses vocacionales, 6 meses): después el enlace se desactiva.
   if (informeVencido(informe)) return NextResponse.json({ estado: "vencido", vigenteHasta: informe.vigenteHasta }, { headers: SIN_CACHE });

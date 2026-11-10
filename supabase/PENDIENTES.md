@@ -10,7 +10,9 @@ así que las migraciones se acumulan aquí y se aplican **juntas desde la comput
   computadora y aprobar cada ventana de Supabase.
 
 ## Pendientes
-Ninguna por ahora.
+| Migración | Para qué | Si falta |
+| --- | --- | --- |
+| `065_gestionesjj_informes_avance.sql` | Informe de avance (evolución) para el paciente: tabla `gestionesjj_informes_avance` y RPC pública `gestionesjj_public_informe_avance_get`. | El panel de evolución funciona; al guardar o publicar el informe de avance aparece «Falta aplicar la migración 065». |
 
 ## Aplicadas
 | Migración | Fecha | Verificación |

@@ -1,3 +1,4 @@
+import { agruparCambios, cambiosRecientes, fraseCambio, motivos, respuestaTexto } from "@/lib/evaluaciones/evolucion-explicada";
 import type { EvaluacionRespuestaRow, InformeRow } from "@/lib/evaluaciones/evaluaciones";
 import { evolucionDelPaciente } from "@/lib/evaluaciones/evolucion-paciente";
 import { perfilesJjr } from "@/lib/evaluaciones/jjr/evolucion";
@@ -122,11 +123,25 @@ export async function exportarExpedientePdf(paciente: PacienteRow, sesiones: Ses
   // Perfil integrado (resumen al inicio, reglas fijas): solo si hay evaluaciones.
   const perfil = extra ? perfilIntegrado(extra.respuestas) : null;
   if (perfil && (perfil.areas.length || perfil.patrones || perfil.orientacion.length)) {
-    heading("Perfil integrado (resumen)");
+    // Primero lo que mejoró y lo que empeoró, con las respuestas que lo explican.
+    const g = agruparCambios(cambiosRecientes(extra!.respuestas));
+    if (g.mejoras.length || g.empeoran.length) {
+      heading("Qué cambió desde la evaluación anterior");
+      for (const c of [...g.mejoras, ...g.empeoran]) {
+        const m = motivos(c, 3);
+        const lista = c.tendencia === "mejora" ? m.bajaron : m.subieron;
+        const porque = lista.length
+          ? `\n${c.tendencia === "mejora" ? "Por qué mejoró" : "Qué lo hizo subir"}: ${lista.map((p) => `${respuestaTexto(p)}${p.sensible ? " [sensible]" : ""}`).join("; ")}.`
+          : "";
+        field(`${c.tendencia === "mejora" ? "Mejoró" : c.claro ? "Empeoró claramente" : "Empeoró un poco"}: ${c.area} (${c.sigla})`, `${fraseCambio(c)}${porque}`);
+      }
+      y += 4;
+    }
+    heading("Cómo está hoy (resumen de todas las evaluaciones)");
     for (const linea of perfil.sintesis) paragraph(linea.replace(/^⚠️\s*/, "ATENCIÓN: "));
     if (perfil.sintesis.length) y += 4;
     const texto = (m: MedidaArea) =>
-      `${m.sigla} ${m.valor}/${m.max} · ${m.banda} · ${formatoFechaCorta(m.fecha)}${m.tendencia ? ` · ${m.tendencia === "igual" ? "sigue igual" : m.tendencia}` : ""}${m.deterioroFiable ? " · DETERIORO FIABLE" : ""}`;
+      `${m.sigla} ${m.valor}/${m.max} · ${m.banda} · ${formatoFechaCorta(m.fecha)}${m.tendencia ? ` · ${m.tendencia === "igual" ? "igual que antes" : m.tendencia === "mejora" ? "mejoró" : "empeoró"}` : ""}${m.deterioroFiable ? " · EMPEORÓ CLARAMENTE" : ""}`;
     for (const a of perfil.areas) field(a.nombre, [a.principal, ...a.otras].map(texto).join("\n"));
     if (perfil.patrones?.items.length)
       field(
@@ -139,7 +154,7 @@ export async function exportarExpedientePdf(paciente: PacienteRow, sesiones: Ses
     doc.setFontSize(8.5);
     doc.setTextColor(...MUTED);
     const nota = doc.splitTextToSize(
-      textoPdf("Reglas fijas: por área, la medida más reciente de cualquier evaluación y debajo las otras escalas; niveles según las bandas de cada escala; «deterioro fiable» según el cambio mínimo fiable. Resumen para orientar, no un diagnóstico."),
+      textoPdf("Reglas fijas: por área, la medida más reciente de cualquier evaluación y debajo las otras escalas; niveles según las bandas de cada escala; «empeoró claramente» = aumento mayor que la variación normal de una vez a otra. Resumen para orientar, no un diagnóstico."),
       contentWidth
     );
     ensure(nota.length * 11);

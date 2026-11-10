@@ -1,6 +1,8 @@
 // Pruebas del panel de evolución del expediente. Ejecutar: pnpm test:evolucion
 import assert from "node:assert/strict";
 import { diasDesde, evolucionDelPaciente, resumenEvolucion, tendenciaEntre } from "../src/lib/evaluaciones/evolucion-paciente.ts";
+import { agruparCambios, cambiosRecientes, informeAvancePaciente, opcionesPorDefectoAvance } from "../src/lib/evaluaciones/evolucion-explicada.ts";
+import { leerInformePaciente } from "../src/lib/evaluaciones/informe-paciente.ts";
 
 let ok = 0;
 const caso = (n, fn) => { fn(); ok++; console.log(`✔ ${n}`); };
@@ -47,4 +49,45 @@ caso("Criterios de cambio y resumen", () => {
   assert.equal(diasDesde("2026-11-01", new Date(2026, 10, 6, 23, 59)), 5);
 });
 
-console.log(`\n${ok}/2 casos correctos.`);
+caso("Cambios explicados: mejoras y aumentos con las preguntas que los explican", () => {
+  const c = cambiosRecientes(filas);
+  const g2 = agruparCambios(c);
+  const gad = c.find((x) => x.id === "gad");
+  assert.equal(gad.tendencia, "mejora");
+  assert.equal(gad.fiable, true); // 20 → 15: ≥ 4
+  assert.equal(gad.bajaron.length, 5); // 5 preguntas bajaron un punto
+  assert.ok(gad.bajaron.every((p) => p.ahora < p.antes));
+  assert.deepEqual(g2.mejoras.map((x) => x.id).sort(), ["dass-dep", "dass-str", "gad", "ptq"]);
+  // Desesperanza (DASS 10 y 21) se marca como sensible.
+  const dep = c.find((x) => x.id === "dass-dep");
+  assert.ok(dep.bajaron.some((p) => p.n === 21 && p.sensible));
+});
+
+caso("Informe de avance: mejoras primero y sin preguntas sensibles", () => {
+  // Empeora: ánimo con el ítem 9 del PHQ-9 y desesperanza del DASS subiendo.
+  const sube = [
+    ...filas,
+    r("r7", "2026-11-20", "eapi", { gad: g("3222312"), dass: g("232120221331232112203"), ptq: g("323231323132312"), docs: null, safety: 0, func: 2 }),
+  ];
+  const c = cambiosRecientes(sube);
+  const dep = c.find((x) => x.id === "dass-dep");
+  assert.equal(dep.tendencia, "empeora"); // 18 → 22: de moderado a severo
+  assert.ok(dep.subieron.length === 2 && dep.subieron.every((p) => p.sensible)); // solo subieron los ítems 10 y 21
+  const infSube = informeAvancePaciente(c, opcionesPorDefectoAvance(c), { paciente: "Ana", notas: "", profesional: "M. A." });
+  const tarjeta = infSube.resultados.find((x) => x.area.startsWith("Ánimo"));
+  assert.ok(tarjeta && !/Lo que más subió|nada por que vivir|ningún sentido/.test(tarjeta.texto));
+  // Orden: mejoras, luego aumentos, al final lo que se mantiene.
+  const orden = infSube.resultados.map((x) => (x.nivel === "Mejoró" ? 0 : x.nivel.startsWith("Aumentó") ? 1 : 2));
+  assert.deepEqual(orden, [...orden].sort());
+  assert.ok(orden.includes(1));
+  const inf = informeAvancePaciente(cambiosRecientes(filas), opcionesPorDefectoAvance(cambiosRecientes(filas)), { paciente: "Ana", notas: " ok ", profesional: "M. A." });
+  assert.equal(inf.resultados[0].nivel, "Mejoró");
+  const todo = JSON.stringify(inf);
+  assert.ok(!/nada por que vivir|ningún sentido/i.test(todo), "no cita desesperanza");
+  assert.ok(!/GAD-7|DASS|PTQ/.test(todo), "sin siglas técnicas");
+  assert.ok(leerInformePaciente(JSON.parse(todo)), "pasa el filtro de la página pública");
+  const conDep = inf.resultados.find((x) => x.area.startsWith("Ánimo"));
+  assert.ok(conDep && !conDep.puntuacion);
+});
+
+console.log(`\n${ok}/4 casos correctos.`);

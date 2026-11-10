@@ -138,12 +138,12 @@ export function AntesProximaSesion({
       puntos.push({
         clave: "deterioro-fiable",
         nivel: "urgente",
-        texto: `Deterioro fiable frente a la aplicación anterior: ${fiables.map((x) => x.sigla).join(", ")}`,
+        texto: `Empeoró claramente desde la evaluación anterior: ${fiables.map((x) => x.sigla).join(", ")}`,
         detalle: fiables
-          .map((x) => `${x.sigla} ${x.antes} → ${x.ahora} (+${x.ahora - x.antes}; mínimo fiable ${String(Math.round(x.minimo * 10) / 10).replace(".", ",")}) · ${x.banda}`)
+          .map((x) => `${x.sigla} subió de ${x.antes} a ${x.ahora} (+${x.ahora - x.antes}; más de ${String(Math.round(x.minimo * 10) / 10).replace(".", ",")} ya no es variación normal) · ahora ${x.banda.toLowerCase()}`)
           .join(" · "),
         ir: () => abrirSeccion("evolucion"),
-        etiquetaIr: "Ver evolución",
+        etiquetaIr: "Ver por qué y enviar informe",
       });
     }
     const empeoran = series.filter((x) => x.tendencia === "empeora" && !fiables.some((f) => f.id === x.id));
@@ -151,7 +151,7 @@ export function AntesProximaSesion({
       puntos.push({
         clave: "empeoran",
         nivel: "revisar",
-        texto: `Empeoró frente a la aplicación anterior: ${empeoran.map((x) => x.sigla).join(", ")}`,
+        texto: `Empeoró un poco desde la evaluación anterior: ${empeoran.map((x) => x.sigla).join(", ")}`,
         detalle: empeoran
           .map((x) => {
             const [a, b] = x.puntos.slice(-2);

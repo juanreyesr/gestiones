@@ -145,16 +145,16 @@ export function perfilIntegrado(respuestas: EvaluacionRespuestaRow[]): PerfilInt
   const sintesis: string[] = [];
   const altas = areas.filter((a) => a.principal.nivel === "alto").map((a) => a.nombre.toLowerCase());
   const medias = areas.filter((a) => a.principal.nivel === "medio").map((a) => a.nombre.toLowerCase());
-  if (altas.length) sintesis.push(`Rango alto en: ${altas.join(", ")}.`);
-  if (medias.length) sintesis.push(`Rango intermedio en: ${medias.join(", ")}.`);
-  if (areas.length && !altas.length && !medias.length) sintesis.push("Todas las áreas medidas están en el rango bajo.");
-  const det = areas.flatMap((a) => [a.principal, ...a.otras]).filter((m) => m.deterioroFiable).map((m) => m.sigla);
-  if (det.length) sintesis.push(`Deterioro fiable reciente: ${det.join(", ")}.`);
   const mejoran = areas.filter((a) => a.principal.tendencia === "mejora").map((a) => a.nombre.toLowerCase());
-  if (mejoran.length) sintesis.push(`Mejora frente a la aplicación anterior: ${mejoran.join(", ")}.`);
+  if (mejoran.length) sintesis.push(`Mejoró desde la vez anterior: ${mejoran.join(", ")}.`);
+  const det = areas.flatMap((a) => [a.principal, ...a.otras]).filter((m) => m.deterioroFiable).map((m) => m.sigla);
+  if (det.length) sintesis.push(`Empeoró claramente (más que la variación normal): ${det.join(", ")}.`);
+  if (altas.length) sintesis.push(`Nivel alto en: ${altas.join(", ")}.`);
+  if (medias.length) sintesis.push(`Nivel intermedio en: ${medias.join(", ")}.`);
+  if (areas.length && !altas.length && !medias.length) sintesis.push("Todas las áreas medidas están en nivel bajo.");
   const patronesAltos = patrones?.items.filter((p) => p.nivel === "alto" && !/Recursos/.test(p.nombre)).map((p) => p.nombre.split(" · ").pop()!.toLowerCase()) ?? [];
-  if (patronesAltos.length) sintesis.push(`Patrones cognitivos destacados (MCEA): ${patronesAltos.join(", ")}.`);
-  if (riesgo) sintesis.unshift(`⚠️ Riesgo marcado en la última aplicación con pregunta de seguridad (${fechaCorta(riesgo.fecha)}).`);
+  if (patronesAltos.length) sintesis.push(`Formas de pensar más marcadas (MCEA): ${patronesAltos.join(", ")}.`);
+  if (riesgo) sintesis.unshift(`⚠️ Marcó la pregunta de seguridad en su última aplicación (${fechaCorta(riesgo.fecha)}): revisar en sesión.`);
 
   const fechas = [...areas.flatMap((a) => [a.principal, ...a.otras].map((m) => m.fecha)), ...(patrones ? [patrones.fecha] : []), ...orientacion.map((o) => o.fecha)].sort();
   return { areas, patrones, orientacion, riesgo, sintesis, desde: fechas[0] ?? null, hasta: fechas[fechas.length - 1] ?? null };

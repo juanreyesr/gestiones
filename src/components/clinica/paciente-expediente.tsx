@@ -487,7 +487,7 @@ export function PacienteExpediente({
             sesiones={sesiones}
           />
           <PlanTratamiento onCambio={() => void cargar()} sesiones={sesiones} />
-          <PanelEvolucion pacienteId={paciente.id} sesiones={sesiones} />
+          <PanelEvolucion paciente={paciente} sesiones={sesiones} />
           <EvaluacionesPaciente paciente={paciente} />
           <DocumentosPaciente pacienteId={paciente.id} sesiones={sesiones} />
           <SectionCard

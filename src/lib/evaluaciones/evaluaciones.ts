@@ -423,3 +423,57 @@ export async function retirarInforme(respuestaId: string) {
     .eq("respuesta_id", respuestaId);
   return { error: error?.message ?? null };
 }
+
+// ============================================================
+// Informe de avance (evolución) para el paciente (gestionesjj_informes_avance,
+// una fila por paciente; migración 065)
+// ============================================================
+
+export const FALTA_MIGRACION_AVANCE =
+  "Para enviar el informe de avance falta aplicar la migración 065 en Supabase (está en supabase/PENDIENTES.md). El panel de evolución funciona igual.";
+const AVANCE_COLUMNAS = "paciente_id,notas_paciente,opciones,contenido,token,publicado_at,updated_at";
+const faltaTabla = (e: { code?: string; message: string } | null) =>
+  !!e && (e.code === "42P01" || e.code === "PGRST205" || /does not exist|schema cache/i.test(e.message));
+const errorAvance = (e: { code?: string; message: string } | null) => (e ? (faltaTabla(e) ? FALTA_MIGRACION_AVANCE : e.message) : null);
+const mapAvance = (r: Omit<RawInforme, "respuesta_id" | "notas_privadas"> & { paciente_id: string }): InformeRow =>
+  mapInforme({ ...r, respuesta_id: r.paciente_id, notas_privadas: null });
+type RawAvance = Parameters<typeof mapAvance>[0];
+
+export async function fetchInformeAvance(pacienteId: string) {
+  const supabase = getSupabaseClient();
+  if (!supabase) return { data: null as InformeRow | null, error: SIN_SUPABASE };
+  const { data, error } = await supabase.from("gestionesjj_informes_avance").select(AVANCE_COLUMNAS).eq("paciente_id", pacienteId).maybeSingle();
+  return { data: data ? mapAvance(data as RawAvance) : null, error: errorAvance(error) };
+}
+
+export async function guardarInformeAvance(pacienteId: string, cambios: { notasPaciente?: string; opciones?: Record<string, unknown> }) {
+  const supabase = getSupabaseClient();
+  if (!supabase) return { data: null as InformeRow | null, error: SIN_SUPABASE };
+  const fila: Record<string, unknown> = { paciente_id: pacienteId, updated_at: new Date().toISOString() };
+  if (cambios.notasPaciente !== undefined) fila.notas_paciente = cambios.notasPaciente.slice(0, 6000) || null;
+  if (cambios.opciones !== undefined) fila.opciones = cambios.opciones;
+  const { data, error } = await supabase.from("gestionesjj_informes_avance").upsert(fila, { onConflict: "paciente_id" }).select(AVANCE_COLUMNAS).single();
+  return { data: data ? mapAvance(data as RawAvance) : null, error: errorAvance(error) };
+}
+
+export async function publicarInformeAvance(pacienteId: string, contenido: Record<string, unknown>, tokenActual: string | null) {
+  const supabase = getSupabaseClient();
+  if (!supabase) return { data: null as InformeRow | null, error: SIN_SUPABASE };
+  const ahora = new Date().toISOString();
+  const { data, error } = await supabase
+    .from("gestionesjj_informes_avance")
+    .upsert({ paciente_id: pacienteId, contenido, token: tokenActual ?? crypto.randomUUID(), publicado_at: ahora, updated_at: ahora }, { onConflict: "paciente_id" })
+    .select(AVANCE_COLUMNAS)
+    .single();
+  return { data: data ? mapAvance(data as RawAvance) : null, error: errorAvance(error) };
+}
+
+export async function retirarInformeAvance(pacienteId: string) {
+  const supabase = getSupabaseClient();
+  if (!supabase) return { error: SIN_SUPABASE };
+  const { error } = await supabase
+    .from("gestionesjj_informes_avance")
+    .update({ publicado_at: null, contenido: null, token: null, updated_at: new Date().toISOString() })
+    .eq("paciente_id", pacienteId);
+  return { error: errorAvance(error) };
+}
