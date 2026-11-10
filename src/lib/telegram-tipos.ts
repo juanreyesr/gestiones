@@ -18,7 +18,9 @@ export type TipoNotificacion =
   | "cumpleanos_docentes"
   | "cumpleanos_estudiantes"
   | "resumen_diario"
-  | "respaldo_mensual";
+  | "respaldo_mensual"
+  | "datos_completados"
+  | "datos_pendientes";
 
 export const NOTIFICACIONES: { id: TipoNotificacion; etiqueta: string; porDefecto: boolean }[] = [
   { id: "citas_solicitudes", etiqueta: "Solicitudes de cita (Clínica)", porDefecto: true },
@@ -51,6 +53,12 @@ export const NOTIFICACIONES: { id: TipoNotificacion; etiqueta: string; porDefect
   {
     id: "cumpleanos_estudiantes",
     etiqueta: "Cumpleaños de estudiantes de la semana (lunes 7:00 a. m.)",
+    porDefecto: true,
+  },
+  { id: "datos_completados", etiqueta: "Paciente completó sus datos generales y firmó el consentimiento", porDefecto: true },
+  {
+    id: "datos_pendientes",
+    etiqueta: "Un día antes de la cita: pacientes sin datos generales ni consentimiento, con mensaje de WhatsApp listo (7:00 a. m.)",
     porDefecto: true,
   },
   { id: "resumen_diario", etiqueta: "Resumen diario (7:00 a. m.)", porDefecto: true },

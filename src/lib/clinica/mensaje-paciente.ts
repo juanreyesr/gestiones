@@ -29,6 +29,20 @@ export function mensajeHojaDatos(nombre: string, url: string, hora = horaGuatema
   ].join("\n\n");
 }
 
+/**
+ * Recordatorio de la hoja de datos generales y el consentimiento antes de la
+ * cita. «cuando»: «mañana», «hoy» o «el martes 12 de noviembre». El saludo es
+ * el de la hora de Guatemala en el momento de enviarlo.
+ */
+export function mensajeDatosAntesDeCita(nombre: string, url: string, cuando: string, hora = horaGuatemala()) {
+  const primerNombre = primerNombreDe(nombre);
+  return [
+    `${saludoPorHora(hora)}${primerNombre ? `, ${primerNombre}` : ""}. Te recuerdo que ${cuando} tienes una cita agendada, por lo que quiero solicitarte que completes el siguiente formulario, por favor:`,
+    url,
+    "Nos vemos en sesión, saludos.",
+  ].join("\n\n");
+}
+
 /** Saludo de cumpleaños para el paciente (boton del aviso de Telegram). */
 export function mensajeCumpleanos(nombre: string) {
   const primerNombre = primerNombreDe(nombre);

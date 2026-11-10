@@ -1,6 +1,7 @@
-import { NextResponse } from "next/server";
+import { after, NextResponse } from "next/server";
 import { consentimientoComoTexto, type Responsable } from "@/lib/clinica/consentimiento";
 import { plantillaVigente } from "@/lib/clinica/consentimiento-plantillas";
+import { avisarDatosCompletados } from "@/lib/server/datos-pendientes";
 import { getClientIp, rateLimit, rateLimitResponse } from "@/lib/server/rate-limit";
 import { getSupabaseClient } from "@/lib/supabase";
 
@@ -211,5 +212,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ tok
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 422 });
   }
+  // Aviso por Telegram de que la hoja de datos y el consentimiento quedaron completos.
+  if (data === "guardado") after(() => avisarDatosCompletados(token).catch(() => undefined));
   return NextResponse.json({ estado: data as string });
 }
