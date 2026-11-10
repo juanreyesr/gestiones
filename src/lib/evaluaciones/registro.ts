@@ -20,6 +20,8 @@ import { instrumentoPorId } from "./instrumentos";
 import { NOMBRES_CAMPOS } from "./jjr/banco";
 import { calificarJjr, camposPrincipales, mediaTexto, ordenPorInteres } from "./jjr/calificacion";
 import { avanceJjr, datosJjrGuardados, formaDeOpciones, limpiarBorradorJjr, type InstrumentoJjr } from "./jjr/codigo";
+import { avanceMcea, datosMceaGuardados, limpiarBorradorMcea, opcionesMcea } from "./mcea/codigo";
+import { A as respuestaMcea, modulosAbiertos, nombreModulo, scoreAll as puntajesMcea } from "./mcea/motor";
 import { calificarRiasec, RIASEC_INFO } from "./riasec/calificacion";
 import { avanceRiasec, limpiarBorradorRiasec, validarRiasec } from "./riasec/codigo";
 import { calificarValores, VALORES_INFO } from "./valores/calificacion";
@@ -237,6 +239,43 @@ export const REGISTRO: Record<string, DefinicionInstrumento> = {
   },
   jjr84: jjr("jjr84"),
   jjr176: jjr("jjr176"),
+  mcea: {
+    sigla: "MCEA",
+    nombreCorto: (o) => `MCEA${opcionesMcea(o).modo === "full" ? " (completo)" : ""}`,
+    detalleOpciones: (o) => (opcionesMcea(o).modo === "full" ? " · modo completo" : ""),
+    opcionesPublicas: (o) => ({ ...opcionesMcea(o) }),
+    avance: (b, o) => avanceMcea(limpiarBorradorMcea(b, o)),
+    // Reevaluación: repite los módulos abiertos en esta aplicación (línea base) para poder comparar.
+    opcionesNueva: (r, o) => {
+      const d = datosMceaGuardados(r.datos);
+      return { modo: opcionesMcea(o).modo, anchor: d ? modulosAbiertos(d) : opcionesMcea(o).anchor };
+    },
+    resumen: (r) => {
+      const d = datosMceaGuardados(r.datos);
+      if (!d) return null;
+      const sc = puntajesMcea(d);
+      const i9 = respuestaMcea(d, "PHQ9_9") ?? 0;
+      const p = Object.values(sc).map((s) => `${nombreModulo(s.id).split(" · ")[0]}: ${s.raw}/${s.max} (${s.label})`);
+      if (d.estado === "detenida") p.push("La persona detuvo la evaluación en la pantalla de riesgo.");
+      return {
+        puntuaciones: p,
+        alertas: i9 >= 1 ? [`Ítem 9 del PHQ-9 = ${i9}: pensamientos de muerte o de hacerse daño (¿podría hacerse daño hoy?: ${d.risk.self ?? "sin respuesta"}).`] : [],
+        insignia: [sc.PHQ9 ? `PHQ-9 ${sc.PHQ9.raw}` : "", sc.GAD7 ? `GAD-7 ${sc.GAD7.raw}` : "", sc.PTQ ? `PTQ ${sc.PTQ.raw}` : ""].filter(Boolean).join(" · "),
+        alarma: i9 >= 1,
+      };
+    },
+    evolucion: (r) => {
+      const d = datosMceaGuardados(r.datos);
+      if (!d) return null;
+      const sc = puntajesMcea(d);
+      const puntos: PuntoCalculado[] = [];
+      if (sc.PHQ9) puntos.push({ serie: "phq9", valor: sc.PHQ9.raw });
+      // GAD-7 y PTQ son las mismas escalas que en el EAPI: se suman a esas series.
+      if (sc.GAD7) puntos.push({ serie: "gad", valor: sc.GAD7.raw });
+      if (sc.PTQ) puntos.push({ serie: "ptq", valor: sc.PTQ.raw });
+      return { puntos };
+    },
+  },
 };
 
 export const definicion = (instrumento: string | null | undefined) => (instrumento ? (REGISTRO[instrumento] ?? null) : null);

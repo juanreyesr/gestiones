@@ -4,11 +4,13 @@ import type { ReactNode } from "react";
 import type { BBreveBorrador } from "@/lib/evaluaciones/b-breve/codigo";
 import { modulosDeOpciones, type EapiBorrador } from "@/lib/evaluaciones/eapi/codigo";
 import { formaDeOpciones, type JjrBorrador } from "@/lib/evaluaciones/jjr/codigo";
+import type { MceaBorrador } from "@/lib/evaluaciones/mcea/codigo";
 import type { RiasecBorrador } from "@/lib/evaluaciones/riasec/codigo";
 import type { ValoresBorrador } from "@/lib/evaluaciones/valores/codigo";
 import { BBreveForm } from "./b-breve-form";
 import { EapiForm } from "./eapi-form";
 import { JjrForm } from "./jjr-form";
+import { MceaForm } from "./mcea-form";
 import { RiasecForm } from "./riasec-form";
 import { ValoresForm } from "./valores-form";
 
@@ -37,4 +39,5 @@ export const FORMULARIOS: Record<string, (p: PropsFormulario) => ReactNode> = {
   jjr176: (p) => (
     <JjrForm borradorInicial={(p.borrador as JjrBorrador | null) ?? null} forma={formaDeOpciones(p.opciones)} instrumento="jjr176" token={p.token} />
   ),
+  mcea: (p) => <MceaForm borradorInicial={(p.borrador as MceaBorrador | null) ?? null} opciones={p.opciones} token={p.token} />,
 };

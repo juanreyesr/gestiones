@@ -1,0 +1,543 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Mapa Cognitivo-Emocional Adaptativo</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=Source+Serif+4:opsz,wght@8..60,500;8..60,600&display=swap" rel="stylesheet">
+<style>
+/* Layout: una columna de lectura (máx. 760px), tarjetas solo para bloques operables; estado clínico codificado en píldoras y barras. */
+:root{
+  --bg:#eef1f4; --surface:#ffffff; --ink:#18242d; --muted:#5a6873; --line:#d3dae0;
+  --accent:#1d4e6b; --accent-ink:#ffffff; --soft:#e2ebf1;
+  --ok:#2f7a5b; --warn:#a9861a; --high:#b8611f; --crit:#a3302b; --crit-bg:#fbeceb;
+  --display:'Source Serif 4',Georgia,'Times New Roman',serif;
+  --body:'IBM Plex Sans',system-ui,-apple-system,'Segoe UI',sans-serif;
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#10171c; --surface:#18222a; --ink:#e6ecf0; --muted:#9aa8b3; --line:#2c3a45;
+  --accent:#7fb6d6; --accent-ink:#0d1a22; --soft:#20303b;
+  --ok:#5fb892; --warn:#d8b84a; --high:#e0914f; --crit:#ec7b74; --crit-bg:#3a1d1c; color-scheme:dark;}}
+:root[data-theme="dark"]{
+  --bg:#10171c; --surface:#18222a; --ink:#e6ecf0; --muted:#9aa8b3; --line:#2c3a45;
+  --accent:#7fb6d6; --accent-ink:#0d1a22; --soft:#20303b;
+  --ok:#5fb892; --warn:#d8b84a; --high:#e0914f; --crit:#ec7b74; --crit-bg:#3a1d1c; color-scheme:dark;}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:16px;line-height:1.5}
+#app{max-width:760px;margin:0 auto;padding:20px 16px 64px;display:flex;flex-direction:column;gap:16px}
+h1,h2,h3{font-family:var(--display);text-wrap:balance;margin:0;line-height:1.2}
+h1{font-size:1.7rem}h2{font-size:1.25rem}h3{font-size:1.05rem}
+p{margin:0}
+.muted{color:var(--muted)}.small{font-size:.875rem}
+.stack{display:flex;flex-direction:column;gap:12px}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.between{justify-content:space-between}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:16px;display:flex;flex-direction:column;gap:12px}
+.eyebrow{font-size:.75rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:600}
+button,.btn{font:inherit;font-weight:500;border-radius:8px;border:1px solid var(--accent);background:var(--accent);color:var(--accent-ink);padding:10px 14px;cursor:pointer;text-align:center}
+button.ghost{background:transparent;color:var(--accent)}
+button.quiet{background:transparent;border-color:var(--line);color:var(--ink)}
+button.danger{background:var(--crit);border-color:var(--crit);color:#fff}
+button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+button:disabled{opacity:.45;cursor:not-allowed}
+input,textarea,select{font:inherit;color:var(--ink);background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:10px;width:100%}
+textarea{min-height:84px;resize:vertical}
+label{font-weight:500;font-size:.9rem;display:flex;flex-direction:column;gap:4px}
+.opt{display:flex;flex-direction:column;gap:8px}
+.opt button{background:var(--surface);color:var(--ink);border-color:var(--line);text-align:left;padding:14px;font-size:1.02rem}
+.opt button:hover{border-color:var(--accent);background:var(--soft)}
+.opt button.sel{border-color:var(--accent);background:var(--soft);font-weight:600}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{background:var(--surface);color:var(--ink);border:1px solid var(--line);border-radius:999px;padding:8px 12px;font-size:.92rem}
+.chip.on{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.prog{height:6px;background:var(--line);border-radius:3px;overflow:hidden}
+.prog i{display:block;height:100%;background:var(--accent)}
+.q{font-family:var(--display);font-size:1.3rem;line-height:1.3}
+.pill{display:inline-block;border-radius:999px;padding:2px 10px;font-size:.8rem;font-weight:600;border:1px solid currentColor;white-space:nowrap}
+.l0{color:var(--ok)}.l1{color:var(--warn)}.l2{color:var(--high)}.l3{color:var(--crit)}.ln{color:var(--muted)}
+.bar{height:10px;background:var(--soft);border-radius:5px;overflow:hidden;flex:1;min-width:80px}
+.bar i{display:block;height:100%;background:currentColor;border-radius:5px}
+.alert{border:1px solid var(--crit);background:var(--crit-bg);border-radius:10px;padding:14px;display:flex;flex-direction:column;gap:8px}
+.note{border-left:4px solid var(--accent);background:var(--soft);padding:10px 12px;border-radius:0 8px 8px 0;font-size:.92rem}
+.tw{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:.9rem;font-variant-numeric:tabular-nums}
+th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-size:.75rem;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}
+.tabs{display:flex;gap:6px;flex-wrap:wrap}
+.tabs button{background:transparent;color:var(--ink);border-color:var(--line);padding:8px 12px}
+.tabs button.on{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+pre{background:var(--soft);padding:12px;border-radius:8px;overflow-x:auto;font-size:.78rem;margin:0}
+.code{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:1.3rem;letter-spacing:.12em;font-weight:600}
+ul{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:6px}
+.map{display:grid;gap:8px}
+.map div{border:1px solid var(--line);border-radius:8px;padding:10px;background:var(--surface)}
+.map b{display:block;font-size:.75rem;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}
+@media (prefers-reduced-motion:no-preference){.prog i{transition:width .25s}}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<script>
+'use strict';
+const VERSION='1.0';
+const DAY=86400000;
+const RS={
+  phq:['Ningún día','Varios días','Más de la mitad de los días','Casi todos los días'],
+  f4:['Nunca','Rara vez','A veces','A menudo','Casi siempre'],
+  ptq:['Nada','Raramente','A veces','Frecuentemente','Casi siempre']
+};
+const EXP_SRC='Escala original MCEA v'+VERSION+'. Experimental: sin validación ni normas.';
+const INS={
+PHQ9:{name:'PHQ-9 · Ánimo',kind:'val',rs:'phq',better:'low',max:27,
+  stem:'Durante las últimas 2 semanas, ¿con qué frecuencia le han molestado estos problemas?',
+  items:['Poco interés o placer en hacer cosas','Se ha sentido decaído(a), deprimido(a) o sin esperanzas','Ha tenido dificultad para quedarse o permanecer dormido(a), o ha dormido demasiado','Se ha sentido cansado(a) o con poca energía','Sin apetito o ha comido en exceso','Se ha sentido mal con usted mismo(a), o que es un fracaso o que ha quedado mal con usted mismo(a) o con su familia','Ha tenido dificultad para concentrarse en ciertas actividades, tales como leer el periódico o ver la televisión','¿Se ha movido o hablado tan lento que otras personas podrían haberlo notado? O lo contrario: muy inquieto(a) o agitado(a), moviéndose mucho más de lo normal','Pensamientos de que estaría mejor muerto(a) o de lastimarse de alguna manera'],
+  bands:[[0,'Mínima',0],[5,'Leve',1],[10,'Moderada',2],[15,'Moderadamente grave',3],[20,'Grave',3]],
+  src:'Kroenke, Spitzer y Williams (2001). Dominio público. Cortes 5/10/15/20.'},
+GAD7:{name:'GAD-7 · Ansiedad',kind:'val',rs:'phq',better:'low',max:21,
+  stem:'Durante las últimas 2 semanas, ¿con qué frecuencia le han molestado estos problemas?',
+  items:['Se ha sentido nervioso(a), ansioso(a) o con los nervios de punta','No ha sido capaz de parar o controlar su preocupación','Se ha preocupado demasiado por motivos diferentes','Ha tenido dificultad para relajarse','Se ha sentido tan inquieto(a) que no ha podido quedarse quieto(a)','Se ha molestado o irritado fácilmente','Ha tenido miedo de que algo terrible fuera a pasar'],
+  bands:[[0,'Mínima',0],[5,'Leve',1],[10,'Moderada',2],[15,'Grave',3]],
+  src:'Spitzer, Kroenke, Williams y Löwe (2006). Dominio público. Cortes 5/10/15.'},
+BR:{name:'Preguntas puente',kind:'br',rs:'f4',
+  stem:'En las últimas 2 semanas, ¿con qué frecuencia le pasó esto?',
+  items:['Me vienen a la mente pensamientos negativos sobre mí, sin que yo los busque.','Cuando algo sale mal, lo primero que pienso es que es culpa mía o que siempre me pasa lo mismo.','Le doy vueltas a lo mismo una y otra vez sin llegar a nada.','Me cuesta soltar un pensamiento aunque quiera pensar en otra cosa.','Dejo para después cosas importantes para mí, aunque sé que me perjudica.','Cuando algo empieza a irme bien, termino haciendo algo que lo arruina o me alejo.','Soy muy duro(a) conmigo cuando cometo un error.','Me preocupa que mi pareja deje de quererme o me deje.','En mis relaciones termino discutiendo, alejándome o desconfiando, aunque no quiera.']},
+PAN:{name:'Pensamientos automáticos negativos',kind:'exp',rs:'f4',better:'low',max:32,
+  stem:'En la última semana, ¿con qué frecuencia le pasaron por la mente pensamientos como este?',
+  items:['«No soy suficiente.»','«Todo me sale mal.»','«Las cosas no van a mejorar.»','«Le estoy fallando a la gente que me importa.»','«Algo anda mal en mí.»','«No voy a poder con esto.»','«A nadie le importa realmente lo que me pasa.»','«Para qué intentarlo, si igual no va a funcionar.»'],
+  sub:{'Sobre sí mismo(a)':[1,5],'Sobre su capacidad':[2,6],'Sobre el futuro':[3,8],'Sobre los demás':[4,7]},src:EXP_SRC},
+DC:{name:'Formas de pensar (distorsiones)',kind:'exp',rs:'f4',better:'low',max:40,
+  stem:'En las últimas 2 semanas, ¿con qué frecuencia le ocurrió esto?',
+  items:['Si algo no me sale perfecto, siento que fue un fracaso total.','Ante un problema, imagino de inmediato el peor desenlace posible.','Doy por hecho que sé lo que otros piensan de mí, y casi siempre es algo malo.','Cuando algo me sale mal una vez, concluyo que siempre me va a pasar.','Me quedo enganchado(a) en un detalle negativo y dejo de ver lo demás.','Cuando algo me sale bien, pienso que fue suerte o que no cuenta.','Me siento responsable de cosas que en realidad no dependían de mí.','Me exijo con reglas rígidas de cómo «debería» ser yo o cómo «deberían» ser los demás.','Si siento que algo es cierto, lo doy por cierto aunque no tenga pruebas.','Cuando fallo, me pongo etiquetas duras (por ejemplo «inútil» o «tonto(a)»).'],
+  names:['Todo o nada','Catastrofismo','Lectura de mente','Sobregeneralización','Filtro negativo','Descontar lo positivo','Personalización','Los «debería»','Razonamiento emocional','Etiquetas'],
+  defs:['Ver las cosas en extremos: perfecto o fracaso, sin puntos intermedios.','Saltar al peor desenlace posible como si fuera el más probable.','Dar por hecho lo que otros piensan sin habérselo preguntado.','Sacar una regla de «siempre» o «nunca» a partir de un solo hecho.','Quedarse con el detalle negativo y perder de vista el resto.','Restarle valor a lo que sale bien.','Cargar con la culpa de cosas que no dependían de usted.','Medirse con reglas rígidas que generan culpa o enojo.','Tomar lo que siente como prueba de que algo es cierto.','Definirse por completo con una palabra dura a partir de un error.'],src:EXP_SRC},
+PTQ:{name:'PTQ · Pensamiento repetitivo (rumiación)',kind:'val',rs:'ptq',better:'low',max:60,
+  stem:'Indique en qué medida esta afirmación se aplica a usted cuando piensa acerca de experiencias negativas o problemas.',
+  items:['Los pensamientos se mantienen en mi mente una y otra vez.','Los pensamientos se cuelan en mi mente.','No puedo dejar de preocuparme por ellos.','Pienso sobre muchos problemas sin resolver ninguno.','No puedo hacer nada más cuando estoy pensando en mis problemas.','Mis pensamientos son repetitivos.','Los pensamientos vienen a mi mente aunque yo no quiera.','Me quedo atascado en ciertos problemas y no puedo seguir adelante.','Sigo haciéndome las mismas preguntas sin encontrar una respuesta.','Mis pensamientos me impiden centrarme en otras cosas.','Sigo pensando sobre el mismo asunto todo el tiempo.','Los pensamientos se meten en mi mente.','Me siento impulsado a seguir preocupándome por la misma cuestión.','Mis pensamientos no me son de mucha ayuda.','Mis pensamientos absorben toda mi atención.'],
+  bands:[[0,'Dentro de la referencia no clínica',0],[23,'Algo elevado',1],[30,'Elevado',2],[37,'En el nivel de la media clínica de referencia',3]],
+  src:'Ehring et al. (2011). Versión en español de distribución libre (F. J. Ruiz, Konrad Lorenz). Medias de referencia: 22 no clínica, 37 clínica. Sin punto de corte oficial: bandas orientativas.'},
+AS:{name:'Autosabotaje',kind:'exp',rs:'f4',better:'low',max:48,
+  stem:'En el último mes, ¿con qué frecuencia le ocurrió esto?',
+  items:['Dejo para el último momento tareas importantes, aunque tenga tiempo para hacerlas.','Evito empezar algo que me importa por miedo a que no salga bien.','Me distraigo con otras cosas justo cuando tengo que hacer lo que más me conviene.','Cuando estoy cerca de lograr algo, pierdo el interés o lo abandono.','Siento que no merezco que me vaya bien.','Cuando las cosas van bien, espero que algo malo pase y actúo como si ya hubiera pasado.','Me hablo con dureza cuando cometo un error.','Me comparo con otras personas y salgo perdiendo.','Me cuesta reconocer lo que hago bien.','Si no puedo hacerlo perfecto, prefiero no hacerlo.','Me pongo metas tan altas que casi nunca quedo satisfecho(a).','Dejo proyectos sin terminar porque nunca me parecen suficientemente buenos.'],
+  sub:{'Postergar y evitar':[1,2,3],'Frenarse cuando va bien':[4,5,6],'Autocrítica':[7,8,9],'Exigencia que paraliza':[10,11,12]},
+  pat:{'Postergar y evitar':'Posterga o evita justo lo que más le importa. Suele ser una forma de protegerse del miedo a fallar y no una falta de voluntad.','Frenarse cuando va bien':'Cuando algo empieza a salir bien aparece la duda de si lo merece o el temor de que se arruine, y eso le lleva a soltarlo.','Autocrítica':'Se habla con mucha dureza. Esa voz crítica desgasta el ánimo y la confianza.','Exigencia que paraliza':'Se pide tanto que empezar o terminar algo se vuelve muy difícil.'},src:EXP_SRC},
+RP:{name:'Patrones en la relación de pareja',kind:'exp',rs:'f4',better:'low',max:48,
+  stem:'Pensando en su relación actual o en la más reciente, ¿con qué frecuencia le ocurre esto?',
+  items:['Me preocupa que mi pareja deje de quererme.','Necesito que mi pareja me confirme con frecuencia que me quiere.','Si mi pareja tarda en responderme, pienso que algo anda mal entre nosotros.','Me cuesta confiar en lo que mi pareja me dice.','Reviso o quisiera revisar el teléfono o las redes de mi pareja.','Interpreto gestos pequeños como señales de que me oculta algo.','Cuando mi pareja me señala algo, lo tomo como un ataque.','En las discusiones digo cosas hirientes de las que luego me arrepiento.','Me cuesta aceptar mi parte de responsabilidad en los problemas.','Cuando la relación se vuelve más cercana, siento ganas de alejarme.','Prefiero guardarme lo que siento antes que hablarlo con mi pareja.','Pienso en terminar la relación antes de que me lastimen.'],
+  sub:{'Miedo a perder a la pareja':[1,2,3],'Desconfianza':[4,5,6],'Ponerse a la defensiva':[7,8,9],'Tomar distancia':[10,11,12]},
+  pat:{'Miedo a perder a la pareja':'El temor a que le dejen ocupa mucho espacio y le lleva a buscar confirmación constante.','Desconfianza':'Le cuesta confiar, y la duda le empuja a vigilar o a interpretar señales pequeñas como amenazas.','Ponerse a la defensiva':'Ante un señalamiento reacciona protegiéndose o atacando, y eso escala las discusiones.','Tomar distancia':'Cuando la cercanía aumenta, se aleja o se guarda lo que siente para no salir lastimado(a).'},src:EXP_SRC},
+FR:{name:'Recursos personales',kind:'exp',rs:'f4',better:'high',max:16,
+  stem:'En las últimas 2 semanas, ¿con qué frecuencia fue cierto esto para usted?',
+  items:['Cuando me equivoco, puedo tratarme con comprensión.','Tengo al menos una persona con quien puedo hablar de lo que me pasa.','Cuando me siento mal, hay cosas que hago que me ayudan a sentirme mejor.','Puedo notar cuando un pensamiento me está haciendo daño.'],
+  pat:['Puede tratarse con comprensión cuando se equivoca.','Cuenta con alguien con quien hablar de lo que le pasa.','Tiene formas propias de ayudarse cuando se siente mal.','Logra notar cuando un pensamiento le está haciendo daño.'],src:EXP_SRC}
+};
+const CORE_ORDER=['PHQ9','GAD7','PAN','DC','PTQ','AS','RP','FR'];
+const FOCUS=[['nose','No sé bien qué me pasa'],['animo','Mi ánimo, me siento triste o sin ganas'],['ansiedad','Nervios o preocupación'],['pensamientos','Pensamientos que no me dejan en paz'],['pareja','Mi relación de pareja'],['metas','No avanzo en mis metas, trabajo o estudios']];
+const EMO=['Tristeza','Ansiedad','Enojo','Culpa','Vergüenza','Miedo','Celos','Soledad','Frustración','Vacío'];
+const BEH=['Me aislé','Discutí o reclamé','Evité el tema','Pospuse lo que tenía que hacer','Le di vueltas por horas','Revisé el teléfono o las redes','Busqué que me tranquilizaran','Comí, bebí o me distraje para no sentir','Lo hablé con calma','Hice algo que me ayudó'];
+const DEF_NORMS={
+  PHQ9:{mcf:6,cut:10,src:'Convención NHS Talking Therapies: cambio fiable ≥6, caso ≥10'},
+  GAD7:{mcf:4,cut:8,src:'Convención NHS Talking Therapies: cambio fiable ≥4, caso ≥8'},
+  PTQ:{sd:12,rel:0.9,cut:30,src:'PROVISIONAL: DE y fiabilidad aproximadas; corte = punto medio entre medias de referencia (22 y 37). Sustituir por datos de validación o locales'}
+};
+/* ---------- utilidades ---------- */
+const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const rng=n=>Array.from({length:n},(_,i)=>i+1);
+const uid=()=>Math.random().toString(36).slice(2,10);
+const fmtD=t=>new Date(t).toLocaleDateString('es-GT',{day:'numeric',month:'long',year:'numeric'});
+const r1=x=>Math.round(x*10)/10;
+function token(){const c='ABCDEFGHJKMNPQRSTUVWXYZ23456789';let o='';for(let i=0;i<8;i++)o+=c[Math.floor(Math.random()*c.length)];return o;}
+function labels(id){const r=INS[id].rs;return Array.isArray(r)?r:RS[r];}
+const A=(s,k)=>{const a=s.answers[k];return a?a.v:undefined;};
+const done=(s,id,idx)=>idx.every(i=>A(s,id+'_'+i)!==undefined);
+const sum=(s,id,idx)=>idx.reduce((t,i)=>t+(A(s,id+'_'+i)||0),0);
+const mx=(s,id,idx)=>Math.max(...idx.map(i=>{const v=A(s,id+'_'+i);return v===undefined?-1:v;}));
+/* ---------- motor: ramificación ---------- */
+function routing(s){
+  const f=s.focus||[],lost=f.includes('nose'),d=lost?1:0,R={};
+  const mk=(id,conds)=>{const reasons=conds.filter(c=>c[0]).map(c=>c[1]);
+    if(s.mode==='full')reasons.push('Modo completo');
+    if((s.anchor||[]).includes(id))reasons.push('Anclado a la línea base para poder comparar');
+    R[id]={open:reasons.length>0,reasons};};
+  const phq=done(s,'PHQ9',rng(9))?sum(s,'PHQ9',rng(9)):-1;
+  const gad2=done(s,'GAD7',[1,2])?sum(s,'GAD7',[1,2]):-1;
+  mk('GAD7',[[gad2>=3-d,'GAD-2 ≥ '+(3-d)+' (obtuvo '+gad2+')'],[f.includes('ansiedad'),'Motivo declarado: nervios o preocupación']]);
+  const gad=R.GAD7.open&&done(s,'GAD7',rng(7))?sum(s,'GAD7',rng(7)):-1;
+  const b12=mx(s,'BR',[1,2]),b34=mx(s,'BR',[3,4]),b567=mx(s,'BR',[5,6,7]),b89=mx(s,'BR',[8,9]);
+  mk('PAN',[[b12>=2,'Puente de pensamientos ≥ «A veces»'],[phq>=10,'PHQ-9 ≥ 10'],[f.includes('pensamientos'),'Motivo declarado: pensamientos'],[lost,'Motivo declarado: no sabe qué le pasa']]);
+  const pan=R.PAN.open&&done(s,'PAN',rng(8))?sum(s,'PAN',rng(8)):-1;
+  mk('DC',[[pan>=16,'Pensamientos automáticos con media ≥ «A veces» ('+pan+'/32)'],[b12>=3,'Puente de pensamientos ≥ «A menudo»']]);
+  mk('PTQ',[[b34>=3-d,'Puente de rumiación ≥ «'+RS.f4[3-d]+'»'],[phq>=10,'PHQ-9 ≥ 10'],[gad>=10,'GAD-7 ≥ 10'],[f.includes('pensamientos'),'Motivo declarado: pensamientos']]);
+  mk('AS',[[b567>=3-d,'Puente de autosabotaje o autocrítica ≥ «'+RS.f4[3-d]+'»'],[done(s,'BR',[5,6,7])&&sum(s,'BR',[5,6,7])>=6,'Suma de puentes de autosabotaje ≥ 6'],[f.includes('metas'),'Motivo declarado: metas']]);
+  const hasP=s.gate&&s.gate!=='no';
+  mk('RP',[[hasP&&b89>=2,'Puente de pareja ≥ «A veces»'],[hasP&&f.includes('pareja'),'Motivo declarado: pareja']]);
+  if(!hasP){R.RP.open=false;if(s.gate==='no')R.RP.reasons=['Sin relación de pareja en los últimos 12 meses'];}
+  for(const c of customs()){const t=c.trigger||'siempre';R[c.id]={open:t==='siempre'||!!(R[t]&&R[t].open),reasons:[t==='siempre'?'Instrumento cargado: se aplica siempre':'Instrumento cargado: se abre junto con '+t]};}
+  return R;
+}
+function customs(){return (typeof DB!=='undefined'&&DB&&DB.settings.custom)||[];}
+function buildPlan(s){
+  const P=[],push=(id,idx)=>idx.forEach(i=>P.push({t:'item',ins:id,i}));
+  P.push({t:'consent'});P.push({t:'focus'});
+  push('PHQ9',rng(9));
+  if(A(s,'PHQ9_9')>=1)P.push({t:'risk'});
+  push('GAD7',[1,2]);
+  let R=routing(s);
+  if(R.GAD7.open)push('GAD7',[3,4,5,6,7]);
+  push('BR',rng(7));P.push({t:'gate'});
+  if(s.gate&&s.gate!=='no')push('BR',[8,9]);
+  for(const id of ['PAN','DC','PTQ','AS','RP'])if(R[id].open)push(id,rng(INS[id].items.length));
+  for(const c of customs())if(R[c.id].open)push(c.id,rng(c.items.length));
+  push('FR',rng(4));P.push({t:'tr'});P.push({t:'end'});
+  return P;
+}
+/* ---------- motor: puntuación ---------- */
+function expBand(m){return m<1?['Bajo',0]:m<2?['Leve',1]:m<3?['Moderado',2]:['Alto',3];}
+function scoreAll(s){
+  const R=routing(s),out={};
+  const one=(id)=>{const I=INS[id],k=I.items.length,idx=rng(k);if(!done(s,id,idx))return;
+    const raw=sum(s,id,idx),top=labels(id).length-1,mean=raw/k,o={id,raw,max:k*top,mean,k};
+    if(I.bands){let b=I.bands[0];for(const x of I.bands)if(raw>=x[0])b=x;o.label=b[1];o.lvl=b[2];}
+    else if(I.better==='high'){const m=mean*4/top;o.label=m>=3?'Recursos sólidos':m>=2?'Recursos presentes':'Recursos escasos';o.lvl=m>=3?0:m>=2?1:2;}
+    else{const b=expBand(mean*4/top);o.label=b[0];o.lvl=b[1];}
+    if(I.sub){o.subs={};for(const n in I.sub){const r=sum(s,id,I.sub[n]),m=r/I.sub[n].length;o.subs[n]={raw:r,max:I.sub[n].length*top,mean:m,lvl:expBand(m)[1],label:expBand(m)[0]};}}
+    out[id]=o;};
+  one('PHQ9');
+  if(R.GAD7.open)one('GAD7');
+  if(!out.GAD7&&done(s,'GAD7',[1,2])){const r=sum(s,'GAD7',[1,2]);out.GAD2={id:'GAD2',raw:r,max:6,label:r>=3?'Tamizaje positivo':'Tamizaje negativo',lvl:r>=3?2:0};}
+  for(const id of ['PAN','DC','PTQ','AS','RP'])if(R[id].open)one(id);
+  for(const c of customs())if(R[c.id]&&R[c.id].open&&INS[c.id])one(c.id);
+  one('FR');
+  return out;
+}
+function validity(s){
+  const fl=[],ts=Object.values(s.answers).map(a=>a.t).filter(t=>t>0).sort((a,b)=>a-b);
+  if(ts.length>=10){const med=ts[Math.floor(ts.length/2)];if(med<1200)fl.push('Respuesta muy rápida: mediana de '+r1(med/1000)+' s por ítem. Interpretar con cautela.');}
+  for(const id of Object.keys(INS)){if(id==='BR')continue;const k=INS[id].items.length;if(k<8||!done(s,id,rng(k)))continue;
+    const v=rng(k).map(i=>A(s,id+'_'+i));if(v.every(x=>x===v[0])&&v[0]>0)fl.push('Respuesta invariante en '+INS[id].name+' (todas las respuestas iguales).');}
+  if(s.status==='detenida')fl.push('La persona detuvo la evaluación antes de terminar.');
+  return fl;
+}
+/* ---------- motor: cambio fiable ---------- */
+function localStats(id){
+  const k=INS[id].items.length,rows=[];
+  for(const a of DB.assessments){if(a.demo||a.n!==1||!a.completed)continue;if(!scoreAll(a)[id])continue;rows.push(rng(k).map(i=>A(a,id+'_'+i)));}
+  const n=rows.length;if(n<2)return{n};
+  const vr=x=>{const m=x.reduce((p,c)=>p+c,0)/x.length;return x.reduce((p,c)=>p+(c-m)*(c-m),0)/(x.length-1);};
+  const tot=rows.map(r=>r.reduce((p,c)=>p+c,0)),vt=vr(tot);let sv=0;for(let j=0;j<k;j++)sv+=vr(rows.map(r=>r[j]));
+  return{n,mean:tot.reduce((p,c)=>p+c,0)/n,sd:Math.sqrt(vt),alpha:vt>0?k/(k-1)*(1-sv/vt):0};
+}
+function getMcf(id){
+  const n=(DB.settings.norms||{})[id];
+  if(n&&n.mcf)return{v:+n.mcf,cut:n.cut,src:n.src||'Definido por el usuario'};
+  if(n&&n.sd&&n.rel)return{v:1.96*n.sd*Math.sqrt(2*(1-n.rel)),cut:n.cut,src:n.src||'DE y fiabilidad definidas'};
+  const ls=localStats(id);
+  if(ls.n>=30&&ls.alpha>0&&ls.alpha<1)return{v:1.96*ls.sd*Math.sqrt(2*(1-ls.alpha)),src:'Norma local (n='+ls.n+', α='+ls.alpha.toFixed(2)+', DE='+r1(ls.sd)+')'};
+  return null;
+}
+function compare(a1,a2){
+  const s1=scoreAll(a1),s2=scoreAll(a2),rows=[],skipped=[];
+  for(const id of Object.keys(INS)){if(id==='BR')continue;
+    if(!s1[id]||!s2[id]){if(s1[id]||s2[id])skipped.push(INS[id].name);continue;}
+    const d=s2[id].raw-s1[id].raw,m=getMcf(id),hi=INS[id].better==='high',better=hi?d>0:d<0;let cls;
+    if(!m)cls='sn';else if(Math.abs(d)<m.v)cls='sc';
+    else if(better)cls=(!hi&&m.cut!=null&&s1[id].raw>=m.cut&&s2[id].raw<m.cut)?'rec':'mej';else cls='det';
+    rows.push({id,t1:s1[id],t2:s2[id],d,m,cls});}
+  return{rows,skipped};
+}
+const CLS={rec:['Recuperado',0],mej:['Mejoría fiable',0],sc:['Sin cambio fiable',1],det:['Deterioro fiable',3],sn:['Sin norma: cambio bruto','n']};
+/* ---------- hipótesis clínicas (reglas transparentes) ---------- */
+function hypotheses(a,sc){
+  const H=[],S=[],L=id=>sc[id]?sc[id].lvl:-1,sub=(id,n)=>sc[id]&&sc[id].subs?sc[id].subs[n].lvl:-1;
+  const i9=A(a,'PHQ9_9')||0;
+  if(sc.PHQ9&&sc.PHQ9.raw>=10){H.push('Sintomatología depresiva en rango clínico de tamizaje (PHQ-9 = '+sc.PHQ9.raw+'). Compatible con un cuadro depresivo a confirmar: verificar en entrevista los criterios de episodio depresivo mayor (DSM-5-TR) o episodio depresivo F32 (CIE-10), duración, deterioro funcional, y descartar causa médica, sustancias, duelo y antecedentes de manía o hipomanía.');S.push('Entrevista diagnóstica estructurada o semiestructurada para trastornos del estado de ánimo.');}
+  else if(L('PHQ9')===1)H.push('Síntomas depresivos leves (PHQ-9 = '+sc.PHQ9.raw+'): por debajo del umbral de tamizaje. Vigilar evolución y explorar factores situacionales.');
+  if(sc.GAD7&&sc.GAD7.raw>=10){H.push('Ansiedad en rango clínico de tamizaje (GAD-7 = '+sc.GAD7.raw+'). El GAD-7 no es específico: explorar ansiedad generalizada (F41.1), pánico, ansiedad social y estrés postraumático.');S.push('Entrevista dirigida a trastornos de ansiedad; valorar medida específica según el cuadro.');}
+  if(L('PTQ')>=2)H.push('Pensamiento negativo repetitivo elevado (PTQ = '+sc.PTQ.raw+'). Proceso transdiagnóstico que suele mantener tanto el ánimo bajo como la ansiedad: candidato a foco de intervención (entrenamiento atencional, activación conductual, defusión, tiempo de preocupación).');
+  if(L('PAN')>=2){const I=INS.PAN,top=Object.entries(sc.PAN.subs).sort((x,y)=>y[1].mean-x[1].mean)[0];H.push('Pensamientos automáticos negativos frecuentes, con mayor carga en contenidos «'+top[0].toLowerCase()+'». Explorar creencias intermedias y nucleares asociadas mediante flecha descendente.');S.push('ATQ-8 en su versión validada en español (Ruiz et al., 2017) para una medida normada de pensamientos automáticos.');}
+  if(sc.DC){const hi=rng(10).filter(i=>A(a,'DC_'+i)>=3).map(i=>INS.DC.names[i-1]);if(hi.length)H.push('Distorsiones predominantes según autoinforme: '+hi.join(', ')+'. Usarlas como punto de partida del registro de pensamientos y la reestructuración.');}
+  if(sub('AS','Exigencia que paraliza')>=2&&sub('AS','Postergar y evitar')>=2)H.push('Posible ciclo perfeccionismo → miedo a fallar → postergación → autocrítica. Trabajar estándares flexibles y exposición a la tarea imperfecta.');
+  if(sub('AS','Frenarse cuando va bien')>=2)H.push('Indicadores de freno ante el logro (creencia de no merecer, anticipación de pérdida). Explorar creencias de defectuosidad o fracaso y la historia de aprendizaje asociada.');
+  if(sub('AS','Autocrítica')>=2){H.push('Autocrítica marcada. Factor de vulnerabilidad para depresión y obstáculo frecuente para el cambio.');S.push('FSCRS-SF (formas de autocrítica y autotranquilización), validada en España; confirmar condiciones de uso con los autores.');}
+  if(sub('RP','Miedo a perder a la pareja')>=2||sub('RP','Desconfianza')>=2){H.push('Patrón relacional de hiperactivación: temor al abandono o desconfianza con conductas de comprobación y búsqueda de confirmación. Compatible con ansiedad de apego, a confirmar con instrumento validado.');S.push('ECR en su versión breve validada en español para ansiedad y evitación del apego.');}
+  if(sub('RP','Tomar distancia')>=2)H.push('Patrón relacional de desactivación: distancia emocional y retirada ante la cercanía. Explorar evitación del apego.');
+  if(sub('RP','Ponerse a la defensiva')>=2)H.push('Defensividad en el conflicto de pareja. Valorar entrenamiento en comunicación y regulación emocional durante las discusiones.');
+  if(sc.RP)H.push('El módulo de pareja no evalúa violencia. Si hay indicios, hacer tamizaje específico de violencia en la pareja en entrevista individual.');
+  if(L('RP')>=2&&L('PTQ')>=2&&sub('AS','Autocrítica')>=2)H.push('Hipótesis integradora: los conflictos o señales ambiguas en la pareja activan interpretaciones de rechazo, seguidas de rumiación y autoataque, que a su vez alimentan conductas que tensan la relación.');
+  if(sc.FR&&sc.FR.lvl===2)H.push('Recursos personales escasos según autoinforme. Priorizar red de apoyo y estrategias de regulación antes de trabajo cognitivo exigente.');
+  if(sc.PHQ9&&sc.PHQ9.raw<5&&(!sc.GAD7||sc.GAD7.raw<5)&&!['PAN','PTQ','AS','RP'].some(id=>L(id)>=2))H.push('Sin indicadores elevados en los dominios evaluados. Si hay malestar referido, explorar causas situacionales, de ciclo vital o no patológicas, y dominios que esta batería no cubre.');
+  if(i9>=1||(sc.PHQ9&&sc.PHQ9.raw>=15))S.unshift('Evaluación de riesgo suicida estructurada en la próxima sesión o antes (por ejemplo, C-SSRS) y plan de seguridad si procede.');
+  if((A(a,'PHQ9_3')||0)>=2)S.push('Explorar sueño (higiene, insomnio, hipersomnia).');
+  if(['PAN','AS','RP'].filter(id=>L(id)>=2).length>=2)S.push('Si el patrón parece crónico, considerar evaluación de esquemas (YSQ-S3, requiere licencia).');
+  return{H,S};
+}
+/* ---------- datos ---------- */
+let DB,MEM=false;const KEY='mcea_v1';
+function freshDB(){return{v:1,settings:{lab:'Laboratorio de evaluación',contacto:'',crisis:'Línea 1582 (ALMA, apoyo psicológico en crisis)\nBomberos Voluntarios 122 · Bomberos Municipales 123\nPolicía Nacional Civil 110',vigencia:90,pin:'',modo:'adapt',norms:JSON.parse(JSON.stringify(DEF_NORMS)),custom:[]},patients:[],assessments:[],reports:[],audit:[]};}
+function save(){try{localStorage.setItem(KEY,JSON.stringify(DB));}catch(e){MEM=true;}}
+function loadDB(){try{const r=localStorage.getItem(KEY);if(r){DB=JSON.parse(r);registerCustom();return;}}catch(e){MEM=true;}DB=freshDB();seedDemo();save();}
+function registerCustom(){for(const c of customs()){INS[c.id]={name:c.name,kind:'car',rs:c.labels||'f4',better:'low',stem:c.stem||'',items:c.items,src:c.src||'Instrumento cargado por el laboratorio'};}}
+function audit(action,ref){DB.audit.push({at:Date.now(),action,ref});}
+function newAssessment(pid,n,mode,anchor){return{id:uid(),patientId:pid,n,mode,anchor:anchor||[],started:Date.now(),completed:null,status:'curso',answers:{},focus:[],gate:null,consent:null,risk:{self:null,ack:null},tr:null,pos:0};}
+function simulate(pid,prof,when,n,anchor){
+  const a=newAssessment(pid,n,'adapt',anchor);a.started=when;a.demo=true;let g=0;
+  while(g++<400){const st=buildPlan(a)[a.pos];if(!st||st.t==='end')break;
+    if(st.t==='consent')a.consent={at:when,v:VERSION};else if(st.t==='focus')a.focus=prof.focus;
+    else if(st.t==='item'){const arr=prof[st.ins],v=arr?arr[(st.i-1)%arr.length]:0;a.answers[st.ins+'_'+st.i]={v,t:3200+((st.i*37)%9)*450};}
+    else if(st.t==='risk')a.risk.self='no';else if(st.t==='gate')a.gate=prof.gate;else if(st.t==='tr')a.tr=prof.tr||{skip:true};
+    a.pos++;}
+  a.completed=when+13*60000;a.status='completa';return a;
+}
+function seedDemo(){
+  const p={id:uid(),code:'DEMO-ANA',birthYear:1997,created:Date.now()-84*DAY,demo:true};DB.patients.push(p);
+  const tr={sit:'Mi pareja no contestó mis mensajes en tres horas.',emo:['Ansiedad','Tristeza'],int:85,pen:'Ya se aburrió de mí.',f1:'Que nadie se queda conmigo.',f2:'Que no valgo lo suficiente.',beh:['Revisé el teléfono o las redes','Discutí o reclamé','Le di vueltas por horas'],dis:['Lectura de mente','Catastrofismo']};
+  const t1=simulate(p.id,{focus:['nose','pareja'],gate:'si',PHQ9:[2,2,2,2,1,2,2,1,0],GAD7:[2,2,2,1,1,2,1],BR:[3,3,4,3,3,2,3,4,3],PAN:[3,2,3,2,3,3,2,2],DC:[2,3,4,3,2,3,2,2,3,3],PTQ:[3,3,3,2,2,3,3,3,3,2,3,3,2,3,3],AS:[3,2,3,2,2,2,3,3,3,2,3,2],RP:[4,3,4,3,3,3,2,2,1,1,2,2],FR:[1,2,2,2],tr},Date.now()-84*DAY,1);
+  const anchor=Object.keys(routing(t1)).filter(k=>routing(t1)[k].open);
+  const t2=simulate(p.id,{focus:['pareja'],gate:'si',PHQ9:[1,1,1,1,0,1,1,0,0],GAD7:[1,1,1,1,0,1,1],BR:[2,2,2,2,2,1,2,3,2],PAN:[2,1,1,1,2,1,1,1],DC:[1,2,2,2,1,2,1,2,2,1],PTQ:[2,2,2,1,1,2,2,2,2,1,2,2,1,2,2],AS:[2,1,2,1,1,1,2,2,2,2,2,1],RP:[3,3,3,2,2,2,1,1,1,1,1,1],FR:[2,3,3,3],tr:{skip:true}},Date.now()-DAY,2,anchor);
+  DB.assessments.push(t1,t2);
+}
+/* ---------- interfaz ---------- */
+const ui={view:'home',pid:null,aid:null,tab:'clin',rid:null,shown:0,riskStage:1,msg:''};
+const $=id=>document.getElementById(id);
+const pat=id=>DB.patients.find(p=>p.id===id);
+const asm=id=>DB.assessments.find(a=>a.id===id);
+const asmOf=pid=>DB.assessments.filter(a=>a.patientId===pid).sort((x,y)=>x.n-y.n);
+const pill=(lvl,txt)=>'<span class="pill l'+lvl+'">'+esc(txt)+'</span>';
+const riskOpen=a=>(A(a,'PHQ9_9')||0)>=1&&!a.risk.ack;
+function crisisHTML(){const s=DB.settings;return '<ul>'+s.crisis.split('\n').filter(x=>x.trim()).map(x=>'<li>'+esc(x)+'</li>').join('')+(s.contacto?'<li>Su terapeuta: '+esc(s.contacto)+'</li>':'')+'</ul>';}
+function go(v,o){Object.assign(ui,{view:v,msg:''},o||{});render();window.scrollTo(0,0);}
+function head(title,back){return '<div class="row between"><div class="stack" style="gap:2px"><span class="eyebrow">'+esc(DB.settings.lab)+' · MCEA</span><h1>'+esc(title)+'</h1></div>'+(back?'<button class="quiet" data-a="nav" data-v="'+back+'">Volver</button>':'')+'</div>';}
+function render(){
+  const V={home:vHome,pin:vPin,panel:vPanel,pac:vPac,run:vRun,rep:vRep,acceso:vAcceso,ver:vVer,ajustes:vAjustes,psico:vPsico,integ:vInteg};
+  $('app').innerHTML=(MEM?'<div class="note">Este navegador no permite guardar datos: lo que registre se perderá al cerrar la página.</div>':'')+V[ui.view]();
+  if(ui.view==='run')ui.shown=Date.now();
+}
+function vHome(){
+  return head('Mapa Cognitivo-Emocional Adaptativo')+
+  '<p class="muted">Tamizaje adaptativo de ánimo, ansiedad, pensamientos automáticos, distorsiones, rumiación, autosabotaje y patrones de pareja. Empieza con pocas preguntas y solo abre los módulos que la persona necesita.</p>'+
+  '<div class="card"><h2>Panel del terapeuta</h2><p class="muted small">Pacientes, evaluaciones, informes clínicos, liberación de informes y comparación de avance.</p><button data-a="enter">Abrir el panel</button></div>'+
+  '<div class="card"><h2>Tengo un código de informe</h2><p class="muted small">Si su terapeuta le entregó un código, aquí puede ver su informe mientras esté vigente.</p><button class="ghost" data-a="nav" data-v="acceso">Ver mi informe</button></div>'+
+  '<div class="note">Herramienta de tamizaje y apoyo clínico. No emite diagnósticos. Incluye un caso de ejemplo marcado como DEMO para que pueda recorrer todo el flujo.</div>';
+}
+function vPin(){return head('Acceso restringido','home')+'<div class="card"><label for="pinIn">PIN del terapeuta<input id="pinIn" type="password" inputmode="numeric" autocomplete="off"></label>'+(ui.msg?'<p class="l3">'+esc(ui.msg)+'</p>':'')+'<button data-a="pinOk">Entrar</button></div>';}
+function vPanel(){
+  const rows=DB.patients.map(p=>{const as=asmOf(p.id),last=as[as.length-1],alert=as.some(riskOpen);
+    return '<div class="card"><div class="row between"><h3>'+esc(p.code)+(p.demo?' <span class="pill ln">DEMO</span>':'')+'</h3>'+(alert?pill(3,'Alerta de riesgo sin atender'):'')+'</div><p class="muted small">'+as.length+' evaluación(es)'+(last?' · última: '+fmtD(last.started):'')+'</p><button class="ghost" data-a="openPac" data-id="'+p.id+'">Abrir expediente</button></div>';}).join('');
+  return head('Panel del terapeuta','home')+
+  '<div class="tabs"><button class="on">Pacientes</button><button data-a="nav" data-v="psico">Psicometría local</button><button data-a="nav" data-v="ajustes">Ajustes</button><button data-a="nav" data-v="integ">Integración</button></div>'+
+  rows+
+  '<div class="card"><h2>Nuevo paciente</h2><label for="npCode">Código (sin nombre real)<input id="npCode" placeholder="Ej. LAB-0142"></label><label for="npYear">Año de nacimiento (segundo factor para ver su informe)<input id="npYear" type="number" inputmode="numeric" placeholder="1995"></label>'+(ui.msg?'<p class="l3">'+esc(ui.msg)+'</p>':'')+'<button data-a="addPac">Crear paciente</button></div>';
+}
+function vPac(){
+  const p=pat(ui.pid),as=asmOf(p.id),inRun=as.find(a=>a.status==='curso');
+  const list=as.map(a=>{const sc=a.completed?scoreAll(a):{};
+    return '<div class="card"><div class="row between"><h3>Evaluación '+a.n+'</h3>'+(riskOpen(a)?pill(3,'Riesgo sin atender'):a.status==='curso'?pill('n','En curso'):a.status==='detenida'?pill(1,'Detenida'):pill(0,'Completa'))+'</div><p class="muted small">'+fmtD(a.started)+(sc.PHQ9?' · PHQ-9 '+sc.PHQ9.raw:'')+(sc.GAD7?' · GAD-7 '+sc.GAD7.raw:'')+'</p>'+
+    (a.completed?'<button class="ghost" data-a="openRep" data-id="'+a.id+'">Ver informes</button>':'<button data-a="resume" data-id="'+a.id+'">Continuar la aplicación</button>')+'</div>';}).join('');
+  return head('Expediente '+p.code,'panel')+
+  '<div class="card"><h2>'+(as.length?'Reevaluación':'Primera evaluación')+'</h2><p class="muted small">'+(as.length?'La reevaluación repite los módulos abiertos en la línea base para que la comparación sea posible, y abre módulos nuevos si aparecen indicadores.':'El cuestionario se aplica en este dispositivo. Al iniciar, entregue el dispositivo a la persona.')+'</p><label for="modo">Modo<select id="modo"><option value="adapt">Adaptativo (recomendado)</option><option value="full"'+(DB.settings.modo==='full'?' selected':'')+'>Completo: todos los módulos</option></select></label><button data-a="start" '+(inRun?'disabled':'')+'>Iniciar '+(as.length?'reevaluación':'evaluación')+'</button></div>'+list;
+}
+/* ----- aplicación al paciente ----- */
+function vRun(){
+  const a=asm(ui.aid),P=buildPlan(a),st=P[a.pos],pct=Math.round(100*a.pos/(P.length-1));
+  const top='<div class="row between"><span class="eyebrow">'+esc(DB.settings.lab)+'</span><button class="quiet small" data-a="exitRun">Salir</button></div><div class="prog"><i style="width:'+pct+'%"></i></div>';
+  const back=a.pos>0?'<button class="quiet" data-a="back">Anterior</button>':'';
+  if(st.t==='consent')return top+'<div class="card"><h2>Antes de empezar</h2><p>Este cuestionario ayuda a entender cómo se ha sentido y qué formas de pensar pueden estar influyendo. No es un examen y no hay respuestas buenas o malas.</p><ul><li>Dura entre 6 y 15 minutos. Se ajusta a lo que usted responda.</li><li>Sus respuestas las verá únicamente su terapeuta y se guardan de forma confidencial.</li><li>La confidencialidad tiene un límite: si hay riesgo para su vida o la de otra persona, su terapeuta actuará para protegerle.</li><li>Puede detenerse cuando quiera.</li><li>Es un tamizaje. No da un diagnóstico por sí mismo.</li></ul><label style="flex-direction:row;align-items:flex-start;gap:8px"><input id="cOk" type="checkbox" style="width:auto;margin-top:4px"><span>Ya firmé el consentimiento informado y acepto responder.</span></label>'+(ui.msg?'<p class="l3">'+esc(ui.msg)+'</p>':'')+'<button data-a="consent">Comenzar</button></div>';
+  if(st.t==='focus')return top+'<div class="card"><p class="q">¿Qué describe mejor lo que le trae hoy?</p><p class="muted small">Puede marcar más de una opción.</p><div class="chips">'+FOCUS.map(f=>'<button class="chip'+(a.focus.includes(f[0])?' on':'')+'" data-a="chip" data-g="focus" data-v="'+f[0]+'">'+esc(f[1])+'</button>').join('')+'</div><div class="row">'+back+'<button data-a="focusOk">Continuar</button></div></div>';
+  if(st.t==='gate')return top+'<div class="card"><p class="q">¿Tiene pareja actualmente o tuvo una relación en los últimos 12 meses?</p><div class="opt">'+[['si','Sí, tengo pareja'],['ex','No ahora, pero tuve una en los últimos 12 meses'],['no','No']].map(o=>'<button class="'+(a.gate===o[0]?'sel':'')+'" data-a="gate" data-v="'+o[0]+'">'+o[1]+'</button>').join('')+'</div>'+back+'</div>';
+  if(st.t==='risk'){
+    if(ui.riskStage===1)return top+'<div class="card"><h2>Gracias por decirlo con sinceridad</h2><p>Marcó que ha tenido pensamientos de que estaría mejor muerto(a) o de hacerse daño. Eso merece atención y no tiene que cargarlo a solas. Su terapeuta verá esta respuesta.</p><p class="q">¿Siente que hoy podría hacerse daño?</p><div class="opt"><button data-a="riskAns" data-v="no">No</button><button data-a="riskAns" data-v="duda">No estoy seguro(a)</button><button data-a="riskAns" data-v="si">Sí</button></div></div>';
+    const urgent=a.risk.self!=='no';
+    return top+'<div class="alert"><h2>'+(urgent?'Por favor, busque ayuda ahora':'Si en algún momento esto cambia')+'</h2><p>'+(urgent?'Lo que siente es importante y hay personas preparadas para acompañarle en este momento. Llame a una de estas líneas o pida a alguien de confianza que se quede con usted. Si está en peligro inmediato, llame a emergencias.':'Si esos pensamientos se vuelven más fuertes, puede llamar a cualquiera de estas líneas a cualquier hora.')+'</p>'+crisisHTML()+'</div><div class="card"><p>'+(urgent?'Puede detenerse aquí. Su terapeuta recibirá el aviso.':'Puede continuar cuando esté listo(a).')+'</p><div class="row"><button data-a="riskGo">Continuar la evaluación</button><button class="quiet" data-a="riskStop">Detenerme aquí</button></div></div>';
+  }
+  if(st.t==='item'){const I=INS[st.ins],cur=A(a,st.ins+'_'+st.i);
+    return top+'<div class="card"><p class="muted small">'+esc(I.stem)+'</p><p class="q">'+esc(I.items[st.i-1])+'</p><div class="opt">'+labels(st.ins).map((l,v)=>'<button class="'+(cur===v?'sel':'')+'" data-a="ans" data-v="'+v+'">'+esc(l)+'</button>').join('')+'</div>'+back+'</div>';}
+  if(st.t==='tr')return top+'<div class="card"><h2>Un momento reciente</h2><p class="muted small">Esta parte es opcional y no tiene puntuación. Sirve para que usted y su terapeuta vean cómo se conectan lo que pasa, lo que piensa, lo que siente y lo que hace.</p>'+
+    '<label for="trSit">Piense en un momento reciente en que se sintió mal. ¿Qué estaba pasando?<textarea id="trSit"></textarea></label>'+
+    '<div class="stack" style="gap:6px"><span style="font-weight:500;font-size:.9rem">¿Qué sintió?</span><div class="chips">'+EMO.map(e=>'<button class="chip" data-a="chip" data-g="emo" data-v="'+e+'">'+e+'</button>').join('')+'</div></div>'+
+    '<label for="trInt">¿Con qué intensidad? <span id="trIntV">50</span> de 100<input id="trInt" type="range" min="0" max="100" value="50" style="padding:0"></label>'+
+    '<label for="trPen">¿Qué pasó por su mente en ese momento?<textarea id="trPen"></textarea></label>'+
+    '<label for="trF1">Si eso fuera cierto, ¿qué significaría para usted?<input id="trF1"></label>'+
+    '<label for="trF2">Y si eso también fuera cierto, ¿qué diría de usted, de los demás o de su futuro?<input id="trF2"></label>'+
+    '<div class="stack" style="gap:6px"><span style="font-weight:500;font-size:.9rem">¿Qué hizo después?</span><div class="chips">'+BEH.map(e=>'<button class="chip" data-a="chip" data-g="beh" data-v="'+esc(e)+'">'+esc(e)+'</button>').join('')+'</div></div>'+
+    '<div class="stack" style="gap:6px"><span style="font-weight:500;font-size:.9rem">¿Reconoce alguna de estas formas de pensar en ese momento?</span>'+INS.DC.names.map((n,i)=>'<button class="chip" style="border-radius:8px;text-align:left" data-a="chip" data-g="dis" data-v="'+esc(n)+'"><b>'+esc(n)+'.</b> '+esc(INS.DC.defs[i])+'</button>').join('')+'</div>'+
+    '<div class="row">'+back+'<button data-a="trOk">Guardar y terminar</button><button class="quiet" data-a="trSkip">Omitir esta parte</button></div></div>';
+  return top+'<div class="card"><h2>Listo, gracias</h2><p>Sus respuestas quedaron guardadas. Su terapeuta las revisará y conversará con usted sobre lo que muestran.</p><p>Por favor, devuelva el dispositivo a su terapeuta.</p><div class="note">Si necesita ayuda antes de su próxima cita:'+crisisHTML()+'</div><button data-a="exitRun">Terminar</button></div>';
+}
+function finalize(a,status){if(a.completed)return;a.completed=Date.now();a.status=status||'completa';audit('evaluacion_'+a.status,a.id);save();}
+/* ----- informes ----- */
+function scoreTable(sc){
+  const ids=Object.keys(sc);
+  return '<div class="tw"><table><thead><tr><th>Escala</th><th>Puntaje</th><th>Nivel</th><th>Tipo y fuente</th></tr></thead><tbody>'+ids.map(id=>{const s=sc[id],I=INS[id]||{name:'GAD-2 · Filtro de ansiedad',kind:'val',src:'Primeros 2 ítems del GAD-7. Corte ≥3.'};
+    return '<tr><td><b>'+esc(I.name)+'</b></td><td>'+s.raw+' / '+s.max+'</td><td>'+pill(s.lvl,s.label)+'</td><td class="small muted">'+(I.kind==='val'?'Validado. ':I.kind==='car'?'Cargado. ':'Experimental. ')+esc(I.src)+'</td></tr>';}).join('')+'</tbody></table></div>';
+}
+function profileBars(sc){
+  let h='';for(const id of Object.keys(sc)){const s=sc[id];if(!s.subs)continue;h+='<div class="stack" style="gap:6px"><b>'+esc(INS[id].name)+'</b>'+Object.entries(s.subs).map(([n,v])=>'<div class="row l'+v.lvl+'"><span class="small" style="width:170px;color:var(--ink)">'+esc(n)+'</span><div class="bar"><i style="width:'+Math.round(100*v.raw/v.max)+'%"></i></div><span class="small" style="width:44px;text-align:right;color:var(--ink)">'+v.raw+'/'+v.max+'</span></div>').join('')+'</div>';}
+  return h;
+}
+function repClin(a){
+  const p=pat(a.patientId),sc=scoreAll(a),R=routing(a),fl=validity(a),hy=hypotheses(a,sc),i9=A(a,'PHQ9_9')||0,nIt=Object.keys(a.answers).length;
+  const crit=[];for(const id of Object.keys(sc)){if(!INS[id])continue;const top=labels(id).length-1;rng(INS[id].items.length).forEach(i=>{const v=A(a,id+'_'+i);if(id==='FR'?v<=1:v>=top-(top===3?1:0)&&v>=2&&(top===3?v>=2:v>=4))crit.push([INS[id].name,INS[id].items[i-1],labels(id)[v]]);});}
+  const tr=a.tr&&!a.tr.skip?a.tr:null;
+  return '<div class="card"><span class="eyebrow">Informe clínico · uso exclusivo del terapeuta</span><h2>'+esc(p.code)+' · Evaluación '+a.n+'</h2><p class="muted small">'+fmtD(a.started)+' · '+nIt+' respuestas · '+(a.completed?Math.max(1,Math.round((a.completed-a.started)/60000))+' min':'en curso')+' · modo '+(a.mode==='full'?'completo':'adaptativo')+' · batería v'+VERSION+'</p></div>'+
+  (i9>=1?'<div class="alert"><h3>Alerta de riesgo</h3><p>PHQ-9 ítem 9 = '+i9+' («'+RS.phq[i9]+'»). Respuesta a «¿Siente que hoy podría hacerse daño?»: <b>'+({no:'No',duda:'No está seguro(a)',si:'Sí'}[a.risk.self]||'sin respuesta')+'</b>.</p>'+(a.risk.ack?'<p class="small">Atendida el '+fmtD(a.risk.ack.at)+'. Nota: '+esc(a.risk.ack.note||'sin nota')+'</p>':'<label for="ackNote">Acción realizada<input id="ackNote" placeholder="Ej. contacto telefónico, plan de seguridad"></label><button class="danger" data-a="ack">Registrar que atendí la alerta</button><p class="small">El informe del paciente no puede liberarse hasta registrar la atención.</p>')+'</div>':'<div class="note">Riesgo: sin indicadores en el ítem 9 del PHQ-9. Esto no sustituye la valoración clínica.</div>')+
+  (fl.length?'<div class="card"><h3>Validez de la aplicación</h3><ul>'+fl.map(x=>'<li>'+esc(x)+'</li>').join('')+'</ul></div>':'')+
+  '<div class="card"><h3>Puntuaciones</h3>'+scoreTable(sc)+'</div>'+
+  (profileBars(sc)?'<div class="card"><h3>Perfil por subescala</h3>'+profileBars(sc)+'<p class="small muted">Subescalas experimentales de 2 a 3 ítems: orientan la exploración, no se interpretan de forma aislada.</p></div>':'')+
+  (crit.length?'<div class="card"><h3>Ítems con respuesta alta</h3><div class="tw"><table><tbody>'+crit.map(c=>'<tr><td class="small muted">'+esc(c[0])+'</td><td>'+esc(c[1])+'</td><td class="small">'+esc(c[2])+'</td></tr>').join('')+'</tbody></table></div></div>':'')+
+  '<div class="card"><h3>Motivo declarado</h3><p>'+(a.focus.length?a.focus.map(f=>esc((FOCUS.find(x=>x[0]===f)||[])[1])).join(' · '):'No indicó')+'</p></div>'+
+  (tr?'<div class="card"><h3>Registro guiado</h3><div class="map"><div><b>Situación</b>'+esc(tr.sit||'—')+'</div><div><b>Emoción</b>'+esc((tr.emo||[]).join(', ')||'—')+' · intensidad '+tr.int+'/100</div><div><b>Pensamiento automático</b>'+esc(tr.pen||'—')+'</div><div><b>Flecha descendente</b>'+esc(tr.f1||'—')+' → '+esc(tr.f2||'—')+'</div><div><b>Conducta</b>'+esc((tr.beh||[]).join(', ')||'—')+'</div><div><b>Distorsiones que reconoce</b>'+esc((tr.dis||[]).join(', ')||'Ninguna marcada')+'</div></div></div>':'')+
+  '<div class="card"><h3>Hipótesis para explorar</h3><ul>'+hy.H.map(x=>'<li>'+esc(x)+'</li>').join('')+'</ul><p class="small muted">Generadas por reglas fijas a partir de los puntajes. Son puntos de partida para la entrevista, no conclusiones.</p></div>'+
+  (hy.S.length?'<div class="card"><h3>Evaluación adicional sugerida</h3><ul>'+hy.S.map(x=>'<li>'+esc(x)+'</li>').join('')+'</ul></div>':'')+
+  '<div class="card"><h3>Por qué se abrió cada módulo</h3><div class="tw"><table><tbody>'+Object.keys(R).map(id=>'<tr><td><b>'+esc(INS[id]?INS[id].name:id)+'</b></td><td>'+(R[id].open?pill(0,'Abierto'):pill('n','No abierto'))+'</td><td class="small">'+esc(R[id].reasons.join('; ')||'No alcanzó el umbral')+'</td></tr>').join('')+'</tbody></table></div></div>'+
+  '<div class="note">Alcance: tamizaje autoaplicado. No establece diagnóstico. Las escalas experimentales no tienen normas; sus niveles se basan en el anclaje de respuesta (media ≥ «A veces» = moderado, ≥ «A menudo» = alto).</div>';
+}
+const PV={PHQ9:['Su ánimo se ve estable en estas dos semanas.','Hay algunas señales de ánimo bajo, de intensidad leve.','Su ánimo ha estado bajo de forma notoria y le está pesando en el día a día.','Su ánimo ha estado muy bajo y le está afectando bastante. Es algo que conviene trabajar pronto.'],
+  GAD7:['La preocupación y los nervios se mantienen en un nivel manejable.','Hay algo de tensión o preocupación, de intensidad leve.','La preocupación y la tensión han estado presentes buena parte del tiempo.','La preocupación y la tensión han sido muy intensas en estas semanas.'],
+  PTQ:['Su mente logra soltar los problemas la mayor parte del tiempo.','A veces su mente se queda dando vueltas a los problemas.','Su mente tiende a dar vueltas a lo mismo con frecuencia y le cuesta soltarlo. Esto cansa y suele bajar el ánimo.','Darle vueltas a los problemas ocupa mucho de su tiempo y energía, y le deja poco espacio para lo demás.'],
+  PAN:['Los pensamientos negativos sobre usted aparecen poco.','A veces aparecen pensamientos negativos sobre usted o su futuro.','Con frecuencia le llegan pensamientos negativos sobre usted, su capacidad o su futuro. Llegan solos y se sienten como verdades, aunque son interpretaciones.','Los pensamientos negativos sobre usted aparecen casi todo el tiempo y pesan mucho en cómo se siente.']};
+function repPat(a,rep){
+  const sc=scoreAll(a),S=[],tr=a.tr&&!a.tr.skip?a.tr:null;
+  const animo=[sc.PHQ9?PV.PHQ9[sc.PHQ9.lvl]:'',sc.GAD7?PV.GAD7[sc.GAD7.lvl]:''].filter(Boolean);
+  if(animo.length)S.push(['Cómo ha estado',animo.map(x=>'<p>'+x+'</p>').join('')]);
+  const mente=[sc.PAN?PV.PAN[sc.PAN.lvl]:'',sc.PTQ?PV.PTQ[sc.PTQ.lvl]:''].filter(Boolean);
+  if(mente.length)S.push(['Lo que su mente suele hacer',mente.map(x=>'<p>'+x+'</p>').join('')]);
+  const dis=new Set((tr&&tr.dis)||[]);if(sc.DC)rng(10).forEach(i=>{if(A(a,'DC_'+i)>=3)dis.add(INS.DC.names[i-1]);});
+  if(dis.size)S.push(['Formas de pensar que aparecieron','<p>Todas las personas las usamos a veces. Reconocerlas es el primer paso para que pierdan fuerza.</p><ul>'+[...dis].map(n=>'<li><b>'+esc(n)+'.</b> '+esc(INS.DC.defs[INS.DC.names.indexOf(n)])+'</li>').join('')+'</ul>']);
+  for(const id of ['AS','RP'])if(sc[id]){const hi=Object.entries(sc[id].subs).filter(e=>e[1].lvl>=2).map(e=>'<li><b>'+esc(e[0])+'.</b> '+esc(INS[id].pat[e[0]])+'</li>');
+    if(hi.length)S.push([id==='AS'?'Lo que puede estar frenándole':'En su relación de pareja','<ul>'+hi.join('')+'</ul><p>Estos patrones se aprenden, casi siempre como una forma de protegerse, y se pueden cambiar.</p>']);}
+  if(tr&&(tr.sit||tr.pen))S.push(['Su mapa de un momento difícil','<div class="map"><div><b>Lo que pasó</b>'+esc(tr.sit||'—')+'</div><div><b>Lo que pensó</b>'+esc(tr.pen||'—')+(tr.f2?' En el fondo: '+esc(tr.f2):'')+'</div><div><b>Lo que sintió</b>'+esc((tr.emo||[]).join(', ')||'—')+'</div><div><b>Lo que hizo</b>'+esc((tr.beh||[]).join(', ')||'—')+'</div></div><p>Entre lo que pasa y lo que sentimos casi siempre hay un pensamiento. Ahí es donde hay margen para trabajar.</p>']);
+  const fz=['Se tomó el tiempo de responder con sinceridad, y eso ya es un paso.'];if(sc.FR)rng(4).forEach(i=>{if(A(a,'FR_'+i)>=3)fz.push(INS.FR.pat[i-1]);});if(tr&&tr.dis&&tr.dis.length)fz.push('Reconoció por su cuenta formas de pensar que le afectan.');
+  S.push(['Sus recursos','<ul>'+fz.map(x=>'<li>'+esc(x)+'</li>').join('')+'</ul>']);
+  if(!animo.concat(mente).length)S.unshift(['Cómo ha estado','<p>En las áreas que revisamos no aparecen señales de malestar elevado.</p>']);
+  return '<div class="card"><span class="eyebrow">Su informe personal</span><h2>Lo que mostraron sus respuestas</h2><p class="muted small">Refleja cómo estaba usted el '+fmtD(a.started)+'.'+(rep?' Disponible hasta el '+fmtD(rep.expiresAt)+'.':'')+'</p></div>'+
+  (rep&&rep.msg?'<div class="note"><b>Mensaje de su terapeuta</b><br>'+esc(rep.msg)+'</div>':'')+
+  S.map(s=>'<div class="card"><h3>'+s[0]+'</h3>'+s[1]+'</div>').join('')+
+  '<div class="card"><h3>Qué sigue</h3><p>Este informe es un punto de partida. Lo revisaremos juntos en sesión para decidir en qué trabajar primero. No es un diagnóstico: describe patrones de un momento, y los patrones cambian.</p></div>'+
+  '<div class="card"><h3>Si necesita ayuda antes de su cita</h3>'+crisisHTML()+'</div>';
+}
+function repCmp(a1,a2,forPat,rep){
+  const c=compare(a1,a2),p=pat(a2.patientId);
+  if(forPat){const G={m:[],s:[],d:[]};c.rows.forEach(r=>{const n=INS[r.id].name.replace(/^[A-Z0-9-]+ · /,'');let k=r.cls;if(k==='sn'){const rel=(INS[r.id].better==='high'?r.d:-r.d)/r.t1.max;k=rel>=0.15?'mej':rel<=-0.15?'det':'sc';}(k==='rec'||k==='mej'?G.m:k==='det'?G.d:G.s).push(n);});
+    return '<div class="card"><span class="eyebrow">Su informe de avance</span><h2>Lo que ha cambiado</h2><p class="muted small">Entre el '+fmtD(a1.started)+' y el '+fmtD(a2.started)+'.'+(rep?' Disponible hasta el '+fmtD(rep.expiresAt)+'.':'')+'</p></div>'+
+    (rep&&rep.msg?'<div class="note"><b>Mensaje de su terapeuta</b><br>'+esc(rep.msg)+'</div>':'')+
+    (G.m.length?'<div class="card"><h3>Donde hay un cambio claro a su favor</h3><ul>'+G.m.map(x=>'<li>'+esc(x)+'</li>').join('')+'</ul><p>El cambio en estas áreas es mayor de lo que se explicaría por variaciones normales de un día a otro.</p></div>':'')+
+    (G.s.length?'<div class="card"><h3>Lo que se mantiene parecido</h3><ul>'+G.s.map(x=>'<li>'+esc(x)+'</li>').join('')+'</ul><p>Que algo se mantenga no significa que no esté avanzando. Algunos cambios tardan más en reflejarse.</p></div>':'')+
+    (G.d.length?'<div class="card"><h3>Lo que seguiremos trabajando</h3><ul>'+G.d.map(x=>'<li>'+esc(x)+'</li>').join('')+'</ul><p>En estas áreas el malestar aumentó. Lo veremos juntos para entender qué ha pasado y ajustar el plan.</p></div>':'')+
+    '<div class="card"><h3>Si necesita ayuda antes de su cita</h3>'+crisisHTML()+'</div>';}
+  return '<div class="card"><span class="eyebrow">Informe comparativo · uso exclusivo del terapeuta</span><h2>'+esc(p.code)+' · Evaluación '+a1.n+' → '+a2.n+'</h2><p class="muted small">'+fmtD(a1.started)+' → '+fmtD(a2.started)+' ('+Math.round((a2.started-a1.started)/DAY)+' días)</p></div>'+
+  '<div class="card"><h3>Cambio por escala</h3><div class="tw"><table><thead><tr><th>Escala</th><th>T1</th><th>T2</th><th>Cambio</th><th>Mín. fiable</th><th>Clasificación</th></tr></thead><tbody>'+c.rows.map(r=>'<tr><td><b>'+esc(INS[r.id].name)+'</b></td><td>'+r.t1.raw+'</td><td>'+r.t2.raw+'</td><td>'+(r.d>0?'+':'')+r.d+'</td><td>'+(r.m?r1(r.m.v):'—')+'</td><td>'+pill(CLS[r.cls][1],CLS[r.cls][0])+'</td></tr>').join('')+'</tbody></table></div>'+
+  c.rows.map(r=>'<div class="stack" style="gap:4px"><span class="small"><b>'+esc(INS[r.id].name)+'</b></span><div class="row ln"><span class="small" style="width:24px">T1</span><div class="bar"><i style="width:'+Math.round(100*r.t1.raw/r.t1.max)+'%"></i></div></div><div class="row l'+(CLS[r.cls][1]==='n'?1:CLS[r.cls][1])+'"><span class="small" style="width:24px;color:var(--ink)">T2</span><div class="bar"><i style="width:'+Math.round(100*r.t2.raw/r.t2.max)+'%"></i></div></div></div>').join('')+'</div>'+
+  '<div class="card"><h3>Cómo se calculó</h3><ul><li>Índice de Cambio Fiable (Jacobson y Truax, 1991): cambio mínimo fiable = 1,96 × DE × √(2 × (1 − fiabilidad)).</li><li>«Recuperado» exige además pasar de estar en o sobre el punto de corte a estar por debajo.</li>'+c.rows.filter(r=>r.m).map(r=>'<li class="small">'+esc(INS[r.id].name)+': '+esc(r.m.src)+'.</li>').join('')+(c.rows.some(r=>!r.m)?'<li>Las escalas «sin norma» son experimentales: se clasificarán cuando el laboratorio acumule al menos 30 líneas base (ver Psicometría local).</li>':'')+(c.skipped.length?'<li>No comparables por no haberse aplicado en ambas fechas: '+esc(c.skipped.join(', '))+'.</li>':'')+'</ul></div>';
+}
+function releaseBox(a,kind,base){
+  const key=r=>r.aid===a.id&&r.kind===kind&&!r.revoked,rep=DB.reports.find(key),p=pat(a.patientId);
+  if(rep){const exp=Date.now()>rep.expiresAt;return '<div class="card"><h3>Estado de liberación</h3><p>'+(exp?pill(1,'Vencido'):pill(0,'Liberado'))+' <span class="small muted">desde el '+fmtD(rep.releasedAt)+' hasta el '+fmtD(rep.expiresAt)+'</span></p><p>Código de acceso: <span class="code">'+rep.token+'</span></p><p class="small muted">El paciente entra con este código y su año de nacimiento ('+p.birthYear+'). '+(rep.lastAccess?'Último acceso: '+fmtD(rep.lastAccess)+'.':'Aún no lo ha abierto.')+'</p><div class="row"><button class="quiet" data-a="copyTok" data-v="'+rep.token+'">Copiar código</button><button class="danger" data-a="revoke" data-id="'+rep.id+'">Revocar acceso</button></div></div>';}
+  const blocked=riskOpen(a);
+  return '<div class="card"><h3>Liberar al paciente</h3><p class="small muted">El paciente no ve nada hasta que usted lo libere. Al liberar se genera un código con vigencia de '+DB.settings.vigencia+' días. Lo ideal es liberarlo después de la sesión de devolución.</p><label for="relMsg">Mensaje personal (opcional)<textarea id="relMsg" placeholder="Ej. Revisamos esto juntos el martes. Fíjese sobre todo en su mapa."></textarea></label><button data-a="release" data-kind="'+kind+'" data-base="'+(base||'')+'" '+(blocked?'disabled':'')+'>Liberar informe</button>'+(blocked?'<p class="l3 small">Registre primero la atención de la alerta de riesgo en el informe clínico.</p>':'')+'</div>';
+}
+function vRep(){
+  const a=asm(ui.aid),prev=asmOf(a.patientId).filter(x=>x.n<a.n&&x.completed).pop();
+  const tabs=[['clin','Clínico'],['pac','Paciente']];if(prev)tabs.push(['cmp','Comparativo'],['avance','Avance paciente']);
+  let body;
+  if(ui.tab==='clin')body=repClin(a);
+  else if(ui.tab==='pac')body=releaseBox(a,'pac')+'<p class="eyebrow">Vista previa de lo que verá el paciente</p>'+repPat(a,null);
+  else if(ui.tab==='cmp')body=repCmp(prev,a,false);
+  else body=releaseBox(a,'avance',prev.id)+'<p class="eyebrow">Vista previa de lo que verá el paciente</p>'+repCmp(prev,a,true);
+  return head('Informes','pac')+'<div class="tabs">'+tabs.map(t=>'<button class="'+(ui.tab===t[0]?'on':'')+'" data-a="tab" data-v="'+t[0]+'">'+t[1]+'</button>').join('')+'</div><div id="repBody" class="stack">'+body+'</div><button class="quiet" data-a="copyRep">Copiar informe como texto</button>'+(ui.msg?'<p class="small muted">'+esc(ui.msg)+'</p>':'');
+}
+function vAcceso(){return head('Ver mi informe','home')+'<div class="card"><label for="acTok">Código de acceso<input id="acTok" autocomplete="off" autocapitalize="characters"></label><label for="acYear">Su año de nacimiento<input id="acYear" type="number" inputmode="numeric"></label>'+(ui.msg?'<p class="l3">'+esc(ui.msg)+'</p>':'')+'<button data-a="access">Abrir informe</button></div>';}
+function vVer(){const rep=DB.reports.find(r=>r.id===ui.rid),a=asm(rep.aid);
+  return '<div class="row between"><span class="eyebrow">'+esc(DB.settings.lab)+'</span><button class="quiet" data-a="nav" data-v="home">Cerrar</button></div>'+(rep.kind==='pac'?repPat(a,rep):repCmp(asm(rep.baseId),a,true,rep));}
+function vAjustes(){const s=DB.settings;
+  return head('Ajustes','panel')+
+  '<div class="card"><h2>Laboratorio</h2><label for="sLab">Nombre que ve el paciente<input id="sLab" value="'+esc(s.lab)+'"></label><label for="sCon">Contacto del terapeuta para el paciente<input id="sCon" value="'+esc(s.contacto)+'" placeholder="Teléfono u horario de atención"></label><label for="sCri">Recursos de crisis (uno por línea). Verifique que estén vigentes.<textarea id="sCri">'+esc(s.crisis)+'</textarea></label><label for="sVig">Vigencia del informe del paciente (días)<input id="sVig" type="number" value="'+s.vigencia+'"></label><label for="sPin">PIN del panel (vacío = sin PIN)<input id="sPin" value="'+esc(s.pin)+'" inputmode="numeric"></label><label for="sModo">Modo por defecto<select id="sModo"><option value="adapt">Adaptativo</option><option value="full"'+(s.modo==='full'?' selected':'')+'>Completo</option></select></label></div>'+
+  '<div class="card"><h2>Normas para el cambio fiable</h2><p class="small muted">Por escala: <code>mcf</code> (cambio mínimo fiable directo) o bien <code>sd</code> y <code>rel</code>; <code>cut</code> es el punto de corte. Sustituya los valores provisionales por los de su estudio de validación.</p><textarea id="sNorms" style="min-height:180px;font-family:ui-monospace,monospace;font-size:.8rem">'+esc(JSON.stringify(s.norms,null,1))+'</textarea></div>'+
+  '<div class="card"><h2>Instrumentos cargados</h2><p class="small muted">Agregue aquí escalas para las que tenga permiso (ATQ-8, FSCRS-SF, ECR, CD-Quest). Formato: lista JSON de objetos con <code>id</code>, <code>name</code>, <code>stem</code>, <code>items</code>, <code>labels</code> (opcional) y <code>trigger</code> («siempre» o el código de un módulo: GAD7, PAN, DC, PTQ, AS, RP).</p><textarea id="sCustom" style="min-height:120px;font-family:ui-monospace,monospace;font-size:.8rem">'+esc(JSON.stringify(s.custom,null,1))+'</textarea></div>'+
+  (ui.msg?'<p class="'+(ui.msg.startsWith('Error')?'l3':'l0')+'">'+esc(ui.msg)+'</p>':'')+'<button data-a="saveSet">Guardar ajustes</button>'+
+  '<div class="card"><h2>Respaldo y traslado de datos</h2><p class="small muted">Copie todos los datos en JSON para llevarlos a su base privada, o pegue un respaldo para restaurarlo.</p><textarea id="sData" placeholder="Pegue aquí un respaldo para importar"></textarea><div class="row"><button class="quiet" data-a="exportAll">Copiar todos los datos</button><button class="quiet" data-a="importAll">Importar lo pegado</button><button class="danger" data-a="wipe">Borrar todo y reiniciar</button></div></div>';
+}
+function vPsico(){
+  const rows=CORE_ORDER.concat(customs().map(c=>c.id)).map(id=>{const ls=localStats(id),m=getMcf(id);
+    return '<tr><td><b>'+esc(INS[id].name)+'</b><br><span class="small muted">'+(INS[id].kind==='val'?'Validado':INS[id].kind==='car'?'Cargado':'Experimental')+' · '+INS[id].items.length+' ítems</span></td><td>'+ls.n+'</td><td>'+(ls.n>=2?r1(ls.mean):'—')+'</td><td>'+(ls.n>=2?r1(ls.sd):'—')+'</td><td>'+(ls.n>=2?ls.alpha.toFixed(2):'—')+'</td><td>'+(m?r1(m.v)+'<br><span class="small muted">'+esc(m.src)+'</span>':'<span class="small muted">Pendiente: faltan '+Math.max(0,30-ls.n)+' líneas base</span>')+'</td></tr>';}).join('');
+  return head('Psicometría local','panel')+'<div class="card"><p class="small muted">Calculada con las primeras evaluaciones completas de cada paciente (se excluye el caso DEMO). Con 30 o más líneas base, las escalas sin norma empiezan a usar su DE y su alfa de Cronbach locales para el cambio fiable.</p><div class="tw"><table><thead><tr><th>Escala</th><th>n</th><th>Media</th><th>DE</th><th>α</th><th>Cambio mín. fiable en uso</th></tr></thead><tbody>'+rows+'</tbody></table></div></div>'+
+  '<div class="note">Límites: en los módulos condicionales la muestra solo incluye a quienes los abrieron, lo que restringe el rango y sesga DE y alfa. Para normas sólidas, aplique un periodo en modo completo. El alfa no sustituye al test-retest ni al análisis factorial.</div>';
+}
+const SQL=`-- Esquema sugerido (PostgreSQL / Supabase). Activar RLS en todas las tablas.
+create table patients(id uuid primary key default gen_random_uuid(), therapist_id uuid not null, code text not null, birth_year int, created_at timestamptz default now());
+create table consents(id uuid primary key default gen_random_uuid(), patient_id uuid references patients, version text, accepted_at timestamptz, text_snapshot text);
+create table assessments(id uuid primary key default gen_random_uuid(), patient_id uuid references patients, n int, mode text, battery_version text, anchor text[], focus text[], gate text, started_at timestamptz, completed_at timestamptz, status text);
+create table responses(assessment_id uuid references assessments, item_key text, value int, ms int, primary key(assessment_id,item_key));
+create table routing_log(assessment_id uuid references assessments, module text, opened bool, reasons text[]);
+create table scores(assessment_id uuid references assessments, scale text, raw int, max int, level int, label text, subscales jsonb, primary key(assessment_id,scale));
+create table risk_events(id uuid primary key default gen_random_uuid(), assessment_id uuid references assessments, item9 int, self_report text, notified_at timestamptz, ack_at timestamptz, ack_note text);
+create table thought_records(assessment_id uuid primary key references assessments, data jsonb);
+create table reports(id uuid primary key default gen_random_uuid(), assessment_id uuid references assessments, base_assessment_id uuid, kind text check(kind in('pac','avance')), message text, released_at timestamptz, released_by uuid, expires_at timestamptz, revoked_at timestamptz, token_hash text unique, last_access_at timestamptz);
+create table norms(scale text primary key, sd numeric, rel numeric, mcf numeric, cut numeric, source text);
+create table audit_log(id bigint generated always as identity primary key, actor uuid, action text, ref text, at timestamptz default now());
+-- expires_at = released_at + interval '90 days'. Guardar solo el hash del token.
+-- El paciente nunca consulta tablas: una Edge Function valida token + año de nacimiento + vigencia y devuelve el informe.
+-- Trigger sobre responses (item_key='PHQ9_9' and value>=1) -> insert en risk_events + notificación al terapeuta.`;
+function vInteg(){return head('Integración','panel')+
+  '<div class="card"><h2>Cómo llevarlo a su sistema</h2><ul><li>El motor son funciones puras en el código de esta página: <code>routing</code>, <code>buildPlan</code>, <code>scoreAll</code>, <code>validity</code>, <code>compare</code>, <code>hypotheses</code>. Se pueden copiar tal cual a React o a una Edge Function.</li><li>En producción, ejecute ramificación y puntuación en el servidor y versiones la batería (<code>battery_version</code>).</li><li>La alerta de riesgo aquí solo aparece en el panel. En su sistema debe enviar una notificación inmediata al terapeuta.</li><li>Esta página guarda los datos en el navegador del dispositivo. Úsela como prototipo y pase los datos a su base privada con «Copiar todos los datos».</li></ul></div>'+
+  '<div class="card"><h2>Esquema de base de datos</h2><pre id="sqlPre">'+esc(SQL)+'</pre><button class="quiet" data-a="copySql">Copiar SQL</button>'+(ui.msg?'<p class="small muted">'+esc(ui.msg)+'</p>':'')+'</div>';}
+/* ---------- acciones ---------- */
+function copy(t,ok){const fin=m=>{ui.msg=m;render();};try{navigator.clipboard.writeText(t).then(()=>fin(ok),()=>fin('No se pudo copiar automáticamente. Seleccione el texto y cópielo a mano.'));}catch(e){fin('No se pudo copiar automáticamente. Seleccione el texto y cópielo a mano.');}}
+const ACT={
+  nav:d=>go(d.v),
+  enter:()=>DB.settings.pin?go('pin'):go('panel'),
+  pinOk:()=>{if($('pinIn').value===DB.settings.pin)go('panel');else{ui.msg='PIN incorrecto.';render();}},
+  addPac:()=>{const c=$('npCode').value.trim(),y=+$('npYear').value;if(!c||y<1900||y>new Date().getFullYear()){ui.msg='Escriba un código y un año de nacimiento válido.';return render();}
+    if(DB.patients.some(p=>p.code.toLowerCase()===c.toLowerCase())){ui.msg='Ya existe un paciente con ese código.';return render();}
+    const p={id:uid(),code:c,birthYear:y,created:Date.now()};DB.patients.push(p);audit('paciente_creado',p.id);save();go('pac',{pid:p.id});},
+  openPac:d=>go('pac',{pid:d.id}),
+  start:()=>{const as=asmOf(ui.pid),base=as.find(a=>a.completed),anchor=base?Object.entries(routing(base)).filter(e=>e[1].open).map(e=>e[0]):[];
+    const a=newAssessment(ui.pid,as.length+1,$('modo').value,anchor);DB.assessments.push(a);audit('evaluacion_iniciada',a.id);save();ui.riskStage=1;go('run',{aid:a.id});},
+  resume:d=>{ui.riskStage=1;go('run',{aid:d.id});},
+  openRep:d=>go('rep',{aid:d.id,tab:'clin'}),
+  tab:d=>{ui.tab=d.v;ui.msg='';render();},
+  exitRun:()=>{const a=asm(ui.aid);if(buildPlan(a)[a.pos].t==='end')finalize(a);save();DB.settings.pin?go('pin'):go('pac',{pid:a.patientId});},
+  back:()=>{const a=asm(ui.aid);a.pos=Math.max(0,a.pos-1);ui.riskStage=1;save();render();},
+  consent:()=>{if(!$('cOk').checked){ui.msg='Marque la casilla para continuar.';return render();}const a=asm(ui.aid);a.consent={at:Date.now(),v:VERSION};ui.msg='';adv(a);},
+  chip:(d,el)=>{el.classList.toggle('on');},
+  focusOk:()=>{const a=asm(ui.aid);a.focus=[...document.querySelectorAll('.chip.on[data-g="focus"]')].map(e=>e.dataset.v);adv(a);},
+  gate:d=>{const a=asm(ui.aid);a.gate=d.v;adv(a);},
+  ans:d=>{const a=asm(ui.aid),st=buildPlan(a)[a.pos];a.answers[st.ins+'_'+st.i]={v:+d.v,t:Date.now()-ui.shown};ui.riskStage=1;adv(a);},
+  riskAns:d=>{const a=asm(ui.aid);a.risk.self=d.v;a.risk.seenAt=Date.now();audit('alerta_riesgo',a.id);save();ui.riskStage=2;render();window.scrollTo(0,0);},
+  riskGo:()=>{ui.riskStage=1;adv(asm(ui.aid));},
+  riskStop:()=>{const a=asm(ui.aid);finalize(a,'detenida');a.pos=buildPlan(a).length-1;save();render();},
+  trOk:()=>{const a=asm(ui.aid),g=n=>[...document.querySelectorAll('.chip.on[data-g="'+n+'"]')].map(e=>e.dataset.v);
+    a.tr={sit:$('trSit').value.trim(),emo:g('emo'),int:+$('trInt').value,pen:$('trPen').value.trim(),f1:$('trF1').value.trim(),f2:$('trF2').value.trim(),beh:g('beh'),dis:g('dis')};
+    if(!a.tr.sit&&!a.tr.pen&&!a.tr.emo.length)a.tr={skip:true};adv(a);},
+  trSkip:()=>{const a=asm(ui.aid);a.tr={skip:true};adv(a);},
+  ack:()=>{const a=asm(ui.aid);a.risk.ack={at:Date.now(),note:$('ackNote').value.trim()};audit('riesgo_atendido',a.id);save();render();},
+  release:d=>{const a=asm(ui.aid),now=Date.now(),rep={id:uid(),aid:a.id,kind:d.kind,baseId:d.base||null,msg:$('relMsg').value.trim(),token:token(),releasedAt:now,expiresAt:now+DB.settings.vigencia*DAY,revoked:false};DB.reports.push(rep);audit('informe_liberado',rep.id);save();render();},
+  revoke:d=>{const r=DB.reports.find(x=>x.id===d.id);r.revoked=true;audit('informe_revocado',r.id);save();render();},
+  copyTok:d=>copy(d.v,'Código copiado.'),
+  copyRep:()=>copy($('repBody').innerText,'Informe copiado como texto.'),
+  copySql:()=>copy(SQL,'SQL copiado.'),
+  access:()=>{const t=$('acTok').value.trim().toUpperCase(),y=+$('acYear').value,r=DB.reports.find(x=>x.token===t&&!x.revoked);
+    const fail=m=>{ui.msg=m;render();};if(!r)return fail('No encontramos un informe con ese código. Revise que esté bien escrito o consulte a su terapeuta.');
+    if(pat(asm(r.aid).patientId).birthYear!==y)return fail('El año de nacimiento no coincide.');
+    if(Date.now()>r.expiresAt)return fail('Este informe venció el '+fmtD(r.expiresAt)+'. Su terapeuta puede habilitar una nueva evaluación.');
+    r.lastAccess=Date.now();audit('informe_visto',r.id);save();go('ver',{rid:r.id});},
+  saveSet:()=>{const s=DB.settings;let norms,custom;try{norms=JSON.parse($('sNorms').value);custom=JSON.parse($('sCustom').value||'[]');if(!Array.isArray(custom))throw 0;
+      for(const c of custom){if(!c.id||!c.name||!Array.isArray(c.items)||!c.items.length)throw 0;if(INS[c.id]&&INS[c.id].kind!=='car')throw 0;}}
+    catch(e){ui.msg='Error: revise el formato JSON de normas o de instrumentos (cada instrumento necesita id propio, name e items).';return render();}
+    Object.assign(s,{lab:$('sLab').value.trim()||'Laboratorio',contacto:$('sCon').value.trim(),crisis:$('sCri').value,vigencia:Math.max(1,+$('sVig').value||90),pin:$('sPin').value.trim(),modo:$('sModo').value,norms,custom});
+    registerCustom();save();ui.msg='Ajustes guardados.';render();},
+  exportAll:()=>{$('sData').value=JSON.stringify(DB);copy(JSON.stringify(DB),'Datos copiados. También quedaron en el recuadro.');},
+  importAll:()=>{try{const d=JSON.parse($('sData').value);if(!d.settings||!Array.isArray(d.patients)||!Array.isArray(d.assessments))throw 0;DB=d;registerCustom();save();ui.msg='Datos importados.';}catch(e){ui.msg='Error: el texto pegado no es un respaldo válido.';}render();},
+  wipe:()=>{if(ui.wipeArmed){DB=freshDB();seedDemo();save();ui.wipeArmed=false;go('panel');}else{ui.wipeArmed=true;ui.msg='Error: esto borra todos los pacientes y evaluaciones. Pulse «Borrar todo» otra vez para confirmar.';render();}}
+};
+function adv(a){a.pos++;const P=buildPlan(a);if(a.pos>=P.length)a.pos=P.length-1;if(P[a.pos].t==='end')finalize(a);save();render();window.scrollTo(0,0);}
+if(typeof document!=='undefined'){
+  loadDB();
+  document.addEventListener('click',e=>{const el=e.target.closest('[data-a]');if(!el||el.disabled)return;const f=ACT[el.dataset.a];if(f)f(el.dataset,el);});
+  document.addEventListener('input',e=>{if(e.target.id==='trInt')$('trIntV').textContent=e.target.value;});
+  render();
+}else{module.exports={get DB(){return DB;},set DB(v){DB=v;},freshDB,seedDemo,scoreAll,routing,buildPlan,compare,hypotheses,validity,localStats,getMcf,repClin,repPat,repCmp,asmOf,INS};}
+</script>
+</body>
+</html>

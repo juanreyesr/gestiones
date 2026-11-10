@@ -9,6 +9,7 @@ import { formaDeOpciones } from "@/lib/evaluaciones/jjr/codigo";
 import { InformeBBreve } from "./informe-b-breve";
 import { InformeEapi } from "./informe-eapi";
 import { InformeJjr } from "./informe-jjr";
+import { InformeMcea } from "./informe-mcea";
 import { InformeRiasec } from "./informe-riasec";
 import { InformeValores } from "./informe-valores";
 
@@ -26,6 +27,7 @@ export const INFORMES: Record<string, (p: PropsInforme) => ReactNode> = {
   valores: (p) => <InformeValores {...p} />,
   jjr84: (p) => <InformeJjr {...p} />,
   jjr176: (p) => <InformeJjr {...p} />,
+  mcea: (p) => <InformeMcea {...p} />,
 };
 
 type Opciones = Record<string, unknown>;
@@ -93,6 +95,28 @@ function FormaJjr({ valor, onCambio }: { valor: Opciones; onCambio: (o: Opciones
   );
 }
 
+function ModoMcea({ valor, onCambio }: { valor: Opciones; onCambio: (o: Opciones) => void }) {
+  const modo = valor.modo === "full" ? "full" : "adapt";
+  return (
+    <fieldset className="grid gap-2">
+      <legend className="mb-1 text-sm font-semibold text-slate-200">Modo de aplicación</legend>
+      {[
+        ["adapt", "Adaptativo (recomendado)", "Empieza con pocas preguntas y solo abre los módulos que la persona necesita (6 a 15 minutos)."],
+        ["full", "Completo", "Aplica todos los módulos, sin importar las respuestas de filtro."],
+      ].map(([id, titulo, detalle]) => (
+        <label className="flex items-start gap-2 text-sm text-slate-200" key={id}>
+          <input checked={modo === id} className="mt-1" name="modo-mcea" onChange={() => onCambio({ ...valor, modo: id })} type="radio" />
+          <span>
+            {titulo}
+            <span className="block text-xs text-slate-400">{detalle}</span>
+          </span>
+        </label>
+      ))}
+      <p className="text-xs text-slate-400">«Nueva aplicación (seguimiento)» repite los módulos abiertos en la línea base para poder calcular el cambio fiable.</p>
+    </fieldset>
+  );
+}
+
 export const OPCIONES_ASIGNAR: Record<string, OpcionesAsignar> = {
   eapi: {
     inicial: () => ({ modulos: ["gad", "dass", "ptq"] }),
@@ -107,5 +131,9 @@ export const OPCIONES_ASIGNAR: Record<string, OpcionesAsignar> = {
       const azar = crypto.getRandomValues(new Uint8Array(1))[0] % 2 === 0 ? "A" : "B";
       return { forma: azar, asignacion: "azar-v1" };
     },
+  },
+  mcea: {
+    inicial: () => ({ modo: "adapt" }),
+    Componente: ModoMcea,
   },
 };
