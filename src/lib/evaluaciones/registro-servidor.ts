@@ -8,6 +8,7 @@ import { validarBBreve, limpiarBorradorBBreve } from "./b-breve/codigo";
 import { B_BREVE_RELACIONES } from "./b-breve/contenido";
 import { limpiarBorradorEapi, modulosDeOpciones, validarEapi } from "./eapi/codigo";
 import { formaDeOpciones, limpiarBorradorJjr, validarJjr } from "./jjr/codigo";
+import { limpiarBorradorMcea, validarMcea } from "./mcea/codigo";
 import { limpiarBorradorRiasec, validarRiasec } from "./riasec/codigo";
 import { limpiarBorradorValores, validarValores } from "./valores/codigo";
 
@@ -57,6 +58,14 @@ export const REGISTRO_SERVIDOR: Record<string, DefinicionServidor> = {
   jjr84: { limpiarBorrador: limpiarBorradorJjr, validar: (cuerpo) => delPaciente(validarJjr(cuerpo, "jjr84", null)) },
   // La forma (A o B) la fija el enlace, no el cuerpo enviado.
   jjr176: { limpiarBorrador: limpiarBorradorJjr, validar: (cuerpo, opciones) => delPaciente(validarJjr(cuerpo, "jjr176", formaDeOpciones(opciones))) },
+  // El modo y los módulos anclados los fija el enlace. Alerta: ítem 9 del PHQ-9 ≥ 1.
+  mcea: {
+    limpiarBorrador: (datos) => limpiarBorradorMcea(datos),
+    validar: (cuerpo, opciones) => {
+      const v = validarMcea(cuerpo, opciones);
+      return delPaciente(v, v.ok ? (v.datos.answers.PHQ9_9?.v ?? 0) : 0);
+    },
+  },
 };
 
 export const definicionServidor = (instrumento: string | null | undefined) => (instrumento ? REGISTRO_SERVIDOR[instrumento] ?? null : null);

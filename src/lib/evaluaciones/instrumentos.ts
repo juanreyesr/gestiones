@@ -13,7 +13,7 @@
  *     src/components/clinica/registro-informes.tsx.
  *  7. Un script de pruebas en scripts/ (ejemplo completo: jjr, scripts/probar-jjr.mjs).
  */
-export type InstrumentoId = "b-breve" | "eapi" | "riasec" | "valores" | "jjr84" | "jjr176";
+export type InstrumentoId = "b-breve" | "eapi" | "riasec" | "valores" | "jjr84" | "jjr176" | "mcea";
 
 export type Instrumento = {
   id: InstrumentoId;
@@ -91,6 +91,16 @@ export const INSTRUMENTOS: readonly Instrumento[] = [
     tituloPublico: "Cuestionario de intereses vocacionales JJR",
     informePaciente: true,
     edadMinima: 16,
+  },
+  {
+    id: "mcea",
+    nombre: "Mapa Cognitivo-Emocional Adaptativo (MCEA)",
+    descripcion:
+      "Tamizaje adaptativo de 6 a 15 minutos: empieza con el Cuestionario de Salud del Paciente de 9 ítems (PHQ-9), el filtro de ansiedad (GAD-2) y preguntas puente, y solo abre los módulos que la persona necesita: Escala del Trastorno de Ansiedad Generalizada (GAD-7), Cuestionario de Pensamiento Perseverativo (PTQ, rumiación), pensamientos automáticos negativos, distorsiones cognitivas, autosabotaje, patrones de pareja y recursos personales, más un registro guiado opcional. Alerta de riesgo (ítem 9 del PHQ-9), hipótesis clínicas, cambio fiable entre aplicaciones (la reevaluación repite los módulos de la línea base) e informe para el paciente.",
+    responde: "paciente",
+    respuestasPorDefecto: 1,
+    tituloPublico: "Mapa Cognitivo-Emocional",
+    informePaciente: true,
   },
 ];
 

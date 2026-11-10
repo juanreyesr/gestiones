@@ -18,7 +18,7 @@ export type BandaSerie = { hasta: number; etiqueta: string; k: "low" | "mid" | "
 export type PuntoSerie = { fecha: string; valor: number; banda: string; respuestaId: string; quien: string };
 export type SerieEvolucion = {
   id: string;
-  grupo: "EAPI" | "B-Breve";
+  grupo: "EAPI" | "B-Breve" | "MCEA";
   nombre: string;
   sigla: string;
   max: number;
@@ -67,6 +67,22 @@ const DEFINICIONES: Definicion[] = [
       { hasta: 9, etiqueta: "Leve", k: "mid" },
       { hasta: 14, etiqueta: "Moderada", k: "high" },
       { hasta: 21, etiqueta: "Grave", k: "high" },
+    ],
+  },
+  {
+    id: "phq9",
+    grupo: "MCEA",
+    nombre: "Ánimo (depresión)",
+    sigla: "PHQ-9",
+    max: 27,
+    // Cambio fiable ≥ 6 (convención NHS Talking Therapies).
+    mcid: 6,
+    bandas: [
+      { hasta: 4, etiqueta: "Mínima", k: "low" },
+      { hasta: 9, etiqueta: "Leve", k: "mid" },
+      { hasta: 14, etiqueta: "Moderada", k: "high" },
+      { hasta: 19, etiqueta: "Moderadamente grave", k: "high" },
+      { hasta: 27, etiqueta: "Grave", k: "high" },
     ],
   },
   { id: "dass-dep", grupo: "EAPI", nombre: "Depresión", sigla: "DASS-21 Dep.", max: 42, bandas: BANDAS_DASS(DASS_SUB.dep.cuts) },

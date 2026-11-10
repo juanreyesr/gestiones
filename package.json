@@ -18,6 +18,7 @@
     "test:evolucion": "node --experimental-strip-types --no-warnings --import ./scripts/ts-resolver.mjs scripts/probar-evolucion.mjs",
     "test:jjr": "node --experimental-strip-types --no-warnings --import ./scripts/ts-resolver.mjs scripts/probar-jjr.mjs",
     "test:datos-pendientes": "node --experimental-strip-types --no-warnings --import ./scripts/ts-resolver.mjs scripts/probar-datos-pendientes.mjs",
+    "test:mcea": "node --experimental-strip-types --no-warnings --import ./scripts/ts-resolver.mjs scripts/probar-mcea.mjs",
     "test:seguimientos": "node --experimental-strip-types --no-warnings --import ./scripts/ts-resolver.mjs scripts/probar-seguimientos.mjs"
   },
   "dependencies": {
