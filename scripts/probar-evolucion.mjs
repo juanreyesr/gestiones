@@ -77,7 +77,7 @@ caso("Informe de avance: mejoras primero y sin preguntas sensibles", () => {
   const tarjeta = infSube.resultados.find((x) => x.area.startsWith("Ánimo"));
   assert.ok(tarjeta && !/Lo que más subió|nada por que vivir|ningún sentido/.test(tarjeta.texto));
   // Orden: mejoras, luego aumentos, al final lo que se mantiene.
-  const orden = infSube.resultados.map((x) => (x.nivel === "Mejoró" ? 0 : x.nivel.startsWith("Aumentó") ? 1 : 2));
+  const orden = infSube.resultados.map((x) => (x.nivel === "Mejoró" ? 0 : x.nivel === "Para prestar atención" ? 1 : 2));
   assert.deepEqual(orden, [...orden].sort());
   assert.ok(orden.includes(1));
   const inf = informeAvancePaciente(cambiosRecientes(filas), opcionesPorDefectoAvance(cambiosRecientes(filas)), { paciente: "Ana", notas: " ok ", profesional: "M. A." });
@@ -90,4 +90,20 @@ caso("Informe de avance: mejoras primero y sin preguntas sensibles", () => {
   assert.ok(conDep && !conDep.puntuacion);
 });
 
-console.log(`\n${ok}/4 casos correctos.`);
+caso("Cambio fiable sin cambio de banda y informe solo con áreas a atender", () => {
+  const ptq = (n) => Array.from({ length: 15 }, (_, i) => (i < n ? 1 : 0));
+  const filas2 = [
+    r("a", "2026-11-01", "eapi", { gad: null, dass: null, ptq: ptq(5), docs: null, safety: 0, func: null }),
+    r("b", "2026-11-09", "eapi", { gad: null, dass: null, ptq: ptq(15).map((v, i) => (i === 0 ? 2 : v)), docs: null, safety: 0, func: null }),
+  ];
+  const c = cambiosRecientes(filas2);
+  assert.equal(c[0].tendencia, "empeora"); // 5 → 16: sigue «no clínico», pero ≥ 10,5
+  assert.equal(c[0].fiable, true);
+  const inf = informeAvancePaciente(c, opcionesPorDefectoAvance(c), { paciente: "Ana", notas: "", profesional: "M. A." });
+  assert.match(inf.intro, /prestar especial atención en nuestra próxima sesión/);
+  assert.doesNotMatch(inf.intro, /mejoró|aumentaron/);
+  assert.equal(inf.destacado.titulo, "Para prestar especial atención en nuestra próxima sesión");
+  assert.equal(inf.resultados[0].nivel, "Para prestar atención");
+});
+
+console.log(`\n${ok}/5 casos correctos.`);
