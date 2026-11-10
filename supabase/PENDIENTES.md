@@ -10,12 +10,11 @@ así que las migraciones se acumulan aquí y se aplican **juntas desde la comput
   computadora y aprobar cada ventana de Supabase.
 
 ## Pendientes
-| Migración | Para qué | Si falta |
-| --- | --- | --- |
-| `065_gestionesjj_informes_avance.sql` | Informe de avance (evolución) para el paciente: tabla `gestionesjj_informes_avance` y RPC pública `gestionesjj_public_informe_avance_get`. | El panel de evolución funciona; al guardar o publicar el informe de avance aparece «Falta aplicar la migración 065». |
+Ninguna por ahora.
 
 ## Aplicadas
 | Migración | Fecha | Verificación |
 | --- | --- | --- |
 | `063_gestionesjj_evaluacion_seguimientos.sql` | 2026-11-06 | Tabla con 18 columnas, RLS activo con 4 políticas, tarea pg_cron «7 * * * *» activa y secreto del cron presente. |
 | `064_gestionesjj_paciente_documentos.sql` | 2026-11-07 | Bucket privado (20 MB, 9 tipos permitidos) con 4 políticas de Storage; tabla con 14 columnas, RLS activo con 4 políticas y sin acceso anónimo. |
+| `065_gestionesjj_informes_avance.sql` | 2026-11-10 | Tabla con 8 columnas, RLS activo con 4 políticas y sin acceso anónimo; RPC pública por token responde «invalido» con un token inexistente (aviso del asesor por SECURITY DEFINER con `anon`: intencional, igual que `gestionesjj_public_informe_get`). |
