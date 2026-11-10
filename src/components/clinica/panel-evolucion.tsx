@@ -14,6 +14,8 @@ import {
 import { SectionCard } from "./ui";
 import { perfilesJjr } from "@/lib/evaluaciones/jjr/evolucion";
 import { PerfilJjrTiempo } from "./perfil-jjr-tiempo";
+import { perfilIntegrado } from "@/lib/evaluaciones/perfil-integrado";
+import { PerfilIntegradoTarjeta } from "./perfil-integrado";
 
 const TENDENCIA: Record<Tendencia | "mixto", { texto: string; clase: string; Icono: typeof ArrowRight }> = {
   mejora: { texto: "Mejora", clase: "border-emerald-400/40 bg-emerald-400/10 text-emerald-300", Icono: ArrowDownRight },
@@ -130,6 +132,7 @@ export function PanelEvolucion({ pacienteId, sesiones }: { pacienteId: string; s
   const { series, hitos } = useMemo(() => evolucionDelPaciente(respuestas ?? []), [respuestas]);
   const resumen = useMemo(() => resumenEvolucion(series), [series]);
   const perfiles = useMemo(() => perfilesJjr(respuestas ?? []), [respuestas]);
+  const integrado = useMemo(() => perfilIntegrado(respuestas ?? []), [respuestas]);
   const fechasSesiones = useMemo(
     () => sesiones.filter((s) => s.estado === "finalizada").map((s) => s.iniciadaAt.slice(0, 10)),
     [sesiones]
@@ -163,6 +166,7 @@ export function PanelEvolucion({ pacienteId, sesiones }: { pacienteId: string; s
       title="Evolución del paciente"
     >
       <div className="grid gap-4" data-testid="panel-evolucion">
+        <PerfilIntegradoTarjeta perfil={integrado} />
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
           {[
             { v: fechasSesiones.length, l: "Sesiones finalizadas" },
