@@ -1,4 +1,5 @@
 import { getSupabaseClient } from "@/lib/supabase";
+import { avisarCitaNueva } from "./aviso-cita-nueva";
 import type { CitaEstado, CitaModalidad, CitaRow, GcalSyncStatus, Moneda } from "./types";
 
 type RawCita = {
@@ -119,6 +120,7 @@ export async function crearCita(payload: CitaPayload) {
   if (!supabase) return { id: null as string | null, error: "Faltan las variables de Supabase." };
 
   const { data, error } = await supabase.from("gestionesjj_citas").insert(payload).select("id").single();
+  if (!error) avisarCitaNueva(data?.id as string | undefined);
   return { id: (data?.id as string | undefined) ?? null, error: error ? formatCitaError(error) : null };
 }
 

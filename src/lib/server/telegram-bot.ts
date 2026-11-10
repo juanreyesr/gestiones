@@ -1,4 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { avisarDatosPendientesDeCitaNueva } from "./datos-pendientes";
 import { botonesRechazo, tokenCita, urlConfirmarPorWhatsApp } from "./cita-publica";
 import { deshacerReserva, deshacerSolicitud } from "./deshacer-solicitudes";
 import { buscarPacienteParaMensaje, enviarTarjetaMensaje, pedidoMensajePaciente } from "./telegram-mensaje-paciente";
@@ -1214,7 +1215,11 @@ async function procesarCallback(admin: SupabaseClient, query: CallbackQuery) {
         `${base}\n\n✅ <b>Aprobada</b>${paciente ? ` en el expediente de ${esc(paciente.nombre)}` : " — paciente nuevo creado"}. Ya está en tu agenda.`,
         [...confirmar, ...ubicacion, botonDeshacerSolicitud(id)],
       );
-      if (citaId) await sincronizarCitaGoogle(admin, citaId as string).catch(() => undefined);
+      if (citaId) {
+        await sincronizarCitaGoogle(admin, citaId as string).catch(() => undefined);
+        // Cita de hoy o de mañana (después de las 7:00 a. m.) sin hoja de datos: aviso inmediato.
+        await avisarDatosPendientesDeCitaNueva(citaId as string).catch(() => undefined);
+      }
       return;
     }
 
