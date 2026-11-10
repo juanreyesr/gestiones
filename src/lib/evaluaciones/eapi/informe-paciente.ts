@@ -26,7 +26,7 @@ const formatoFecha = (iso: string) => {
 };
 
 export const AREAS_EAPI = [
-  { id: "gad", nombre: "Preocupación y nerviosismo" },
+  { id: "gad", nombre: "Preocupación y ansiedad" },
   { id: "str", nombre: "Estrés y tensión" },
   { id: "anx", nombre: "Síntomas físicos de ansiedad" },
   { id: "dep", nombre: "Estado de ánimo" },
@@ -80,7 +80,7 @@ const TEXTOS = {
 type AreaId = "gad" | "str" | "anx" | "dep" | "ptq" | "docs";
 const ID_ESCALA: Record<AreaId, string> = { gad: "gad", str: "dass-str", anx: "dass-anx", dep: "dass-dep", ptq: "ptq", docs: "docs" };
 const NOMBRE_AREA: Record<AreaId, string> = {
-  gad: "Preocupación y nerviosismo",
+  gad: "Preocupación y ansiedad",
   str: "Estrés y tensión",
   anx: "Síntomas físicos de ansiedad",
   dep: "Estado de ánimo",

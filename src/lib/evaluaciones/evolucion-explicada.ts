@@ -26,7 +26,7 @@ export type Pregunta = { n: number; texto: string; antes: number; ahora: number;
 export type CambioArea = {
   id: string;
   sigla: string;
-  /** Nombre sencillo del área (p. ej. «Preocupación y nervios»). */
+  /** Nombre sencillo del área (p. ej. «Preocupación y ansiedad»). */
   area: string;
   max: number;
   tendencia: Tendencia;
@@ -46,7 +46,7 @@ export type CambioArea = {
 export const AREA_SENCILLA: Record<string, string> = {
   phq9: "Ánimo",
   "dass-dep": "Ánimo (tristeza y desgano)",
-  gad: "Preocupación y nervios",
+  gad: "Preocupación y ansiedad",
   "dass-anx": "Nervios en el cuerpo (tensión, palpitaciones)",
   "dass-str": "Estrés y tensión",
   ptq: "Pensamientos que dan vueltas",
