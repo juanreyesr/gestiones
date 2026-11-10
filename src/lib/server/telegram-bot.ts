@@ -845,7 +845,6 @@ export function textoSolicitudCita(sol: Omit<RawSolicitud, "id" | "estado">, coi
   const etiquetas = [
     sol.ya_es_paciente ? "ya es paciente" : null,
     sol.primera_sesion ? "primera sesión" : null,
-    sol.dar_seguimiento ? "seguimiento" : null,
   ].filter(Boolean);
   return [
     "🩺 <b>Nueva solicitud de cita</b>",
@@ -854,7 +853,12 @@ export function textoSolicitudCita(sol: Omit<RawSolicitud, "id" | "estado">, coi
     lineaModalidad(sol.modalidad),
     `📞 ${esc(sol.telefono)}${sol.email ? ` · ${esc(sol.email)}` : ""}`,
     sol.necesita_ubicacion ? "📍 <b>Solicitó la ubicación</b> — envíasela con el botón de abajo." : null,
-    sol.motivo ? `📝 ${esc(recortar(sol.motivo, 600))}` : null,
+    sol.dar_seguimiento ? "🔁 <b>Seguimiento a la sesión anterior</b>" : null,
+    sol.motivo
+      ? `📝 ${esc(recortar(sol.motivo, 600))}`
+      : sol.dar_seguimiento
+        ? null
+        : "⚠️ <b>No llenó el motivo de consulta</b> (¿Qué te gustaría abordar?)",
     coincidencia === undefined
       ? null
       : coincidencia

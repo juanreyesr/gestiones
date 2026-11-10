@@ -3,6 +3,7 @@ import { appUrl, comparaSeguro, enviarMensaje, fechaLocal, isTelegramConfigured,
 import { avisoCumpleanosDocentes } from "@/lib/server/cumpleanos-docentes";
 import { avisoCumpleanosEstudiantesSemana, diaSemana } from "@/lib/server/cumpleanos-estudiantes";
 import { avisoCumpleanosPacientes } from "@/lib/server/cumpleanos-pacientes";
+import { avisosDatosPendientesManana } from "@/lib/server/datos-pendientes";
 import { construirResumenDiario } from "@/lib/server/telegram-bot";
 import { getSupabaseAdmin } from "@/lib/server/supabase-admin";
 
@@ -11,7 +12,8 @@ export const dynamic = "force-dynamic";
 
 /**
  * Resumen diario y cumpleaños de pacientes y docentes por Telegram (y los
- * lunes, los cumpleaños de estudiantes de toda la semana). Lo dispara Vercel
+ * lunes, los cumpleaños de estudiantes de toda la semana), y los pacientes con
+ * cita mañana que aún no llenaron sus datos generales ni el consentimiento. Lo dispara Vercel
  * Cron (ver vercel.json), que envia Authorization: Bearer <CRON_SECRET>. Solo
  * manda los avisos una vez por dia aunque el cron se ejecute mas de una vez.
  */
@@ -80,6 +82,15 @@ export async function GET(request: Request) {
       return NextResponse.json({ status: "error", error: res.error }, { status: 502 });
     }
     enviados.push("resumen");
+  }
+
+  // Un día antes de la cita: pacientes sin hoja de datos o sin consentimiento firmado,
+  // con el recordatorio de WhatsApp listo (un mensaje por paciente).
+  if (config.preferencias.datos_pendientes) {
+    for (const aviso of await avisosDatosPendientesManana(admin)) {
+      const res = await enviarMensaje(config.chatId, aviso.texto, { botones: aviso.botones });
+      if (res.ok && !enviados.includes("datos_pendientes")) enviados.push("datos_pendientes");
+    }
   }
 
   // Día 1 de cada mes: recordatorio para descargar el respaldo completo de datos.

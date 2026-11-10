@@ -138,7 +138,8 @@ export function BookingPage() {
             ? telefono.trim()
             : `+${paisPorCodigo(paisTelefono).prefijo} ${telefono.trim()}`,
           email: email.trim() || null,
-          motivo: motivo.trim() || null,
+          // Con «Seguimiento a la sesión anterior» no se envía la pregunta del motivo.
+          motivo: tipoPaciente === "existente" && darSeguimiento ? null : motivo.trim() || null,
           inicio: slotElegido.inicio,
           consentimiento,
           yaEsPaciente: tipoPaciente === "existente",
@@ -322,14 +323,23 @@ export function BookingPage() {
                 <div className="grid grid-cols-2 gap-2">
                   <button
                     className={`rounded-lg border px-3 py-2.5 text-sm font-semibold transition ${tipoPaciente === "nuevo" ? "border-emerald-400 bg-emerald-50 text-emerald-800" : "border-slate-200 bg-white text-slate-600 hover:border-slate-300"}`}
-                    onClick={() => setTipoPaciente("nuevo")}
+                    onClick={() => {
+                      setTipoPaciente("nuevo");
+                      setDarSeguimiento(false);
+                    }}
                     type="button"
                   >
                     Es mi primera sesión
                   </button>
                   <button
                     className={`rounded-lg border px-3 py-2.5 text-sm font-semibold transition ${tipoPaciente === "existente" ? "border-emerald-400 bg-emerald-50 text-emerald-800" : "border-slate-200 bg-white text-slate-600 hover:border-slate-300"}`}
-                    onClick={() => setTipoPaciente("existente")}
+                    onClick={() => {
+                      if (tipoPaciente !== "existente") {
+                        setDarSeguimiento(true);
+                        setMotivo("");
+                      }
+                      setTipoPaciente("existente");
+                    }}
                     type="button"
                   >
                     Ya soy paciente
@@ -421,26 +431,45 @@ export function BookingPage() {
               </label>
 
               <div className="grid gap-1.5">
-                <span className="text-xs font-semibold uppercase text-slate-500">¿Qué te gustaría abordar?</span>
                 {tipoPaciente === "existente" ? (
-                  <label className="flex cursor-pointer items-center gap-2.5 rounded-lg border border-slate-200 bg-white p-2.5 text-sm text-slate-700">
-                    <input
-                      checked={darSeguimiento}
-                      className="h-4 w-4 accent-emerald-600"
-                      onChange={(event) => setDarSeguimiento(event.target.checked)}
-                      type="checkbox"
-                    />
-                    Dar seguimiento a la sesión anterior
-                  </label>
+                  <>
+                    <span className="text-xs font-semibold uppercase text-slate-500">Motivo de la sesión</span>
+                    <div className="grid grid-cols-2 gap-2">
+                      <button
+                        className={`rounded-lg border px-3 py-2.5 text-sm font-semibold transition ${darSeguimiento ? "border-emerald-400 bg-emerald-50 text-emerald-800" : "border-slate-200 bg-white text-slate-600 hover:border-slate-300"}`}
+                        onClick={() => {
+                          setDarSeguimiento(true);
+                          setMotivo("");
+                        }}
+                        type="button"
+                      >
+                        🔁 Seguimiento a la sesión anterior
+                      </button>
+                      <button
+                        className={`rounded-lg border px-3 py-2.5 text-sm font-semibold transition ${!darSeguimiento ? "border-emerald-400 bg-emerald-50 text-emerald-800" : "border-slate-200 bg-white text-slate-600 hover:border-slate-300"}`}
+                        onClick={() => setDarSeguimiento(false)}
+                        type="button"
+                      >
+                        Otro tema
+                      </button>
+                    </div>
+                  </>
                 ) : null}
-                <textarea
-                  className="field-light resize-y"
-                  maxLength={500}
-                  onChange={(event) => setMotivo(event.target.value)}
-                  placeholder={darSeguimiento ? "Opcional: algo puntual que quieras agregar" : "Cuéntame brevemente el tema (opcional)"}
-                  rows={3}
-                  value={motivo}
-                />
+                {tipoPaciente === "existente" && darSeguimiento ? (
+                  <span className="text-xs text-slate-400">Continuaremos con lo trabajado en la sesión anterior.</span>
+                ) : (
+                  <label className="grid gap-1.5">
+                    <span className="text-xs font-semibold uppercase text-slate-500">¿Qué te gustaría abordar?</span>
+                    <textarea
+                      className="field-light resize-y"
+                      maxLength={500}
+                      onChange={(event) => setMotivo(event.target.value)}
+                      placeholder="Cuéntame brevemente el tema"
+                      rows={3}
+                      value={motivo}
+                    />
+                  </label>
+                )}
               </div>
 
               {info?.consentimientoTexto ? (
