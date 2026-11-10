@@ -11,7 +11,8 @@ import { informePacienteMcea, opcionesPorDefectoMcea } from "../src/lib/evaluaci
 import { leerInformePaciente } from "../src/lib/evaluaciones/informe-paciente.ts";
 import { REGISTRO } from "../src/lib/evaluaciones/registro.ts";
 import { REGISTRO_SERVIDOR } from "../src/lib/evaluaciones/registro-servidor.ts";
-import { evolucionDelPaciente } from "../src/lib/evaluaciones/evolucion-paciente.ts";
+import { deteriorosFiables, evolucionDelPaciente } from "../src/lib/evaluaciones/evolucion-paciente.ts";
+import { solapesAlAsignar } from "../src/lib/evaluaciones/registro.ts";
 
 // Motor original del artefacto, cargado tal cual (rama module.exports, sin interfaz).
 const html = fs.readFileSync(new URL("../docs/instrumentos/MCEA_v1.0_artefacto.html", import.meta.url), "utf8");
@@ -118,4 +119,34 @@ caso("Informes: clínico con hipótesis y comparación; paciente con secciones, 
   assert.doesNotMatch(JSON.stringify(p), /PHQ-9 \d/, "sin puntajes si no se piden");
 });
 
-console.log(`\n${ok}/5 casos correctos.`);
+const filaMcea = (id, fecha, phq, gad) => {
+  const ans = {};
+  for (let i = 1; i <= 9; i++) ans[`PHQ9_${i}`] = { v: i <= phq % 10 ? Math.min(3, Math.ceil(phq / 9)) : 0, t: 2000 };
+  const d = validarMcea({ answers: { ...ans, ...Object.fromEntries([1, 2, 3, 4, 5, 6, 7].map((i) => [`GAD7_${i}`, { v: gad, t: 2000 }])), ...Object.fromEntries([1, 2, 3, 4, 5, 6, 7, 8, 9].map((i) => [`BR_${i}`, { v: 0, t: 2000 }])), ...Object.fromEntries([1, 2, 3, 4].map((i) => [`FR_${i}`, { v: 2, t: 2000 }])), ...Object.fromEntries(Array.from({ length: 15 }, (_, i) => [`PTQ_${i + 1}`, { v: 1, t: 2000 }])) }, focus: ["ansiedad"], gate: "si", risk: { self: "no" }, tr: { skip: true } }, { modo: "adapt", anchor: [] });
+  assert.ok(d.ok, d.error);
+  return { id, instrumento: "mcea", datos: d.datos, fecha, createdAt: `${fecha}T10:00:00Z`, respondienteNombre: "Ana" };
+};
+
+caso("Deterioro fiable: PHQ-9 ≥ 6 y GAD-7 ≥ 4 entre aplicaciones (de cualquier evaluación)", () => {
+  const a = filaMcea("a", "2026-09-01", 0, 1), b = filaMcea("b", "2026-10-01", 0, 2);
+  const det = deteriorosFiables(evolucionDelPaciente([a, b]).series);
+  assert.deepEqual(det.map((x) => x.sigla), ["GAD-7"], "GAD-7 7 → 14");
+  assert.equal(det[0].ahora - det[0].antes, 7);
+  const c = filaMcea("c", "2026-11-01", 0, 2);
+  assert.equal(deteriorosFiables(evolucionDelPaciente([b, c]).series).length, 0, "sin cambio");
+});
+
+caso("Doble aplicación: EAPI abierto o reciente frente a MCEA (GAD-7, PTQ, PHQ-9)", () => {
+  const hoy = new Date("2026-11-10T12:00:00Z");
+  const abiertos = [{ instrumento: "eapi", opciones: { modulos: ["gad", "ptq"] }, createdAt: "2026-11-08T10:00:00Z" }];
+  const s1 = solapesAlAsignar("mcea", { modo: "adapt" }, abiertos, [], hoy);
+  assert.equal(s1.length, 1); assert.deepEqual(s1[0].escalas, ["GAD-7", "PTQ"]); assert.equal(s1[0].posibles, true);
+  const reciente = filaMcea("r", "2026-11-05", 0, 2);
+  const s2 = solapesAlAsignar("eapi", { modulos: ["gad", "dass"] }, [], [reciente], hoy);
+  assert.equal(s2.length, 1); assert.deepEqual(s2[0].escalas, ["GAD-7"]); assert.match(s2[0].motivo, /hace 5 días/);
+  assert.equal(solapesAlAsignar("eapi", { modulos: ["gad"] }, [], [filaMcea("v", "2026-10-01", 0, 2)], hoy).length, 0, "más de 14 días");
+  assert.equal(solapesAlAsignar("eapi", { modulos: ["dass", "docs"] }, abiertos, [reciente], hoy).length, 0, "sin escalas en común");
+  assert.equal(solapesAlAsignar("riasec", {}, abiertos, [reciente], hoy).length, 0);
+});
+
+console.log(`\n${ok}/7 casos correctos.`);

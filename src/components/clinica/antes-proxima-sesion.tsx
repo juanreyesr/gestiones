@@ -15,7 +15,7 @@ import {
   type InformeRow,
   type SeguimientoRow,
 } from "@/lib/evaluaciones/evaluaciones";
-import { diasDesde, evolucionDelPaciente } from "@/lib/evaluaciones/evolucion-paciente";
+import { deteriorosFiables, diasDesde, evolucionDelPaciente } from "@/lib/evaluaciones/evolucion-paciente";
 import { nombreCortoInstrumento } from "@/lib/evaluaciones/registro";
 import { resumenRespuesta } from "@/lib/evaluaciones/resumen-respuesta";
 import { AlarmaAtencion } from "./alarma-atencion";
@@ -132,7 +132,21 @@ export function AntesProximaSesion({
       });
     }
     const { series } = evolucionDelPaciente(respuestas);
-    const empeoran = series.filter((x) => x.tendencia === "empeora");
+    // Deterioro fiable: el aumento supera el cambio mínimo fiable de la escala (no es variación del día a día).
+    const fiables = deteriorosFiables(series);
+    if (fiables.length) {
+      puntos.push({
+        clave: "deterioro-fiable",
+        nivel: "urgente",
+        texto: `Deterioro fiable frente a la aplicación anterior: ${fiables.map((x) => x.sigla).join(", ")}`,
+        detalle: fiables
+          .map((x) => `${x.sigla} ${x.antes} → ${x.ahora} (+${x.ahora - x.antes}; mínimo fiable ${String(Math.round(x.minimo * 10) / 10).replace(".", ",")}) · ${x.banda}`)
+          .join(" · "),
+        ir: () => abrirSeccion("evolucion"),
+        etiquetaIr: "Ver evolución",
+      });
+    }
+    const empeoran = series.filter((x) => x.tendencia === "empeora" && !fiables.some((f) => f.id === x.id));
     if (empeoran.length) {
       puntos.push({
         clave: "empeoran",
