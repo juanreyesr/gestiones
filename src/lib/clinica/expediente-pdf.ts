@@ -1,6 +1,7 @@
 import type { EvaluacionRespuestaRow, InformeRow } from "@/lib/evaluaciones/evaluaciones";
 import { evolucionDelPaciente } from "@/lib/evaluaciones/evolucion-paciente";
 import { perfilesJjr } from "@/lib/evaluaciones/jjr/evolucion";
+import { perfilIntegrado, type MedidaArea } from "@/lib/evaluaciones/perfil-integrado";
 import { resumenRespuesta } from "@/lib/evaluaciones/resumen-respuesta";
 import { nombreCategoria, tamanoLegible, type DocumentoRow } from "./documentos";
 import type { ConsentimientoRow } from "./pacientes";
@@ -75,17 +76,24 @@ export async function exportarExpedientePdf(paciente: PacienteRow, sesiones: Ses
 
   const field = (label: string, value: string | null) => {
     if (!value) return;
-    const lines = doc.splitTextToSize(textoPdf(value), contentWidth - 130);
-    ensure(lines.length * 13 + 4);
+    // Se fija la fuente antes de partir cada texto; la etiqueta también se parte si es larga.
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(9);
+    const etiqueta = doc.splitTextToSize(textoPdf(label), 122) as string[];
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(10);
+    const lines = doc.splitTextToSize(textoPdf(value), contentWidth - 130) as string[];
+    const alto = Math.max(lines.length * 13, etiqueta.length * 11);
+    ensure(alto + 4);
     doc.setFont("helvetica", "bold");
     doc.setFontSize(9);
     doc.setTextColor(...MUTED);
-    doc.text(label, MARGIN, y);
+    doc.text(etiqueta, MARGIN, y);
     doc.setFont("helvetica", "normal");
     doc.setFontSize(10);
     doc.setTextColor(...INK);
     doc.text(lines, MARGIN + 130, y);
-    y += lines.length * 13 + 4;
+    y += alto + 4;
   };
 
   const paragraph = (text: string) => {
@@ -110,6 +118,34 @@ export async function exportarExpedientePdf(paciente: PacienteRow, sesiones: Ses
   doc.setTextColor(...MUTED);
   doc.text(`Expediente clínico${extra ? " completo" : ""} · generado el ${formatoFechaCorta(new Date().toISOString())}`, MARGIN, y);
   y += 22;
+
+  // Perfil integrado (resumen al inicio, reglas fijas): solo si hay evaluaciones.
+  const perfil = extra ? perfilIntegrado(extra.respuestas) : null;
+  if (perfil && (perfil.areas.length || perfil.patrones || perfil.orientacion.length)) {
+    heading("Perfil integrado (resumen)");
+    for (const linea of perfil.sintesis) paragraph(linea.replace(/^⚠️\s*/, "ATENCIÓN: "));
+    if (perfil.sintesis.length) y += 4;
+    const texto = (m: MedidaArea) =>
+      `${m.sigla} ${m.valor}/${m.max} · ${m.banda} · ${formatoFechaCorta(m.fecha)}${m.tendencia ? ` · ${m.tendencia === "igual" ? "sigue igual" : m.tendencia}` : ""}${m.deterioroFiable ? " · DETERIORO FIABLE" : ""}`;
+    for (const a of perfil.areas) field(a.nombre, [a.principal, ...a.otras].map(texto).join("\n"));
+    if (perfil.patrones?.items.length)
+      field(
+        `Patrones (MCEA, ${formatoFechaCorta(perfil.patrones.fecha)})`,
+        perfil.patrones.items.map((x) => `${x.nombre.split(" · ").pop()}: ${x.etiqueta}${x.detalle.length ? ` (${x.detalle.join(", ")})` : ""}`).join("\n")
+      );
+    for (const o of perfil.orientacion) field("Orientación", `${o.titulo} — ${o.detalle} (${formatoFechaCorta(o.fecha)})`);
+    if (perfil.riesgo) field("Riesgo", `${perfil.riesgo.texto} · ${formatoFechaCorta(perfil.riesgo.fecha)}`);
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(8.5);
+    doc.setTextColor(...MUTED);
+    const nota = doc.splitTextToSize(
+      textoPdf("Reglas fijas: por área, la medida más reciente de cualquier evaluación y debajo las otras escalas; niveles según las bandas de cada escala; «deterioro fiable» según el cambio mínimo fiable. Resumen para orientar, no un diagnóstico."),
+      contentWidth
+    );
+    ensure(nota.length * 11);
+    doc.text(nota, MARGIN, y);
+    y += nota.length * 11 + 8;
+  }
 
   heading("Datos generales");
   field("Teléfono", paciente.telefono);
