@@ -251,7 +251,7 @@ export function PanelEvolucion({ paciente, sesiones }: { paciente: PacienteRow; 
 
         <p className="text-[11px] leading-5 text-slate-500">
           Cómo leer las gráficas: un número más bajo = menos molestias. El fondo indica el nivel (verde bajo, amarillo intermedio, rojo
-          alto) y las marcas azules abajo son las sesiones. Cuenta como cambio claro: preocupación y nervios (GAD-7) 4 puntos o más, ánimo
+          alto) y las marcas azules abajo son las sesiones. Cuenta como cambio claro: preocupación y ansiedad (GAD-7) 4 puntos o más, ánimo
           (PHQ-9) 6 o más, pensamientos que dan vueltas (PTQ) 11 o más; en las demás escalas, pasar a otro nivel. Hoy:{" "}
           {formatoFechaCorta(hoyIso())}.
         </p>
