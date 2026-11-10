@@ -49,6 +49,13 @@ export type DefinicionInstrumento = {
   nombreCorto: (opciones?: Opciones) => string;
   /** Detalle de las opciones para mostrar junto al nombre (p. ej. « (GAD-7, PTQ)», « · forma A»). */
   detalleOpciones?: (opciones: Opciones) => string;
+  /**
+   * Escalas estandarizadas que el enlace puede aplicar (para avisar de una
+   * doble aplicación). «posibles»: se abren solo según las respuestas.
+   */
+  escalas?: (opciones: Opciones) => { seguras: string[]; posibles: string[] };
+  /** Escalas estandarizadas que esta respuesta realmente aplicó. */
+  escalasAplicadas?: (r: EvaluacionRespuestaRow) => string[];
   /** Opciones que ve el enlace público (solo lo necesario para mostrar el formulario). */
   opcionesPublicas: (opciones: Opciones) => Record<string, unknown>;
   /** Avance de un borrador guardado. */
@@ -144,6 +151,8 @@ export const REGISTRO: Record<string, DefinicionInstrumento> = {
     },
   },
   eapi: {
+    escalas: (o) => ({ seguras: modulosDeOpciones(o).map((m) => FORMA_MODULOS[m].sigla), posibles: [] }),
+    escalasAplicadas: (r) => MODULOS_EAPI.filter((m) => Array.isArray((r.datos as Record<string, unknown>)?.[m])).map((m) => FORMA_MODULOS[m].sigla),
     sigla: "EAPI",
     nombreCorto: (o) => (o ? `EAPI (${siglasEapi(o)})` : "EAPI"),
     detalleOpciones: (o) => ` (${siglasEapi(o)})`,
@@ -240,6 +249,15 @@ export const REGISTRO: Record<string, DefinicionInstrumento> = {
   jjr84: jjr("jjr84"),
   jjr176: jjr("jjr176"),
   mcea: {
+    // PHQ-9 siempre; GAD-7 y PTQ en modo completo, o si las respuestas los abren.
+    escalas: (o) =>
+      opcionesMcea(o).modo === "full" ? { seguras: ["PHQ-9", "GAD-7", "PTQ"], posibles: [] } : { seguras: ["PHQ-9"], posibles: ["GAD-7", "PTQ"] },
+    escalasAplicadas: (r) => {
+      const d = datosMceaGuardados(r.datos);
+      if (!d) return [];
+      const sc = puntajesMcea(d);
+      return [sc.PHQ9 ? "PHQ-9" : "", sc.GAD7 ? "GAD-7" : "", sc.PTQ ? "PTQ" : ""].filter(Boolean);
+    },
     sigla: "MCEA",
     nombreCorto: (o) => `MCEA${opcionesMcea(o).modo === "full" ? " (completo)" : ""}`,
     detalleOpciones: (o) => (opcionesMcea(o).modo === "full" ? " · modo completo" : ""),
@@ -286,3 +304,46 @@ export const nombreCortoInstrumento = (instrumento: string, opciones?: Opciones)
 /** Nombre de la lista del expediente: primera parte del nombre + detalle de opciones. */
 export const nombreConOpciones = (instrumento: string, opciones?: Opciones) =>
   (instrumentoPorId(instrumento)?.nombre.split(" · ")[0] ?? instrumento) + (opciones ? (definicion(instrumento)?.detalleOpciones?.(opciones) ?? "") : "");
+
+/** Días durante los que repetir una escala puede sesgar las respuestas (PHQ-9 y GAD-7 preguntan por las últimas 2 semanas). */
+export const DIAS_SOLAPE = 14;
+
+export type Solape = { escalas: string[]; posibles: boolean; motivo: string };
+
+/**
+ * Antes de asignar: escalas que el nuevo enlace repetiría frente a enlaces aún
+ * abiertos o respuestas de los últimos 14 días del mismo paciente.
+ */
+export function solapesAlAsignar(
+  instrumento: string,
+  opciones: Opciones,
+  abiertos: { instrumento: string; opciones: Opciones; createdAt: string }[],
+  respuestas: EvaluacionRespuestaRow[],
+  hoy = new Date()
+): Solape[] {
+  const nuevo = definicion(instrumento)?.escalas?.(opciones);
+  if (!nuevo) return [];
+  const todas = [...nuevo.seguras, ...nuevo.posibles];
+  const dias = (iso: string) => Math.floor((hoy.getTime() - new Date(iso).getTime()) / 86_400_000);
+  const out: Solape[] = [];
+  for (const ev of abiertos) {
+    const otro = definicion(ev.instrumento)?.escalas?.(ev.opciones);
+    if (!otro) continue;
+    const comunes = todas.filter((e) => [...otro.seguras, ...otro.posibles].includes(e));
+    if (comunes.length)
+      out.push({ escalas: comunes, posibles: comunes.some((e) => nuevo.posibles.includes(e)), motivo: `tiene un enlace sin responder de ${nombreConOpciones(ev.instrumento, ev.opciones)}` });
+  }
+  for (const r of respuestas) {
+    const d = dias(r.fecha ?? r.createdAt);
+    if (d > DIAS_SOLAPE) continue;
+    const aplicadas = definicion(r.instrumento)?.escalasAplicadas?.(r) ?? [];
+    const comunes = todas.filter((e) => aplicadas.includes(e));
+    if (comunes.length)
+      out.push({
+        escalas: comunes,
+        posibles: comunes.some((e) => nuevo.posibles.includes(e)),
+        motivo: `respondió ${nombreConOpciones(r.instrumento)} hace ${d === 0 ? "menos de un día" : `${d} día${d === 1 ? "" : "s"}`}`,
+      });
+  }
+  return out;
+}

@@ -180,3 +180,25 @@ export function diasDesde(fecha: string, hoy = new Date()) {
   const h = new Date(hoy.getFullYear(), hoy.getMonth(), hoy.getDate());
   return Math.round((h.getTime() - f.getTime()) / 86_400_000);
 }
+
+/**
+ * Cambio mínimo fiable por serie (Índice de Cambio Fiable, Jacobson y Truax):
+ * PHQ-9 ≥ 6 y GAD-7 ≥ 4 (convención NHS Talking Therapies); PTQ ≈ 10,5
+ * (1,96 × DE 12 × √(2 × (1 − 0,9)), valores provisionales del MCEA). Vale para
+ * la escala sin importar la evaluación que la aplicó (EAPI o MCEA).
+ */
+export const CAMBIO_FIABLE: Record<string, number> = { phq9: 6, gad: 4, ptq: 1.96 * 12 * Math.sqrt(2 * (1 - 0.9)) };
+
+export type Deterioro = { id: string; sigla: string; antes: number; ahora: number; minimo: number; banda: string; fecha: string };
+
+/** Escalas cuyo último puntaje aumentó al menos el cambio mínimo fiable frente al anterior (más alto = peor). */
+export function deteriorosFiables(series: SerieEvolucion[]): Deterioro[] {
+  const out: Deterioro[] = [];
+  for (const s of series) {
+    const minimo = CAMBIO_FIABLE[s.id];
+    if (!minimo || s.puntos.length < 2) continue;
+    const [a, b] = s.puntos.slice(-2);
+    if (b.valor - a.valor >= minimo) out.push({ id: s.id, sigla: s.sigla, antes: a.valor, ahora: b.valor, minimo, banda: b.banda, fecha: b.fecha });
+  }
+  return out;
+}

@@ -35,7 +35,7 @@ import {
   type EvaluacionRow,
 } from "@/lib/evaluaciones/evaluaciones";
 import { INSTRUMENTOS, instrumentoPorId } from "@/lib/evaluaciones/instrumentos";
-import { definicion, nombreConOpciones } from "@/lib/evaluaciones/registro";
+import { definicion, DIAS_SOLAPE, nombreConOpciones, solapesAlAsignar } from "@/lib/evaluaciones/registro";
 import { urlPublica } from "@/lib/url-publica";
 import { IconoWhatsApp } from "./boton-whatsapp-paciente";
 import { edadEn } from "./informe-jjr";
@@ -204,6 +204,14 @@ export function EvaluacionesPaciente({ paciente }: { paciente: PacienteRow }) {
   /** Nueva aplicación del mismo instrumento (y mismas escalas) para comparar la evolución. */
   const nuevaAplicacion = async (instrumentoId: string, opciones: Record<string, unknown>, etiqueta: string) => {
     setError("");
+    const solapes = solapesAlAsignar(instrumentoId, opciones, evaluaciones.filter((ev) => ev.estado === "abierta"), respuestas);
+    if (
+      solapes.length &&
+      !window.confirm(
+        `Posible doble aplicación:\n${solapes.map((x) => `• El paciente ${x.motivo}: se repetiría ${x.escalas.join(", ")}.`).join("\n")}\n\nRepetir estas escalas antes de ${DIAS_SOLAPE} días puede sesgar las respuestas. ¿Crear la nueva aplicación de todos modos?`
+      )
+    )
+      return;
     const { error: err } = await asignarEvaluacion(paciente.id, instrumentoId, [etiqueta], "Seguimiento", opciones);
     if (err) {
       setError(err);
@@ -383,6 +391,30 @@ export function EvaluacionesPaciente({ paciente }: { paciente: PacienteRow }) {
           <Field label="Nota privada (opcional)">
             <input className="field" maxLength={500} onChange={(e) => setNota(e.target.value)} placeholder="Ej. aplicación inicial, seguimiento semana 4" value={nota} />
           </Field>
+          {(() => {
+            // Doble aplicación: escalas que este enlace repetiría frente a enlaces abiertos o respuestas recientes.
+            const solapes = solapesAlAsignar(
+              instrumento,
+              OPCIONES_ASIGNAR[instrumento] ? opcionesAsignar : {},
+              evaluaciones.filter((ev) => ev.estado === "abierta"),
+              respuestas
+            );
+            return solapes.length ? (
+              <div className="grid gap-1 border border-amber-300/40 bg-amber-400/10 p-3 text-xs leading-5 text-amber-100" data-testid="aviso-solape">
+                <strong>Posible doble aplicación</strong>
+                {solapes.map((x) => (
+                  <span key={x.motivo}>
+                    • El paciente {x.motivo}: se repetiría {x.escalas.join(", ")}
+                    {x.posibles ? " (si se abren según sus respuestas)" : ""}.
+                  </span>
+                ))}
+                <span className="text-amber-200/80">
+                  PHQ-9 y GAD-7 preguntan por las últimas 2 semanas: repetirlos antes de {DIAS_SOLAPE} días puede sesgar las respuestas y no
+                  aporta un cambio interpretable. Considera esperar, cerrar el enlace anterior o elegir otras escalas.
+                </span>
+              </div>
+            ) : null;
+          })()}
           {(() => {
             const i = instrumentoPorId(instrumento);
             const edad = edadEn(paciente.fechaNacimiento, new Date().toISOString().slice(0, 10));
