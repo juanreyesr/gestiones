@@ -177,7 +177,7 @@ caso("E.3 Evolución entre aplicaciones (ítem por ítem y por escala)", () => {
   assert.deepEqual(gadF.puntos.map((x) => x.nivel), ["Alto", "Alto", "Alto"]); // 21, 20, 15
   assert.equal(gadF.tendencia, "mejora");
   assert.match(gadF.frase, /Bajaron sus molestias, aunque sigue en nivel alto\. Desde su primera evaluación .* se mantiene en el mismo nivel/);
-  const dep = evp.areas.find((x) => x.area === "Estado de ánimo");
+  const dep = evp.areas.find((x) => x.area === "Tristeza y desgano");
   assert.match(dep.frase, /Pasó de muy alto a moderado desde la evaluación anterior\. Desde su primera evaluación .* pasó de muy alto a moderado, un avance importante/);
   assert.ok(evp.mejoras.length > 0 && evp.mejoras.length <= 4);
   assert.match(evp.resumen, /últimas 3 evaluaciones/);
