@@ -10,6 +10,7 @@ import { limpiarBorradorEapi, modulosDeOpciones, validarEapi } from "./eapi/codi
 import { formaDeOpciones, limpiarBorradorJjr, validarJjr } from "./jjr/codigo";
 import { limpiarBorradorMcea, validarMcea } from "./mcea/codigo";
 import { limpiarBorradorRiasec, validarRiasec } from "./riasec/codigo";
+import { limpiarBorradorTemperamentos, validarTemperamentos } from "./temperamentos/codigo";
 import { limpiarBorradorValores, validarValores } from "./valores/codigo";
 
 export type RespuestaValidada =
@@ -55,6 +56,7 @@ export const REGISTRO_SERVIDOR: Record<string, DefinicionServidor> = {
   },
   riasec: { limpiarBorrador: limpiarBorradorRiasec, validar: (cuerpo) => delPaciente(validarRiasec(cuerpo)) },
   valores: { limpiarBorrador: limpiarBorradorValores, validar: (cuerpo) => delPaciente(validarValores(cuerpo)) },
+  temperamentos: { limpiarBorrador: limpiarBorradorTemperamentos, validar: (cuerpo) => delPaciente(validarTemperamentos(cuerpo)) },
   jjr84: { limpiarBorrador: limpiarBorradorJjr, validar: (cuerpo) => delPaciente(validarJjr(cuerpo, "jjr84", null)) },
   // La forma (A o B) la fija el enlace, no el cuerpo enviado.
   jjr176: { limpiarBorrador: limpiarBorradorJjr, validar: (cuerpo, opciones) => delPaciente(validarJjr(cuerpo, "jjr176", formaDeOpciones(opciones))) },

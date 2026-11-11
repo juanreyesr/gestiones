@@ -24,6 +24,8 @@ import { avanceMcea, datosMceaGuardados, limpiarBorradorMcea, opcionesMcea } fro
 import { A as respuestaMcea, modulosAbiertos, nombreModulo, scoreAll as puntajesMcea } from "./mcea/motor";
 import { calificarRiasec, RIASEC_INFO } from "./riasec/calificacion";
 import { avanceRiasec, limpiarBorradorRiasec, validarRiasec } from "./riasec/codigo";
+import { calificarTemperamentos } from "./temperamentos/calificacion";
+import { avanceTemperamentos, limpiarBorradorTemperamentos, validarTemperamentos } from "./temperamentos/codigo";
 import { calificarValores, VALORES_INFO } from "./valores/calificacion";
 import { avanceValores, limpiarBorradorValores, validarValores } from "./valores/codigo";
 
@@ -244,6 +246,33 @@ export const REGISTRO: Record<string, DefinicionInstrumento> = {
       if (!d) return null;
       const c = calificarValores(d);
       return { puntos: [], hito: { tipo: "valores", titulo: "Valores laborales principales", detalle: c.principales.map((x) => VALORES_INFO[x].nombre).join(" · ") } };
+    },
+  },
+  temperamentos: {
+    sigla: "TEMP",
+    nombreCorto: () => "Temperamentos",
+    opcionesPublicas: sinOpciones,
+    avance: (b) => avanceTemperamentos(limpiarBorradorTemperamentos(b)),
+    opcionesNueva: copiarOpciones,
+    resumen: (r) => {
+      const d = valido(validarTemperamentos(r.datos));
+      if (!d) return null;
+      const c = calificarTemperamentos(d);
+      return {
+        puntuaciones: [`Perfil: ${c.perfil}`, `Puntajes (0–40): ${c.orden.map((id) => `${c.temperamentos.find((t) => t.id === id)!.nombre} ${c.temperamentos.find((t) => t.id === id)!.suma}`).join(", ")}`],
+        alertas: [],
+        insignia: c.perfil,
+        alarma: false,
+      };
+    },
+    evolucion: (r) => {
+      const d = valido(validarTemperamentos(r.datos));
+      if (!d) return null;
+      const c = calificarTemperamentos(d);
+      return {
+        puntos: [],
+        hito: { tipo: "temperamentos", titulo: `Temperamento: ${c.perfil}`, detalle: c.temperamentos.map((t) => `${t.nombre} ${t.suma}`).join(" · ") },
+      };
     },
   },
   jjr84: jjr("jjr84"),
