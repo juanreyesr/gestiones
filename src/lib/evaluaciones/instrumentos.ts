@@ -13,7 +13,7 @@
  *     src/components/clinica/registro-informes.tsx.
  *  7. Un script de pruebas en scripts/ (ejemplo completo: jjr, scripts/probar-jjr.mjs).
  */
-export type InstrumentoId = "b-breve" | "eapi" | "riasec" | "valores" | "jjr84" | "jjr176" | "mcea";
+export type InstrumentoId = "b-breve" | "eapi" | "riasec" | "valores" | "temperamentos" | "jjr84" | "jjr176" | "mcea";
 
 export type Instrumento = {
   id: InstrumentoId;
@@ -69,6 +69,17 @@ export const INSTRUMENTOS: readonly Instrumento[] = [
     respuestasPorDefecto: 1,
     tituloPublico: "Cuestionario de valores laborales · versión JJ",
     informePaciente: true,
+  },
+  {
+    id: "temperamentos",
+    nombre: "Test de temperamentos (sanguíneo, colérico, melancólico y flemático)",
+    descripcion:
+      "Instrumento propio y orientativo (sin baremos): 40 afirmaciones (10 por temperamento, escala 0–4), 8 a 10 min. Puntaje por temperamento, tipo de perfil (predominante, combinado, codominantes o poco diferenciado), tercera influencia, dimensiones (hacia afuera y reacción intensa), estilo de respuesta, ítems destacados, implicaciones para la terapia, seguimiento e informe para enviar al paciente. Desde 14 años.",
+    responde: "paciente",
+    respuestasPorDefecto: 1,
+    tituloPublico: "Cuestionario de temperamento · versión JJ",
+    informePaciente: true,
+    edadMinima: 14,
   },
   {
     id: "jjr84",

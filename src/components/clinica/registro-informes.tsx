@@ -11,6 +11,7 @@ import { InformeEapi } from "./informe-eapi";
 import { InformeJjr } from "./informe-jjr";
 import { InformeMcea } from "./informe-mcea";
 import { InformeRiasec } from "./informe-riasec";
+import { InformeTemperamentos } from "./informe-temperamentos";
 import { InformeValores } from "./informe-valores";
 
 /**
@@ -25,6 +26,7 @@ export const INFORMES: Record<string, (p: PropsInforme) => ReactNode> = {
   eapi: (p) => <InformeEapi {...p} />,
   riasec: (p) => <InformeRiasec {...p} />,
   valores: (p) => <InformeValores {...p} />,
+  temperamentos: (p) => <InformeTemperamentos {...p} />,
   jjr84: (p) => <InformeJjr {...p} />,
   jjr176: (p) => <InformeJjr {...p} />,
   mcea: (p) => <InformeMcea {...p} />,

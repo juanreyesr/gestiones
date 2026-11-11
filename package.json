@@ -14,6 +14,7 @@
     "cap:sync": "cap sync",
     "cap:android": "cap open android",
     "cap:ios": "cap open ios",
+    "test:temperamentos": "node --experimental-strip-types --no-warnings --import ./scripts/ts-resolver.mjs scripts/probar-temperamentos.mjs",
     "test:valores": "node --experimental-strip-types --no-warnings --import ./scripts/ts-resolver.mjs scripts/probar-valores.mjs",
     "test:evolucion": "node --experimental-strip-types --no-warnings --import ./scripts/ts-resolver.mjs scripts/probar-evolucion.mjs",
     "test:jjr": "node --experimental-strip-types --no-warnings --import ./scripts/ts-resolver.mjs scripts/probar-jjr.mjs",
