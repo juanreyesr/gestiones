@@ -78,7 +78,7 @@ export function InformeTemperamentos({
             profesional: PROFESIONAL_INFORME,
           })
         }
-        descripcion="Muestra su temperamento, una gráfica de los cuatro y tarjetas con cómo suele ser, fortalezas, aspectos a cuidar, relaciones, trabajo o estudio, estrés e ideas para crecer. Sin observaciones clínicas ni puntajes (a menos que los incluyas). Elige qué tarjetas incluir, agrega tus comentarios y envíaselo."
+        descripcion="Abre con su temperamento dominante, una gráfica de los cuatro y tarjetas con aspectos positivos y a cuidar, su perfil combinado (cómo se comporta, de qué cuidarse, en qué ser más observador, cómo aprovechar sus puntos fuertes), relaciones, trabajo o estudio, estrés e ideas para crecer. Sin observaciones clínicas ni puntajes (a menos que los incluyas). Elige qué tarjetas incluir, agrega tus comentarios y envíaselo."
         opcionesPorDefecto={opcionesPorDefectoTemperamentos()}
         paciente={paciente}
         placeholderNotas="Ej. Su forma de ser tiene mucho valor porque… Para el trabajo, le sugiero… En la próxima sesión revisaremos…"
