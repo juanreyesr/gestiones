@@ -136,8 +136,8 @@ caso("E.2 Informe unificado y separado", () => {
   assert.doesNotMatch(html, /Cuestionario de Pensamiento Perseverativo/); // PTQ no aplicado
   assert.ok(html.indexOf("(GAD-7") < html.indexOf("GAD-7 ·"), "la sigla se define antes de usarse sola");
   // Este caso tiene 3 o más áreas «para trabajar primero» (carga alta): aparece «conexion».
-  assert.deepEqual(areasEapi(u).map((a) => a.id), ["afavor", "conexion", "gad", "str", "anx", "dep", "pasos"]);
-  assert.deepEqual(areasEapi(u, true).map((a) => a.id), ["evolucion", "afavor", "conexion", "gad", "str", "anx", "dep", "pasos"]);
+  assert.deepEqual(areasEapi(u).map((a) => a.id), ["conexion", "gad", "str", "anx", "dep", "pasos"]);
+  assert.deepEqual(areasEapi(u, true).map((a) => a.id), ["evolucion", "conexion", "gad", "str", "anx", "dep", "pasos"]);
   // Todo con z(): sin error.
   assert.ok(informeEapiHtml({ datos: validarEapi({ docs: z(20), safety: 0 }, ["docs"]).datos, nombre: "", fecha: "" }).includes("DOCS"));
 });
@@ -209,28 +209,32 @@ caso("F.1 Informe del paciente v2: peor caso pasa leerInformePaciente sin recort
   assert.equal(JSON.stringify(leido).length, JSON.stringify(inf).length, "leerInformePaciente recortó contenido");
   assert.equal(leido.resultados.length, inf.resultados.length);
   inf.resultados.forEach((r, i) => assert.equal(leido.resultados[i].texto.length, r.texto.length, `recorte en ${r.area}`));
-  assert.equal(leido.destacado.texto, inf.destacado.texto);
+  assert.equal(leido.destacado.texto, "");
+  assert.equal(leido.destacado.titulo, "Lo más importante");
   assert.ok(Buffer.byteLength(JSON.stringify(inf), "utf8") < 60000);
   for (const r of inf.resultados) assert.ok(r.texto.length < 4000, `${r.area}: ${r.texto.length} caracteres`);
-  assert.ok(inf.destacado.texto.length < 1000);
-  assert.equal(inf.destacado.titulo, "Lo más importante");
+  assert.deepEqual(inf.destacado, { titulo: "Lo más importante", texto: "" }); // v2.1: el recuadro no tiene texto
+  assert.ok(!inf.resultados.some((r) => r.area === "Lo que está a su favor")); // v2.1: no existe esa tarjeta
   assert.ok(inf.evolucion);
-  // Con DOCS y todas las áreas: 1 + 6 + 1 tarjetas.
+  // Con DOCS y todas las áreas: conexión + 6 áreas + próximos pasos.
   assert.deepEqual(inf.resultados.map((r) => r.area), // Con riesgo marcado (desesperanza alta) y el ánimo alto, «Tristeza y desgano» va primero.
-  ["Lo que está a su favor", "Cómo se conectan sus resultados", "Tristeza y desgano", "Preocupación y ansiedad", "Estrés y ansiedad", "Tensión y palpitaciones", "Pensamientos que vuelven", "Pensamientos o rituales repetitivos", "Sus próximos pasos"]);
+  ["Cómo se conectan sus resultados", "Tristeza y desgano", "Preocupación y ansiedad", "Estrés y ansiedad", "Tensión y palpitaciones", "Pensamientos que vuelven", "Pensamientos o rituales repetitivos", "Sus próximos pasos"]);
   const globalJson = Buffer.byteLength(JSON.stringify(inf), "utf8");
   console.log(`  tamaño máximo ${globalJson} bytes; tarjeta más larga ${Math.max(...inf.resultados.map((r) => r.texto.length))} caracteres`);
 });
 
 caso("F.2 Todo en cero: solo fortalezas, sin lenguaje de alarma", () => {
   const inf = informe(CERO);
-  assert.deepEqual(inf.resultados.map((r) => r.tono), Array(7).fill("bien"));
-  assert.equal(inf.resultados[0].area, "Lo que está a su favor");
+  assert.deepEqual(inf.resultados.map((r) => r.tono), Array(6).fill("bien"));
+  assert.deepEqual(inf.resultados.map((r) => r.nivel), Array(6).fill("A su favor")); // las áreas bajas siguen como tarjetas breves
+  assert.ok(!inf.resultados.some((r) => r.area === "Lo que está a su favor"));
   assert.ok(!inf.resultados.some((r) => r.area === "Sus próximos pasos"));
   assert.doesNotMatch(textoTodo(inf), /prioridad|alarma|urgente|grave|intens|riesgo|peligro|preocupante|desborda|alto\b/i);
-  assert.doesNotMatch(inf.destacado.texto, /mayor oportunidad/);
-  // Con una sola escala en cero también se genera la tarjeta de fortalezas.
-  assert.ok(informe({ ...CERO, dass: null, ptq: null, docs: null }).resultados[0].texto.includes("preocupación"));
+  assert.equal(inf.destacado.texto, "");
+  // Con una sola escala en cero sale su tarjeta breve «A su favor».
+  const una = informe({ ...CERO, dass: null, ptq: null, docs: null }).resultados;
+  assert.equal(una.length, 1);
+  assert.equal(una[0].nivel, "A su favor");
 });
 
 caso("F.3 Las tarjetas van de mayor a menor nivel (bajas al final); alto en ámbar", () => {
@@ -240,7 +244,7 @@ caso("F.3 Las tarjetas van de mayor a menor nivel (bajas al final); alto en ámb
   [2, 4, 7].forEach((n) => (dass[n - 1] = 2)); dass[8] = 1; // ansiedad 7 → ×2 = 14 moderado
   const d = { gad: [1, 1, 1, 1, 1, 1, 1], dass, ptq: Array(15).fill(3), docs: Array(20).fill(0), safety: 0, func: 0 };
   const inf = informe(d);
-  assert.deepEqual(inf.resultados.map((r) => r.area), ["Lo que está a su favor", "Estrés y ansiedad", "Pensamientos que vuelven", "Tensión y palpitaciones", "Preocupación y ansiedad", "Tristeza y desgano", "Pensamientos o rituales repetitivos", "Sus próximos pasos"]);
+  assert.deepEqual(inf.resultados.map((r) => r.area), ["Estrés y ansiedad", "Pensamientos que vuelven", "Tensión y palpitaciones", "Preocupación y ansiedad", "Tristeza y desgano", "Pensamientos o rituales repetitivos", "Sus próximos pasos"]);
   const area = (n) => inf.resultados.find((r) => r.area === n);
   assert.equal(area("Estrés y ansiedad").tono, "atencion"); // prioridad alta → ámbar
   assert.equal(area("Estrés y ansiedad").nivel, "Para trabajar primero");
@@ -262,12 +266,13 @@ caso("F.3 Las tarjetas van de mayor a menor nivel (bajas al final); alto en ámb
   const conPunt = informe(d, null, { ...opcionesPorDefectoEapi(d), mostrarPuntuaciones: true });
   assert.match(conPunt.resultados.find((r) => r.area === "Estrés y ansiedad").puntuacion, /de 42/);
   const o = opcionesPorDefectoEapi(d);
-  assert.equal(o.incluir.afavor, true); assert.equal(o.incluir.pasos, true);
-  const sin = informe(d, null, { ...o, incluir: { ...o.incluir, afavor: false, pasos: false, gad: false } });
-  assert.ok(!sin.resultados.some((r) => ["Lo que está a su favor", "Sus próximos pasos", "Preocupación y ansiedad"].includes(r.area)));
-  // Con evaluación anterior, lo que mejoró aparece en «a su favor».
+  assert.equal(o.incluir.afavor, undefined); assert.equal(o.incluir.pasos, true); // v2.1: ya no existe «a su favor»
+  assert.ok(!areasEapi(d).some((a) => a.id === "afavor"));
+  const sin = informe(d, null, { ...o, incluir: { ...o.incluir, pasos: false, gad: false } });
+  assert.ok(!sin.resultados.some((r) => ["Sus próximos pasos", "Preocupación y ansiedad"].includes(r.area)));
+  // Con evaluación anterior, la mejoría sigue en la comparación de cada tarjeta.
   const mejor = informe({ ...d, dass: Array(21).fill(0) }, d);
-  assert.match(mejor.resultados[0].texto, /mejoró/);
+  assert.match(mejor.resultados.find((r) => r.area === "Estrés y ansiedad").texto, /Comparado con su evaluación del .*: ha mejorado/);
 });
 
 caso("F.4 Nunca aparecen los ítems 10 y 21 del DASS-21 ni la pregunta de seguridad", () => {
@@ -395,38 +400,28 @@ caso("F.10 Carga alta (adenda): prioridades en vez de gravedad, conexión, solo 
   assert.equal(inf.resultados.filter((r) => r.nivel === "Para trabajar primero").length, 4);
   assert.equal(inf.resultados.find((r) => r.area === "Estrés y ansiedad").nivel, "Para trabajar");
   // Tarjeta de conexión, antes de las áreas, solo con áreas altas.
-  assert.deepEqual(nombres.slice(0, 2), ["Lo que está a su favor", "Cómo se conectan sus resultados"]);
-  const con = inf.resultados[1].texto;
+  assert.equal(nombres[0], "Cómo se conectan sus resultados");
+  const con = inf.resultados[0].texto;
   assert.match(con, /la preocupación, la tensión del cuerpo, los pensamientos que vuelven y el desánimo/);
   assert.match(con, /mejorar un punto del círculo/);
-  assert.deepEqual(areasEapi(d).map((a) => a.id), ["afavor", "conexion", "gad", "str", "anx", "dep", "ptq", "pasos"]);
+  assert.deepEqual(areasEapi(d).map((a) => a.id), ["conexion", "gad", "str", "anx", "dep", "ptq", "pasos"]);
   // Solo las DOS áreas más altas (las dos primeras tras la conexión) llevan «Para empezar esta semana:».
   const conPasos = inf.resultados.filter((r) => /Para empezar esta semana:/.test(r.texto)).map((r) => r.area);
   assert.equal(conPasos.length, 2);
-  assert.deepEqual(conPasos, nombres.slice(2, 4));
-  for (const r of inf.resultados.slice(4, -1)) assert.match(r.texto, /Lo iremos trabajando después de lo primero:/);
-  assert.ok(inf.resultados.slice(2, 4).every((r) => (r.texto.match(/^• /gm) ?? []).length > 0));
+  assert.deepEqual(conPasos, nombres.slice(1, 3));
+  for (const r of inf.resultados.slice(3, -1)) assert.match(r.texto, /Lo iremos trabajando después de lo primero:/);
+  assert.ok(inf.resultados.slice(1, 3).every((r) => (r.texto.match(/^• /gm) ?? []).length > 0));
   // «Sus próximos pasos»: máximo 2.
   const sp = inf.resultados.find((r) => r.area === "Sus próximos pasos").texto;
   assert.equal((sp.match(/^\d\. /gm) ?? []).length, 2);
-  // Recuadro: honesto, por partes, sin consuelo hueco, con frase de acompañamiento.
-  assert.match(inf.destacado.texto, /temporada pesada en varias áreas a la vez/);
-  assert.match(inf.destacado.texto, /por partes, empezando por una/);
-  assert.match(inf.destacado.texto, /No tiene que cargar esto a solas/);
-  assert.doesNotMatch(textoTodo(inf), /todo va a estar bien|todo saldrá bien/i);
-  assert.ok(inf.destacado.texto.length < 1000);
-  // «A su favor» nunca queda vacío: hechos reales y respuestas más bajas.
-  const fav = inf.resultados[0].texto;
-  assert.match(fav, /Respondió con sinceridad/);
-  assert.match(fav, /acompañamiento/);
-  assert.match(fav, /algo que casi no le ha pasado/);
-  const favMax = informe(MAX).resultados[0].texto;
-  assert.match(favMax, /Respondió con sinceridad/);
-  assert.doesNotMatch(favMax, /undefined|null/);
+  // Recuadro: solo el título (v2.1), también con riesgo marcado; sin consuelo hueco.
+  assert.deepEqual(inf.destacado, { titulo: "Lo más importante", texto: "" });
+  assert.doesNotMatch(textoTodo(inf), /todo va a estar bien|todo saldrá bien|temporada pesada/i);
+  assert.ok(!nombres.includes("Lo que está a su favor"));
   // Se pueden quitar la conexión y los pasos; sin riesgo no aparece la frase de ayuda.
   const q = informe({ ...d, safety: 0 }, null, { ...opcionesPorDefectoEapi({ ...d, safety: 0 }), incluir: { ...o.incluir, conexion: false, pasos: false } });
   assert.ok(!q.resultados.some((r) => ["Cómo se conectan sus resultados", "Sus próximos pasos"].includes(r.area)));
-  assert.doesNotMatch(q.destacado.texto, /cargar esto a solas/);
+  assert.equal(q.destacado.texto, "");
   // Longitudes y límites también aquí.
   assert.equal(JSON.stringify(leerInformePaciente(JSON.parse(JSON.stringify(inf)))).length, JSON.stringify(inf).length);
   inf.resultados.forEach((r) => assert.ok(r.texto.length < 4000));

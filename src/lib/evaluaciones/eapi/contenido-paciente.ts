@@ -29,8 +29,6 @@ export type NivelContenido = {
 export type ContenidoArea = {
   /** Texto breve del nivel bajo (qué va bien y cómo mantenerlo). */
   bajo: string;
-  /** Fortaleza en una frase, para la tarjeta «Lo que está a su favor». */
-  fortaleza: string;
   /** Niveles leve o superiores, en el mismo orden que los niveles de nivelArea (índice i - 1). */
   niveles: NivelContenido[];
 };
@@ -42,7 +40,6 @@ export const CONTENIDO_AREAS: Record<AreaIdContenido, ContenidoArea> = {
   // Preocupación y ansiedad: leve, moderado, alto.
   gad: {
     bajo: "Casi no ha tenido preocupación ni nerviosismo en las últimas dos semanas. Conviene mantener lo que ya le ayuda: sus rutinas de descanso y sus ratos de pausa.",
-    fortaleza: "Casi no ha tenido preocupación ni nerviosismo en las últimas dos semanas.",
     niveles: [
       {
         indicador: "Ha tenido algo de preocupación y nerviosismo en las últimas dos semanas, sin que llegue a dominarle el día.",
@@ -90,7 +87,6 @@ export const CONTENIDO_AREAS: Record<AreaIdContenido, ContenidoArea> = {
   // Estrés y ansiedad: leve, moderado, alto, muy alto.
   str: {
     bajo: "Su nivel de tensión de la última semana está dentro de lo esperado. Mantener pausas, descanso y movimiento regulares suele ayudar a conservarlo.",
-    fortaleza: "Su nivel de tensión de la última semana está dentro de lo esperado.",
     niveles: [
       {
         indicador: "Ha sentido algo de tensión o irritabilidad en la última semana.",
@@ -149,7 +145,6 @@ export const CONTENIDO_AREAS: Record<AreaIdContenido, ContenidoArea> = {
   // Tensión y palpitaciones: leve, moderado, alto, muy alto.
   anx: {
     bajo: "Las reacciones físicas de la ansiedad (corazón acelerado, falta de aire, temblor) están dentro de lo esperado. Si algún día aparecen, recuerde que son una respuesta natural del cuerpo: molesta, pero pasa.",
-    fortaleza: "Las reacciones físicas de la ansiedad, como el corazón acelerado o el temblor, están dentro de lo esperado.",
     niveles: [
       {
         indicador: "Ha notado algunas reacciones del cuerpo propias de la ansiedad, como corazón acelerado, temblor o falta de aire, en un nivel leve.",
@@ -209,7 +204,6 @@ export const CONTENIDO_AREAS: Record<AreaIdContenido, ContenidoArea> = {
   // Tristeza y desgano: leve, moderado, alto, muy alto.
   dep: {
     bajo: "Su estado de ánimo de la última semana está dentro de lo esperado. Mantener las actividades que le dan gusto, el contacto con otras personas y una rutina de sueño suele ayudar a conservarlo.",
-    fortaleza: "Su estado de ánimo de la última semana está dentro de lo esperado.",
     niveles: [
       {
         indicador: "Ha tenido algunos momentos de desánimo o de menos interés en las cosas.",
@@ -267,7 +261,6 @@ export const CONTENIDO_AREAS: Record<AreaIdContenido, ContenidoArea> = {
   // Pensamientos que vuelven: elevado, alto.
   ptq: {
     bajo: "No muestra una tendencia marcada a darle vueltas a los problemas. Es una fortaleza: si alguna vez nota que los pensamientos se repiten, nombrarlos y volver a lo que está haciendo suele ayudar.",
-    fortaleza: "No muestra una tendencia marcada a darle vueltas a los problemas.",
     niveles: [
       {
         indicador: "Tiende a darle vueltas a los problemas más de lo habitual: los pensamientos se repiten y a veces cuesta desconectarse de ellos.",
@@ -301,7 +294,6 @@ export const CONTENIDO_AREAS: Record<AreaIdContenido, ContenidoArea> = {
   // Pensamientos o rituales repetitivos: moderado, alto. Pasos solo de observación.
   docs: {
     bajo: "Los pensamientos no deseados y las conductas repetitivas están en un nivel bajo. Si algún pensamiento incómodo llega, recuerde que es algo común y que un pensamiento no es un hecho.",
-    fortaleza: "Los pensamientos no deseados y las conductas repetitivas están en un nivel bajo.",
     niveles: [
       {
         indicador: "Hay pensamientos no deseados o conductas repetitivas en un nivel moderado, que ocupan algo de su tiempo.",
@@ -488,9 +480,6 @@ export const PARES_DOCS: Record<"cont" | "harm" | "unacc" | "sym", Par> = {
 
 /** Indicadores y oportunidades para la tarjeta de «Lo que está a su favor» y el cierre. */
 export const TEXTOS_GENERALES = {
-  sinceridad: "También cuenta a su favor haber respondido con sinceridad: es el punto de partida de cualquier cambio.",
-  sinFortalezas:
-    "Aunque hoy varias áreas le pesen, pedir ayuda y responder con sinceridad ya es un paso importante, y es lo que permite empezar a cambiar las cosas.",
   cierrePasos:
     "El cambio es gradual: lo que más ayuda es la práctica constante, aunque sea poca, y revisar juntos cómo le va en cada sesión.",
 } as const;

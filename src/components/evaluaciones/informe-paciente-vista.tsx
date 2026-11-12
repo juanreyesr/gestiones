@@ -36,7 +36,7 @@ export function InformePacienteVista({ informe }: { informe: InformePaciente }) 
       {informe.destacado ? (
         <section className="grid gap-1 rounded-xl border border-indigo-200 bg-indigo-50 p-4 text-indigo-950">
           <h2 className="text-lg font-semibold">{informe.destacado.titulo}</h2>
-          <p className="text-sm leading-6">{informe.destacado.texto}</p>
+          {informe.destacado.texto ? <p className="text-sm leading-6">{informe.destacado.texto}</p> : null}
         </section>
       ) : null}
 

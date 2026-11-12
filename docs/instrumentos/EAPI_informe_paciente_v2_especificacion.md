@@ -56,3 +56,7 @@ Caso: cinco áreas en «Alto» o «Muy alto», todas en rojo y cada una con «es
 3. **«Lo que está a su favor» nunca queda vacío ni suena a consuelo hueco:** si no hay áreas bajas, nombra hechos reales: respondió con sinceridad, está en un proceso con acompañamiento, y lo que marcó más bajo dentro de cada área (por ejemplo, respuestas en 0 o 1) como recursos que siguen ahí.
 4. **Con líneas de ayuda activas (riesgo marcado)**: el tono se mantiene sereno; no se usan frases como «todo va a estar bien»; se añade en «Lo más importante» una frase de que no tiene que cargar esto a solas y que puede escribirle a su psicólogo antes de la sesión.
 5. **Con riesgo marcado y el ánimo en «Para trabajar primero»**, «Tristeza y desgano» va de primera (es por donde se empieza y lleva pasos). Las áreas altas que no llevan pasos dicen que también importan y que se trabajarán en las siguientes sesiones.
+
+## v2.1 — Ajustes pedidos por el autor tras revisarlo
+- El recuadro inicial conserva SOLO el título «Lo más importante», sin texto (se elimina el párrafo «Ha sido una temporada pesada…» y todas sus variantes). La vista no debe dibujar un párrafo vacío.
+- Se elimina la tarjeta «Lo que está a su favor» (repetitiva): desaparece también de las áreas que se pueden marcar y de las opciones por defecto. Las áreas en nivel bajo siguen saliendo al final como tarjetas breves «A su favor».
