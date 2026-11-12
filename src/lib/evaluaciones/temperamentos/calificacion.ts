@@ -6,10 +6,13 @@
  * - Puntaje por temperamento: suma de sus 10 ítems (0–40) y porcentaje.
  * - Orden de mayor a menor (empates: orden fijo S, C, M, F).
  * - Tipo de perfil:
- *   · poco diferenciado: mayor − menor ≤ 5 (no se nombra temperamento dominante);
+ *   · poco diferenciado: mayor − menor ≤ 5 (se nombra igual el dominante, aclarando
+ *     que la diferencia es pequeña);
  *   · predominante: primero − segundo ≥ 8;
  *   · combinado: primero − segundo < 8 («primero-segundo»; el orden importa);
  *     si primero = segundo, «codominantes».
+ * - SIEMPRE hay temperamento dominante (el de mayor puntaje; empates S, C, M, F);
+ *   en codominantes son los dos.
  * - Tercera influencia: en un perfil combinado, si segundo − tercero ≤ 3.
  * - Dimensiones orientativas: hacia afuera = (S + C) − (M + F) y reacción
  *   intensa = (C + M) − (S + F); etiquetas ≤ −10 / −9 a 9 / ≥ 10.
@@ -42,14 +45,17 @@ export type CalificacionTemperamentos = {
   /** De mayor a menor (empates: orden fijo). */
   orden: TemperamentoId[];
   tipo: TipoPerfil;
-  /** null si el perfil es poco diferenciado (no se nombra un dominante). */
-  principal: TemperamentoId | null;
+  /** Temperamento dominante: SIEMPRE existe (también en perfil poco diferenciado). */
+  principal: TemperamentoId;
+  /** Segundo temperamento (null si el perfil es poco diferenciado: no se arma una combinación). */
   secundario: TemperamentoId | null;
+  /** Temperamento(s) dominante(s): uno, o dos si son codominantes. */
+  dominantes: TemperamentoId[];
   /** Tercera influencia (solo en perfiles combinados o codominantes). */
   tercero: TemperamentoId | null;
   /** Clave de la combinación «primero-segundo» (combinado o codominantes). */
   combinacion: ClaveCombinacion | null;
-  /** Nombre legible: «Colérico con rasgos de sanguíneo», «Predominantemente flemático», … */
+  /** Nombre legible: «Colérico con rasgos de sanguíneo», «Predominantemente flemático», «Dominante sanguíneo (perfil poco diferenciado)», … */
   perfil: string;
   /** Mayor − menor. */
   rango: number;
@@ -81,10 +87,12 @@ export function calificarTemperamentos(d: TemperamentosDatos): CalificacionTempe
 
   const enCombinacion = tipo === "combinado" || tipo === "codominantes";
   const tercero = enCombinacion && sumas[s] - sumas[t] <= 3 ? t : null;
-  const combinacion = enCombinacion ? (`${p}-${s}` as ClaveCombinacion) : null;
+  // El perfil de la mezcla se muestra también con un dominante claro si el segundo tiene presencia (≥ 16 de 40).
+  const conMezcla = enCombinacion || (tipo === "predominante" && sumas[s] >= 16);
+  const combinacion = conMezcla ? (`${p}-${s}` as ClaveCombinacion) : null;
   const perfil =
     tipo === "poco-diferenciado"
-      ? "Perfil poco diferenciado"
+      ? `Dominante ${baja(p)} (perfil poco diferenciado)`
       : tipo === "predominante"
         ? `Predominantemente ${baja(p)}`
         : tipo === "combinado"
@@ -107,33 +115,31 @@ export function calificarTemperamentos(d: TemperamentosDatos): CalificacionTempe
   else if (media <= 0.5)
     flags.push({ lvl: "warn", t: "Promedio ≤ 0,5: casi ninguna frase le resultó parecida; explorar dificultad para reconocerse, desinterés, anhedonia o respuestas al azar." });
   if (tipo === "poco-diferenciado")
-    flags.push({ lvl: "", t: `Perfil poco diferenciado (diferencia entre el puntaje más alto y el más bajo = ${rango}): se describe como equilibrado, sin temperamento dominante. Conversarlo con el paciente.` });
+    flags.push({ lvl: "", t: `Perfil poco diferenciado (diferencia entre el puntaje más alto y el más bajo = ${rango}): el dominante (${TEMPERAMENTOS_INFO[p].nombre}) se nombra, pero la diferencia con los demás es pequeña: leerlo como una tendencia suave y conversarlo con el paciente.` });
   if (tipo === "codominantes") flags.push({ lvl: "", t: `Los dos puntajes más altos son iguales (${sumas[p]}): se presentan como codominantes, en el orden fijo de la prueba.` });
   if (tercero) flags.push({ lvl: "", t: `Tercera influencia: ${TEMPERAMENTOS_INFO[tercero].nombre} (diferencia de ${sumas[s] - sumas[tercero]} con el segundo; se menciona cuando es de 3 puntos o menos).` });
   if (d.edad && d.edad < 14) flags.push({ lvl: "warn", t: `Edad ${d.edad}: el temperamento se observa mejor con información de otras personas; usar el perfil solo para conversar.` });
   const rangoLvl = { alert: 0, warn: 1, "": 2 } as const;
   flags.sort((a, b) => rangoLvl[a.lvl] - rangoLvl[b.lvl]);
 
-  const destacados =
-    tipo === "poco-diferenciado"
-      ? []
-      : [p, s].map((id) => {
-          const marcados = d.items.map((valor, i) => ({ n: i + 1, valor })).filter((x) => temperamentoDeItem(x.n) === id);
-          const con4 = marcados.filter((x) => x.valor === 4);
-          const elegidos = con4.length ? con4 : marcados.filter((x) => x.valor === 3);
-          return {
-            id,
-            nombre: TEMPERAMENTOS_INFO[id].nombre,
-            items: elegidos.map((x) => ({ n: x.n, texto: TEMPERAMENTOS_ITEMS[x.n - 1], valor: x.valor, lado: ladoDeItem(x.n) })),
-          };
-        });
+  const destacados = (tipo === "poco-diferenciado" ? [p] : [p, s]).map((id) => {
+    const marcados = d.items.map((valor, i) => ({ n: i + 1, valor })).filter((x) => temperamentoDeItem(x.n) === id);
+    const con4 = marcados.filter((x) => x.valor === 4);
+    const elegidos = con4.length ? con4 : marcados.filter((x) => x.valor === 3);
+    return {
+      id,
+      nombre: TEMPERAMENTOS_INFO[id].nombre,
+      items: elegidos.map((x) => ({ n: x.n, texto: TEMPERAMENTOS_ITEMS[x.n - 1], valor: x.valor, lado: ladoDeItem(x.n) })),
+    };
+  });
 
   return {
     temperamentos,
     orden,
     tipo,
-    principal: tipo === "poco-diferenciado" ? null : p,
+    principal: p,
     secundario: tipo === "poco-diferenciado" ? null : s,
+    dominantes: tipo === "codominantes" ? [p, s] : [p],
     tercero,
     combinacion,
     perfil,

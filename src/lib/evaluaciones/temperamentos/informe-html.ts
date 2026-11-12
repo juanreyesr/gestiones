@@ -30,13 +30,15 @@ const TIPO: Record<string, string> = {
 const lista = (l: string[]) => `<ul>${l.map((x) => `<li>${esc(x)}</li>`).join("")}</ul>`;
 const signo = (n: number) => `${n > 0 ? "+" : ""}${n}`;
 
-function bloqueTemperamento(id: TemperamentoId, titulo: string, suma: number) {
+function bloqueTemperamento(id: TemperamentoId, titulo: string, suma: number, completo = false) {
   const i = TEMPERAMENTOS_INFO[id];
   return `<div class="tipo" style="border-left-color:${COLOR[id]}"><h3>${esc(titulo)}: ${esc(i.nombre)} <small>(${suma}/40 · ${esc(i.dimensiones)})</small></h3>
 <p>${esc(i.resumen)}</p>
 <p><strong>Conducta habitual:</strong></p>${lista(i.caracteristicas)}
-<p><strong>Fortalezas:</strong></p>${lista(i.fortalezas)}
-<p><strong>Aspectos a cuidar:</strong></p>${lista(i.cuidar)}
+<p><strong>Características positivas (fortalezas):</strong></p>${lista(i.fortalezas)}
+<p><strong>Características negativas o aspectos a cuidar:</strong></p>${lista(i.cuidar)}${
+    completo ? `<p><strong>Señales a observar en sí mismo:</strong></p>${lista(i.observar)}<p><strong>Cómo aprovechar sus puntos fuertes:</strong></p>${lista(i.aprovechar)}` : ""
+  }
 <p><strong>En las relaciones:</strong> ${esc(i.relaciones)}</p>
 <p><strong>En el trabajo o el estudio:</strong> ${esc(i.trabajo)}</p>
 <p><strong>Bajo estrés:</strong> ${esc(i.estres)}</p></div>`;
@@ -44,10 +46,20 @@ function bloqueTemperamento(id: TemperamentoId, titulo: string, suma: number) {
 
 export function informeTemperamentosHtml(a: AplicacionTemperamentos, anterior?: AplicacionTemperamentos | null, notasPrivadas = "") {
   const c = calificarTemperamentos(a.datos);
+  const nombresDominantes = c.dominantes.map((id, k) => (k === 0 ? TEMPERAMENTOS_INFO[id].nombre : TEMPERAMENTOS_INFO[id].nombre.toLowerCase())).join(" y ");
   const por = Object.fromEntries(c.temperamentos.map((v) => [v.id, v])) as Record<TemperamentoId, (typeof c.temperamentos)[number]>;
   let html = `<h1>Informe · ${esc(TEMPERAMENTOS_NOMBRE_PROFESIONAL)}</h1>
 <p class="muted">Respondió: <strong>${esc(a.nombre || "—")}</strong>${a.datos.edad ? ` · Edad: ${a.datos.edad}` : ""}${a.datos.situacion ? ` · Situación: ${esc(a.datos.situacion)}` : ""} · Fecha: ${esc(fechaLarga(a.fecha))} · Calificado el ${esc(new Date().toLocaleDateString("es-GT"))}</p>
 <p class="muted">Instrumento: «Cuestionario de temperamento · versión JJ» (M. A. Juan J. Reyes), 40 afirmaciones originales (10 por temperamento: 6 del lado fuerte y 4 del lado difícil), escala 0–4. Los textos descriptivos están redactados de usted, tal como los lee el paciente en su informe.</p>
+<div class="dom"><div class="l">${c.dominantes.length > 1 ? "Temperamentos dominantes" : "Temperamento dominante"}</div><div class="n">${esc(nombresDominantes)}</div><div class="m">${
+    c.tipo === "poco-diferenciado"
+      ? "Perfil poco diferenciado: la diferencia con los demás temperamentos es pequeña; leerlo como una tendencia suave."
+      : c.tipo === "predominante"
+        ? "Perfil predominante: diferencia clara frente al segundo temperamento."
+        : c.tipo === "codominantes"
+          ? "Codominantes: los dos puntajes más altos son iguales (orden fijo de la prueba)."
+          : `Perfil combinado: ${esc(c.perfil)}.`
+  }</div></div>
 <div class="kpi">
   <div><div class="v" style="font-size:16px">${esc(c.perfil)}</div><div class="l">Perfil</div></div>
   <div><div class="v" style="font-size:16px">${esc(TIPO[c.tipo])}</div><div class="l">Tipo de perfil</div></div>
@@ -62,7 +74,7 @@ ${c.orden
   })
   .join("")}
 </tbody></table>
-<p class="muted">Orden de mayor a menor (empates: sanguíneo, colérico, melancólico, flemático). Reglas: poco diferenciado si la diferencia entre el más alto y el más bajo es ≤ 5; predominante si el primero supera al segundo en 8 o más; combinado si la diferencia es menor (el orden importa); tercera influencia si el segundo y el tercero están a 3 puntos o menos. Promedio general ${c.media.toFixed(2).replace(".", ",")} de 4.</p>
+<p class="muted">Orden de mayor a menor (empates: sanguíneo, colérico, melancólico, flemático). Reglas: poco diferenciado si la diferencia entre el más alto y el más bajo es ≤ 5 (aun así se nombra el dominante, el de mayor puntaje, aclarando que la diferencia es pequeña); predominante si el primero supera al segundo en 8 o más; combinado si la diferencia es menor (el orden importa); tercera influencia si el segundo y el tercero están a 3 puntos o menos. Promedio general ${c.media.toFixed(2).replace(".", ",")} de 4.</p>
 <h2>Observaciones</h2>
 ${c.flags.length ? c.flags.map((f) => `<div class="flag ${f.lvl === "alert" ? "alarma" : f.lvl === "warn" ? "regla" : "neutra"}"><b>${f.lvl === "alert" ? "!" : "•"}</b> ${esc(f.t)}</div>`).join("") : `<div class="flag ok">✓ Perfil interpretable sin observaciones de estilo de respuesta.</div>`}
 <h2>Dimensiones (orientativas)</h2>
@@ -72,16 +84,26 @@ ${c.flags.length ? c.flags.map((f) => `<div class="flag ${f.lvl === "alert" ? "a
 </tbody></table>
 <p class="muted">S = sanguíneo, C = colérico, M = melancólico, F = flemático. Etiquetas: ≤ −10 hacia adentro o serena; entre −9 y 9 intermedio; ≥ 10 hacia afuera o intensa. Lectura moderna de Eysenck: sanguíneo = extravertido y estable; colérico = extravertido y reactivo; melancólico = introvertido y reactivo; flemático = introvertido y estable.</p>`;
 
-  if (c.tipo === "poco-diferenciado") {
-    html += `<h2>Perfil poco diferenciado</h2><div class="tipo"><p>${esc(TEXTO_POCO_DIFERENCIADO)}</p><p class="muted">No se nombra un temperamento dominante. Las puntuaciones relativas pueden conversarse, pero no se interpretan como un tipo.</p></div>`;
-  } else {
-    html += `<h2>Temperamento principal y secundario</h2>${bloqueTemperamento(c.principal!, "Principal", por[c.principal!].suma)}${bloqueTemperamento(c.secundario!, "Secundario", por[c.secundario!].suma)}`;
-    if (c.combinacion) {
-      const comb = COMBINACIONES[c.combinacion];
-      html += `<h2>Combinación: ${esc(comb.nombre)}</h2><div class="tipo"><p>${esc(comb.texto)}</p>${
-        c.tipo === "codominantes" ? `<p class="muted">Codominantes: los dos puntajes son iguales; se presentan en el orden fijo de la prueba, sin que uno predomine.</p>` : ""
-      }${c.tercero ? `<p><strong>Tercera influencia:</strong> ${esc(TEMPERAMENTOS_INFO[c.tercero].nombre)} (${por[c.tercero].suma}/40), a ${por[c.secundario!].suma - por[c.tercero].suma} puntos del segundo: ${esc(TEMPERAMENTOS_INFO[c.tercero].resumen)}</p>` : ""}</div>`;
-    }
+  html += `<h2>${c.dominantes.length > 1 ? "Temperamentos dominantes" : "Temperamento dominante"}: ${esc(nombresDominantes)}</h2>`;
+  if (c.tipo === "poco-diferenciado")
+    html += `<div class="tipo"><p>${esc(TEXTO_POCO_DIFERENCIADO)}</p><p class="muted">Se nombra el dominante por tener el puntaje más alto, pero la diferencia con los demás es pequeña (${c.rango} puntos entre el más alto y el más bajo): se interpreta como una tendencia suave, no como un tipo. Conversarlo con el paciente.</p></div>`;
+  html += c.dominantes.map((id, k) => bloqueTemperamento(id, c.dominantes.length > 1 ? `Dominante ${k + 1}` : "Dominante", por[id].suma, true)).join("");
+  if (c.secundario && c.tipo !== "codominantes") html += `<h2>Temperamento secundario</h2>${bloqueTemperamento(c.secundario, "Secundario", por[c.secundario].suma)}`;
+  if (c.combinacion) {
+    const comb = COMBINACIONES[c.combinacion];
+    html += `<h2>Perfil combinado: ${esc(comb.nombre)}</h2><div class="tipo"><p>${esc(comb.resumen)}</p>${
+      c.tipo === "codominantes" ? `<p class="muted">Codominantes: los dos puntajes son iguales; se presentan en el orden fijo de la prueba, sin que uno predomine.</p>` : ""
+    }<p><strong>Características principales de la mezcla:</strong></p>${lista(comb.caracteristicas)}
+<p><strong>Cómo se comporta</strong></p>
+<p><em>Trato con los demás:</em> ${esc(comb.comportamiento.trato)}</p>
+<p><em>Decisiones:</em> ${esc(comb.comportamiento.decisiones)}</p>
+<p><em>Conflicto:</em> ${esc(comb.comportamiento.conflicto)}</p>
+<p><em>Trabajo:</em> ${esc(comb.comportamiento.trabajo)}</p>
+<p><strong>De qué debe cuidarse:</strong></p>${lista(comb.cuidar)}
+<p><strong>En qué ser más observador de sí mismo:</strong></p>${lista(comb.observar)}
+<p><strong>Cómo aprovechar lo positivo de su combinación:</strong></p>${lista(comb.aprovechar)}${
+      c.tercero ? `<p><strong>Tercera influencia:</strong> ${esc(TEMPERAMENTOS_INFO[c.tercero].nombre)} (${por[c.tercero].suma}/40), a ${por[c.secundario!].suma - por[c.tercero].suma} puntos del segundo: ${esc(TEMPERAMENTOS_INFO[c.tercero].resumen)}</p>` : ""
+    }</div>`;
   }
 
   html += `<h2>Estilo de respuesta</h2>${
@@ -136,6 +158,7 @@ th{font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:#64748b}tr
 .kpi{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;margin:14px 0}.kpi>div{background:#f8fafc;border-radius:8px;padding:10px}
 .kpi .v{font-size:22px;font-weight:700}.kpi .v small{font-size:12px;color:#64748b}.kpi .l{font-size:11.5px;color:#64748b}
 .tipo{border-left:4px solid #6366f1;background:#f8fafc;padding:10px 12px;margin:8px 0;border-radius:0 8px 8px 0}.tipo p{margin:4px 0}.tipo ul{margin:2px 0 6px;padding-left:20px}
+.dom{border:2px solid #4f46e5;background:#eef2ff;border-radius:10px;padding:10px 14px;margin:12px 0}.dom .l{font-size:11.5px;text-transform:uppercase;letter-spacing:.05em;color:#4f46e5;font-weight:700}.dom .n{font-size:22px;font-weight:700}.dom .m{font-size:12.5px;color:#475569}
 .cita{white-space:pre-wrap;background:#f8fafc;padding:10px;border-radius:8px}.aviso{margin-top:24px;padding-top:10px;border-top:1px solid #e2e8f0;font-size:11.5px;color:#64748b}
 @media print{body{padding:0}h2{break-after:avoid}tr,.flag,.tipo{break-inside:avoid}*{-webkit-print-color-adjust:exact;print-color-adjust:exact}}
 </style></head><body>${html}</body></html>`;
