@@ -10,7 +10,8 @@ import type {
   ResultadoPaciente,
   TonoResultado,
 } from "../informe-paciente";
-import { calificarEapi, evolucionEapi, type CalificacionEapi, type EapiDatos, type Tendencia } from "./calificacion";
+import { calificarEapi, evolucionEapi, DASS_SUB, PTQ_SUB, type CalificacionEapi, type EapiDatos, type Tendencia } from "./calificacion";
+import { CONTENIDO_AREAS, PARES_DASS, PARES_DOCS, PARES_GAD, PARES_PTQ, TEXTOS_GENERALES, type Par } from "./contenido-paciente";
 import { DASS21, DOCS, EAPI_LINEAS_AYUDA, EAPI_TITULO_PACIENTE, GAD7, PTQ } from "./escalas";
 
 const fechaCorta = (iso: string) => {
@@ -25,6 +26,11 @@ const formatoFecha = (iso: string) => {
   return new Date(a, m - 1, d).toLocaleDateString("es-GT", { day: "numeric", month: "long", year: "numeric" });
 };
 
+/** Tarjetas nuevas (ids estables; cada una se puede quitar). «Lo que está a su favor» va antes de las áreas y «Sus próximos pasos», al final. */
+const AREA_AFAVOR = { id: "afavor", nombre: "Lo que está a su favor" } as const;
+const AREA_CONEXION = { id: "conexion", nombre: "Cómo se conectan sus resultados" } as const;
+const AREA_PASOS = { id: "pasos", nombre: "Sus próximos pasos" } as const;
+
 export const AREAS_EAPI = [
   { id: "gad", nombre: "Preocupación y ansiedad" },
   { id: "str", nombre: "Estrés y ansiedad" },
@@ -36,46 +42,6 @@ export const AREAS_EAPI = [
 
 const NIVELES_DASS = ["Dentro de lo esperado", "Leve", "Moderado", "Alto", "Muy alto"];
 const TONOS_DASS: TonoResultado[] = ["bien", "leve", "atencion", "alto", "alto"];
-
-const TEXTOS = {
-  gad: [
-    "En las últimas dos semanas casi no ha tenido preocupación ni nerviosismo.",
-    "Ha tenido algo de preocupación o nerviosismo, en un nivel leve.",
-    "La preocupación y el nerviosismo han estado presentes con frecuencia y pueden estar afectando su bienestar. Es un buen punto para trabajar en sesión.",
-    "La preocupación y el nerviosismo han estado presentes casi todos los días y con intensidad. Es una prioridad que trabajaremos juntos.",
-  ],
-  str: [
-    "Su nivel de tensión de la última semana está dentro de lo esperado.",
-    "Ha sentido algo de tensión o irritabilidad, en un nivel leve.",
-    "La tensión, la dificultad para relajarse o la irritabilidad han estado presentes de forma moderada.",
-    "Ha sentido mucha tensión y le ha costado relajarse. Conviene trabajar en formas de recuperar la calma.",
-    "La tensión ha sido muy intensa en la última semana. Es una prioridad para la próxima sesión.",
-  ],
-  anx: [
-    "Las reacciones físicas de ansiedad (corazón acelerado, falta de aire, temblor) están dentro de lo esperado.",
-    "Ha tenido algunas reacciones físicas de ansiedad, en un nivel leve.",
-    "Las reacciones físicas de ansiedad se han presentado de forma moderada.",
-    "Las reacciones físicas de ansiedad han sido frecuentes e intensas. Las revisaremos en sesión.",
-    "Las reacciones físicas de ansiedad han sido muy intensas en la última semana. Es una prioridad para la próxima sesión.",
-  ],
-  dep: [
-    "Su estado de ánimo de la última semana está dentro de lo esperado.",
-    "Ha tenido algunos momentos de desánimo, en un nivel leve.",
-    "El desánimo o la falta de interés se han presentado de forma moderada.",
-    "El desánimo ha sido frecuente e intenso. Es importante conversarlo en sesión.",
-    "El desánimo ha sido muy intenso en la última semana. Es una prioridad para la próxima sesión.",
-  ],
-  ptq: [
-    "Su forma de pensar en los problemas no muestra una tendencia marcada a darles vueltas.",
-    "Tiende a darle vueltas a los problemas más de lo habitual; los pensamientos se repiten y cuesta desconectarse de ellos.",
-    "Los pensamientos repetitivos sobre los problemas son muy frecuentes y absorben su atención. Trabajaremos estrategias para manejarlos.",
-  ],
-  docs: [
-    "Los pensamientos no deseados y las conductas para neutralizarlos están en un nivel bajo.",
-    "Hay pensamientos no deseados o conductas repetitivas en un nivel moderado. Los exploraremos en sesión.",
-    "Los pensamientos no deseados y las conductas para neutralizarlos ocupan tiempo y causan malestar. Es un tema importante para trabajar.",
-  ],
-};
 
 type AreaId = "gad" | "str" | "anx" | "dep" | "ptq" | "docs";
 const ID_ESCALA: Record<AreaId, string> = { gad: "gad", str: "dass-str", anx: "dass-anx", dep: "dass-dep", ptq: "ptq", docs: "docs" };
@@ -127,14 +93,21 @@ const textoItem = (m: string, n: number) =>
 
 /** Áreas que corresponden a los módulos aplicados (y «Su evolución» si hay con qué comparar). */
 export function areasEapi(datos: EapiDatos, conEvolucion = false) {
+  const conexion = cargaAlta(calificarEapi(datos), ORDEN_AREAS.filter((id) => nivelArea(calificarEapi(datos), id)));
   const hay = { gad: !!datos.gad, str: !!datos.dass, anx: !!datos.dass, dep: !!datos.dass, ptq: !!datos.ptq, docs: !!datos.docs };
-  return [...(conEvolucion ? [{ id: "evolucion", nombre: "Su evolución (comparación con evaluaciones anteriores)" }] : []), ...AREAS_EAPI.filter((a) => hay[a.id])];
+  return [
+    ...(conEvolucion ? [{ id: "evolucion", nombre: "Su evolución (comparación con evaluaciones anteriores)" }] : []),
+    AREA_AFAVOR,
+    ...(conexion ? [AREA_CONEXION] : []),
+    ...AREAS_EAPI.filter((a) => hay[a.id]),
+    AREA_PASOS,
+  ];
 }
 
 export function opcionesPorDefectoEapi(datos: EapiDatos): OpcionesInforme {
   const hayRiesgo = datos.safety >= 1 || (datos.dass?.[9] ?? 0) >= 2 || (datos.dass?.[20] ?? 0) >= 2;
   return {
-    incluir: { evolucion: true, gad: true, str: true, anx: true, dep: true, ptq: true, docs: true },
+    incluir: { evolucion: true, afavor: true, conexion: true, pasos: true, gad: true, str: true, anx: true, dep: true, ptq: true, docs: true },
     mostrarPuntuaciones: false,
     incluirAyuda: hayRiesgo,
   };
@@ -226,6 +199,107 @@ export function evolucionPacienteEapi(
   };
 }
 
+/** Subtítulo dentro de una tarjeta: línea propia terminada en «:». */
+const subtitulo = (t: string) => `${t.replace(/[:.]+$/, "")}:`;
+const vinetas = (l: string[]) => l.map((x) => `• ${x}`).join("\n");
+const numerados = (l: string[]) => l.map((x, i) => `${i + 1}. ${x}`).join("\n");
+
+/**
+ * Prioridad de trabajo (no gravedad) con que se rotula cada área en las tarjetas:
+ * «Para trabajar primero» = el nivel más alto (los dos más altos en el DASS-21); «Para trabajar» =
+ * intermedio; «Para cuidar» = leve; «A su favor» = bajo. Ningún tono rojo.
+ * La tabla de evolución conserva los niveles y colores de nivelArea.
+ */
+function prioridadArea(id: AreaId, i: number): { nivel: string; tono: TonoResultado; primero: boolean } {
+  const maxI = id === "gad" ? 3 : id === "ptq" || id === "docs" ? 2 : 4;
+  if (i === 0) return { nivel: "A su favor", tono: "bien", primero: false };
+  // En las escalas de 5 niveles (DASS-21) cuentan los dos más altos; en las de 3 o 4, solo el más alto.
+  if (i >= (maxI === 4 ? 3 : maxI)) return { nivel: "Para trabajar primero", tono: "atencion", primero: true };
+  if (i === 1 && maxI > 2) return { nivel: "Para cuidar", tono: "leve", primero: false };
+  return { nivel: "Para trabajar", tono: "atencion", primero: false };
+}
+
+/** Carga alta: 3 o más áreas en «Para trabajar primero». */
+function cargaAlta(c: CalificacionEapi, ids: AreaId[]) {
+  return ids.filter((id) => prioridadArea(id, nivelArea(c, id)!.i).primero).length >= 3;
+}
+
+/** Posición de un nivel en su escala, de 0 (bajo) a 1 (el más alto), para ordenar áreas con distinto número de niveles. */
+const gradoArea = (n: NonNullable<ReturnType<typeof nivelArea>>, id: AreaId) => n.i / (id === "gad" ? 3 : id === "ptq" || id === "docs" ? 2 : 4);
+
+/**
+ * Hasta 3 respuestas más altas del área (≥ 2 en las escalas 0–3; ≥ 3 en las 0–4),
+ * convertidas en pares «indicador → oportunidad». Sin los ítems sensibles
+ * (DASS-21 10 y 21 no tienen par). PTQ y DOCS se agrupan por subescala o categoría.
+ */
+function marcados(datos: EapiDatos, id: AreaId): Par[] {
+  const cand: { v: number; k: number; par: Par }[] = [];
+  if (id === "gad" && datos.gad) {
+    datos.gad.forEach((v, i) => v >= 2 && PARES_GAD[i] && cand.push({ v, k: i, par: PARES_GAD[i] }));
+  } else if ((id === "str" || id === "anx" || id === "dep") && datos.dass) {
+    for (const n of DASS_SUB[id].items) {
+      const par = PARES_DASS[n];
+      const v = datos.dass[n - 1] ?? 0;
+      if (par && v >= 2) cand.push({ v, k: n, par });
+    }
+  } else if (id === "ptq" && datos.ptq) {
+    datos.ptq.forEach((v, i) => {
+      if (v < 3) return;
+      const sub = (Object.keys(PTQ_SUB) as (keyof typeof PTQ_SUB)[]).find((k) => (PTQ_SUB[k].items as readonly number[]).includes(i + 1));
+      if (sub) cand.push({ v, k: i, par: PARES_PTQ[sub] });
+    });
+  } else if (id === "docs" && datos.docs) {
+    datos.docs.forEach((v, i) => v >= 3 && cand.push({ v, k: i, par: PARES_DOCS[DOCS[Math.floor(i / 5)].id as keyof typeof PARES_DOCS] }));
+  }
+  cand.sort((a, b) => b.v - a.v || a.k - b.k);
+  const vistos = new Set<string>();
+  const res: Par[] = [];
+  for (const c of cand) {
+    if (vistos.has(c.par.indicador)) continue;
+    vistos.add(c.par.indicador);
+    res.push(c.par);
+    if (res.length === 3) break;
+  }
+  return res;
+}
+
+/** Respuesta más baja (0 o 1) de cada área, como recurso que sigue ahí (para «Lo que está a su favor» cuando no hay áreas bajas). */
+function recurso(datos: EapiDatos, id: AreaId): string | null {
+  const cand: { v: number; k: number; par: Par }[] = [];
+  if (id === "gad" && datos.gad) datos.gad.forEach((v, i) => v <= 1 && cand.push({ v, k: i, par: PARES_GAD[i] }));
+  else if ((id === "str" || id === "anx" || id === "dep") && datos.dass)
+    for (const n of DASS_SUB[id].items) if (PARES_DASS[n] && (datos.dass[n - 1] ?? 0) <= 1) cand.push({ v: datos.dass[n - 1] ?? 0, k: n, par: PARES_DASS[n] });
+  if (id === "ptq" && datos.ptq)
+    datos.ptq.forEach((v, i) => {
+      const sub = (Object.keys(PTQ_SUB) as (keyof typeof PTQ_SUB)[]).find((k) => (PTQ_SUB[k].items as readonly number[]).includes(i + 1));
+      if (v <= 1 && sub) cand.push({ v, k: i, par: PARES_PTQ[sub] });
+    });
+  if (id === "docs" && datos.docs)
+    datos.docs.forEach((v, i) => v <= 1 && cand.push({ v, k: i, par: PARES_DOCS[DOCS[Math.floor(i / 5)].id as keyof typeof PARES_DOCS] }));
+  cand.sort((a, b) => a.v - b.v || a.k - b.k);
+  return cand.length ? `En ${NOMBRE_AREA[id].toLowerCase()}, algo que casi no le ha pasado: «${cand[0].par.indicador}». Eso también cuenta.` : null;
+}
+
+/** Texto de una tarjeta de área: indicador → lo que más marcó → por qué pasa → oportunidad → pasos → lo que haremos juntos. */
+function textoArea(datos: EapiDatos, id: AreaId, i: number, conPasos = true, soloUnoDos = false): string {
+  const contenido = CONTENIDO_AREAS[id];
+  if (i === 0) return contenido.bajo;
+  const n = contenido.niveles[i - 1];
+  const m = marcados(datos, id);
+  const partes = [`${subtitulo("Lo que muestran sus respuestas")}\n${n.indicador}`];
+  if (m.length) partes.push(`${subtitulo("Lo que más marcó")}\n${vinetas(m.map((x) => `${x.indicador}.`))}`);
+  partes.push(`${subtitulo("Por qué pasa")}\n${n.porQue}`);
+  partes.push(`${subtitulo("Su oportunidad de cambio")}\n${n.oportunidad}`);
+  if (m.length) partes.push(`En lo que más marcó, la oportunidad está en:\n${vinetas(m.map((x) => x.oportunidad.replace(/\.$/, "") + "."))}`);
+  if (conPasos) {
+    partes.push(`${subtitulo("Para empezar esta semana")}\n${vinetas(soloUnoDos ? n.pasos.slice(0, 2) : n.pasos)}`);
+    partes.push(`${subtitulo("Lo que trabajaremos juntos")}\n${n.juntos}`);
+  } else {
+    partes.push(`${subtitulo("Lo iremos trabajando después de lo primero")}\nEsta área también importa. Para no cargarle todo a la vez, empezaremos por lo primero y la iremos trabajando juntos en las siguientes sesiones.`);
+  }
+  return partes.join("\n\n");
+}
+
 export function informePacienteEapi(
   datos: EapiDatos,
   opciones: OpcionesInforme,
@@ -248,21 +322,100 @@ export function informePacienteEapi(
     empeora: "ha aumentado; lo revisaremos con atención",
   };
   const incluir = (id: string) => opciones.incluir[id] !== false;
-  const resultados: ResultadoPaciente[] = [];
   const presentes = ORDEN_AREAS.filter((id) => nivelArea(c, id));
-  for (const id of presentes) {
-    if (!incluir(id)) continue;
+  const incluidas = presentes.filter(incluir);
+  // De mayor a menor nivel (el más alto primero; las de nivel bajo, al final). Empates: mayor puntuación y orden habitual.
+  const hayRiesgo = datos.safety >= 1 || (datos.dass?.[9] ?? 0) >= 2 || (datos.dass?.[20] ?? 0) >= 2;
+  const ordenadas = [...incluidas].sort((a, b) => {
+    const na = nivelArea(c, a)!;
+    const nb = nivelArea(c, b)!;
+    // Con riesgo marcado y el ánimo en nivel alto, «Tristeza y desgano» va primero: es por donde se empieza.
+    const urgente = (id: AreaId) => Number(id === "dep" && hayRiesgo && prioridadArea(id, nivelArea(c, id)!.i).primero);
+    return urgente(b) - urgente(a) || gradoArea(nb, b) - gradoArea(na, a) || nb.valor / nb.max - na.valor / na.max || ORDEN_AREAS.indexOf(a) - ORDEN_AREAS.indexOf(b);
+  });
+  const conAtencion = ordenadas.filter((id) => nivelArea(c, id)!.i >= 1);
+  const bajas = ordenadas.filter((id) => nivelArea(c, id)!.i === 0);
+  const mejoraron = ordenadas.filter((id) => ev?.escalas.find((x) => x.id === ID_ESCALA[id])?.tendencia === "mejora");
+  const prioridad = (id: AreaId) => prioridadArea(id, nivelArea(c, id)!.i);
+  const altas = ordenadas.filter((id) => prioridad(id).primero);
+  const carga = altas.length >= 3;
+  /** En carga alta solo las dos áreas más altas llevan «Para empezar esta semana». */
+  const conPasos = new Set<AreaId>(carga ? altas.slice(0, 2) : ordenadas);
+
+  const resultados: ResultadoPaciente[] = [];
+
+  if (incluir("afavor")) {
+    const partes: string[] = [];
+    if (bajas.length) partes.push(`${subtitulo("Sus respuestas muestran fortalezas reales")}\n${vinetas(bajas.map((id) => CONTENIDO_AREAS[id].fortaleza))}`);
+    else {
+      const recursos = ordenadas.map((id) => recurso(datos, id)).filter((x): x is string => !!x).slice(0, 4);
+      partes.push(
+        `${subtitulo("Hechos reales que siguen ahí")}\n${vinetas(["Respondió con sinceridad, y eso no es fácil.", "Está en un proceso con acompañamiento: no está a solas en esto.", ...recursos])}`
+      );
+    }
+    if (mejoraron.length && extra.anterior)
+      partes.push(`${subtitulo(`Desde su evaluación del ${formatoFecha(extra.anterior.fecha)} mejoró`)}\n${vinetas(mejoraron.map((id) => NOMBRE_AREA[id]))}`);
+    partes.push(bajas.length || mejoraron.length ? TEXTOS_GENERALES.sinceridad : TEXTOS_GENERALES.sinFortalezas);
+    resultados.push({ area: "Lo que está a su favor", periodo: "Lo que ya tiene", nivel: "A su favor", tono: "bien", texto: partes.join("\n\n") });
+  }
+
+  if (carga && incluir("conexion")) {
+    const tiene = (...ids: AreaId[]) => altas.some((id) => ids.includes(id));
+    const nombres = [tiene("gad") && "la preocupación", tiene("str", "anx") && "la tensión del cuerpo", tiene("ptq") && "los pensamientos que vuelven", tiene("dep") && "el desánimo"].filter(
+      (x): x is string => !!x
+    );
+    const lista = nombres.length > 1 ? `${nombres.slice(0, -1).join(", ")} y ${nombres[nombres.length - 1]}` : nombres[0] ?? "varias áreas";
+    const cadena = [
+      tiene("gad", "ptq") && "Preocuparse y darle vueltas a los pensamientos mantiene al cuerpo tenso.",
+      tiene("str", "anx") && "Un cuerpo tenso descansa y duerme peor.",
+      "El cansancio baja el ánimo.",
+      tiene("dep") && "Con el ánimo bajo se hace menos y se piensa más, y el círculo vuelve a empezar.",
+    ].filter((x): x is string => !!x);
+    resultados.push({
+      area: "Cómo se conectan sus resultados",
+      periodo: "Todo junto",
+      nivel: "Para entender",
+      tono: "leve",
+      texto: `En sus respuestas destacan ${lista}. Es frecuente que estas áreas aparezcan juntas, porque se alimentan entre sí, como un círculo:\n\n${vinetas(cadena)}\n\nPor eso mejorar un punto del círculo suele aliviar los demás. No hace falta resolverlo todo a la vez: lo trabajaremos por partes, empezando por una.`.replace("círculo:\n\n•", "círculo:\n•"),
+    });
+  }
+
+  for (const id of ordenadas) {
     const n = nivelArea(c, id)!;
     const e = ev?.escalas.find((x) => x.id === ID_ESCALA[id]);
+    const pr = prioridad(id);
     resultados.push({
       area: NOMBRE_AREA[id],
       periodo: PERIODO[id],
-      nivel: n.nivel,
-      tono: n.tono,
-      texto: TEXTOS[id][n.i] + (e && extra.anterior ? `\n\nComparado con su evaluación del ${formatoFecha(extra.anterior.fecha)}: ${FRASE[e.tendencia]}.` : ""),
+      nivel: pr.nivel,
+      tono: pr.tono,
+      texto: textoArea(datos, id, n.i, conPasos.has(id), carga) + (e && extra.anterior ? `\n\nComparado con su evaluación del ${formatoFecha(extra.anterior.fecha)}: ${FRASE[e.tendencia]}.` : ""),
       puntuacion: opciones.mostrarPuntuaciones ? `${n.valor} de ${n.max}` : undefined,
     });
   }
+
+  // Próximos pasos: hasta 3 (máximo 2 en carga alta, con el más sencillo primero), el primer paso de las áreas con mayor nivel.
+  const pasos: string[] = [];
+  const lista = (id: AreaId) => CONTENIDO_AREAS[id].niveles[nivelArea(c, id)!.i - 1].pasos;
+  const tope = carga ? 2 : 3;
+  if (conAtencion.length) {
+    for (const id of conAtencion.slice(0, tope)) pasos.push(lista(id)[0]);
+    for (let k = 1; pasos.length < tope && k < 3; k++) {
+      const extraPaso = lista(conAtencion[0])[k];
+      if (extraPaso && !pasos.includes(extraPaso)) pasos.push(extraPaso);
+    }
+    if (carga) pasos.sort((x, y) => x.length - y.length);
+  }
+  if (incluir("pasos") && pasos.length) {
+    resultados.push({
+      area: "Sus próximos pasos",
+      periodo: "Para empezar",
+      nivel: "Su plan",
+      tono: "leve",
+      texto: `${subtitulo("Pasos pequeños para empezar")}\n${numerados(pasos.slice(0, tope))}\n\n${TEXTOS_GENERALES.cierrePasos}`,
+    });
+  }
+
   const evolucion =
     extra.anterior && incluir("evolucion")
       ? evolucionPacienteEapi(
@@ -273,6 +426,27 @@ export function informePacienteEapi(
         )
       : null;
 
+  // «Lo más importante»: primero lo que va bien, luego dónde está la mayor oportunidad.
+  const primero = bajas.length
+    ? `Sus respuestas muestran aspectos que van bien: ${bajas.slice(0, 3).map((id) => NOMBRE_AREA[id].toLowerCase()).join(", ")}.`
+    : "Haber pedido ayuda y responder con sinceridad ya es un paso importante.";
+  let textoDestacado: string;
+  if (carga) {
+    const dos = altas.slice(0, 2).map((id) => NOMBRE_AREA[id].toLowerCase());
+    textoDestacado = `Ha sido una temporada pesada en varias áreas a la vez, y eso suele ir junto. Se trabaja por partes, empezando por una: ${dos[0]}, y después ${dos[1]}. ${
+      bajas.length ? primero : "Haber respondido con sinceridad ya es un buen punto de partida."
+    }`;
+  } else {
+    const segundo = conAtencion.length
+      ? `La mayor oportunidad de cambio está en ${NOMBRE_AREA[conAtencion[0]].toLowerCase()}: es algo que se puede trabajar y que, con práctica, tiende a mejorar.`
+      : "Por ahora no hay áreas que pidan atención especial; lo importante es mantener lo que le funciona.";
+    const tercero = conAtencion.length
+      ? "Más abajo encontrará, área por área, qué muestran sus respuestas, por qué pasa y por dónde empezar."
+      : "Más abajo encontrará el detalle de cada área.";
+    textoDestacado = `${primero} ${segundo} ${tercero}`;
+  }
+  if (opciones.incluirAyuda) textoDestacado += " No tiene que cargar esto a solas: puede escribirle a su psicólogo antes de la sesión.";
+
   return {
     v: 1,
     titulo: `Resultados de su evaluación · ${EAPI_TITULO_PACIENTE}`,
@@ -282,6 +456,7 @@ export function informePacienteEapi(
     profesional: extra.profesional,
     intro:
       "Este informe resume, en palabras sencillas, sus respuestas al cuestionario. Los resultados son orientativos: ayudan a conocer cómo ha estado y a seguir su avance a lo largo del proceso, pero no son un diagnóstico. Los conversaremos en sesión.",
+    destacado: { titulo: "Lo más importante", texto: textoDestacado },
     evolucion: evolucion ?? undefined,
     resultados,
     notas: extra.notas.trim(),
