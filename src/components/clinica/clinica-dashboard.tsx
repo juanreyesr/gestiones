@@ -9,12 +9,13 @@ import {
   fetchCitasSinCerrar,
   fetchCitasSinPagar,
   fetchCobradasDelMes,
+  fetchProximasCitas,
 } from "@/lib/clinica/citas";
 import { totalPorMoneda } from "@/lib/clinica/dinero";
 import { syncCitaConGoogle } from "@/lib/clinica/google-client";
 import { formatoFechaHora, formatoHora } from "@/lib/clinica/slots";
 import type { CitaEstado, CitaRow, PacienteRow } from "@/lib/clinica/types";
-import { MotivoEstadoModal } from "./agenda-view";
+import { CitaDetalleModal, MotivoEstadoModal } from "./agenda-view";
 import { MontoCita, PagadaCheckbox } from "./pagos";
 import { CitaBadge, EmptyState, Metric, SectionCard } from "./ui";
 
@@ -27,7 +28,8 @@ export function ClinicaDashboard({
 }: {
   onIrAPacientes: () => void;
   onIrASolicitudes: () => void;
-  onOpenPaciente: (pacienteId: string) => void;
+  /** Abre el expediente; con `iniciarCitaId` inicia (o continúa) de una vez la sesión de esa cita. */
+  onOpenPaciente: (pacienteId: string, iniciarCitaId?: string) => void;
   pacientes: PacienteRow[];
   solicitudesPendientes: number;
 }) {
@@ -36,7 +38,9 @@ export function ClinicaDashboard({
   const [sinCerrar, setSinCerrar] = useState<CitaRow[]>([]);
   const [cobradasMes, setCobradasMes] = useState<CitaRow[]>([]);
   const [error, setError] = useState("");
-  const [cancelarCita, setCancelarCita] = useState<CitaRow | null>(null);
+  const [motivoCita, setMotivoCita] = useState<{ cita: CitaRow; estado: "cancelada" | "no_asistio" } | null>(null);
+  const [detalle, setDetalle] = useState<CitaRow | null>(null);
+  const [proximas, setProximas] = useState<CitaRow[]>([]);
   const agendaRef = useRef<HTMLDivElement>(null);
   const pagosRef = useRef<HTMLDivElement>(null);
 
@@ -50,8 +54,10 @@ export function ClinicaDashboard({
     const finDia = new Date(inicioDia);
     finDia.setDate(finDia.getDate() + 1);
 
-    const [citasRes, sinPagarRes, sinCerrarRes, cobradasRes] = await Promise.all([
+    const [citasRes, proximasRes, sinPagarRes, sinCerrarRes, cobradasRes] = await Promise.all([
       fetchCitas(inicioDia.toISOString(), finDia.toISOString()),
+      // Las siguientes a partir de mañana (las de hoy ya están arriba).
+      fetchProximasCitas(finDia.toISOString(), 5),
       fetchCitasSinPagar(),
       fetchCitasSinCerrar(),
       fetchCobradasDelMes(),
@@ -63,6 +69,7 @@ export function ClinicaDashboard({
     }
     setError("");
     setCitasHoy(citasRes.data);
+    setProximas(proximasRes.data);
     setSinPagar(sinPagarRes.data);
     setSinCerrar(sinCerrarRes.data);
     setCobradasMes(cobradasRes.data);
@@ -111,16 +118,90 @@ export function ClinicaDashboard({
     void cargar();
   };
 
+  /** Fila de una cita: al tocarla se abre su detalle (estado, pago, recordatorio, cuentas e iniciar sesión). */
+  const filaCita = (cita: CitaRow, conFecha: boolean) => {
+    const nombre = cita.pacienteNombre ?? cita.contactoNombre ?? "Sin nombre";
+    const conPago = cita.estado !== "cancelada" && cita.estado !== "no_asistio";
+    return (
+      <div key={cita.id} className="flex flex-wrap items-center justify-between gap-3 border border-white/10 bg-white/4 p-3">
+        <button className="group min-w-0 text-left" data-testid="fila-cita" onClick={() => setDetalle(cita)} title="Ver la cita" type="button">
+          <span className="flex items-center gap-1 text-sm font-semibold text-white group-hover:text-emerald-200">
+            {conFecha ? formatoFechaHora(cita.inicio) : formatoHora(cita.inicio)} · {nombre}
+            <ChevronRight className="h-4 w-4 text-emerald-300" />
+          </span>
+          {cita.motivo ? <span className="mt-0.5 block truncate text-xs text-slate-400">{cita.motivo}</span> : null}
+        </button>
+        <div className="flex flex-wrap items-center gap-2">
+          <CitaBadge estado={cita.estado} />
+          {conPago && !conFecha ? <PagadaCheckbox key={`${cita.id}-${cita.pagada}`} cita={cita} onChanged={() => void cargar()} /> : null}
+          {!conFecha && (cita.estado === "pendiente" || cita.estado === "confirmada") ? (
+            <button
+              aria-label="Marcar cancelada"
+              className="flex items-center gap-1 border border-white/15 bg-white/8 px-2 py-1.5 text-xs font-semibold text-slate-300 transition hover:border-red-300/40 hover:text-red-200"
+              onClick={() => setMotivoCita({ cita, estado: "cancelada" })}
+              title="Marcar cancelada (con nota opcional)"
+              type="button"
+            >
+              <X className="h-4 w-4" />
+              Cancelada
+            </button>
+          ) : null}
+          {!conFecha && cita.estado === "confirmada" ? (
+            <button
+              aria-label="Marcar completada"
+              className="border border-sky-300/40 bg-sky-300/10 p-1.5 text-sky-200 transition hover:bg-sky-300/20"
+              onClick={() => handleCompletar(cita)}
+              title="Marcar completada"
+              type="button"
+            >
+              <Check className="h-4 w-4" />
+            </button>
+          ) : null}
+        </div>
+      </div>
+    );
+  };
+
+  const contactoDe = (cita: CitaRow) => {
+    const paciente = cita.pacienteId ? pacientes.find((p) => p.id === cita.pacienteId) : null;
+    return {
+      telefono: paciente?.telefono ?? cita.contactoTelefono,
+      email: paciente?.email ?? cita.contactoEmail,
+      nombre: paciente?.nombre ?? cita.contactoNombre,
+      pais: paciente?.pais ?? null,
+      zonaHoraria: paciente?.zonaHoraria ?? null,
+    };
+  };
+
   return (
     <div className="grid gap-5">
-      {cancelarCita ? (
+      {detalle ? (
+        <CitaDetalleModal
+          cita={detalle}
+          contacto={contactoDe(detalle)}
+          googleConectado
+          onAbrirExpediente={() => onOpenPaciente(detalle.pacienteId as string)}
+          onCambiarEstado={(estado) => {
+            if (estado === "cancelada" || estado === "no_asistio") setMotivoCita({ cita: detalle, estado });
+            else void cerrarCita(detalle, estado);
+            setDetalle(null);
+          }}
+          onCerrar={() => setDetalle(null)}
+          onIniciarSesion={() => onOpenPaciente(detalle.pacienteId as string, detalle.id)}
+          onPagoCambiado={() => {
+            setDetalle(null);
+            void cargar();
+          }}
+        />
+      ) : null}
+      {motivoCita ? (
         <MotivoEstadoModal
-          estado="cancelada"
-          onCancelar={() => setCancelarCita(null)}
+          estado={motivoCita.estado}
+          onCancelar={() => setMotivoCita(null)}
           onConfirmar={(nota) => {
-            const cita = cancelarCita;
-            setCancelarCita(null);
-            void cerrarCita(cita, "cancelada", nota);
+            const { cita, estado } = motivoCita;
+            setMotivoCita(null);
+            void cerrarCita(cita, estado, nota);
           }}
         />
       ) : null}
@@ -221,105 +302,24 @@ export function ClinicaDashboard({
         </div>
       ) : null}
 
-      <SectionCard title={`Cobros de ${new Intl.DateTimeFormat("es-GT", { month: "long" }).format(new Date())}`}>
-        <div className="grid gap-3 sm:grid-cols-3">
-          <div>
-            <div className="text-xs font-semibold uppercase text-slate-400">Cobrado este mes</div>
-            <div className="mt-1 text-xl font-semibold text-emerald-200">{totalPorMoneda(cobradasMes.map((c) => ({ monto: c.montoPagado ?? c.monto, moneda: c.moneda })))}</div>
-            <div className="text-xs text-slate-500">
-              {cobradasMes.length === 1 ? "1 cita pagada" : `${cobradasMes.length} citas pagadas`}
-            </div>
-          </div>
-          <button className="text-left" onClick={() => irA(pagosRef)} type="button">
-            <div className="text-xs font-semibold uppercase text-slate-400">Por cobrar</div>
-            <div className="mt-1 text-xl font-semibold text-amber-200">{totalPorMoneda(sinPagar)}</div>
-            <div className="text-xs text-slate-500">
-              {sinPagar.length === 1 ? "1 cita sin pagar" : `${sinPagar.length} citas sin pagar`}
-            </div>
-          </button>
-          <div>
-            <div className="text-xs font-semibold uppercase text-slate-400">Sin monto</div>
-            <div className="mt-1 text-xl font-semibold text-white">{sinMonto}</div>
-            <div className="text-xs text-slate-500">
-              {sinMonto > 0 ? "define la tarifa en el expediente del paciente" : "todas las citas tienen monto"}
-            </div>
-          </div>
-        </div>
-      </SectionCard>
-
       <div className="grid gap-4 xl:grid-cols-2">
         <div className="scroll-mt-4" ref={agendaRef}>
           <SectionCard title="Agenda de hoy">
             {citasHoy.length === 0 ? (
               <EmptyState>No tienes citas programadas para hoy.</EmptyState>
             ) : (
-              <div className="grid gap-2">
-                {citasHoy.map((cita) => {
-                  const nombre = cita.pacienteNombre ?? cita.contactoNombre ?? "Sin nombre";
-                  const conPago = cita.estado !== "cancelada" && cita.estado !== "no_asistio";
-                  return (
-                    <div
-                      key={cita.id}
-                      className="flex flex-wrap items-center justify-between gap-3 border border-white/10 bg-white/4 p-3"
-                    >
-                      {cita.pacienteId ? (
-                        <button
-                          className="group min-w-0 text-left"
-                          onClick={() => onOpenPaciente(cita.pacienteId as string)}
-                          title="Abrir expediente y sesión"
-                          type="button"
-                        >
-                          <span className="flex items-center gap-1 text-sm font-semibold text-white group-hover:text-emerald-200">
-                            {formatoHora(cita.inicio)} · {nombre}
-                            <ChevronRight className="h-4 w-4 text-emerald-300" />
-                          </span>
-                          {cita.motivo ? (
-                            <span className="mt-0.5 block truncate text-xs text-slate-400">{cita.motivo}</span>
-                          ) : null}
-                        </button>
-                      ) : (
-                        <div className="min-w-0">
-                          <div className="text-sm font-semibold text-white">
-                            {formatoHora(cita.inicio)} · {nombre}
-                          </div>
-                          {cita.motivo ? <div className="mt-0.5 truncate text-xs text-slate-400">{cita.motivo}</div> : null}
-                        </div>
-                      )}
-                      <div className="flex flex-wrap items-center gap-2">
-                        <CitaBadge estado={cita.estado} />
-                        {conPago ? (
-                          <PagadaCheckbox key={`${cita.id}-${cita.pagada}`} cita={cita} onChanged={() => void cargar()} />
-                        ) : null}
-                        {cita.estado === "pendiente" || cita.estado === "confirmada" ? (
-                          <button
-                            aria-label="Marcar cancelada"
-                            className="flex items-center gap-1 border border-white/15 bg-white/8 px-2 py-1.5 text-xs font-semibold text-slate-300 transition hover:border-red-300/40 hover:text-red-200"
-                            onClick={() => setCancelarCita(cita)}
-                            title="Marcar cancelada (con nota opcional)"
-                            type="button"
-                          >
-                            <X className="h-4 w-4" />
-                            Cancelada
-                          </button>
-                        ) : null}
-                        {cita.estado === "confirmada" ? (
-                          <button
-                            aria-label="Marcar completada"
-                            className="border border-sky-300/40 bg-sky-300/10 p-1.5 text-sky-200 transition hover:bg-sky-300/20"
-                            onClick={() => handleCompletar(cita)}
-                            title="Marcar completada"
-                            type="button"
-                          >
-                            <Check className="h-4 w-4" />
-                          </button>
-                        ) : null}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
+              <div className="grid gap-2">{citasHoy.map((cita) => filaCita(cita, false))}</div>
             )}
           </SectionCard>
+          <div className="mt-4">
+            <SectionCard title="Próximos 5 pacientes">
+              {proximas.length === 0 ? (
+                <EmptyState>No hay más citas agendadas.</EmptyState>
+              ) : (
+                <div className="grid gap-2" data-testid="proximos-pacientes">{proximas.map((cita) => filaCita(cita, true))}</div>
+              )}
+            </SectionCard>
+          </div>
         </div>
 
         <div className="scroll-mt-4" ref={pagosRef}>
@@ -363,6 +363,32 @@ export function ClinicaDashboard({
           </SectionCard>
         </div>
       </div>
+
+      <SectionCard title={`Cobros de ${new Intl.DateTimeFormat("es-GT", { month: "long" }).format(new Date())}`}>
+        <div className="grid gap-3 sm:grid-cols-3">
+          <div>
+            <div className="text-xs font-semibold uppercase text-slate-400">Cobrado este mes</div>
+            <div className="mt-1 text-xl font-semibold text-emerald-200">{totalPorMoneda(cobradasMes.map((c) => ({ monto: c.montoPagado ?? c.monto, moneda: c.moneda })))}</div>
+            <div className="text-xs text-slate-500">
+              {cobradasMes.length === 1 ? "1 cita pagada" : `${cobradasMes.length} citas pagadas`}
+            </div>
+          </div>
+          <button className="text-left" onClick={() => irA(pagosRef)} type="button">
+            <div className="text-xs font-semibold uppercase text-slate-400">Por cobrar</div>
+            <div className="mt-1 text-xl font-semibold text-amber-200">{totalPorMoneda(sinPagar)}</div>
+            <div className="text-xs text-slate-500">
+              {sinPagar.length === 1 ? "1 cita sin pagar" : `${sinPagar.length} citas sin pagar`}
+            </div>
+          </button>
+          <div>
+            <div className="text-xs font-semibold uppercase text-slate-400">Sin monto</div>
+            <div className="mt-1 text-xl font-semibold text-white">{sinMonto}</div>
+            <div className="text-xs text-slate-500">
+              {sinMonto > 0 ? "define la tarifa en el expediente del paciente" : "todas las citas tienen monto"}
+            </div>
+          </div>
+        </div>
+      </SectionCard>
     </div>
   );
 }

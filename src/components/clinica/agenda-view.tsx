@@ -7,14 +7,17 @@ import {
   ChevronLeft,
   ChevronRight,
   ExternalLink,
+  Landmark,
   ListTodo,
   Mail,
   Pencil,
+  Play,
   Send,
   Trash2,
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { cambiarEstadoCita, eliminarCita, fetchCitas } from "@/lib/clinica/citas";
+import { enlaceCuentasWhatsApp } from "@/lib/clinica/cuentas-bancarias";
 import { buildGoogleTemplateLink, fetchGoogleBusy, syncCitaConGoogle, type BusyBlock } from "@/lib/clinica/google-client";
 import { buildRecordatorio } from "@/lib/clinica/recordatorio";
 import { fetchEstadoWhatsAppCita, type EstadoWhatsAppCita } from "@/lib/clinica/whatsapp-estado";
@@ -114,7 +117,7 @@ function EstadoRecordatorioWhatsApp({ citaId }: { citaId: string }) {
   );
 }
 
-function CitaDetalleModal({
+export function CitaDetalleModal({
   cita,
   contacto,
   googleConectado,
@@ -122,6 +125,8 @@ function CitaDetalleModal({
   onCerrar,
   onEditar,
   onEliminar,
+  onAbrirExpediente,
+  onIniciarSesion,
   onPagoCambiado,
 }: {
   cita: CitaRow;
@@ -129,8 +134,11 @@ function CitaDetalleModal({
   googleConectado: boolean;
   onCambiarEstado: (estado: CitaEstado) => void;
   onCerrar: () => void;
-  onEditar: () => void;
-  onEliminar: () => void;
+  onEditar?: () => void;
+  onEliminar?: () => void;
+  onAbrirExpediente?: () => void;
+  /** Acceso directo: abre el expediente e inicia (o continúa) la sesión ligada a esta cita. */
+  onIniciarSesion?: () => void;
   onPagoCambiado: () => void;
 }) {
   const nombre = cita.pacienteNombre ?? cita.contactoNombre ?? "Sin nombre";
@@ -179,6 +187,18 @@ function CitaDetalleModal({
               <div className="text-xs text-amber-300">No se pudo sincronizar con Google Calendar</div>
             ) : null}
           </div>
+
+          {onIniciarSesion && activa && cita.pacienteId ? (
+            <button
+              className="mt-4 inline-flex w-full items-center justify-center gap-2 border border-emerald-300/60 bg-emerald-300/15 px-4 py-2.5 text-sm font-bold text-emerald-100 transition hover:bg-emerald-300/25"
+              data-testid="iniciar-sesion-cita"
+              onClick={onIniciarSesion}
+              type="button"
+            >
+              <Play className="h-4 w-4" />
+              Iniciar sesión
+            </button>
+          ) : null}
 
           {activa ? (
             <div className="mt-4 flex flex-wrap gap-2">
@@ -242,20 +262,45 @@ function CitaDetalleModal({
             </div>
           ) : null}
 
-          <div className="mt-4 flex flex-wrap items-center justify-between gap-2 border-t border-white/10 pt-4">
-            <div className="flex gap-2">
-              <button className={BTN_GHOST} onClick={onEditar} type="button">
-                <Pencil className="h-4 w-4" />
-                Editar
-              </button>
-              <button
-                className="inline-flex items-center gap-2 border border-red-400/40 bg-red-400/10 px-4 py-2 text-sm font-semibold text-red-200 transition hover:border-red-300"
-                onClick={onEliminar}
-                type="button"
+          {cita.estado !== "cancelada" ? (
+            <div className="mt-4 border-t border-white/10 pt-4">
+              <div className="mb-2 text-xs font-semibold uppercase text-slate-400">Pago por transferencia</div>
+              <a
+                className="inline-flex items-center gap-1.5 border border-amber-300/40 bg-amber-300/10 px-3 py-1.5 text-sm font-semibold text-amber-100 transition hover:bg-amber-300/20"
+                data-testid="enviar-cuentas"
+                href={enlaceCuentasWhatsApp(contacto.nombre ?? nombre, contacto.telefono, contacto.pais)}
+                rel="noreferrer"
+                target="_blank"
               >
-                <Trash2 className="h-4 w-4" />
-                Eliminar
-              </button>
+                <Landmark className="h-4 w-4" />
+                Enviar números de cuenta
+              </a>
+            </div>
+          ) : null}
+
+          <div className="mt-4 flex flex-wrap items-center justify-between gap-2 border-t border-white/10 pt-4">
+            <div className="flex flex-wrap gap-2">
+              {onAbrirExpediente && cita.pacienteId ? (
+                <button className={BTN_GHOST} onClick={onAbrirExpediente} type="button">
+                  Abrir expediente
+                </button>
+              ) : null}
+              {onEditar ? (
+                <button className={BTN_GHOST} onClick={onEditar} type="button">
+                  <Pencil className="h-4 w-4" />
+                  Editar
+                </button>
+              ) : null}
+              {onEliminar ? (
+                <button
+                  className="inline-flex items-center gap-2 border border-red-400/40 bg-red-400/10 px-4 py-2 text-sm font-semibold text-red-200 transition hover:border-red-300"
+                  onClick={onEliminar}
+                  type="button"
+                >
+                  <Trash2 className="h-4 w-4" />
+                  Eliminar
+                </button>
+              ) : null}
             </div>
             {!googleConectado ? (
               <a
