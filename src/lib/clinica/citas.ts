@@ -288,3 +288,18 @@ export async function fetchCitasDePaciente(pacienteId: string, limite = 60) {
   if (error) return { data: [] as CitaRow[], error: error.message };
   return { data: ((data ?? []) as unknown as RawCita[]).map(mapCita), error: null };
 }
+
+/** Próximas citas activas (pendientes o confirmadas) a partir de una fecha, en orden. */
+export async function fetchProximasCitas(desdeIso: string, limite = 5) {
+  const supabase = getSupabaseClient();
+  if (!supabase) return { data: [] as CitaRow[], error: "Faltan las variables de Supabase." };
+  const { data, error } = await supabase
+    .from("gestionesjj_citas")
+    .select(CITA_COLUMNS)
+    .gte("inicio", desdeIso)
+    .in("estado", ["pendiente", "confirmada"])
+    .order("inicio")
+    .limit(limite);
+  if (error) return { data: [] as CitaRow[], error: error.message };
+  return { data: ((data ?? []) as unknown as RawCita[]).map(mapCita), error: null };
+}

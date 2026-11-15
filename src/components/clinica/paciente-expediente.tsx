@@ -19,7 +19,7 @@ import {
   ShieldCheck,
   Mail,
 } from "lucide-react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { fetchCitasPorIds, fetchCitasSinPagar, fetchProximaCitaDePaciente } from "@/lib/clinica/citas";
 import { fetchCompromisosPendientes } from "@/lib/clinica/compromisos";
 import {
@@ -76,10 +76,13 @@ function DatoFicha({ label, value }: { label: string; value: string | null }) {
 }
 
 export function PacienteExpediente({
+  iniciarCitaId,
   onDatosGuardados,
   onVolver,
   pacienteId,
 }: {
+  /** Acceso directo desde la agenda: al cargar, inicia (o continúa) la sesión de esta cita. */
+  iniciarCitaId?: string;
   onDatosGuardados: () => void;
   onVolver: () => void;
   pacienteId: string;
@@ -169,6 +172,16 @@ export function PacienteExpediente({
     await cargar();
     setVista("sesion");
   };
+
+  // Acceso directo «Iniciar sesión» desde la agenda: una sola vez, cuando ya cargó el expediente.
+  const autoIniciado = useRef(false);
+  useEffect(() => {
+    if (!iniciarCitaId || autoIniciado.current || loading || !paciente) return;
+    autoIniciado.current = true;
+    const cita = proximaCita?.id === iniciarCitaId ? proximaCita : ({ id: iniciarCitaId } as CitaRow);
+    void handleIniciarSesion(cita);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- solo al terminar la primera carga
+  }, [iniciarCitaId, loading, paciente]);
 
   const handleCopiarEnlaceDatos = async () => {
     if (!paciente) return;

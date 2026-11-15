@@ -19,7 +19,7 @@ import { SolicitudesView } from "./solicitudes-view";
 import { BTN_GHOST } from "./ui";
 
 type ClinicaTab = "dashboard" | "pacientes" | "agenda" | "solicitudes" | "configuracion";
-type PacientesScreen = { view: "lista" } | { view: "nuevo" } | { view: "expediente"; pacienteId: string };
+type PacientesScreen = { view: "lista" } | { view: "nuevo" } | { view: "expediente"; pacienteId: string; iniciarCitaId?: string };
 
 function ClinicaTabs({
   onChange,
@@ -95,8 +95,8 @@ export function ClinicaView() {
     void cargarBadge();
   }, [cargarPacientes, cargarBadge]);
 
-  const openPaciente = (pacienteId: string) => {
-    setPacientesScreen({ view: "expediente", pacienteId });
+  const openPaciente = (pacienteId: string, iniciarCitaId?: string) => {
+    setPacientesScreen({ view: "expediente", pacienteId, iniciarCitaId });
     setTab("pacientes");
   };
 
@@ -160,6 +160,8 @@ export function ClinicaView() {
               setPacientesScreen({ view: "lista" });
               void cargarPacientes();
             }}
+            iniciarCitaId={pacientesScreen.iniciarCitaId}
+            key={`${pacientesScreen.pacienteId}-${pacientesScreen.iniciarCitaId ?? ""}`}
             pacienteId={pacientesScreen.pacienteId}
           />
         )
