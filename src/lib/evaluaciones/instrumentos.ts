@@ -72,12 +72,12 @@ export const INSTRUMENTOS: readonly Instrumento[] = [
   },
   {
     id: "temperamentos",
-    nombre: "Test de temperamentos (sanguíneo, colérico, melancólico y flemático)",
+    nombre: "Test de características comportamentales JJR",
     descripcion:
-      "Instrumento propio y orientativo (sin baremos): 40 afirmaciones (10 por temperamento, escala 0–4), 8 a 10 min. Puntaje por temperamento, tipo de perfil (predominante, combinado, codominantes o poco diferenciado), tercera influencia, dimensiones (hacia afuera y reacción intensa), estilo de respuesta, ítems destacados, implicaciones para la terapia, seguimiento e informe para enviar al paciente. Desde 14 años.",
+      "Instrumento propio y orientativo (sin baremos): 40 afirmaciones (10 por estilo, escala 0–4), 8 a 10 min. Cuatro estilos con nombres modernos (sociable y entusiasta, decidido y enérgico, reflexivo y sensible, sereno y constante; la clasificación clásica de los temperamentos queda como referencia entre paréntesis). Puntaje por estilo, tipo de perfil (predominante, combinado, codominantes o poco diferenciado), tercera influencia, dimensiones (hacia afuera y reacción intensa), estilo de respuesta, ítems destacados, implicaciones para la terapia, seguimiento e informe para enviar al paciente. Desde 14 años.",
     responde: "paciente",
     respuestasPorDefecto: 1,
-    tituloPublico: "Cuestionario de temperamento · versión JJ",
+    tituloPublico: "Test de características comportamentales JJR",
     informePaciente: true,
     edadMinima: 14,
   },

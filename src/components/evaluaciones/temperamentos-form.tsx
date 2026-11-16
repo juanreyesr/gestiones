@@ -25,7 +25,7 @@ import {
 } from "./formulario-comun";
 
 // Importante: este formulario NO importa la calificación ni el contenido
-// interpretativo: quien responde no ve puntuaciones ni nombres de temperamentos.
+// interpretativo: quien responde no ve puntuaciones ni nombres de estilos.
 // Los ítems se guardan en el orden en que se muestran (ítem n = posición n).
 
 export function TemperamentosForm({ borradorInicial, codigoCaso, token }: { borradorInicial: TemperamentosBorrador | null; codigoCaso: string; token: string }) {

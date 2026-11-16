@@ -1,19 +1,20 @@
 /**
- * Cuestionario de temperamento · versión JJ. Instrumento propio y orientativo
+ * Test de características comportamentales JJR. Instrumento propio y orientativo
  * (sin baremos) basado en la tipología clásica de los cuatro temperamentos
  * (Hipócrates y Galeno), leída hoy en dos dimensiones: hacia afuera o hacia
- * adentro, y reacción serena o intensa (Eysenck).
+ * adentro, y reacción serena o intensa (Eysenck). Se presenta con nombres
+ * modernos (v1.2); la clasificación clásica queda solo como referencia.
  *
- * 40 afirmaciones originales (10 por temperamento: 6 del lado fuerte y 4 del
- * lado difícil), escala 0–4. Las frases no nombran ningún temperamento.
+ * 40 afirmaciones originales (10 por estilo: 6 del lado fuerte y 4 del
+ * lado difícil), escala 0–4. Las frases no nombran ningún estilo.
  *
  * Sin calificación ni interpretación: este archivo lo usa el formulario de
  * quien responde. Los textos interpretativos están en contenido.ts y
  * calificacion.ts (solo panel del psicólogo).
  */
 
-export const TEMPERAMENTOS_TITULO_PACIENTE = "Cuestionario de temperamento · versión JJ";
-export const TEMPERAMENTOS_NOMBRE_PROFESIONAL = "Test de temperamentos (sanguíneo, colérico, melancólico y flemático)";
+export const TEMPERAMENTOS_TITULO_PACIENTE = "Test de características comportamentales JJR";
+export const TEMPERAMENTOS_NOMBRE_PROFESIONAL = "Test de características comportamentales JJR";
 
 export const TEMPERAMENTOS_INTRO =
   "Este cuestionario describe su manera habitual de ser, la que muestra la mayor parte del tiempo. Lea cada frase y marque qué tanto se parece a usted. Piense en cómo es realmente, no en cómo le gustaría ser ni en lo que otras personas esperan de usted. No hay respuestas buenas ni malas: todas las formas de ser tienen valor. Conteste todas las frases.";
@@ -23,7 +24,7 @@ export const TEMPERAMENTOS_TIEMPO = "Tiempo aproximado: 8 a 10 minutos. Puede ce
 export const TEMPERAMENTOS_ESCALA = ["Nada parecido a mí", "Poco", "Algo", "Bastante", "Muy parecido a mí"] as const;
 export const TEMPERAMENTOS_PREGUNTA_ESCALA = "¿Qué tanto se parece a usted esta frase?";
 
-/** Identificadores neutros (el nombre de cada temperamento no se muestra a quien responde). */
+/** Identificadores neutros (el nombre de cada estilo no se muestra a quien responde). */
 export type TemperamentoId = "S" | "C" | "M" | "F";
 /** Orden fijo: también es el de desempate y el de presentación de los ítems. */
 export const TEMPERAMENTOS_IDS: readonly TemperamentoId[] = ["S", "C", "M", "F"];
@@ -88,7 +89,7 @@ export const TEMPERAMENTOS_ITEMS: readonly string[] = [
   "Las personas me buscan porque saben que no las voy a juzgar con dureza.",
 ];
 
-/** Temperamento al que pertenece el ítem n (1–40) según su posición intercalada. */
+/** Estilo al que pertenece el ítem n (1–40) según su posición intercalada. */
 export const temperamentoDeItem = (n: number): TemperamentoId => TEMPERAMENTOS_IDS[(n - 1) % 4];
 
 export const TEMPERAMENTOS_SITUACION = ["Estudiando", "Estudiando y trabajando", "Trabajando", "Buscando empleo", "Otra"] as const;

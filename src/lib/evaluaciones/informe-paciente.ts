@@ -104,7 +104,7 @@ export function leerInformePaciente(valor: unknown): InformePaciente | null {
       .map((r) => ({
         area: s(r.area, 120),
         periodo: s(r.periodo, 80),
-        nivel: s(r.nivel, 60),
+        nivel: s(r.nivel, 120),
         tono: tonos.includes(r.tono as TonoResultado) ? (r.tono as TonoResultado) : "leve",
         texto: s(r.texto, 4000),
         puntuacion: typeof r.puntuacion === "string" ? s(r.puntuacion, 60) : undefined,
