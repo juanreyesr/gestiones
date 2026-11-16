@@ -14,7 +14,7 @@ import { Field } from "./ui";
 
 const fechaDe = (r: EvaluacionRespuestaRow) => r.fecha ?? r.createdAt.slice(0, 10);
 
-/** Datos del cuestionario de temperamento de una respuesta guardada (null si no es válida). */
+/** Datos del Test de características comportamentales JJR de una respuesta guardada (null si no es válida). */
 export function datosTemperamentos(r: EvaluacionRespuestaRow) {
   const v = validarTemperamentos(r.datos);
   return v.ok ? v.datos : null;
@@ -66,7 +66,7 @@ export function InformeTemperamentos({
         </Field>
       ) : null}
       <NotasPrivadas onCambio={setNotasPrivadas} pacienteId={paciente.id} respuestaId={actual.id} />
-      <InformeFrame html={html} textoBoton="Descargar PDF (informe profesional)" titulo="Informe de temperamento" />
+      <InformeFrame html={html} textoBoton="Descargar PDF (informe profesional)" titulo="Informe de características comportamentales" />
       <InformePacientePanel
         areas={AREAS_TEMPERAMENTOS}
         conAyuda={false}
@@ -78,7 +78,7 @@ export function InformeTemperamentos({
             profesional: PROFESIONAL_INFORME,
           })
         }
-        descripcion="Abre con su temperamento dominante, una gráfica de los cuatro y tarjetas con aspectos positivos y a cuidar, su perfil combinado (cómo se comporta, de qué cuidarse, en qué ser más observador, cómo aprovechar sus puntos fuertes), relaciones, trabajo o estudio, estrés e ideas para crecer. Sin observaciones clínicas ni puntajes (a menos que los incluyas). Elige qué tarjetas incluir, agrega tus comentarios y envíaselo."
+        descripcion="Abre con su estilo dominante, una gráfica de los cuatro y tarjetas con aspectos positivos y a cuidar, su perfil combinado (cómo se comporta, de qué cuidarse, en qué ser más observador, cómo aprovechar sus puntos fuertes), relaciones, trabajo o estudio, estrés e ideas para crecer. Sin observaciones clínicas ni puntajes (a menos que los incluyas). Elige qué tarjetas incluir, agrega tus comentarios y envíaselo."
         opcionesPorDefecto={opcionesPorDefectoTemperamentos()}
         paciente={paciente}
         placeholderNotas="Ej. Su forma de ser tiene mucho valor porque… Para el trabajo, le sugiero… En la próxima sesión revisaremos…"

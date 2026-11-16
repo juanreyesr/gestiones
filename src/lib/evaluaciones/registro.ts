@@ -249,8 +249,8 @@ export const REGISTRO: Record<string, DefinicionInstrumento> = {
     },
   },
   temperamentos: {
-    sigla: "TEMP",
-    nombreCorto: () => "Temperamentos",
+    sigla: "CC-JJR",
+    nombreCorto: () => "Características comportamentales",
     opcionesPublicas: sinOpciones,
     avance: (b) => avanceTemperamentos(limpiarBorradorTemperamentos(b)),
     opcionesNueva: copiarOpciones,
@@ -259,7 +259,7 @@ export const REGISTRO: Record<string, DefinicionInstrumento> = {
       if (!d) return null;
       const c = calificarTemperamentos(d);
       return {
-        puntuaciones: [`Perfil: ${c.perfil}`, `Puntajes (0–40): ${c.orden.map((id) => `${c.temperamentos.find((t) => t.id === id)!.nombre} ${c.temperamentos.find((t) => t.id === id)!.suma}`).join(", ")}`],
+        puntuaciones: [`Perfil: ${c.perfil}`, `Puntajes (0–40): ${c.orden.map((id) => `${c.temperamentos.find((t) => t.id === id)!.etiqueta} ${c.temperamentos.find((t) => t.id === id)!.suma}`).join(", ")}`],
         alertas: [],
         insignia: c.perfil,
         alarma: false,
@@ -271,7 +271,7 @@ export const REGISTRO: Record<string, DefinicionInstrumento> = {
       const c = calificarTemperamentos(d);
       return {
         puntos: [],
-        hito: { tipo: "temperamentos", titulo: `Temperamento: ${c.perfil}`, detalle: c.temperamentos.map((t) => `${t.nombre} ${t.suma}`).join(" · ") },
+        hito: { tipo: "temperamentos", titulo: `Estilo: ${c.perfil}`, detalle: c.temperamentos.map((t) => `${t.etiqueta} ${t.suma}`).join(" · ") },
       };
     },
   },

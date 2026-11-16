@@ -1,15 +1,23 @@
 /**
- * Cuestionario de temperamento · versión JJ: contenido interpretativo (texto
+ * Test de características comportamentales JJR: contenido interpretativo (texto
  * original). SOLO panel del psicólogo y servidor: el formulario público NO debe
  * importar este archivo (quien responde no ve nombres ni interpretaciones).
  *
  * Los textos están redactados de usted, tal como los lee el paciente en su
  * informe; el informe profesional los reproduce con esa misma redacción.
+ *
+ * v1.2 · Nombres modernos: cada estilo se presenta con su nombre moderno
+ * (`nombre`) y la clasificación clásica queda solo como referencia entre
+ * paréntesis (`clasico`). En los textos interpretativos no se nombra el tipo con
+ * la palabra clásica: se usa el nombre moderno o «su lado decidido», etc.
  */
 import type { TemperamentoId } from "./escalas";
 
 export type InfoTemperamento = {
+  /** Nombre moderno del estilo («Decidido y enérgico»). */
   nombre: string;
+  /** Nombre en la clasificación clásica, en minúscula («colérico»); solo como referencia entre paréntesis. */
+  clasico: string;
   /** Lectura en dos dimensiones (extraversión y estabilidad emocional). */
   dimensiones: string;
   resumen: string;
@@ -30,10 +38,11 @@ export type InfoTemperamento = {
 
 export const TEMPERAMENTOS_INFO: Record<TemperamentoId, InfoTemperamento> = {
   S: {
-    nombre: "Sanguíneo",
+    nombre: "Sociable y entusiasta",
+    clasico: "sanguíneo",
     dimensiones: "Hacia afuera y de reacción serena (extravertido y estable).",
     resumen:
-      "Su manera de vivir se dirige hacia afuera: se acerca a las personas con naturalidad, contagia entusiasmo y suele ver el lado luminoso de las situaciones. Reacciona con serenidad ante lo que pasa y su ánimo cambia con rapidez, lo que le permite recuperarse pronto de los tropiezos. Aprende y se activa en contacto con la gente, y los espacios compartidos suelen ser donde mejor se siente. Su punto delicado es la constancia: cuando una tarea deja de ser novedosa, le cuesta sostener el esfuerzo y a veces promete más de lo que puede cumplir. Bien encauzado, su temperamento es una fuente de ánimo para usted y para quienes lo rodean.",
+      "Su manera de vivir se dirige hacia afuera: se acerca a las personas con naturalidad, contagia entusiasmo y suele ver el lado luminoso de las situaciones. Reacciona con serenidad ante lo que pasa y su ánimo cambia con rapidez, lo que le permite recuperarse pronto de los tropiezos. Aprende y se activa en contacto con la gente, y los espacios compartidos suelen ser donde mejor se siente. Su punto delicado es la constancia: cuando una tarea deja de ser novedosa, le cuesta sostener el esfuerzo y a veces promete más de lo que puede cumplir. Bien encauzado, su manera de ser es una fuente de ánimo para usted y para quienes lo rodean.",
     caracteristicas: [
       "Se relaciona con facilidad y disfruta estar acompañado.",
       "Expresa abiertamente lo que siente y lo que piensa.",
@@ -103,7 +112,8 @@ export const TEMPERAMENTOS_INFO: Record<TemperamentoId, InfoTemperamento> = {
     },
   },
   C: {
-    nombre: "Colérico",
+    nombre: "Decidido y enérgico",
+    clasico: "colérico",
     dimensiones: "Hacia afuera y de reacción intensa (extravertido y reactivo).",
     resumen:
       "Su energía se dirige hacia afuera con determinación: le gusta tener metas claras, actuar y ver resultados. Reacciona con intensidad y rapidez ante los problemas, lo que le da fuerza para enfrentarlos y para decidir cuando otros dudan. Suele asumir la dirección de un grupo casi sin proponérselo, porque transmite seguridad y sentido práctico. Su punto delicado es la impaciencia: la lentitud, los rodeos o los errores ajenos pueden sacarlo de balance y llevarlo a un tono más duro del que quisiera. Cuando aprende a escuchar y a reconocer a los demás, su fuerza se convierte en un liderazgo en el que otros confían.",
@@ -176,10 +186,11 @@ export const TEMPERAMENTOS_INFO: Record<TemperamentoId, InfoTemperamento> = {
     },
   },
   M: {
-    nombre: "Melancólico",
+    nombre: "Reflexivo y sensible",
+    clasico: "melancólico",
     dimensiones: "Hacia adentro y de reacción intensa (introvertido y reactivo).",
     resumen:
-      "Su vida se orienta hacia adentro: piensa con profundidad, observa los detalles y se toma en serio lo que hace y lo que siente. Percibe con intensidad las emociones, las suyas y las de otros, lo que le da sensibilidad, lealtad y un cuidado especial por la calidad. Prefiere preparar con tiempo, anticipar dificultades y hacer las cosas bien antes que rápido. Su punto delicado es la exigencia: tiende a criticarse con dureza, a recordar sus errores durante mucho tiempo y a preocuparse por lo que podría salir mal. Cuando se trata con la misma comprensión que ofrece a los demás, su temperamento aporta hondura, rigor y constancia.",
+      "Su vida se orienta hacia adentro: piensa con profundidad, observa los detalles y se toma en serio lo que hace y lo que siente. Percibe con intensidad las emociones, las suyas y las de otros, lo que le da sensibilidad, lealtad y un cuidado especial por la calidad. Prefiere preparar con tiempo, anticipar dificultades y hacer las cosas bien antes que rápido. Su punto delicado es la exigencia: tiende a criticarse con dureza, a recordar sus errores durante mucho tiempo y a preocuparse por lo que podría salir mal. Cuando se trata con la misma comprensión que ofrece a los demás, su forma de ser aporta hondura, rigor y constancia.",
     caracteristicas: [
       "Reflexiona antes de actuar y prefiere tener un plan.",
       "Se fija en los detalles y en la calidad de lo que hace.",
@@ -250,7 +261,8 @@ export const TEMPERAMENTOS_INFO: Record<TemperamentoId, InfoTemperamento> = {
     },
   },
   F: {
-    nombre: "Flemático",
+    nombre: "Sereno y constante",
+    clasico: "flemático",
     dimensiones: "Hacia adentro y de reacción serena (introvertido y estable).",
     resumen:
       "Su manera de ser se dirige hacia adentro con una calma natural: mantiene la serenidad cuando otros se alteran, avanza con paciencia y cuida la armonía con quienes lo rodean. Reacciona con moderación, escucha sin apuro y rara vez se deja arrastrar por el enojo o la prisa. Su estabilidad es un apoyo para su familia, sus amistades y su equipo, que saben que pueden contar con usted. Su punto delicado es la iniciativa: a veces posterga, cede para evitar el conflicto y se queda callado con lo que piensa o necesita. Cuando se anima a proponer y a poner límites, su calma se convierte en una fuerza silenciosa, pero muy firme.",
@@ -325,13 +337,30 @@ export const TEMPERAMENTOS_INFO: Record<TemperamentoId, InfoTemperamento> = {
   },
 };
 
+/** «Decidido y enérgico (colérico)»: nombre moderno con su referencia clásica (gráficas, tablas, perfiles). */
+export const nombreConClasico = (id: TemperamentoId) => `${TEMPERAMENTOS_INFO[id].nombre} (${TEMPERAMENTOS_INFO[id].clasico})`;
+
+/** Nombre moderno en minúscula, para frases («decidido y enérgico»). */
+export const nombreBajo = (id: TemperamentoId) => TEMPERAMENTOS_INFO[id].nombre.toLowerCase();
+
+/**
+ * Uno o dos estilos con su referencia clásica entre paréntesis.
+ * Uno: «Decidido y enérgico (colérico)»; dos: «Sociable y entusiasta, y decidido y enérgico (sanguíneo y colérico)».
+ * `sufijo` se agrega dentro del paréntesis (p. ej. « en la clasificación clásica», para la primera mención).
+ */
+export function nombresConClasico(ids: TemperamentoId[], sufijo = ""): string {
+  const [a, b] = ids;
+  if (!b) return `${TEMPERAMENTOS_INFO[a].nombre} (${TEMPERAMENTOS_INFO[a].clasico}${sufijo})`;
+  return `${TEMPERAMENTOS_INFO[a].nombre}, y ${nombreBajo(b)} (${TEMPERAMENTOS_INFO[a].clasico} y ${TEMPERAMENTOS_INFO[b].clasico}${sufijo})`;
+}
+
 type Distinto<A extends TemperamentoId> = Exclude<TemperamentoId, A>;
 export type ClaveCombinacion = { [A in TemperamentoId]: `${A}-${Distinto<A>}` }[TemperamentoId];
 
 /** Perfil propio de una combinación «principal-secundario» (la personalidad ya mezclada). */
 export type PerfilCombinado = {
   nombre: string;
-  /** 3–4 frases: qué aporta el segundo temperamento y cuál es la tensión interna. */
+  /** 3–4 frases: qué aporta el segundo estilo y cuál es la tensión interna. */
   resumen: string;
   /** 6–7 rasgos principales de la mezcla. */
   caracteristicas: string[];
@@ -345,12 +374,12 @@ export type PerfilCombinado = {
   aprovechar: string[];
 };
 
-/** Las 12 combinaciones (el orden importa: «colérico-sanguíneo» no es «sanguíneo-colérico»). */
+/** Las 12 combinaciones (el orden importa: «decidido y enérgico, con rasgos de sociable y entusiasta» no es «sociable y entusiasta, con rasgos de decidido y enérgico»). */
 export const COMBINACIONES: Record<ClaveCombinacion, PerfilCombinado> = {
   "S-C": {
-    nombre: "Sanguíneo-colérico",
+    nombre: "Sociable y entusiasta, con rasgos de decidido y enérgico (sanguíneo-colérico)",
     resumen:
-      "Su sociabilidad y su buen ánimo van acompañados de determinación: entusiasma a la gente y además la pone en movimiento. El colérico le aporta dirección, firmeza y ganas de resultados, así que sus ideas rara vez se quedan en el aire. La tensión interna está entre querer agradar a todos y querer marcar el paso, entre la ligereza del momento y la prisa por cumplir metas. Cuando ambas fuerzas se coordinan, anima y organiza al mismo tiempo.",
+      "Su sociabilidad y su buen ánimo van acompañados de determinación: entusiasma a la gente y además la pone en movimiento. Su lado decidido le aporta dirección, firmeza y ganas de resultados, así que sus ideas rara vez se quedan en el aire. La tensión interna está entre querer agradar a todos y querer marcar el paso, entre la ligereza del momento y la prisa por cumplir metas. Cuando ambas fuerzas se coordinan, anima y organiza al mismo tiempo.",
     caracteristicas: [
       "Llega a los grupos con energía y pronto se vuelve el centro de la conversación o quien propone qué hacer.",
       "Convierte el entusiasmo en acción: no solo imagina un plan, empieza a moverlo.",
@@ -364,7 +393,7 @@ export const COMBINACIONES: Record<ClaveCombinacion, PerfilCombinado> = {
       trato:
         "Su trato es abierto, cálido y expresivo: hace sentir bienvenidas a las personas y tiene siempre un gesto o una broma cercana. Al mismo tiempo toma la palabra con facilidad y puede marcar el rumbo de la conversación sin darse cuenta. Quienes lo conocen poco lo ven carismático; quienes lo conocen más saben que espera que lo sigan.",
       decisiones:
-        "Decide rápido y por intuición: se guía por el entusiasmo y por la sensación de oportunidad, y el colérico le da la firmeza para comprometerse sin vueltas. Rara vez espera más datos. El riesgo es que decida antes de medir los costos o de consultar a quienes se verán afectados.",
+        "Decide rápido y por intuición: se guía por el entusiasmo y por la sensación de oportunidad, y su lado decidido le da la firmeza para comprometerse sin vueltas. Rara vez espera más datos. El riesgo es que decida antes de medir los costos o de consultar a quienes se verán afectados.",
       conflicto:
         "Ante un desacuerdo, primero intenta resolverlo con simpatía y humor; si no resulta, sube el tono con rapidez y puede decir cosas fuertes en el calor del momento. Después quiere reconciliarse pronto y se sorprende de que la otra persona siga dolida. Le ayuda reconocer el daño en lugar de pasar la página enseguida.",
       trabajo:
@@ -392,9 +421,9 @@ export const COMBINACIONES: Record<ClaveCombinacion, PerfilCombinado> = {
     ],
   },
   "S-M": {
-    nombre: "Sanguíneo-melancólico",
+    nombre: "Sociable y entusiasta, con rasgos de reflexivo y sensible (sanguíneo-melancólico)",
     resumen:
-      "Su calidez y su entusiasmo conviven con una vida interior más honda y sensible: alegra a un grupo y, a solas, repasa lo que dijo o lo que sintió. El melancólico le aporta cuidado, reflexión y empatía, de modo que su simpatía suele ser sincera y atenta. La tensión está entre mostrar buen ánimo hacia afuera y guardar preocupaciones o tristezas por dentro, y entre el deseo de espontaneidad y la autoexigencia. Cuando ambos lados dialogan, su sociabilidad gana profundidad.",
+      "Su calidez y su entusiasmo conviven con una vida interior más honda y sensible: alegra a un grupo y, a solas, repasa lo que dijo o lo que sintió. Su lado reflexivo le aporta cuidado, profundidad y empatía, de modo que su simpatía suele ser sincera y atenta. La tensión está entre mostrar buen ánimo hacia afuera y guardar preocupaciones o tristezas por dentro, y entre el deseo de espontaneidad y la autoexigencia. Cuando ambos lados dialogan, su sociabilidad gana profundidad.",
     caracteristicas: [
       "Es sociable y expresivo, pero necesita momentos a solas para recargarse y pensar.",
       "Sus emociones suben y bajan con intensidad: un entusiasmo puede transformarse pronto en preocupación.",
@@ -408,7 +437,7 @@ export const COMBINACIONES: Record<ClaveCombinacion, PerfilCombinado> = {
       trato:
         "Su trato es cálido, atento y con memoria para los detalles de las personas: recuerda lo que le contaron y lo retoma. Puede pasar con rapidez de la alegría a un silencio pensativo cuando algo lo toca, y quienes lo rodean no siempre entienden el cambio. Se abre de verdad con pocos, aunque con todos parezca abierto.",
       decisiones:
-        "Decide con el corazón y con la cabeza a la vez, y eso a veces lo divide: el sanguíneo empuja a decir que sí y el melancólico a darle vueltas después. Es frecuente que acepte con entusiasmo y luego dude. Le ayuda pedirse un tiempo antes de responder a lo importante.",
+        "Decide con el corazón y con la cabeza a la vez, y eso a veces lo divide: su lado sociable empuja a decir que sí y su lado reflexivo a darle vueltas después. Es frecuente que acepte con entusiasmo y luego dude. Le ayuda pedirse un tiempo antes de responder a lo importante.",
       conflicto:
         "Evita el conflicto abierto porque teme perder el cariño; prefiere suavizar con humor. Si algo le duele, puede callarlo un tiempo y después sentirlo con mucha fuerza, o estallar en llanto o en un reproche emocional. Funciona mejor decir pronto y con sencillez qué le dolió.",
       trabajo:
@@ -436,9 +465,9 @@ export const COMBINACIONES: Record<ClaveCombinacion, PerfilCombinado> = {
     ],
   },
   "S-F": {
-    nombre: "Sanguíneo-flemático",
+    nombre: "Sociable y entusiasta, con rasgos de sereno y constante (sanguíneo-flemático)",
     resumen:
-      "Su trato es simpático y fácil, a la vez tranquilo y conciliador. El flemático le aporta calma, paciencia y capacidad de escuchar, por lo que su alegría rara vez resulta invasiva. La tensión está entre el deseo de novedad y la comodidad de lo conocido, y en la tendencia a dejar para después lo que no apremia. Es una combinación muy agradable para convivir, a la que a veces le falta un empujón para pasar de la intención a la acción.",
+      "Su trato es simpático y fácil, a la vez tranquilo y conciliador. Su lado sereno le aporta calma, paciencia y capacidad de escuchar, por lo que su alegría rara vez resulta invasiva. La tensión está entre el deseo de novedad y la comodidad de lo conocido, y en la tendencia a dejar para después lo que no apremia. Es una combinación muy agradable para convivir, a la que a veces le falta un empujón para pasar de la intención a la acción.",
     caracteristicas: [
       "Se lleva bien con casi todo el mundo y rara vez tiene enemistades.",
       "Disfruta la compañía, pero sin necesidad de estar siempre en el centro.",
@@ -480,9 +509,9 @@ export const COMBINACIONES: Record<ClaveCombinacion, PerfilCombinado> = {
     ],
   },
   "C-S": {
-    nombre: "Colérico-sanguíneo",
+    nombre: "Decidido y enérgico, con rasgos de sociable y entusiasta (colérico-sanguíneo)",
     resumen:
-      "Su determinación y su liderazgo son lo primero que se nota; la calidez, el humor y la facilidad para tratar a la gente los suavizan y los hacen más fáciles de aceptar. El sanguíneo le aporta cercanía y capacidad de motivar, de modo que sus metas suelen contagiar y no solo mandar. La tensión está entre la prisa por obtener resultados y el impulso de disfrutar y de ser querido, entre la firmeza y el deseo de caer bien. Es una combinación de liderazgo carismático que gana mucho cuando cuida los detalles y escucha.",
+      "Su determinación y su liderazgo son lo primero que se nota; la calidez, el humor y la facilidad para tratar a la gente los suavizan y los hacen más fáciles de aceptar. Su lado sociable le aporta cercanía y capacidad de motivar, de modo que sus metas suelen contagiar y no solo mandar. La tensión está entre la prisa por obtener resultados y el impulso de disfrutar y de ser querido, entre la firmeza y el deseo de caer bien. Es una combinación de liderazgo carismático que gana mucho cuando cuida los detalles y escucha.",
     caracteristicas: [
       "Fija metas ambiciosas y luego las vuelve atractivas para otros con entusiasmo y buen humor.",
       "Toma el mando con naturalidad, pero lo hace con simpatía y con reconocimientos.",
@@ -496,7 +525,7 @@ export const COMBINACIONES: Record<ClaveCombinacion, PerfilCombinado> = {
       trato:
         "Su trato combina autoridad y cercanía: da instrucciones claras, pero las acompaña con gestos de confianza y de reconocimiento. Hace sentir importantes a las personas que contribuyen a su objetivo y puede olvidar a las que no. Su energía y sus ganas de resolver pueden abrumar a quienes necesitan más tiempo para hablar.",
       decisiones:
-        "Decide con rapidez y asume el costo: el colérico elige el rumbo y el sanguíneo lo vende. Le gusta resolver en el momento y avanzar, apoyándose en la intuición y en su experiencia. Le conviene consultar a quien conoce los detalles antes de comprometer a todo el grupo.",
+        "Decide con rapidez y asume el costo: su lado decidido elige el rumbo y su lado sociable lo comunica. Le gusta resolver en el momento y avanzar, apoyándose en la intuición y en su experiencia. Le conviene consultar a quien conoce los detalles antes de comprometer a todo el grupo.",
       conflicto:
         "Ante un desacuerdo, busca ganar la discusión y usa tanto la firmeza como el encanto para convencer. Cuando se enoja, la intensidad es alta pero breve, y después quiere seguir como si nada, lo que a otros puede parecerles poco serio. Funciona mejor pedir disculpas con claridad y escuchar la versión de la otra persona hasta el final.",
       trabajo:
@@ -524,9 +553,9 @@ export const COMBINACIONES: Record<ClaveCombinacion, PerfilCombinado> = {
     ],
   },
   "C-M": {
-    nombre: "Colérico-melancólico",
+    nombre: "Decidido y enérgico, con rasgos de reflexivo y sensible (colérico-melancólico)",
     resumen:
-      "Su energía y su firmeza se unen a un gusto por el orden, el detalle y la calidad: es exigente con los demás y, sobre todo, consigo. El melancólico le aporta planificación, profundidad y sentido de responsabilidad, de modo que su determinación se apoya en análisis y no solo en impulso. La tensión es interna: entre actuar de inmediato y revisar hasta estar seguro, entre la firmeza y la autocrítica severa. Es una combinación de gran capacidad, que se beneficia mucho de aprender a descansar y a tolerar lo imperfecto.",
+      "Su energía y su firmeza se unen a un gusto por el orden, el detalle y la calidad: es exigente con los demás y, sobre todo, consigo. Su lado reflexivo le aporta planificación, profundidad y sentido de responsabilidad, de modo que su determinación se apoya en análisis y no solo en impulso. La tensión es interna: entre actuar de inmediato y revisar hasta estar seguro, entre la firmeza y la autocrítica severa. Es una combinación de gran capacidad, que se beneficia mucho de aprender a descansar y a tolerar lo imperfecto.",
     caracteristicas: [
       "Se fija metas altas y define cómo cumplirlas, con plan, pasos y revisión.",
       "Es serio, trabajador y responsable, y espera lo mismo de los demás.",
@@ -540,7 +569,7 @@ export const COMBINACIONES: Record<ClaveCombinacion, PerfilCombinado> = {
       trato:
         "Su trato es formal, directo y reservado: prefiere ir al grano y tarda en confiar. Muestra su aprecio más con hechos y compromiso que con palabras, por lo que a veces lo perciben como frío o crítico. Quienes se ganan su respeto descubren una lealtad y una generosidad sólidas.",
       decisiones:
-        "Decide con base en datos y en un estándar alto, y la fuerza del colérico lo lleva a ejecutar. Puede alternar entre analizar sin fin y decidir de golpe cuando se agota la paciencia. Una vez decidido, defiende su posición con argumentos y le cuesta aceptar cambios de último momento.",
+        "Decide con base en datos y en un estándar alto, y su lado decidido lo lleva a ejecutar. Puede alternar entre analizar sin fin y decidir de golpe cuando se agota la paciencia. Una vez decidido, defiende su posición con argumentos y le cuesta aceptar cambios de último momento.",
       conflicto:
         "Ante un desacuerdo, argumenta con datos, lógica y firmeza, y puede resultar incisivo. Si siente que no lo respetan o que algo se hizo mal, el enojo es intenso y a veces deja rencores silenciosos que recuerda por mucho tiempo. Le ayuda separar el error de la persona y decir lo que le molesta sin acumularlo.",
       trabajo:
@@ -568,9 +597,9 @@ export const COMBINACIONES: Record<ClaveCombinacion, PerfilCombinado> = {
     ],
   },
   "C-F": {
-    nombre: "Colérico-flemático",
+    nombre: "Decidido y enérgico, con rasgos de sereno y constante (colérico-flemático)",
     resumen:
-      "Combina determinación con serenidad: suele sacar adelante lo que se propone sin perder la calma exterior. El flemático le aporta paciencia, constancia y mesura, que moderan la prisa del colérico. La tensión está entre el impulso de dirigir y la tendencia a retirarse y callar, o entre mantener la calma mucho tiempo y reaccionar con firmeza cuando algo cruza su límite. Es un liderazgo sobrio, de pocas palabras y mucha persistencia.",
+      "Combina determinación con serenidad: suele sacar adelante lo que se propone sin perder la calma exterior. Su lado sereno le aporta paciencia, constancia y mesura, que moderan la prisa de su lado decidido. La tensión está entre el impulso de dirigir y la tendencia a retirarse y callar, o entre mantener la calma mucho tiempo y reaccionar con firmeza cuando algo cruza su límite. Es un liderazgo sobrio, de pocas palabras y mucha persistencia.",
     caracteristicas: [
       "Es firme y objetivo, pero sin alboroto: su autoridad se nota más en los hechos que en la voz.",
       "Avanza con constancia hacia sus metas, sin necesidad de reconocimiento.",
@@ -612,9 +641,9 @@ export const COMBINACIONES: Record<ClaveCombinacion, PerfilCombinado> = {
     ],
   },
   "M-S": {
-    nombre: "Melancólico-sanguíneo",
+    nombre: "Reflexivo y sensible, con rasgos de sociable y entusiasta (melancólico-sanguíneo)",
     resumen:
-      "Su profundidad y su sensibilidad se alivian con una vena sociable y optimista, que le ayuda a abrirse y a disfrutar. El sanguíneo le aporta ligereza, expresividad y facilidad para acercarse, de modo que su vida interior no se queda encerrada. La tensión está entre el deseo de estar a solas y el de estar con gente, y entre la autocrítica que lo frena y el entusiasmo que lo empuja. Es una persona reflexiva con una calidez visible, que gana mucho al darse permiso de compartir lo que piensa.",
+      "Su profundidad y su sensibilidad se alivian con una vena sociable y optimista, que le ayuda a abrirse y a disfrutar. Su lado sociable le aporta ligereza, expresividad y facilidad para acercarse, de modo que su vida interior no se queda encerrada. La tensión está entre el deseo de estar a solas y el de estar con gente, y entre la autocrítica que lo frena y el entusiasmo que lo empuja. Es una persona reflexiva con una calidez visible, que gana mucho al darse permiso de compartir lo que piensa.",
     caracteristicas: [
       "Piensa y siente con profundidad, pero encuentra en la conversación y en el humor una manera de aliviarse.",
       "Oscila entre la necesidad de silencio y la de compañía.",
@@ -628,7 +657,7 @@ export const COMBINACIONES: Record<ClaveCombinacion, PerfilCombinado> = {
       trato:
         "Su trato es atento y empático: se acerca con calidez a quien percibe que lo necesita y sabe qué decir. Con las personas de confianza es profundo y auténtico, y en grupos grandes puede resultar encantador y luego agotarse. Puede mostrarse más animado de lo que se siente por dentro, para no incomodar.",
       decisiones:
-        "Piensa mucho antes de decidir y consulta opiniones; el sanguíneo le ayuda a atreverse cuando ya sopesó. Le afecta la aprobación ajena y puede cambiar de rumbo si alguien cercano no está de acuerdo. Cuando decide con calma suele elegir bien; las decisiones apresuradas por agradar le pesan después.",
+        "Piensa mucho antes de decidir y consulta opiniones; su lado sociable le ayuda a atreverse cuando ya sopesó. Le afecta la aprobación ajena y puede cambiar de rumbo si alguien cercano no está de acuerdo. Cuando decide con calma suele elegir bien; las decisiones apresuradas por agradar le pesan después.",
       conflicto:
         "Los conflictos le duelen y tiende a suavizarlos con simpatía o a callar; si el dolor se acumula, aparece en lágrimas o en reproches emotivos. Necesita tiempo para ordenar lo que siente antes de hablar. Una conversación tranquila, con ejemplos concretos, le funciona mejor que una discusión en caliente.",
       trabajo:
@@ -656,9 +685,9 @@ export const COMBINACIONES: Record<ClaveCombinacion, PerfilCombinado> = {
     ],
   },
   "M-C": {
-    nombre: "Melancólico-colérico",
+    nombre: "Reflexivo y sensible, con rasgos de decidido y enérgico (melancólico-colérico)",
     resumen:
-      "Une la reflexión y el cuidado del detalle con decisión y ganas de resultados; es exigente con los demás y consigo. El colérico le aporta iniciativa, firmeza y energía, que convierten su análisis en acción. La tensión está entre dudar y actuar, y entre la autoexigencia y la irritación cuando las cosas, o las personas, no están a la altura. Es una combinación seria y trabajadora, que gana cuando alivia el rigor con que se mide y con que mide a los demás.",
+      "Une la reflexión y el cuidado del detalle con decisión y ganas de resultados; es exigente con los demás y consigo. Su lado decidido le aporta iniciativa, firmeza y energía, que convierten su análisis en acción. La tensión está entre dudar y actuar, y entre la autoexigencia y la irritación cuando las cosas, o las personas, no están a la altura. Es una combinación seria y trabajadora, que gana cuando alivia el rigor con que se mide y con que mide a los demás.",
     caracteristicas: [
       "Piensa a fondo y se pone en marcha cuando ve claro lo que hay que hacer.",
       "Guarda con cuidado sus emociones, pero su enojo se nota cuando algo se desvía de lo que considera correcto.",
@@ -672,7 +701,7 @@ export const COMBINACIONES: Record<ClaveCombinacion, PerfilCombinado> = {
       trato:
         "Su trato es serio, reservado y a ratos intenso: se interesa poco por la charla social y mucho por lo que importa. Con quienes confía es leal y protector; con los demás puede ser seco. Las personas perciben exigencia aun cuando no la exprese, y pueden tardar en acercarse.",
       decisiones:
-        "Analiza a fondo y luego decide con firmeza; el colérico le ayuda a salir de la duda, pero cuando la presión sube puede decidir de golpe y arrepentirse después. Se apoya en principios y en hechos más que en el ánimo del grupo. Le cuesta delegar las decisiones importantes.",
+        "Analiza a fondo y luego decide con firmeza; su lado decidido le ayuda a salir de la duda, pero cuando la presión sube puede decidir de golpe y arrepentirse después. Se apoya en principios y en hechos más que en el ánimo del grupo. Le cuesta delegar las decisiones importantes.",
       conflicto:
         "Le duelen la injusticia y el descuido, y responde con firmeza, con argumentos y a veces con ironía; después recuerda la ofensa durante mucho tiempo. Alterna entre callar y estallar, y rara vez queda satisfecho con su manera de resolver. Mejora cuando dice en privado, o por escrito, qué le molestó y qué espera.",
       trabajo:
@@ -700,9 +729,9 @@ export const COMBINACIONES: Record<ClaveCombinacion, PerfilCombinado> = {
     ],
   },
   "M-F": {
-    nombre: "Melancólico-flemático",
+    nombre: "Reflexivo y sensible, con rasgos de sereno y constante (melancólico-flemático)",
     resumen:
-      "Combina profundidad y reserva con calma y paciencia: suele resultar una persona tranquila, cuidadosa y confiable. El flemático le aporta serenidad y constancia, que suavizan la intensidad del melancólico. La tensión está en la tendencia a retraerse y a preocuparse en silencio, con poca iniciativa para pedir lo que necesita o para cambiar lo que le incomoda. Es una combinación de gran estabilidad interior y de mucha lealtad, que necesita que alguien la invite a expresarse.",
+      "Combina profundidad y reserva con calma y paciencia: suele resultar una persona tranquila, cuidadosa y confiable. Su lado sereno le aporta calma y constancia, que suavizan la intensidad de su lado reflexivo. La tensión está en la tendencia a retraerse y a preocuparse en silencio, con poca iniciativa para pedir lo que necesita o para cambiar lo que le incomoda. Es una combinación de gran estabilidad interior y de mucha lealtad, que necesita que alguien la invite a expresarse.",
     caracteristicas: [
       "Reflexiona antes de actuar, mantiene reserva y le gusta un entorno predecible y ordenado.",
       "Se preocupa en silencio, y lo que siente rara vez se nota por fuera.",
@@ -744,9 +773,9 @@ export const COMBINACIONES: Record<ClaveCombinacion, PerfilCombinado> = {
     ],
   },
   "F-S": {
-    nombre: "Flemático-sanguíneo",
+    nombre: "Sereno y constante, con rasgos de sociable y entusiasta (flemático-sanguíneo)",
     resumen:
-      "Su calma y su constancia se acompañan de buen humor y facilidad para relacionarse. El sanguíneo le aporta expresividad, entusiasmo y gusto por la compañía, que abren y alegran su carácter sereno. La tensión está entre la comodidad de la rutina y el deseo de novedad y de compañía, o entre callar para evitar problemas y hablar por el gusto de convivir. Es una combinación muy cómoda para los demás: tranquila, amable y acogedora.",
+      "Su calma y su constancia se acompañan de buen humor y facilidad para relacionarse. Su lado sociable le aporta expresividad, entusiasmo y gusto por la compañía, que abren y alegran su carácter sereno. La tensión está entre la comodidad de la rutina y el deseo de novedad y de compañía, o entre callar para evitar problemas y hablar por el gusto de convivir. Es una combinación muy cómoda para los demás: tranquila, amable y acogedora.",
     caracteristicas: [
       "Es sereno y paciente, con un buen humor que se nota pronto.",
       "Disfruta convivir en grupos pequeños, sin necesidad de ser el centro.",
@@ -788,9 +817,9 @@ export const COMBINACIONES: Record<ClaveCombinacion, PerfilCombinado> = {
     ],
   },
   "F-C": {
-    nombre: "Flemático-colérico",
+    nombre: "Sereno y constante, con rasgos de decidido y enérgico (flemático-colérico)",
     resumen:
-      "Es una persona serena y estable que, cuando algo le importa, muestra decisión y firmeza. El colérico le aporta iniciativa y capacidad de poner límites, que despiertan cuando se toca algo valioso para usted. La tensión está entre evitar el conflicto durante mucho tiempo y reaccionar con fuerza cuando se rebasa el límite, entre la comodidad y la voluntad de lograr las cosas. Es una combinación tranquila por fuera y con carácter por dentro.",
+      "Es una persona serena y estable que, cuando algo le importa, muestra decisión y firmeza. Su lado decidido le aporta iniciativa y capacidad de poner límites, que despiertan cuando se toca algo valioso para usted. La tensión está entre evitar el conflicto durante mucho tiempo y reaccionar con fuerza cuando se rebasa el límite, entre la comodidad y la voluntad de lograr las cosas. Es una combinación tranquila por fuera y con carácter por dentro.",
     caracteristicas: [
       "Se mantiene calmado y paciente en lo cotidiano, y casi no se le nota el enojo.",
       "Cuando algo le importa de verdad, se pone en marcha con determinación y se vuelve tenaz.",
@@ -832,9 +861,9 @@ export const COMBINACIONES: Record<ClaveCombinacion, PerfilCombinado> = {
     ],
   },
   "F-M": {
-    nombre: "Flemático-melancólico",
+    nombre: "Sereno y constante, con rasgos de reflexivo y sensible (flemático-melancólico)",
     resumen:
-      "Reúne paciencia y serenidad con sensibilidad y gusto por hacer las cosas bien. El melancólico le aporta detalle, reflexión y profundidad, que dan sentido y cuidado a su calma natural. La tensión está entre la comodidad de no cambiar y la preocupación o la autocrítica que guarda en silencio, y entre la tranquilidad exterior y la inquietud interior. Es una combinación apacible, atenta y confiable, que a veces carga a solas lo que le inquieta.",
+      "Reúne paciencia y serenidad con sensibilidad y gusto por hacer las cosas bien. Su lado reflexivo le aporta detalle, criterio y profundidad, que dan sentido y cuidado a su calma natural. La tensión está entre la comodidad de no cambiar y la preocupación o la autocrítica que guarda en silencio, y entre la tranquilidad exterior y la inquietud interior. Es una combinación apacible, atenta y confiable, que a veces carga a solas lo que le inquieta.",
     caracteristicas: [
       "Su calma es sostenida y reflexiva: piensa bien las cosas antes de opinar.",
       "Cuida las tareas y a las personas, y se fija en cómo se sienten.",
@@ -878,4 +907,4 @@ export const COMBINACIONES: Record<ClaveCombinacion, PerfilCombinado> = {
 };
 
 export const TEXTO_POCO_DIFERENCIADO =
-  "Sus puntajes en los cuatro temperamentos son parecidos: ninguno se destaca claramente sobre los demás. Esto suele describir a una persona flexible, que usa rasgos distintos según lo que pide cada situación. También puede deberse a que contestó pensando en situaciones diferentes o a que le costó reconocerse en las frases. Conviene conversarlo con su psicólogo.";
+  "Sus puntajes en los cuatro estilos son parecidos: ninguno se destaca claramente sobre los demás. Esto suele describir a una persona flexible, que usa rasgos distintos según lo que pide cada situación. También puede deberse a que contestó pensando en situaciones diferentes o a que le costó reconocerse en las frases. Conviene conversarlo con su psicólogo.";

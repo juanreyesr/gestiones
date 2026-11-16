@@ -1,5 +1,5 @@
 /**
- * Cuestionario de temperamento · versión JJ: calificación. SOLO panel del
+ * Test de características comportamentales JJR: calificación. SOLO panel del
  * psicólogo (no importar desde el formulario).
  *
  * Reglas fijas:
@@ -20,20 +20,21 @@
  *
  * Instrumento orientativo sin baremos: describe tendencias, no es un diagnóstico.
  */
-import { COMBINACIONES, TEMPERAMENTOS_INFO, TEXTO_POCO_DIFERENCIADO, type ClaveCombinacion } from "./contenido";
+import { COMBINACIONES, nombreBajo, nombreConClasico, nombresConClasico, TEMPERAMENTOS_INFO, TEXTO_POCO_DIFERENCIADO, type ClaveCombinacion } from "./contenido";
 import { TEMPERAMENTOS_IDS, TEMPERAMENTOS_ITEMS, temperamentoDeItem, type TemperamentoId } from "./escalas";
 
 export type TemperamentosDatos = { items: number[]; edad?: number | null; situacion?: string; abierta?: string };
 export type TipoPerfil = "poco-diferenciado" | "predominante" | "combinado" | "codominantes";
 
-export { COMBINACIONES, TEMPERAMENTOS_INFO, TEXTO_POCO_DIFERENCIADO };
+export { COMBINACIONES, nombreBajo, nombreConClasico, nombresConClasico, TEMPERAMENTOS_INFO, TEXTO_POCO_DIFERENCIADO };
 
 /** Lado de cada ítem dentro de su temperamento, por vuelta (F = fuerte, D = difícil): 6 y 4 en cada uno. */
 const LADOS: Record<TemperamentoId, string> = { S: "FFDFDFFDFD", C: "FDFFDFDFFD", M: "DFFDFFFDFD", F: "FFDFDFDFDF" };
 /** Lado del ítem n (1–40): «fuerte» o «difícil». */
 export const ladoDeItem = (n: number): "fuerte" | "dificil" => (LADOS[temperamentoDeItem(n)][Math.floor((n - 1) / 4)] === "F" ? "fuerte" : "dificil");
 
-const baja = (id: TemperamentoId) => TEMPERAMENTOS_INFO[id].nombre.toLowerCase();
+const baja = nombreBajo;
+const clasico = (id: TemperamentoId) => TEMPERAMENTOS_INFO[id].clasico;
 
 export type EtiquetaDimension = { valor: number; k: "bajo" | "medio" | "alto"; label: string };
 export const etiquetaDimension = (valor: number, bajo: string, medio: string, alto: string): EtiquetaDimension =>
@@ -41,7 +42,7 @@ export const etiquetaDimension = (valor: number, bajo: string, medio: string, al
 
 export type CalificacionTemperamentos = {
   /** En el orden fijo S, C, M, F. */
-  temperamentos: { id: TemperamentoId; nombre: string; suma: number; pct: number }[];
+  temperamentos: { id: TemperamentoId; /** Nombre moderno. */ nombre: string; /** «Decidido y enérgico (colérico)», para tablas y gráficas. */ etiqueta: string; suma: number; pct: number }[];
   /** De mayor a menor (empates: orden fijo). */
   orden: TemperamentoId[];
   tipo: TipoPerfil;
@@ -55,7 +56,10 @@ export type CalificacionTemperamentos = {
   tercero: TemperamentoId | null;
   /** Clave de la combinación «primero-segundo» (combinado o codominantes). */
   combinacion: ClaveCombinacion | null;
-  /** Nombre legible: «Colérico con rasgos de sanguíneo», «Predominantemente flemático», «Dominante sanguíneo (perfil poco diferenciado)», … */
+  /**
+   * Nombre legible, moderno primero y clásico entre paréntesis: «Decidido y enérgico, con rasgos de sociable y entusiasta (colérico-sanguíneo)»,
+   * «Predominantemente sereno y constante (flemático)», «Dominante sociable y entusiasta (sanguíneo), perfil poco diferenciado», …
+   */
   perfil: string;
   /** Mayor − menor. */
   rango: number;
@@ -73,7 +77,7 @@ export function calificarTemperamentos(d: TemperamentosDatos): CalificacionTempe
   d.items.forEach((v, i) => {
     sumas[temperamentoDeItem(i + 1)] += v;
   });
-  const temperamentos = TEMPERAMENTOS_IDS.map((id) => ({ id, nombre: TEMPERAMENTOS_INFO[id].nombre, suma: sumas[id], pct: Math.round((sumas[id] / 40) * 100) }));
+  const temperamentos = TEMPERAMENTOS_IDS.map((id) => ({ id, nombre: TEMPERAMENTOS_INFO[id].nombre, etiqueta: nombreConClasico(id), suma: sumas[id], pct: Math.round((sumas[id] / 40) * 100) }));
   const orden = [...TEMPERAMENTOS_IDS].sort((a, b) => sumas[b] - sumas[a] || TEMPERAMENTOS_IDS.indexOf(a) - TEMPERAMENTOS_IDS.indexOf(b));
   const [p, s, t] = orden;
   const rango = sumas[orden[0]] - sumas[orden[3]];
@@ -92,12 +96,12 @@ export function calificarTemperamentos(d: TemperamentosDatos): CalificacionTempe
   const combinacion = conMezcla ? (`${p}-${s}` as ClaveCombinacion) : null;
   const perfil =
     tipo === "poco-diferenciado"
-      ? `Dominante ${baja(p)} (perfil poco diferenciado)`
+      ? `Dominante ${baja(p)} (${clasico(p)}), perfil poco diferenciado`
       : tipo === "predominante"
-        ? `Predominantemente ${baja(p)}`
+        ? `Predominantemente ${baja(p)} (${clasico(p)})`
         : tipo === "combinado"
-          ? `${TEMPERAMENTOS_INFO[p].nombre} con rasgos de ${baja(s)}`
-          : `Codominante: ${baja(p)} y ${baja(s)}`;
+          ? `${TEMPERAMENTOS_INFO[p].nombre}, con rasgos de ${baja(s)} (${clasico(p)}-${clasico(s)})`
+          : `Codominante: ${baja(p)}, y ${baja(s)} (${clasico(p)} y ${clasico(s)})`;
 
   const afueraValor = sumas.S + sumas.C - (sumas.M + sumas.F);
   const intensaValor = sumas.C + sumas.M - (sumas.S + sumas.F);
@@ -115,10 +119,10 @@ export function calificarTemperamentos(d: TemperamentosDatos): CalificacionTempe
   else if (media <= 0.5)
     flags.push({ lvl: "warn", t: "Promedio ≤ 0,5: casi ninguna frase le resultó parecida; explorar dificultad para reconocerse, desinterés, anhedonia o respuestas al azar." });
   if (tipo === "poco-diferenciado")
-    flags.push({ lvl: "", t: `Perfil poco diferenciado (diferencia entre el puntaje más alto y el más bajo = ${rango}): el dominante (${TEMPERAMENTOS_INFO[p].nombre}) se nombra, pero la diferencia con los demás es pequeña: leerlo como una tendencia suave y conversarlo con el paciente.` });
+    flags.push({ lvl: "", t: `Perfil poco diferenciado (diferencia entre el puntaje más alto y el más bajo = ${rango}): el estilo dominante (${nombreConClasico(p)}) se nombra, pero la diferencia con los demás es pequeña: leerlo como una tendencia suave y conversarlo con el paciente.` });
   if (tipo === "codominantes") flags.push({ lvl: "", t: `Los dos puntajes más altos son iguales (${sumas[p]}): se presentan como codominantes, en el orden fijo de la prueba.` });
-  if (tercero) flags.push({ lvl: "", t: `Tercera influencia: ${TEMPERAMENTOS_INFO[tercero].nombre} (diferencia de ${sumas[s] - sumas[tercero]} con el segundo; se menciona cuando es de 3 puntos o menos).` });
-  if (d.edad && d.edad < 14) flags.push({ lvl: "warn", t: `Edad ${d.edad}: el temperamento se observa mejor con información de otras personas; usar el perfil solo para conversar.` });
+  if (tercero) flags.push({ lvl: "", t: `Tercera influencia: ${nombreConClasico(tercero)} (diferencia de ${sumas[s] - sumas[tercero]} con el segundo; se menciona cuando es de 3 puntos o menos).` });
+  if (d.edad && d.edad < 14) flags.push({ lvl: "warn", t: `Edad ${d.edad}: el estilo de comportamiento se observa mejor con información de otras personas; usar el perfil solo para conversar.` });
   const rangoLvl = { alert: 0, warn: 1, "": 2 } as const;
   flags.sort((a, b) => rangoLvl[a.lvl] - rangoLvl[b.lvl]);
 
@@ -128,7 +132,7 @@ export function calificarTemperamentos(d: TemperamentosDatos): CalificacionTempe
     const elegidos = con4.length ? con4 : marcados.filter((x) => x.valor === 3);
     return {
       id,
-      nombre: TEMPERAMENTOS_INFO[id].nombre,
+      nombre: nombreConClasico(id),
       items: elegidos.map((x) => ({ n: x.n, texto: TEMPERAMENTOS_ITEMS[x.n - 1], valor: x.valor, lado: ladoDeItem(x.n) })),
     };
   });
@@ -157,7 +161,7 @@ export function seguimientoTemperamentos(actual: TemperamentosDatos, anterior: T
   const a = calificarTemperamentos(actual);
   const p = calificarTemperamentos(anterior);
   return {
-    filas: a.temperamentos.map((v, i) => ({ id: v.id, nombre: v.nombre, antes: p.temperamentos[i].suma, ahora: v.suma, cambio: v.suma - p.temperamentos[i].suma })),
+    filas: a.temperamentos.map((v, i) => ({ id: v.id, nombre: v.etiqueta, antes: p.temperamentos[i].suma, ahora: v.suma, cambio: v.suma - p.temperamentos[i].suma })),
     perfilAntes: p.perfil,
     perfilAhora: a.perfil,
     tipoAntes: p.tipo,
@@ -167,4 +171,10 @@ export function seguimientoTemperamentos(actual: TemperamentosDatos, anterior: T
 }
 
 export const TEMPERAMENTOS_AVISO =
-  "Cuestionario orientativo de temperamento, de redacción propia, basado en la tipología clásica de los cuatro temperamentos (sanguíneo, colérico, melancólico y flemático; Hipócrates y Galeno) y en su lectura moderna en dos dimensiones, extraversión y estabilidad emocional (Eysenck): sanguíneo = extravertido y estable; colérico = extravertido y reactivo; melancólico = introvertido y reactivo; flemático = introvertido y estable. Es una tipología descriptiva tradicional, no un diagnóstico ni una medida validada con baremos: describe tendencias, ningún temperamento es mejor que otro y la mayoría de las personas combina dos. Debe integrarse con la entrevista, la historia y el contexto de la persona.";
+  "Test de características comportamentales JJR: instrumento orientativo, de redacción propia (M. A. Juan J. Reyes). Sus cuatro estilos (sociable y entusiasta, decidido y enérgico, reflexivo y sensible, y sereno y constante) corresponden a la clasificación clásica de los temperamentos (sanguíneo, colérico, melancólico y flemático; Hipócrates y Galeno), leída hoy en dos dimensiones, extraversión (hacia afuera o hacia adentro) y estabilidad emocional (reacción serena o intensa; Eysenck): sociable y entusiasta (sanguíneo) = extravertido y estable; decidido y enérgico (colérico) = extravertido y reactivo; reflexivo y sensible (melancólico) = introvertido y reactivo; sereno y constante (flemático) = introvertido y estable. Es una tipología descriptiva tradicional, no un diagnóstico ni una medida validada con baremos: describe tendencias, ningún estilo es mejor que otro y la mayoría de las personas combina dos. Debe integrarse con la entrevista, la historia y el contexto de la persona.";
+
+/** Nota de fundamento y límites del informe para quien respondió (lenguaje sencillo, de usted). */
+export const TEMPERAMENTOS_AVISO_PACIENTE =
+  "Este informe describe tendencias de su forma de ser; no es un diagnóstico ni una medida con baremos. Estos cuatro estilos corresponden a la clasificación clásica de los temperamentos (sanguíneo, colérico, melancólico y flemático), leída hoy en dos dimensiones: hacia afuera o hacia adentro, y reacción serena o intensa. Ningún estilo es mejor que otro, y la mayoría de las personas combina dos o más. Su psicólogo lo conversará con usted en sesión.";
+
+export const TEMPERAMENTOS_N_ITEMS = 40;

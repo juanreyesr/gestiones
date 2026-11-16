@@ -65,3 +65,24 @@ Las combinaciones inversas (C-S y S-C) deben ser claramente distintas: manda el 
 - **Profesional**: las mismas secciones completas (dominante con positivas y negativas; perfil combinado detallado) además de lo que ya tenía (barras, dimensiones, estilo de respuesta, ítems destacados, implicaciones para la terapia, seguimiento, fundamento y límites).
 - Límite de tamaño: el informe publicado para el paciente debe pesar menos de 60 000 bytes en JSON y cada texto de tarjeta menos de 4000 caracteres (lo recorta `leerInformePaciente`); hasta 30 tarjetas.
 - **Mezcla con dominante claro**: en perfil predominante, si el segundo temperamento tiene 16 puntos o más (de 40), también se muestra el perfil combinado (dominante-segundo), aclarando que hay un dominante claro que el segundo matiza. Solo se omite cuando el segundo es muy bajo.
+
+## v1.2 — Nombres modernos: «Test de características comportamentales JJR»
+Decisión del autor: el test deja de presentarse con los nombres clásicos. Estos quedan solo entre paréntesis, como referencia a la clasificación antigua.
+
+- **Nombre del instrumento** (panel y público): «Test de características comportamentales JJR». El id interno sigue siendo `temperamentos` (no se migra nada).
+- **Estilos** (nombre moderno ← clásico):
+  - S «Sociable y entusiasta» (sanguíneo)
+  - C «Decidido y enérgico» (colérico)
+  - M «Reflexivo y sensible» (melancólico)
+  - F «Sereno y constante» (flemático)
+- **Vocabulario**: «temperamento» → «estilo» en lo que lee el paciente y en los títulos («Su estilo dominante es: Decidido y enérgico (colérico en la clasificación clásica)»; «Su segundo estilo»; «estilos codominantes»). La palabra «temperamento» solo aparece en la referencia clásica y en la nota de fundamento.
+- **Perfiles**:
+  - Predominante: «Predominantemente decidido y enérgico (colérico)».
+  - Combinado: «Decidido y enérgico, con rasgos de sociable y entusiasta (colérico-sanguíneo)».
+  - Codominantes: «Codominante: sociable y entusiasta, y decidido y enérgico (sanguíneo y colérico)».
+  - Poco diferenciado: «Dominante sociable y entusiasta (sanguíneo), perfil poco diferenciado».
+  - Las 12 combinaciones se nombran igual: moderno primero y la pareja clásica entre paréntesis.
+- **Referencia clásica**: la primera mención de cada estilo en un informe lleva «(X en la clasificación clásica)»; las siguientes pueden ir solo con el nombre moderno. En gráficas y tablas: «Decidido y enérgico (colérico)».
+- **Textos interpretativos**: dentro de las descripciones, frases como «el colérico elige el rumbo y el sanguíneo lo vende» se reescriben con los nombres modernos o sin nombrar el tipo («su lado decidido elige el rumbo y su lado sociable lo comunica»).
+- **Nota de fundamento** (ambos informes): explica que estos cuatro estilos corresponden a la clasificación clásica de los temperamentos (sanguíneo, colérico, melancólico y flemático), leída hoy en dos dimensiones (hacia afuera o hacia adentro; reacción serena o intensa), y mantiene los límites: descriptivo, sin baremos, no es un diagnóstico, ningún estilo es mejor que otro.
+- Sin cambios en los 40 ítems, la calificación numérica ni los umbrales.

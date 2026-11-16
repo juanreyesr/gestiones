@@ -1,10 +1,10 @@
-// Pruebas del cuestionario de temperamento · versión JJ. Ejecutar: pnpm test:temperamentos
+// Pruebas del Test de características comportamentales JJR (id interno «temperamentos»). Ejecutar: pnpm test:temperamentos
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
-import { calificarTemperamentos, ladoDeItem, seguimientoTemperamentos } from "../src/lib/evaluaciones/temperamentos/calificacion.ts";
+import { calificarTemperamentos, ladoDeItem, seguimientoTemperamentos, TEMPERAMENTOS_AVISO, TEMPERAMENTOS_AVISO_PACIENTE } from "../src/lib/evaluaciones/temperamentos/calificacion.ts";
 import { avanceTemperamentos, limpiarBorradorTemperamentos, validarTemperamentos } from "../src/lib/evaluaciones/temperamentos/codigo.ts";
-import { COMBINACIONES, TEMPERAMENTOS_INFO } from "../src/lib/evaluaciones/temperamentos/contenido.ts";
-import { TEMPERAMENTOS_IDS, TEMPERAMENTOS_ITEMS, temperamentoDeItem } from "../src/lib/evaluaciones/temperamentos/escalas.ts";
+import { COMBINACIONES, nombreConClasico, TEMPERAMENTOS_INFO, TEXTO_POCO_DIFERENCIADO } from "../src/lib/evaluaciones/temperamentos/contenido.ts";
+import { TEMPERAMENTOS_IDS, TEMPERAMENTOS_ITEMS, TEMPERAMENTOS_NOMBRE_PROFESIONAL, TEMPERAMENTOS_TITULO_PACIENTE, temperamentoDeItem } from "../src/lib/evaluaciones/temperamentos/escalas.ts";
 import { informeTemperamentosHtml } from "../src/lib/evaluaciones/temperamentos/informe-html.ts";
 import { AREAS_TEMPERAMENTOS, informePacienteTemperamentos, opcionesPorDefectoTemperamentos } from "../src/lib/evaluaciones/temperamentos/informe-paciente.ts";
 import { leerInformePaciente } from "../src/lib/evaluaciones/informe-paciente.ts";
@@ -77,7 +77,7 @@ caso("Perfil predominante (primero − segundo ≥ 8)", () => {
   const c = califica([14, 30, 20, 12]);
   assert.equal(c.tipo, "predominante");
   assert.equal(c.principal, "C");
-  assert.equal(c.perfil, "Predominantemente colérico");
+  assert.equal(c.perfil, "Predominantemente decidido y enérgico (colérico)");
   assert.equal(c.combinacion, "C-M"); // segundo con presencia (20 ≥ 16): también se describe la mezcla
   assert.equal(califica([14, 30, 15, 12]).combinacion, null); // segundo muy bajo: sin mezcla
   assert.equal(c.tercero, null);
@@ -88,10 +88,10 @@ caso("Perfil combinado: el orden importa (C-S ≠ S-C)", () => {
   const cs = califica([24, 30, 12, 8]);
   assert.equal(cs.tipo, "combinado");
   assert.equal(cs.combinacion, "C-S");
-  assert.equal(cs.perfil, "Colérico con rasgos de sanguíneo");
+  assert.equal(cs.perfil, "Decidido y enérgico, con rasgos de sociable y entusiasta (colérico-sanguíneo)");
   const sc = califica([30, 24, 12, 8]);
   assert.equal(sc.combinacion, "S-C");
-  assert.equal(sc.perfil, "Sanguíneo con rasgos de colérico");
+  assert.equal(sc.perfil, "Sociable y entusiasta, con rasgos de decidido y enérgico (sanguíneo-colérico)");
   assert.notEqual(COMBINACIONES["C-S"].nombre, COMBINACIONES["S-C"].nombre);
   assert.equal(califica([23, 30, 12, 8]).tipo, "combinado"); // brecha de 7
   assert.equal(Object.keys(COMBINACIONES).length, 12);
@@ -101,7 +101,7 @@ caso("Perfil codominantes", () => {
   const c = califica([12, 28, 28, 10]);
   assert.equal(c.tipo, "codominantes");
   assert.equal(c.combinacion, "C-M");
-  assert.match(c.perfil, /Codominante: colérico y melancólico/);
+  assert.equal(c.perfil, "Codominante: decidido y enérgico, y reflexivo y sensible (colérico y melancólico)");
   assert.deepEqual(c.dominantes, ["C", "M"]);
 });
 
@@ -112,9 +112,9 @@ caso("Perfil poco diferenciado (mayor − menor ≤ 5): SIEMPRE hay dominante, a
   assert.deepEqual(c.dominantes, ["S"]);
   assert.equal(c.secundario, null);
   assert.equal(c.combinacion, null);
-  assert.equal(c.perfil, "Dominante sanguíneo (perfil poco diferenciado)");
+  assert.equal(c.perfil, "Dominante sociable y entusiasta (sanguíneo), perfil poco diferenciado");
   assert.deepEqual(c.destacados.map((g) => g.id), ["S"]);
-  assert.ok(c.flags.some((f) => /dominante \(Sanguíneo\).*diferencia con los demás es pequeña/.test(f.t)));
+  assert.ok(c.flags.some((f) => /dominante \(Sociable y entusiasta \(sanguíneo\)\).*diferencia con los demás es pequeña/.test(f.t)));
   assert.equal(califica([22, 20, 19, 16]).tipo, "combinado"); // rango 6: ya no es poco diferenciado
   // Empate total: dominante por el orden fijo S, C, M, F.
   assert.equal(califica([20, 20, 20, 20]).principal, "S");
@@ -185,14 +185,15 @@ caso("Ítems destacados: 4 (o 3 si no hay ninguno con 4) del principal y del sec
 caso("Seguimiento frente a la aplicación anterior", () => {
   const s = seguimientoTemperamentos({ items: perfil([24, 30, 12, 8]) }, { items: perfil([30, 24, 12, 8]) });
   assert.equal(s.cambioDeTipo, true);
-  assert.equal(s.perfilAntes, "Sanguíneo con rasgos de colérico");
-  assert.equal(s.perfilAhora, "Colérico con rasgos de sanguíneo");
+  assert.equal(s.perfilAntes, "Sociable y entusiasta, con rasgos de decidido y enérgico (sanguíneo-colérico)");
+  assert.equal(s.perfilAhora, "Decidido y enérgico, con rasgos de sociable y entusiasta (colérico-sanguíneo)");
   assert.deepEqual(s.filas.map((f) => f.cambio), [-6, 6, 0, 0]);
   const html = informeTemperamentosHtml({ datos: { items: perfil([24, 30, 12, 8]) }, nombre: "Prueba", fecha: "2026-11-01" }, { datos: { items: perfil([30, 24, 12, 8]) }, nombre: "Prueba", fecha: "2026-06-01" }, "nota");
   assert.match(html, /Seguimiento: comparación con la aplicación anterior/);
   assert.match(html, /cambió el perfil/);
   assert.match(html, /Fundamento y límites/);
   assert.match(html, /no un diagnóstico ni una medida validada con baremos/);
+  assert.match(html, /clasificación clásica de los temperamentos \(sanguíneo, colérico, melancólico y flemático/);
   assert.match(html, /Implicaciones para la terapia/);
 });
 
@@ -201,7 +202,8 @@ caso("Informe profesional de todos los tipos de perfil", () => {
     const html = informeTemperamentosHtml({ datos: { items: perfil(sumas) }, nombre: "Prueba", fecha: "2026-11-01" });
     assert.match(html, /<!doctype html>/);
     assert.match(html, /Dimensiones/);
-    assert.match(html, /Temperament(o|os) dominantes?/);
+    assert.match(html, /Estilos? dominantes?/);
+    assert.match(html, /<h1>Informe · Test de características comportamentales JJR<\/h1>/);
     assert.match(html, /Características positivas \(fortalezas\)/);
     assert.match(html, /Características negativas o aspectos a cuidar/);
     assert.match(html, /Cómo aprovechar sus puntos fuertes/);
@@ -209,18 +211,18 @@ caso("Informe profesional de todos los tipos de perfil", () => {
   }
   // Combinado: perfil combinado detallado para el profesional.
   const comb = informeTemperamentosHtml({ datos: { items: perfil([24, 30, 12, 8]) }, nombre: "Prueba", fecha: "2026-11-01" });
-  assert.match(comb, /<div class="n">Colérico<\/div>/);
-  for (const t of ["Perfil combinado: Colérico-sanguíneo", "Características principales de la mezcla", "Cómo se comporta", "Trato con los demás", "Decisiones:", "Conflicto:", "De qué debe cuidarse", "En qué ser más observador de sí mismo", "Cómo aprovechar lo positivo de su combinación", "Implicaciones para la terapia"])
+  assert.match(comb, /<div class="n">Decidido y enérgico \(colérico en la clasificación clásica\)<\/div>/);
+  for (const t of ["Perfil combinado: Decidido y enérgico, con rasgos de sociable y entusiasta (colérico-sanguíneo)", "Características principales de la mezcla", "Cómo se comporta", "Trato con los demás", "Decisiones:", "Conflicto:", "De qué debe cuidarse", "En qué ser más observador de sí mismo", "Cómo aprovechar lo positivo de su combinación", "Implicaciones para la terapia"])
     assert.ok(comb.includes(t), t);
   // Poco diferenciado: nombra el dominante y aclara que la diferencia es pequeña.
   const poco = informeTemperamentosHtml({ datos: { items: perfil([22, 20, 19, 17]) }, nombre: "Prueba", fecha: "2026-11-01" });
-  assert.match(poco, /<div class="n">Sanguíneo<\/div>/);
-  assert.match(poco, /la diferencia con los demás temperamentos es pequeña/);
+  assert.match(poco, /<div class="n">Sociable y entusiasta \(sanguíneo en la clasificación clásica\)<\/div>/);
+  assert.match(poco, /la diferencia con los demás estilos es pequeña/);
   assert.match(poco, /Implicaciones para la terapia/);
   // Codominantes: los dos.
   const co = informeTemperamentosHtml({ datos: { items: perfil([12, 28, 28, 10]) }, nombre: "Prueba", fecha: "2026-11-01" });
-  assert.match(co, /Temperamentos dominantes/);
-  assert.match(co, /<div class="n">Colérico y melancólico<\/div>/);
+  assert.match(co, /Estilos dominantes/);
+  assert.match(co, /<div class="n">Decidido y enérgico, y reflexivo y sensible \(colérico y melancólico en la clasificación clásica\)<\/div>/);
 });
 
 caso("Informe al paciente: válido, abre con el dominante, sin siglas ni puntajes por defecto", () => {
@@ -230,7 +232,7 @@ caso("Informe al paciente: válido, abre con el dominante, sin siglas ni puntaje
     const leido = leerInformePaciente(JSON.parse(JSON.stringify(inf)));
     assert.ok(leido, "pasa leerInformePaciente");
     assert.equal(leido.ayuda, null);
-    assert.match(leido.destacado.titulo, /^Sus? temperamentos? dominantes? (es|son): /);
+    assert.match(leido.destacado.titulo, /^Sus? estilos? dominantes? (es|son): /);
     assert.equal(leido.grafica.barras.length, 4);
     assert.equal(leido.grafica.max, 40);
     const valores = leido.grafica.barras.map((b) => b.valor);
@@ -245,26 +247,26 @@ caso("Informe al paciente: válido, abre con el dominante, sin siglas ni puntaje
   const pred = informePacienteTemperamentos({ items: perfil([14, 30, 15, 12]) }, opcionesPorDefectoTemperamentos(), extra);
   // Dominante claro con un segundo presente: también trae el perfil combinado.
   const predMezcla = informePacienteTemperamentos({ items: perfil([14, 30, 20, 12]) }, opcionesPorDefectoTemperamentos(), extra);
-  assert.ok(predMezcla.resultados.some((r) => r.area === "Su perfil combinado: Colérico con rasgos de melancólico"));
+  assert.ok(predMezcla.resultados.some((r) => r.area === "Su perfil combinado: Decidido y enérgico, con rasgos de reflexivo y sensible"));
   assert.ok(predMezcla.resultados.some((r) => r.area === "Cómo suele comportarse"));
-  assert.equal(pred.destacado.titulo, "Su temperamento dominante es: Colérico");
+  assert.equal(pred.destacado.titulo, "Su estilo dominante es: Decidido y enérgico (colérico en la clasificación clásica)");
   assert.equal(pred.grafica.barras.filter((b) => b.destacada).length, 1);
-  assert.equal(pred.grafica.barras[0].etiqueta, "Colérico");
+  assert.equal(pred.grafica.barras[0].etiqueta, "Decidido y enérgico (colérico)");
   assert.ok(!pred.resultados.some((r) => /perfil combinado|Cómo suele comportarse/i.test(r.area)));
   // En predominante, las tarjetas de la mezcla usan el contenido del dominante.
   const cuidarPred = pred.resultados.find((r) => r.area === "De qué debe cuidarse");
   assert.ok(TEMPERAMENTOS_INFO.C.cuidar.every((x) => cuidarPred.texto.includes(`• ${x}`)));
   assert.ok(TEMPERAMENTOS_INFO.C.observar.every((x) => pred.resultados.find((r) => r.area.startsWith("En qué conviene")).texto.includes(`• ${x}`)));
   const comb = informePacienteTemperamentos({ items: perfil([24, 30, 12, 8]) }, opcionesPorDefectoTemperamentos(), extra);
-  assert.equal(comb.destacado.titulo, "Su temperamento dominante es: Colérico");
-  assert.match(comb.destacado.texto, /Colérico con rasgos de sanguíneo/);
+  assert.equal(comb.destacado.titulo, "Su estilo dominante es: Decidido y enérgico (colérico en la clasificación clásica)");
+  assert.match(comb.destacado.texto, /Decidido y enérgico, con rasgos de sociable y entusiasta \(colérico-sanguíneo\)/);
   assert.equal(comb.grafica.barras.filter((b) => b.destacada).length, 1);
   // Orden de las tarjetas (ids estables de AREAS_TEMPERAMENTOS) y títulos.
   assert.deepEqual(comb.resultados.map((r) => r.area), [
-    "Su temperamento dominante",
-    "Aspectos positivos de su temperamento",
+    "Su estilo dominante",
+    "Aspectos positivos de su estilo",
     "Aspectos negativos o a cuidar",
-    "Su perfil combinado: Colérico con rasgos de sanguíneo",
+    "Su perfil combinado: Decidido y enérgico, con rasgos de sociable y entusiasta",
     "Cómo suele comportarse",
     "De qué debe cuidarse",
     "En qué conviene que sea más observador",
@@ -290,17 +292,17 @@ caso("Informe al paciente: válido, abre con el dominante, sin siglas ni puntaje
   assert.ok(comb.resultados[1].texto.split("\n").some((l) => l.endsWith(":") && !l.startsWith("•")));
   // Codominantes: nombra los dos.
   const co = informePacienteTemperamentos({ items: perfil([12, 28, 28, 10]) }, opcionesPorDefectoTemperamentos(), extra);
-  assert.equal(co.destacado.titulo, "Sus temperamentos dominantes son: Colérico y melancólico");
+  assert.equal(co.destacado.titulo, "Sus estilos dominantes son: Decidido y enérgico, y reflexivo y sensible (colérico y melancólico en la clasificación clásica)");
   assert.equal(co.grafica.barras.filter((b) => b.destacada).length, 2);
-  assert.match(co.resultados[0].texto, /^Colérico:\n/);
-  assert.match(co.resultados[0].texto, /\nMelancólico:\n/);
+  assert.match(co.resultados[0].texto, /^Decidido y enérgico:\n/);
+  assert.match(co.resultados[0].texto, /\nReflexivo y sensible:\n/);
   // Poco diferenciado: nombra el dominante y aclara que la diferencia es pequeña.
   const poco = informePacienteTemperamentos({ items: perfil([22, 20, 19, 17]) }, opcionesPorDefectoTemperamentos(), extra);
-  assert.equal(poco.destacado.titulo, "Su temperamento dominante es: Sanguíneo");
+  assert.equal(poco.destacado.titulo, "Su estilo dominante es: Sociable y entusiasta (sanguíneo en la clasificación clásica)");
   assert.match(poco.destacado.texto, /diferencia con los demás es pequeña/);
   assert.equal(poco.grafica.barras.filter((b) => b.destacada).length, 1);
   assert.ok(poco.resultados.some((r) => /poco diferenciado/.test(r.area) && /tendencia suave/.test(r.texto)));
-  assert.equal(poco.resultados[0].nivel, "Sanguíneo");
+  assert.equal(poco.resultados[0].nivel, "Estilo dominante");
 });
 
 caso("Informe al paciente: quitar tarjetas y mostrar puntuaciones", () => {
@@ -316,9 +318,10 @@ caso("Informe al paciente: quitar tarjetas y mostrar puntuaciones", () => {
 });
 
 const frases = (t) => t.split(/(?<=[.!?])\s+/).filter(Boolean).length;
+const CLASICAS = /sangu[ií]ne|c[oó]leric|melanc[oó]lic|flem[aá]tic/i;
 const SIGLA_GENERO = /\busted (es|está|se siente|se muestra) (impulsivo|impulsiva|[a-záéíóú]+(o|a)\b)/i;
 
-caso("Contenido por temperamento completo (v1.1)", () => {
+caso("Contenido por estilo completo (v1.1)", () => {
   for (const id of TEMPERAMENTOS_IDS) {
     const i = TEMPERAMENTOS_INFO[id];
     const fr = frases(i.resumen);
@@ -343,7 +346,7 @@ caso("Las 12 combinaciones son perfiles propios y completos (v1.1)", () => {
     assert.match(k, /^[SCMF]-[SCMF]$/);
     assert.ok(k[0] !== k[2]);
     const [a, b] = [k[0], k[2]];
-    assert.equal(v.nombre, `${TEMPERAMENTOS_INFO[a].nombre}-${TEMPERAMENTOS_INFO[b].nombre.toLowerCase()}`);
+    assert.equal(v.nombre, `${TEMPERAMENTOS_INFO[a].nombre}, con rasgos de ${TEMPERAMENTOS_INFO[b].nombre.toLowerCase()} (${TEMPERAMENTOS_INFO[a].clasico}-${TEMPERAMENTOS_INFO[b].clasico})`);
     const fr = frases(v.resumen);
     assert.ok(fr >= 3 && fr <= 4, `${k}: resumen de 3–4 frases (${fr})`);
     assert.ok(v.resumen.length > 250, `${k}: resumen`);
@@ -390,7 +393,13 @@ caso("Redacción: de usted, sin etiquetas clínicas ni «usted es + adjetivo con
     assert.doesNotMatch(t, SIGLA_GENERO, t);
     assert.doesNotMatch(t, /\b(trastorno|diagn[oó]stic|patolog|psicopat|depresi[oó]n cl[ií]nica|neur[oó]tic)/i, t);
     assert.doesNotMatch(t, /\b(tu|tus|ti|contigo)\b/i, t);
+    // v1.2: los textos interpretativos no nombran el tipo con la palabra clásica ni dicen «temperamento».
+    assert.doesNotMatch(t, CLASICAS, t);
+    assert.doesNotMatch(t, /temperament/i, t);
   }
+  for (const i of Object.values(TEMPERAMENTOS_INFO)) for (const t of Object.values(i.terapia)) assert.doesNotMatch(t, CLASICAS, t);
+  assert.doesNotMatch(TEXTO_POCO_DIFERENCIADO, CLASICAS);
+  assert.doesNotMatch(TEXTO_POCO_DIFERENCIADO, /temperament/i);
 });
 
 caso("Los 40 ítems del formulario no cambiaron", () => {
@@ -458,22 +467,160 @@ caso("Registro único: instrumento declarado en todos los registros", () => {
   assert.ok(instrumentoPorId("temperamentos"));
   assert.equal(instrumentoPorId("temperamentos").edadMinima, 14);
   assert.ok(REGISTRO.temperamentos && REGISTRO_SERVIDOR.temperamentos);
-  assert.equal(REGISTRO.temperamentos.sigla, "TEMP");
+  assert.equal(REGISTRO.temperamentos.sigla, "CC-JJR");
+  assert.equal(REGISTRO.temperamentos.nombreCorto(), "Características comportamentales");
   const fila = { id: "1", instrumento: "temperamentos", datos: { items: perfil([24, 30, 12, 8]) }, createdAt: "2026-11-01T10:00:00Z", fecha: "2026-11-01", respondienteNombre: "P" };
   const r = REGISTRO.temperamentos.resumen(fila);
-  assert.equal(r.insignia, "Colérico con rasgos de sanguíneo");
+  assert.equal(r.insignia, "Decidido y enérgico, con rasgos de sociable y entusiasta (colérico-sanguíneo)");
   assert.equal(r.alarma, false);
-  assert.match(r.puntuaciones.join(" "), /Colérico 30/);
+  assert.match(r.puntuaciones.join(" "), /Decidido y enérgico \(colérico\) 30/);
   const e = REGISTRO.temperamentos.evolucion(fila);
   assert.deepEqual(e.puntos, []);
   assert.equal(e.hito.tipo, "temperamentos");
-  assert.equal(e.hito.titulo, "Temperamento: Colérico con rasgos de sanguíneo");
-  assert.match(e.hito.detalle, /Sanguíneo 24/);
+  assert.equal(e.hito.titulo, "Estilo: Decidido y enérgico, con rasgos de sociable y entusiasta (colérico-sanguíneo)");
+  assert.match(e.hito.detalle, /Sociable y entusiasta \(sanguíneo\) 24/);
   assert.equal(REGISTRO.temperamentos.resumen({ ...fila, datos: { items: [1] } }), null);
   const v = REGISTRO_SERVIDOR.temperamentos.validar({ items: perfil([24, 30, 12, 8]) }, null);
   assert.equal(v.ok, true);
   assert.equal(REGISTRO_SERVIDOR.temperamentos.validar({ items: [1, 2] }, null).ok, false);
   assert.deepEqual(REGISTRO.temperamentos.avance({ items: [1, 2, 3] }, null), { respondidas: 3, total: 40 });
+});
+
+
+// ───────────────────────── v1.2 · Nombres modernos ─────────────────────────
+
+/** Todos los casos de perfil que se generan en estas pruebas (12 combinaciones con y sin tercera influencia, predominantes, codominantes y poco diferenciados). */
+const todosLosCasos = () => {
+  const para = (p, s, conTercero) => {
+    const [x, y] = ["SCMF".indexOf(p), "SCMF".indexOf(s)];
+    const arr = [0, 0, 0, 0];
+    const resto = [0, 1, 2, 3].filter((k) => k !== x && k !== y);
+    arr[x] = 30; arr[y] = 25;
+    arr[resto[0]] = conTercero ? 23 : 12; arr[resto[1]] = 8;
+    return arr;
+  };
+  const casos = [];
+  for (const k of Object.keys(COMBINACIONES)) {
+    casos.push(para(k[0], k[2], false), para(k[0], k[2], true));
+    // Predominante con segundo presente (mezcla con dominante claro).
+    const m = [0, 0, 0, 0]; m["SCMF".indexOf(k[0])] = 34; m["SCMF".indexOf(k[2])] = 20; casos.push(m);
+  }
+  [[38, 12, 10, 8], [10, 38, 12, 8], [8, 10, 38, 12], [8, 10, 12, 38]].forEach((x) => casos.push(x));
+  [["S", "C"], ["S", "M"], ["S", "F"], ["C", "M"], ["C", "F"], ["M", "F"]].forEach(([a, b]) => {
+    const arr = [12, 10, 8, 6]; arr["SCMF".indexOf(a)] = 28; arr["SCMF".indexOf(b)] = 28; casos.push(arr);
+  });
+  [[22, 20, 19, 17], [17, 22, 20, 19], [19, 17, 22, 20], [20, 19, 17, 22], [20, 20, 20, 20]].forEach((x) => casos.push(x));
+  return casos;
+};
+const sinParentesis = (t) => t.replace(/\([^)]*\)/g, "");
+const EXTRA = { paciente: "P", fechaAplicacion: "2026-11-01", notas: "", profesional: "X" };
+
+caso("v1.2 · Nombres modernos y referencia clásica de cada estilo", () => {
+  assert.deepEqual(
+    TEMPERAMENTOS_IDS.map((id) => [TEMPERAMENTOS_INFO[id].nombre, TEMPERAMENTOS_INFO[id].clasico]),
+    [["Sociable y entusiasta", "sanguíneo"], ["Decidido y enérgico", "colérico"], ["Reflexivo y sensible", "melancólico"], ["Sereno y constante", "flemático"]]
+  );
+  assert.equal(nombreConClasico("C"), "Decidido y enérgico (colérico)");
+  // Las 12 combinaciones: moderno primero y la pareja clásica entre paréntesis.
+  assert.equal(COMBINACIONES["C-S"].nombre, "Decidido y enérgico, con rasgos de sociable y entusiasta (colérico-sanguíneo)");
+  assert.equal(COMBINACIONES["F-M"].nombre, "Sereno y constante, con rasgos de reflexivo y sensible (flemático-melancólico)");
+  for (const v of Object.values(COMBINACIONES)) assert.match(v.nombre, /^[^(]+, con rasgos de [^(]+ \([a-záéíóú]+-[a-záéíóú]+\)$/);
+  // Tablas y gráficas: «Decidido y enérgico (colérico)».
+  const c = califica([24, 30, 12, 8]);
+  assert.deepEqual(c.temperamentos.map((t) => t.etiqueta), ["Sociable y entusiasta (sanguíneo)", "Decidido y enérgico (colérico)", "Reflexivo y sensible (melancólico)", "Sereno y constante (flemático)"]);
+});
+
+caso("v1.2 · Nombres de perfil exactos de los cuatro tipos de perfil", () => {
+  // Predominante.
+  assert.equal(califica([14, 30, 15, 12]).perfil, "Predominantemente decidido y enérgico (colérico)");
+  // Combinado.
+  assert.equal(califica([24, 30, 12, 8]).perfil, "Decidido y enérgico, con rasgos de sociable y entusiasta (colérico-sanguíneo)");
+  // Codominantes.
+  assert.equal(califica([28, 28, 10, 12]).perfil, "Codominante: sociable y entusiasta, y decidido y enérgico (sanguíneo y colérico)");
+  // Poco diferenciado.
+  assert.equal(califica([22, 20, 19, 17]).perfil, "Dominante sociable y entusiasta (sanguíneo), perfil poco diferenciado");
+  // Los otros estilos se nombran igual.
+  assert.equal(califica([10, 12, 15, 38]).perfil, "Predominantemente sereno y constante (flemático)");
+  assert.equal(califica([8, 10, 38, 12]).perfil, "Predominantemente reflexivo y sensible (melancólico)");
+});
+
+caso("v1.2 · Informe al paciente: la palabra clásica solo va entre paréntesis (o en el aviso)", () => {
+  let n = 0;
+  for (const mostrar of [false, true]) {
+    for (const sumas of todosLosCasos()) {
+      const o = opcionesPorDefectoTemperamentos();
+      o.mostrarPuntuaciones = mostrar;
+      const inf = informePacienteTemperamentos({ items: perfil(sumas) }, o, EXTRA);
+      const leido = leerInformePaciente(JSON.parse(JSON.stringify(inf)));
+      assert.ok(leido);
+      // Todo salvo el aviso (nota de fundamento): sin sanguíneo/colérico/melancólico/flemático fuera de paréntesis.
+      const sinAviso = { ...inf, aviso: "" };
+      const texto = sinParentesis(JSON.stringify(sinAviso));
+      const m = texto.match(CLASICAS);
+      assert.equal(m, null, `${sumas}: palabra clásica fuera de paréntesis: ...${m ? texto.slice(Math.max(0, m.index - 60), m.index + 40) : ""}...`);
+      // El aviso sí lleva la nota de fundamento con la clasificación clásica y los límites.
+      assert.equal(inf.aviso, TEMPERAMENTOS_AVISO_PACIENTE);
+      assert.match(inf.aviso, /clasificación clásica de los temperamentos \(sanguíneo, colérico, melancólico y flemático\)/);
+      assert.match(inf.aviso, /no es un diagnóstico ni una medida con baremos/);
+      assert.match(inf.aviso, /Ningún estilo es mejor que otro/);
+      // La referencia clásica sí aparece (entre paréntesis) en la gráfica y en el recuadro destacado.
+      assert.ok(inf.grafica.barras.every((b) => /\((sanguíneo|colérico|melancólico|flemático)\)$/.test(b.etiqueta)));
+      assert.match(inf.destacado.titulo, /\((sanguíneo|colérico|melancólico|flemático)( y (sanguíneo|colérico|melancólico|flemático))? en la clasificación clásica\)$/);
+      n++;
+    }
+  }
+  assert.equal(n, 2 * (36 + 4 + 6 + 5));
+});
+
+caso("v1.2 · Informe al paciente: «temperamento(s)» no aparece en títulos de tarjetas ni en el recuadro destacado", () => {
+  const extra = EXTRA;
+  for (const sumas of todosLosCasos()) {
+    const inf = informePacienteTemperamentos({ items: perfil(sumas) }, opcionesPorDefectoTemperamentos(), extra);
+    for (const r of inf.resultados) assert.doesNotMatch(sinParentesis(r.area), /temperament/i, r.area);
+    assert.doesNotMatch(sinParentesis(inf.destacado.titulo), /temperament/i);
+    assert.doesNotMatch(sinParentesis(inf.destacado.texto), /temperament/i);
+    assert.doesNotMatch(sinParentesis(inf.grafica.titulo), /temperament/i);
+    assert.doesNotMatch(sinParentesis(inf.intro), /temperament/i);
+  }
+  for (const a of AREAS_TEMPERAMENTOS) assert.doesNotMatch(a.nombre, /temperament/i, a.nombre);
+});
+
+caso("v1.2 · Informe profesional: nota de fundamento actualizada y referencia clásica en tablas", () => {
+  assert.match(TEMPERAMENTOS_AVISO, /corresponden a la clasificación clásica de los temperamentos \(sanguíneo, colérico, melancólico y flemático/);
+  assert.match(TEMPERAMENTOS_AVISO, /extraversión \(hacia afuera o hacia adentro\)/);
+  assert.match(TEMPERAMENTOS_AVISO, /estabilidad emocional \(reacción serena o intensa/);
+  assert.match(TEMPERAMENTOS_AVISO, /no un diagnóstico ni una medida validada con baremos/);
+  assert.match(TEMPERAMENTOS_AVISO, /ningún estilo es mejor que otro/);
+  for (const sumas of todosLosCasos()) {
+    const html = informeTemperamentosHtml({ datos: { items: perfil(sumas) }, nombre: "Prueba", fecha: "2026-11-01" });
+    assert.match(html, /Decidido y enérgico \(colérico\)/);
+    assert.ok(html.includes(TEMPERAMENTOS_AVISO.slice(0, 80)));
+    // Fuera de la nota de fundamento y de las referencias entre paréntesis, no se nombra el tipo con la palabra clásica
+    // (se permite la leyenda de siglas, que va entre paréntesis).
+    const cuerpo = html.slice(0, html.indexOf("Fundamento y límites"));
+    const limpio = sinParentesis(cuerpo.replace(/<style>[\s\S]*<\/style>/, ""));
+    const m = limpio.match(CLASICAS);
+    assert.equal(m, null, `${sumas}: ${m ? limpio.slice(Math.max(0, m.index - 60), m.index + 40) : ""}`);
+    assert.doesNotMatch(limpio, /temperament/i);
+  }
+});
+
+caso("v1.2 · El título del informe y el instrumento usan «Test de características comportamentales JJR»", () => {
+  const NOMBRE = "Test de características comportamentales JJR";
+  assert.equal(TEMPERAMENTOS_NOMBRE_PROFESIONAL, NOMBRE);
+  assert.equal(TEMPERAMENTOS_TITULO_PACIENTE, NOMBRE);
+  const def = instrumentoPorId("temperamentos");
+  assert.equal(def.nombre, NOMBRE);
+  assert.equal(def.tituloPublico, NOMBRE);
+  assert.doesNotMatch(def.nombre + def.tituloPublico, /temperament|sangu|c[oó]leric|melanc|flem/i);
+  assert.doesNotMatch(def.descripcion, /temperamento\b(?!s)/i);
+  const html = informeTemperamentosHtml({ datos: { items: perfil([24, 30, 12, 8]) }, nombre: "Prueba", fecha: "2026-11-01" });
+  assert.ok(html.includes(`<h1>Informe · ${NOMBRE}</h1>`));
+  assert.ok(html.includes(`«${NOMBRE}»`));
+  const inf = informePacienteTemperamentos({ items: perfil([24, 30, 12, 8]) }, opcionesPorDefectoTemperamentos(), EXTRA);
+  assert.equal(inf.titulo, `Resultados · ${NOMBRE}`);
+  // El id interno no cambia.
+  assert.equal(def.id, "temperamentos");
 });
 
 console.log(`\n${ok}/${ok} casos correctos.`);
