@@ -106,7 +106,13 @@ function EstadoRecordatorioWhatsApp({ citaId }: { citaId: string }) {
         Recordatorio automático por WhatsApp: <b className={estado.estado === "fallido" ? "text-red-300" : "text-emerald-200"}>{TEXTO_ESTADO_WA[estado.estado]}</b>{" "}
         ({hora(estado.enviadoEn)})
       </span>
-      {estado.estado === "fallido" && estado.error ? <span className="text-red-300">{estado.error}</span> : null}
+      {estado.estado === "fallido" && estado.error ? (
+        <span className="text-red-300">
+          {/locked|restricted|disabled|banned|suspended|131031|bloquead/i.test(estado.error)
+            ? "La cuenta de WhatsApp Business está bloqueada por Meta (revisa WhatsApp Manager → Calidad de la cuenta). Envía el recordatorio con el botón de WhatsApp de abajo."
+            : estado.error}
+        </span>
+      ) : null}
       {estado.respuesta ? (
         <span className={estado.respuesta === "confirmar" ? "font-semibold text-emerald-200" : "font-semibold text-amber-200"}>
           {estado.respuesta === "confirmar" ? "✅ El paciente confirmó" : "🔁 El paciente pidió reprogramar"}

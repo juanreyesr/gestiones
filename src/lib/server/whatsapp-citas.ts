@@ -1,6 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { mismaHoraQueConsultorio, nombreZona, paisDe, telefonoInternacional, ZONA_CONSULTORIO, zonaDe } from "@/lib/paises";
 import { enviarMensaje, esc, fechaHora, notificar, type TelegramConfig } from "./telegram";
+import { enlaceWhatsApp, textoRecordatorioCita } from "@/lib/clinica/recordatorio";
 import { enviarPlantilla, enviarTexto, isWhatsAppConfigured, type WebhookWhatsApp } from "./whatsapp";
 
 /** El recordatorio sale 24 h antes de la cita. */
@@ -58,6 +59,22 @@ export function parametrosRecordatorio(nombreCompleto: string, inicioIso: string
 }
 
 /**
+ * Errores de la CUENTA (no del mensaje): Meta bloqueó o restringió la cuenta de
+ * WhatsApp Business (p. ej. código 131031 «Business account has been locked»).
+ * Reintentar no sirve: se pausa el envío automático y se avisa por Telegram con
+ * el botón para mandar el recordatorio a mano.
+ */
+export const esErrorDeCuenta = (error: string | null | undefined) =>
+  /locked|restricted|disabled|banned|suspended|131031|bloquead|restringid/i.test(error ?? "");
+
+/** Texto que se guarda (y se ve en la agenda) cuando la cuenta está bloqueada. */
+export const ERROR_CUENTA_BLOQUEADA =
+  "La cuenta de WhatsApp Business está bloqueada por Meta (revisa WhatsApp Manager → Calidad de la cuenta). Envía el recordatorio con el botón de WhatsApp.";
+
+/** Mientras haya un error de cuenta en este lapso, no se vuelve a llamar a WhatsApp. */
+const HORAS_PAUSA_CUENTA = 12;
+
+/**
  * Envia el recordatorio de WhatsApp de las citas que empiezan entre 2 y 24
  * horas desde ahora. Lo llama el cron de cada 10 minutos. Cada cita se
  * recuerda una sola vez por horario (si se reprograma, se vuelve a recordar).
@@ -75,11 +92,46 @@ export async function enviarRecordatoriosWhatsApp(admin: SupabaseClient, config:
     .order("inicio")
     .limit(40);
 
+  // ¿La cuenta quedó bloqueada hace poco? Entonces no se llama a WhatsApp (una
+  // prueba cada HORAS_PAUSA_CUENTA horas detecta cuando Meta la desbloquee).
+  const { data: bloqueos } = await admin
+    .from("gestionesjj_whatsapp_mensajes")
+    .select("id")
+    .eq("estado", "fallido")
+    .ilike("error", "La cuenta de WhatsApp Business está bloqueada%")
+    .gte("updated_at", new Date(ahora - HORAS_PAUSA_CUENTA * 3_600_000).toISOString())
+    .limit(1);
+  let cuentaBloqueada = Boolean(bloqueos?.length);
+
+  /** Aviso único por cita con el botón para mandarle el recordatorio a mano. */
+  const avisarEnvioManual = async (cita: RawCitaWhatsApp, nombre: string, numero: string, zona: string) => {
+    if (!config?.chatId) return;
+    const mensaje = textoRecordatorioCita(nombre, cita.inicio, zona);
+    await enviarMensaje(
+      config.chatId,
+      `⚠️ <b>WhatsApp Business bloqueado: no salió el recordatorio automático</b>\n👤 ${esc(nombre || "Paciente")} · ${esc(fechaHora(cita.inicio))}\n\nEnvíaselo tú con el botón. El envío automático queda en pausa y se vuelve a probar cada ${HORAS_PAUSA_CUENTA} h; para desbloquearlo revisa WhatsApp Manager → Calidad de la cuenta.`,
+      { botones: [[{ text: "📲 Mandarle recordatorio por WhatsApp", url: enlaceWhatsApp(numero, mensaje) }]] },
+    );
+  };
+
   let enviados = 0;
   for (const cita of (data ?? []) as unknown as RawCitaWhatsApp[]) {
     if (cita.gestionesjj_pacientes?.whatsapp_recordatorios === false) continue;
     const { nombre, numero, zona } = datosPaciente(cita);
     if (!numero) continue;
+
+    if (cuentaBloqueada) {
+      // Sin llamar a WhatsApp: se registra una sola vez por cita y se manda el botón manual.
+      const { data: nuevo } = await admin
+        .from("gestionesjj_whatsapp_mensajes")
+        .upsert(
+          { cita_id: cita.id, inicio: cita.inicio, telefono: numero, estado: "fallido", error: ERROR_CUENTA_BLOQUEADA },
+          { onConflict: "cita_id,inicio", ignoreDuplicates: true },
+        )
+        .select("id");
+      if ((nuevo as Array<{ id: string }> | null)?.length) await avisarEnvioManual(cita, nombre, numero, zona);
+      continue;
+    }
 
     // Se registra antes de enviar: si dos ejecuciones se cruzan, solo una gana.
     const { data: registro } = await admin
@@ -97,6 +149,8 @@ export async function enviarRecordatoriosWhatsApp(admin: SupabaseClient, config:
         .eq("inicio", cita.inicio)
         .eq("estado", "fallido")
         .is("wa_message_id", null)
+        // Las bloqueadas por la cuenta ya recibieron el botón manual: no se reintentan.
+        .not("error", "ilike", "La cuenta de WhatsApp Business está bloqueada%")
         .lt("updated_at", new Date(ahora - MINUTOS_ENTRE_REINTENTOS * 60_000).toISOString())
         .select("id");
       registroId = (previo as Array<{ id: string }> | null)?.[0]?.id;
@@ -120,6 +174,11 @@ export async function enviarRecordatoriosWhatsApp(admin: SupabaseClient, config:
           `✅ <b>Recordatorio de WhatsApp enviado</b> (reintento)\n👤 ${esc(nombre || "Paciente")} · ${esc(fechaHora(cita.inicio))}`,
         );
       }
+    } else if (esErrorDeCuenta(res.error)) {
+      // Cuenta bloqueada: no se reintenta; esta cita y las siguientes van por el botón manual.
+      await admin.from("gestionesjj_whatsapp_mensajes").update({ estado: "fallido", error: ERROR_CUENTA_BLOQUEADA }).eq("id", registroId);
+      cuentaBloqueada = true;
+      await avisarEnvioManual(cita, nombre, numero, zona);
     } else {
       await admin.from("gestionesjj_whatsapp_mensajes").update({ estado: "fallido", error: res.error }).eq("id", registroId);
       // Se avisa solo la primera vez; los reintentos fallidos no llenan el chat.
