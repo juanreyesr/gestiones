@@ -113,7 +113,10 @@ export async function fetchPaciente(id: string) {
 
   const { data, error } = await supabase.from("gestionesjj_pacientes").select(PACIENTE_COLUMNS).eq("id", id).single();
   if (error) return { data: null as PacienteRow | null, error: error.message };
-  return { data: mapPaciente(data as unknown as RawPaciente), error: null };
+  // «¿Qué le gustaría trabajar?» (migración 066): consulta aparte para no romper el expediente si falta la columna.
+  const extra = await supabase.from("gestionesjj_pacientes").select("motivo_paciente").eq("id", id).maybeSingle();
+  const motivoPaciente = extra.error ? null : ((extra.data as { motivo_paciente?: string | null } | null)?.motivo_paciente ?? null);
+  return { data: { ...mapPaciente(data as unknown as RawPaciente), motivoPaciente }, error: null };
 }
 
 export async function upsertPaciente(id: string | null, payload: PacientePayload) {

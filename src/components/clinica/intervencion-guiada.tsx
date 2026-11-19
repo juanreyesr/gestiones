@@ -54,7 +54,19 @@ function abrirRespuesta(id: string) {
  * para que el terapeuta las llene (con datos del expediente ya puestos) o las envíe al paciente,
  * con o sin lo ya escrito. Lógica en src/lib/evaluaciones/fichas/intervencion.ts.
  */
-export function IntervencionGuiada({ motivoCita, paciente }: { motivoCita?: string | null; paciente: PacienteRow }) {
+export function IntervencionGuiada({
+  citaInicial = false,
+  modo = "completo",
+  motivoCita,
+  paciente,
+}: {
+  /** Aún no hay sesiones (cita inicial): se sugiere la ficha 1.1 de forma destacada. */
+  citaInicial?: boolean;
+  /** «cita-inicial»: dentro de la primera sesión, solo la sugerencia de la 1.1 (y su editor). */
+  modo?: "completo" | "cita-inicial";
+  motivoCita?: string | null;
+  paciente: PacienteRow;
+}) {
   const [respuestas, setRespuestas] = useState<EvaluacionRespuestaRow[]>([]);
   const [evaluaciones, setEvaluaciones] = useState<EvaluacionRow[]>([]);
   const [cargando, setCargando] = useState(true);
@@ -197,6 +209,9 @@ export function IntervencionGuiada({ motivoCita, paciente }: { motivoCita?: stri
   const conRespuesta = estados.filter((e) => e.hecha).length;
   const resumen = [`${conRespuesta} de ${FICHAS.length} fichas con respuesta`, sugerencias.length ? `${sugerencias.length} recomendada${sugerencias.length === 1 ? "" : "s"}` : ""].filter(Boolean).join(" · ");
 
+  const idSeccion = modo === "cita-inicial" ? "intervencion-cita-inicial" : "intervencion";
+  const tituloSeccion = modo === "cita-inicial" ? "Cita inicial · Ficha 1.1" : "Intervención guiada";
+
   /* ------------------------------ editor ------------------------------ */
   if (editando) {
     const ficha = fichaPorId(editando)!;
@@ -204,7 +219,7 @@ export function IntervencionGuiada({ motivoCita, paciente }: { motivoCita?: stri
     const riesgo = riesgoFicha(ficha, campos).riesgo;
     const previa = estadoDe(editando);
     return (
-      <SectionCard plegable={{ id: "intervencion", abierta: true, resumen: `Llenando la ficha ${ficha.id}` }} title="Intervención guiada">
+      <SectionCard plegable={{ id: idSeccion, abierta: true, resumen: `Llenando la ficha ${ficha.id}` }} title={tituloSeccion}>
         <div className="grid gap-4" data-testid="intervencion-editor">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <button className={BTN_GHOST} disabled={trabajando} onClick={() => setEditando(null)} type="button">
@@ -338,8 +353,8 @@ export function IntervencionGuiada({ motivoCita, paciente }: { motivoCita?: stri
   );
 
   const etapas = [...new Set(FICHAS.map((f) => f.etapa))];
-  return (
-    <SectionCard plegable={{ id: "intervencion", resumen }} title="Intervención guiada">
+  const avisos = (
+    <>
       {error ? <div className="mb-3 border border-red-400/40 bg-red-400/10 p-3 text-sm text-red-200">{error}</div> : null}
       {aviso ? <div className="mb-3 break-all border border-emerald-300/30 bg-emerald-300/10 p-3 text-sm text-emerald-200">{aviso}</div> : null}
       {enlaceNuevo ? (
@@ -353,6 +368,57 @@ export function IntervencionGuiada({ motivoCita, paciente }: { motivoCita?: stri
           </button>
         </div>
       ) : null}
+    </>
+  );
+
+  // Cita inicial: la 1.1 (motivo de consulta y metas) es la primera ficha sugerida.
+  const e11 = estadoDe("1.1");
+  const sugerir11 = !cargando && (citaInicial || modo === "cita-inicial") && !e11.hecha;
+  const f11 = fichaPorId("1.1")!;
+  const bannerCitaInicial = sugerir11 ? (
+    <div className="mb-4 grid gap-2 border border-sky-300/40 bg-sky-300/10 p-3" data-testid="sugerencia-cita-inicial">
+      <div className="text-[11px] font-semibold uppercase tracking-wide text-sky-200">Cita inicial · sugerida</div>
+      <div className="text-sm font-semibold text-white">
+        Ficha {f11.id} · {f11.titulo}
+      </div>
+      <p className="text-xs leading-5 text-slate-300">
+        {f11.paraQue} Puede llenarla con el paciente durante la sesión o enviársela para que la responda.
+        {baseEditor ? " Al llenarla usted verá su motivo inicial (solo usted)." : ""}
+      </p>
+      {e11.enlaceId ? (
+        <p className="text-xs text-amber-200">
+          Ya se le envió el enlace{e11.fecha ? ` el ${fechaLegible(e11.fecha)}` : ""}; aún no la responde.
+        </p>
+      ) : null}
+      <div className="flex flex-wrap gap-1.5">
+        <button className={BTN_ACCENT} data-testid="cita-inicial-llenar" disabled={trabajando} onClick={() => abrirEditor("1.1")} type="button">
+          <PenLine className="h-4 w-4" />
+          Llenarla en la sesión
+        </button>
+        {!e11.enlaceId ? (
+          <button className={BTN_GHOST} data-testid="cita-inicial-enviar" disabled={trabajando} onClick={() => void enviar("1.1", null)} type="button">
+            <Send className="h-4 w-4" />
+            Enviar al paciente
+          </button>
+        ) : null}
+      </div>
+    </div>
+  ) : null;
+
+  if (modo === "cita-inicial") {
+    if (cargando || (!bannerCitaInicial && !aviso && !enlaceNuevo && !error)) return null;
+    return (
+      <SectionCard plegable={{ id: idSeccion, abierta: true, resumen: sugerir11 ? "Ficha 1.1 sugerida" : "Ficha 1.1" }} title={tituloSeccion}>
+        {avisos}
+        {bannerCitaInicial}
+      </SectionCard>
+    );
+  }
+
+  return (
+    <SectionCard plegable={{ id: "intervencion", resumen }} title="Intervención guiada">
+      {avisos}
+      {bannerCitaInicial}
 
       <p className="mb-3 text-xs leading-5 text-slate-400">
         Use las fichas usted mismo, en sesión o después: se abren con datos del expediente ya puestos, o se envían al paciente (vacías o con lo ya escrito). Las que usted llena

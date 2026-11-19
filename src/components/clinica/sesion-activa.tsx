@@ -12,6 +12,7 @@ import {
 import { formatoFechaLarga, formatoHora } from "@/lib/clinica/slots";
 import { ConfirmDialog } from "../confirm-dialog";
 import { CierreForm, type CierreValues } from "./cierre-form";
+import { IntervencionGuiada } from "./intervencion-guiada";
 import { CitasSinPagarAviso, TarifaEditor } from "./pagos";
 import { BTN_PRIMARY, SectionCard } from "./ui";
 
@@ -21,6 +22,7 @@ export function SesionActiva({
   onFinalizada,
   onDescartada,
   onPagoCambiado,
+  motivoCita,
   paciente,
   sesion,
   sesionAnterior,
@@ -30,6 +32,8 @@ export function SesionActiva({
   onFinalizada: () => void;
   onDescartada: () => void;
   onPagoCambiado: () => void;
+  /** Motivo de la cita (punto de partida de la ficha 1.1 si no hay otro). */
+  motivoCita?: string | null;
   paciente: PacienteRow;
   sesion: SesionRow;
   sesionAnterior: SesionRow | null;
@@ -290,6 +294,8 @@ export function SesionActiva({
 
       <div className="grid gap-4 xl:grid-cols-[1fr_340px]">
         <div className="grid content-start gap-4">
+          {/* Cita inicial: se sugiere la ficha 1.1 (motivo de consulta y metas). */}
+          {!sesionAnterior ? <IntervencionGuiada modo="cita-inicial" motivoCita={motivoCita} paciente={paciente} /> : null}
           {modalidad === "seguimiento" && sesionAnterior?.resumen ? (
             <SectionCard title="Resumen de la sesión anterior">
               <p className="whitespace-pre-wrap text-sm leading-6 text-slate-200">{sesionAnterior.resumen}</p>

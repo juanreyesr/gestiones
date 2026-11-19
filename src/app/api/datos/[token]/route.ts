@@ -176,6 +176,14 @@ export async function POST(request: Request, { params }: { params: Promise<{ tok
     responsables,
   }, plantilla);
 
+  // «¿Qué le gustaría trabajar?» (migración 066). Va antes del guardado, que cierra el enlace.
+  // Si la migración aún no está aplicada, se sigue sin esa respuesta.
+  const motivoPaciente = recortar(body.motivoPaciente, 2000);
+  if (motivoPaciente) {
+    const { error: errMotivo } = await supabase.rpc("gestionesjj_public_datos_motivo", { p_token: token, p_motivo: motivoPaciente });
+    if (errMotivo) console.warn("No se guardó «¿Qué le gustaría trabajar?» (¿falta la migración 066?):", errMotivo.message);
+  }
+
   const { data, error } = await supabase.rpc("gestionesjj_public_datos_save", {
     p_token: token,
     p_nombre: str("nombre"),

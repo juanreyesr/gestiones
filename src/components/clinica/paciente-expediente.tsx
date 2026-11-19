@@ -280,6 +280,7 @@ export function PacienteExpediente({
     return (
       <SesionActiva
         citasSinPagar={citasSinPagar}
+        motivoCita={motivoUltimaCita}
         compromisosPendientes={compromisos}
         onPagoCambiado={() => void cargar()}
         onDescartada={() => {
@@ -515,7 +516,7 @@ export function PacienteExpediente({
           <PlanTratamiento onCambio={() => void cargar()} sesiones={sesiones} />
           <PanelEvolucion paciente={paciente} sesiones={sesiones} />
           <EvaluacionesPaciente paciente={paciente} />
-          <IntervencionGuiada motivoCita={motivoUltimaCita} paciente={paciente} />
+          <IntervencionGuiada citaInicial={sesiones.length === 0} motivoCita={motivoUltimaCita} paciente={paciente} />
           <DocumentosPaciente pacienteId={paciente.id} sesiones={sesiones} />
           <SectionCard
             plegable={{
@@ -714,6 +715,7 @@ export function PacienteExpediente({
 
           <SectionCard plegable={{ id: "ficha", resumen: paciente.motivoConsulta ? paciente.motivoConsulta.slice(0, 60) : undefined }} title="Ficha clínica">
             <div className="grid gap-3">
+              <DatoFicha label="Lo que le gustaría trabajar (hoja de datos generales)" value={paciente.motivoPaciente ?? null} />
               <DatoFicha label="Motivo de consulta" value={paciente.motivoConsulta} />
               <MotivoYMetas
                 onActualizado={() => {
@@ -734,7 +736,7 @@ export function PacienteExpediente({
                 }
               />
               <DatoFicha label="Notas generales" value={paciente.notasGenerales} />
-              {!paciente.motivoConsulta && !paciente.antecedentesPsicologicos && !paciente.notasGenerales ? (
+              {!paciente.motivoConsulta && !paciente.motivoPaciente && !paciente.antecedentesPsicologicos && !paciente.notasGenerales ? (
                 <p className="text-sm text-slate-400">
                   La ficha está incompleta. Usa «Editar datos» para completarla cuando tengas la información.
                 </p>
