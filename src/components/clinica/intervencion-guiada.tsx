@@ -194,7 +194,7 @@ export function IntervencionGuiada({ motivoCita, paciente }: { motivoCita?: stri
     window.open(enlaceWhatsApp(paciente.telefono, mensajeEvaluacion(paciente.nombre, url, { esMenor: paciente.esMenor, respuestas: 1 }), paciente.pais), "_blank", "noopener,noreferrer");
 
   const conRespuesta = estados.filter((e) => e.hecha).length;
-  const resumen = [`${conRespuesta} de ${FICHAS.length} fichas con respuesta`, sugerencias.length ? `${sugerencias.length} sugerida${sugerencias.length === 1 ? "" : "s"}` : ""].filter(Boolean).join(" · ");
+  const resumen = [`${conRespuesta} de ${FICHAS.length} fichas con respuesta`, sugerencias.length ? `${sugerencias.length} recomendada${sugerencias.length === 1 ? "" : "s"}` : ""].filter(Boolean).join(" · ");
 
   /* ------------------------------ editor ------------------------------ */
   if (editando) {
@@ -294,7 +294,7 @@ export function IntervencionGuiada({ motivoCita, paciente }: { motivoCita?: stri
           <span className={`font-semibold ${COLOR_ESTADO[e.estado]}`}>{e.etiqueta}</span>
           {e.fecha ? <span className="text-slate-400"> · {fechaLegible(e.fecha)}</span> : null}
         </div>
-        {sugerida?.length ? <div className="mt-0.5 text-xs text-amber-200">Sugerida: {sugerida.join(" · ")}</div> : null}
+        {sugerida?.length ? <div className="mt-0.5 text-xs text-amber-200">{sugerida.join(" · ")}</div> : null}
       </div>
       <div className="flex flex-wrap gap-1.5">
         <button className={BTN_ACCENT} disabled={trabajando} onClick={() => abrirEditor(f.id)} type="button">

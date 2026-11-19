@@ -426,7 +426,7 @@ function mcea(valorTope, focus, fecha = "2026-11-02", registro = null) {
 
 caso("Sugeridas: sin evaluaciones solo 1.1 y 1.3", () => {
   assert.deepEqual(fichasSugeridas([]).map((s) => s.ficha), ["1.1", "1.3"]);
-  assert.ok(fichasSugeridas([]).every((s) => s.motivos.includes("Aún no la ha respondido")));
+  assert.ok(fichasSugeridas([]).every((s) => s.motivos.includes("Recomendada para empezar: aún no la ha respondido")));
 });
 
 caso("Sugeridas: EAPI alto → 2.1, 2.4, 2.2, 2.3 con sus motivos", () => {
@@ -434,9 +434,9 @@ caso("Sugeridas: EAPI alto → 2.1, 2.4, 2.2, 2.3 con sus motivos", () => {
   assert.ok(calificarEapi({ gad: Array(7).fill(3), dass: Array(21).fill(3), ptq: Array(15).fill(4), docs: null, safety: 0, func: null }).gad.total >= 10);
   const s = fichasSugeridas([alto]);
   assert.deepEqual(s.map((x) => x.ficha), ["1.1", "1.3", "2.1", "2.2", "2.3", "2.4"]);
-  assert.match(s.find((x) => x.ficha === "2.1").motivos.join(" "), /Preocupación y ansiedad|Tensión y palpitaciones/);
-  assert.match(s.find((x) => x.ficha === "2.2").motivos.join(" "), /Tristeza y desgano/);
-  assert.match(s.find((x) => x.ficha === "2.3").motivos.join(" "), /Pensamientos que vuelven/);
+  assert.match(s.find((x) => x.ficha === "2.1").motivos.join(" "), /^Recomendada por resultados de su EAPI \(1 nov\): (preocupación y ansiedad|tensión y palpitaciones)/);
+  assert.match(s.find((x) => x.ficha === "2.2").motivos.join(" "), /tristeza y desgano/);
+  assert.match(s.find((x) => x.ficha === "2.3").motivos.join(" "), /pensamientos que vuelven/);
   assert.deepEqual(s.find((x) => x.ficha === "2.4").motivos, s.find((x) => x.ficha === "2.1").motivos);
 });
 
@@ -613,7 +613,7 @@ caso("B.1 Sugerencias: las de sugeridas.ts más la ruta, sin las ya hechas o env
   assert.deepEqual(sugerenciasIntervencion([], []).map((s) => s.ficha), ["1.1", "1.3"]);
   const s0 = sugerenciasIntervencion([], []);
   assert.equal(s0[0].enRuta, true, "1.1 es además la siguiente en la ruta");
-  assert.deepEqual(s0[0].motivos, ["Aún no la ha respondido", "Sigue en la ruta (etapa 1 · Evaluación y formulación)"]);
+  assert.deepEqual(s0[0].motivos, ["Recomendada para empezar: aún no la ha respondido", "Recomendada como siguiente paso (etapa 1 · Evaluación y formulación)"]);
   assert.equal(s0[1].enRuta, false);
   // EAPI alto: 2.1, 2.2, 2.3 y 2.4 por resultados.
   const alto = eapi(3, 3, 4);
@@ -622,7 +622,7 @@ caso("B.1 Sugerencias: las de sugeridas.ts más la ruta, sin las ya hechas o env
   const hechas = [alto, ficha("1.1"), delTerapeuta("1.3")];
   const s = sugerenciasIntervencion(hechas, []);
   assert.deepEqual(s.map((x) => x.ficha), ["1.2", "2.1", "2.2", "2.3", "2.4"]);
-  assert.deepEqual(s[0], { ficha: "1.2", motivos: ["Sigue en la ruta (etapa 1 · Evaluación y formulación)"], enRuta: true });
+  assert.deepEqual(s[0], { ficha: "1.2", motivos: ["Recomendada como siguiente paso (etapa 1 · Evaluación y formulación)"], enRuta: true });
   assert.match(s[1].motivos.join(" "), /EAPI/);
   // Las ya enviadas no se sugieren otra vez.
   assert.deepEqual(sugerenciasIntervencion(hechas, [enlace("2.1"), enlace("1.2")]).map((x) => x.ficha), ["2.2", "2.3", "2.4"]);
@@ -632,7 +632,7 @@ caso("B.1 Sugerencias: las de sugeridas.ts más la ruta, sin las ya hechas o env
   assert.deepEqual(s2.map((x) => x.ficha), ["2.1", "2.2", "2.3", "2.4"]);
   assert.equal(s2[0].enRuta, true);
   assert.equal(s2[1].enRuta, false);
-  assert.equal(s2[0].motivos.at(-1), "Sigue en la ruta (etapa 2 · Psicoeducación)");
+  assert.equal(s2[0].motivos.at(-1), "Recomendada como siguiente paso (etapa 2 · Psicoeducación)");
 });
 
 caso("B.2 Prellenado desde el expediente, con el origen legible de cada campo", () => {

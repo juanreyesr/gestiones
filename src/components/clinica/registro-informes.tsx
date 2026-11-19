@@ -146,7 +146,7 @@ function ElegirFicha({ valor, onCambio, respuestas }: { valor: Opciones; onCambi
                   <strong>{f.id}</strong> · {f.titulo}
                   {sugeridas.has(f.id) ? (
                     <span className="ml-2 inline-block rounded bg-amber-300/20 px-1.5 py-0.5 text-[11px] font-semibold text-amber-200" title={sugeridas.get(f.id)!.join(" · ")}>
-                      Sugerida por sus resultados
+                      Recomendada por sus resultados
                     </span>
                   ) : null}
                   {hechas.has(f.id) ? <span className="ml-2 text-[11px] text-slate-400">Ya respondida antes</span> : null}

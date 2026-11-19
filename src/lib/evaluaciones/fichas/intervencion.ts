@@ -119,7 +119,7 @@ export function sugerenciasIntervencion(respuestas: RespuestaFila[], enlaces: En
   for (const f of siguientesEnRuta(estados)) {
     if (ocupada(f)) continue;
     const ficha = fichaPorId(f)!;
-    const motivo = `Sigue en la ruta (etapa ${ficha.etapa} · ${ETAPAS_FICHAS[ficha.etapa]})`;
+    const motivo = `Recomendada como siguiente paso (etapa ${ficha.etapa} · ${ETAPAS_FICHAS[ficha.etapa]})`;
     const previa = mapa.get(f);
     mapa.set(f, { ficha: f, motivos: [...(previa?.motivos ?? []), motivo], enRuta: true });
   }

@@ -22,6 +22,12 @@ export type FilaRespuesta = { instrumento: string; datos: unknown; fecha?: strin
 export type SugerenciaFicha = { ficha: FichaId; motivos: string[] };
 
 const cuando = (r: FilaRespuesta) => r.fecha ?? r.createdAt;
+/** «15 nov» (fecha local de la aplicación). */
+const fechaCorta = (r: FilaRespuesta) => {
+  const [a, m, d] = cuando(r).slice(0, 10).split("-").map(Number);
+  return new Date(a, m - 1, d).toLocaleDateString("es-GT", { day: "numeric", month: "short" }).replace(".", "");
+};
+const baja = (t: string) => t.toLowerCase();
 const masReciente = (a: FilaRespuesta, b: FilaRespuesta) => (cuando(b) < cuando(a) ? -1 : cuando(b) > cuando(a) ? 1 : b.createdAt < a.createdAt ? -1 : b.createdAt > a.createdAt ? 1 : 0);
 
 /** Fichas que el paciente ya respondió (cualquier aplicación). */
@@ -46,11 +52,12 @@ function areasEapi(respuestas: FilaRespuesta[]): { area: Area; motivo: string }[
   const v = modulos.length ? validarEapi(r.datos, modulos) : null;
   if (!v?.ok) return [];
   const c = calificarEapi(v.datos);
+  const de = `Recomendada por resultados de su EAPI (${fechaCorta(r)})`;
   const out: { area: Area; motivo: string }[] = [];
-  if (c.gad && c.gad.total >= 10) out.push({ area: "ansiedad", motivo: `Preocupación y ansiedad alta en el último EAPI (GAD-7 ${c.gad.total})` });
-  if (c.dass && c.dass.anx.band.i >= 2) out.push({ area: "tension", motivo: `Tensión y palpitaciones en el último EAPI (${c.dass.anx.band.label})` });
-  if (c.dass && c.dass.dep.band.i >= 2) out.push({ area: "animo", motivo: `Tristeza y desgano en el último EAPI (${c.dass.dep.band.label})` });
-  if (c.ptq && c.ptq.total >= 22) out.push({ area: "pensamientos", motivo: `Pensamientos que vuelven en el último EAPI (PTQ ${c.ptq.total})` });
+  if (c.gad && c.gad.total >= 10) out.push({ area: "ansiedad", motivo: `${de}: preocupación y ansiedad ${baja(c.gad.band.label)} (GAD-7 ${c.gad.total})` });
+  if (c.dass && c.dass.anx.band.i >= 2) out.push({ area: "tension", motivo: `${de}: tensión y palpitaciones, nivel ${baja(c.dass.anx.band.label)}` });
+  if (c.dass && c.dass.dep.band.i >= 2) out.push({ area: "animo", motivo: `${de}: tristeza y desgano, nivel ${baja(c.dass.dep.band.label)}` });
+  if (c.ptq && c.ptq.total >= 22) out.push({ area: "pensamientos", motivo: `${de}: pensamientos que vuelven, nivel ${baja(c.ptq.band.label)} (PTQ ${c.ptq.total})` });
   return out;
 }
 
@@ -60,10 +67,11 @@ function areasMcea(respuestas: FilaRespuesta[]): { area: Area; motivo: string }[
   const d = r ? datosMceaGuardados(r.datos) : null;
   if (!d) return [];
   const sc = scoreAll(d);
+  const de = `Recomendada por resultados de su MCEA (${fechaCorta(r!)})`;
   const out: { area: Area; motivo: string }[] = [];
-  if (sc.GAD7 && sc.GAD7.lvl >= 2) out.push({ area: "ansiedad", motivo: `Preocupación y ansiedad alta en el último MCEA (GAD-7 ${sc.GAD7.raw})` });
-  if (sc.PHQ9 && sc.PHQ9.lvl >= 2) out.push({ area: "animo", motivo: `Ánimo bajo en el último MCEA (PHQ-9 ${sc.PHQ9.raw})` });
-  if (sc.PTQ && sc.PTQ.lvl >= 1) out.push({ area: "pensamientos", motivo: `Pensamientos que vuelven en el último MCEA (PTQ ${sc.PTQ.raw})` });
+  if (sc.GAD7 && sc.GAD7.lvl >= 2) out.push({ area: "ansiedad", motivo: `${de}: preocupación y ansiedad ${baja(sc.GAD7.label)} (GAD-7 ${sc.GAD7.raw})` });
+  if (sc.PHQ9 && sc.PHQ9.lvl >= 2) out.push({ area: "animo", motivo: `${de}: ánimo ${baja(sc.PHQ9.label)} (PHQ-9 ${sc.PHQ9.raw})` });
+  if (sc.PTQ && sc.PTQ.lvl >= 1) out.push({ area: "pensamientos", motivo: `${de}: pensamientos que vuelven, ${baja(sc.PTQ.label)} (PTQ ${sc.PTQ.raw})` });
   return out;
 }
 
@@ -73,6 +81,6 @@ export function fichasSugeridas(respuestas: FilaRespuesta[]): SugerenciaFicha[] 
   const agregar = (f: FichaId, m: string) => motivos.set(f, [...(motivos.get(f) ?? []).filter((x) => x !== m), m]);
   for (const { area, motivo } of [...areasEapi(respuestas), ...areasMcea(respuestas)]) for (const f of FICHAS_DE_AREA[area]) agregar(f, motivo);
   const hechas = fichasRespondidas(respuestas);
-  for (const f of ["1.1", "1.3"] as const) if (!hechas.has(f)) agregar(f, "Aún no la ha respondido");
+  for (const f of ["1.1", "1.3"] as const) if (!hechas.has(f)) agregar(f, "Recomendada para empezar: aún no la ha respondido");
   return FICHA_IDS.filter((f) => motivos.has(f)).map((f) => ({ ficha: f, motivos: motivos.get(f)! }));
 }
