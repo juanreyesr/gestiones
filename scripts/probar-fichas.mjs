@@ -10,6 +10,8 @@ import { fichaEnBlancoHtml, fichaRespondidaHtml } from "../src/lib/evaluaciones/
 import { detectarRiesgo, riesgoFicha } from "../src/lib/evaluaciones/fichas/riesgo.ts";
 import { fichasRespondidas, fichasSugeridas } from "../src/lib/evaluaciones/fichas/sugeridas.ts";
 import { borradorInicialFicha, datosFichaTerapeuta, estadosFichas, fechaLegible, prellenado, resumenIntervencion, siguientesEnRuta, sugerenciasIntervencion, tareaDeFicha } from "../src/lib/evaluaciones/fichas/intervencion.ts";
+import { baseMotivo, comparativaMotivo, diffPalabras, FUENTE_CITA, FUENTE_EXPEDIENTE, historialMotivo, lineasComparativa, camposMotivoPresentes } from "../src/lib/evaluaciones/fichas/motivo.ts";
+import { enlaceFicha } from "../src/lib/evaluaciones/fichas/intervencion.ts";
 import { INSTRUMENTOS, instrumentoPorId } from "../src/lib/evaluaciones/instrumentos.ts";
 import { buildPlan, etiquetas } from "../src/lib/evaluaciones/mcea/motor.ts";
 import { TEXTOS_REGISTRO } from "../src/lib/evaluaciones/mcea/textos-registro.ts";
@@ -426,7 +428,7 @@ function mcea(valorTope, focus, fecha = "2026-11-02", registro = null) {
 
 caso("Sugeridas: sin evaluaciones solo 1.1 y 1.3", () => {
   assert.deepEqual(fichasSugeridas([]).map((s) => s.ficha), ["1.1", "1.3"]);
-  assert.ok(fichasSugeridas([]).every((s) => s.motivos.includes("Aún no la ha respondido")));
+  assert.ok(fichasSugeridas([]).every((s) => s.motivos.includes("Recomendada para empezar: aún no la ha respondido")));
 });
 
 caso("Sugeridas: EAPI alto → 2.1, 2.4, 2.2, 2.3 con sus motivos", () => {
@@ -434,9 +436,9 @@ caso("Sugeridas: EAPI alto → 2.1, 2.4, 2.2, 2.3 con sus motivos", () => {
   assert.ok(calificarEapi({ gad: Array(7).fill(3), dass: Array(21).fill(3), ptq: Array(15).fill(4), docs: null, safety: 0, func: null }).gad.total >= 10);
   const s = fichasSugeridas([alto]);
   assert.deepEqual(s.map((x) => x.ficha), ["1.1", "1.3", "2.1", "2.2", "2.3", "2.4"]);
-  assert.match(s.find((x) => x.ficha === "2.1").motivos.join(" "), /Preocupación y ansiedad|Tensión y palpitaciones/);
-  assert.match(s.find((x) => x.ficha === "2.2").motivos.join(" "), /Tristeza y desgano/);
-  assert.match(s.find((x) => x.ficha === "2.3").motivos.join(" "), /Pensamientos que vuelven/);
+  assert.match(s.find((x) => x.ficha === "2.1").motivos.join(" "), /^Recomendada por resultados de su EAPI \(1 nov\): (preocupación y ansiedad|tensión y palpitaciones)/);
+  assert.match(s.find((x) => x.ficha === "2.2").motivos.join(" "), /tristeza y desgano/);
+  assert.match(s.find((x) => x.ficha === "2.3").motivos.join(" "), /pensamientos que vuelven/);
   assert.deepEqual(s.find((x) => x.ficha === "2.4").motivos, s.find((x) => x.ficha === "2.1").motivos);
 });
 
@@ -613,7 +615,7 @@ caso("B.1 Sugerencias: las de sugeridas.ts más la ruta, sin las ya hechas o env
   assert.deepEqual(sugerenciasIntervencion([], []).map((s) => s.ficha), ["1.1", "1.3"]);
   const s0 = sugerenciasIntervencion([], []);
   assert.equal(s0[0].enRuta, true, "1.1 es además la siguiente en la ruta");
-  assert.deepEqual(s0[0].motivos, ["Aún no la ha respondido", "Sigue en la ruta (etapa 1 · Evaluación y formulación)"]);
+  assert.deepEqual(s0[0].motivos, ["Recomendada para empezar: aún no la ha respondido", "Recomendada como siguiente paso (etapa 1 · Evaluación y formulación)"]);
   assert.equal(s0[1].enRuta, false);
   // EAPI alto: 2.1, 2.2, 2.3 y 2.4 por resultados.
   const alto = eapi(3, 3, 4);
@@ -622,7 +624,7 @@ caso("B.1 Sugerencias: las de sugeridas.ts más la ruta, sin las ya hechas o env
   const hechas = [alto, ficha("1.1"), delTerapeuta("1.3")];
   const s = sugerenciasIntervencion(hechas, []);
   assert.deepEqual(s.map((x) => x.ficha), ["1.2", "2.1", "2.2", "2.3", "2.4"]);
-  assert.deepEqual(s[0], { ficha: "1.2", motivos: ["Sigue en la ruta (etapa 1 · Evaluación y formulación)"], enRuta: true });
+  assert.deepEqual(s[0], { ficha: "1.2", motivos: ["Recomendada como siguiente paso (etapa 1 · Evaluación y formulación)"], enRuta: true });
   assert.match(s[1].motivos.join(" "), /EAPI/);
   // Las ya enviadas no se sugieren otra vez.
   assert.deepEqual(sugerenciasIntervencion(hechas, [enlace("2.1"), enlace("1.2")]).map((x) => x.ficha), ["2.2", "2.3", "2.4"]);
@@ -632,7 +634,7 @@ caso("B.1 Sugerencias: las de sugeridas.ts más la ruta, sin las ya hechas o env
   assert.deepEqual(s2.map((x) => x.ficha), ["2.1", "2.2", "2.3", "2.4"]);
   assert.equal(s2[0].enRuta, true);
   assert.equal(s2[1].enRuta, false);
-  assert.equal(s2[0].motivos.at(-1), "Sigue en la ruta (etapa 2 · Psicoeducación)");
+  assert.equal(s2[0].motivos.at(-1), "Recomendada como siguiente paso (etapa 2 · Psicoeducación)");
 });
 
 caso("B.2 Prellenado desde el expediente, con el origen legible de cada campo", () => {
@@ -778,6 +780,79 @@ caso("B.4 Integración: «Llenada por el terapeuta» en la lista, el informe y e
   for (const ruta of ["../src/components/evaluaciones/ficha-form.tsx", "../src/components/evaluaciones/ficha-campos.tsx", "../src/lib/evaluaciones/fichas/codigo.ts", "../src/lib/evaluaciones/registro-servidor.ts"]) assert.doesNotMatch(leer(ruta), /intervencion/i, ruta);
   // Sin migraciones: nada nuevo en supabase/migrations por esta función.
   assert.equal(fs.readdirSync(new URL("../supabase/migrations/", import.meta.url)).filter((n) => /intervencion|ficha/i.test(n)).length, 0);
+});
+
+caso("v1.2: comparación por palabras (sin cambios, agregado, quitado, mixto, vacío)", () => {
+  assert.ok(diffPalabras("Duermo mal", "duermo mal.").every((t) => t.tipo === "igual"), "ignora mayúsculas, espacios y signos al borde");
+  assert.deepEqual(diffPalabras("Duermo mal", "Duermo mal y tengo ansiedad"), [{ tipo: "igual", texto: "Duermo mal" }, { tipo: "agregado", texto: "y tengo ansiedad" }]);
+  assert.deepEqual(diffPalabras("Ansiedad en el trabajo y en casa", "Ansiedad en casa"), [{ tipo: "igual", texto: "Ansiedad en" }, { tipo: "quitado", texto: "el trabajo y en" }, { tipo: "igual", texto: "casa" }]);
+  const mixto = diffPalabras("Me siento triste por el divorcio", "Me siento ansioso por el trabajo");
+  assert.ok(mixto.some((t) => t.tipo === "agregado" && /ansioso/.test(t.texto)) && mixto.some((t) => t.tipo === "quitado" && /triste/.test(t.texto)));
+  assert.deepEqual(diffPalabras("", "Algo nuevo"), [{ tipo: "agregado", texto: "Algo nuevo" }]);
+  assert.deepEqual(diffPalabras("Algo", ""), [{ tipo: "quitado", texto: "Algo" }]);
+});
+
+caso("v1.2: baseMotivo toma el expediente y, si no hay, la última cita", () => {
+  const hoy = new Date(2026, 10, 19);
+  assert.deepEqual(baseMotivo({ motivoConsulta: "  Ansiedad  " }, "Otra cosa", hoy), { motivo: "Ansiedad", fuente: FUENTE_EXPEDIENTE, fecha: "2026-11-19" });
+  assert.deepEqual(baseMotivo({ motivoConsulta: "" }, "Duelo", hoy), { motivo: "Duelo", fuente: FUENTE_CITA, fecha: "2026-11-19" });
+  assert.equal(baseMotivo({ motivoConsulta: null }, "  ", hoy), null);
+  assert.ok(camposMotivoPresentes(), "la ficha 1.1 conserva los campos que usa la comparativa");
+});
+
+caso("v1.2: el enlace de la 1.1 lleva la base en las opciones y el motivo en el borrador", () => {
+  const base = { motivo: "Ansiedad al manejar", fuente: FUENTE_EXPEDIENTE, fecha: "2026-11-19" };
+  const e = enlaceFicha("1.1", null, base);
+  assert.equal(e.ok, true);
+  assert.deepEqual(e.opciones, { ficha: "1.1", base });
+  assert.equal(e.borrador.respuestas.motivo, "Ansiedad al manejar");
+  // Sin base: vacía como siempre. Otra ficha: sin base.
+  const sin = enlaceFicha("1.1", null, null);
+  assert.deepEqual(sin, { ok: true, opciones: { ficha: "1.1" }, borrador: null });
+  assert.deepEqual(enlaceFicha("1.3", null, base), { ok: true, opciones: { ficha: "1.3" }, borrador: null });
+  // Opciones públicas: solo se dice que hay motivo inicial (no se expone el texto).
+  assert.deepEqual(REGISTRO.ficha.opcionesPublicas(e.opciones), { ficha: "1.1", motivoInicial: true });
+  assert.deepEqual(REGISTRO.ficha.opcionesPublicas({ ficha: "1.1" }), { ficha: "1.1" });
+});
+
+caso("v1.2: el paciente no puede inyectar otra base desde el envío público", () => {
+  const base = { motivo: "Ansiedad al manejar", fuente: FUENTE_EXPEDIENTE, fecha: "2026-11-19" };
+  const cuerpo = { respuestas: { motivo: "Ansiedad al manejar y al salir de casa" }, base: { motivo: "INVENTADO", fuente: "x", fecha: "2020-01-01" } };
+  const conEnlace = REGISTRO_SERVIDOR.ficha.validar(cuerpo, { ficha: "1.1", base });
+  assert.deepEqual(conEnlace.datos.base, base, "la base sale de las opciones del enlace");
+  assert.equal(REGISTRO_SERVIDOR.ficha.validar(cuerpo, { ficha: "1.1" }).datos.base, undefined, "sin base en el enlace, se descarta la del cuerpo");
+  assert.equal(validarFicha(cuerpo, { ficha: "1.3", base }).datos.base, undefined, "solo la 1.1 lleva base");
+  // Lo guardado (y el panel) conserva su base.
+  assert.deepEqual(datosFichaGuardados(conEnlace.datos).base, base);
+  const ter = datosFichaTerapeuta("1.1", { ...respuestasVacias(fichaPorId("1.1")), motivo: "Otro" }, new Date(), base);
+  assert.deepEqual(ter.datos.base, base);
+});
+
+caso("v1.2: comparativa e historial de la ficha 1.1", () => {
+  const base = { motivo: "Ansiedad al manejar", fuente: FUENTE_EXPEDIENTE, fecha: "2026-10-01" };
+  const resp = (motivo, fecha, conBase = true) => ({
+    id: fecha, instrumento: "ficha", fecha, createdAt: `${fecha}T10:00:00Z`,
+    datos: { ...validarFicha({ respuestas: { motivo, desde_cuando: "Hace un año", afecta_hoy: 7, metas: [["Manejar al trabajo", "3 días", "2 meses"]] } }, { ficha: "1.1", ...(conBase ? { base } : {}) }).datos },
+  });
+  const igual = comparativaMotivo(resp("ansiedad al manejar.", "2026-10-05"));
+  assert.equal(igual.estado, "sin-cambios");
+  const nueva = comparativaMotivo(resp("Ansiedad al manejar y al salir de casa", "2026-11-10"));
+  assert.equal(nueva.estado, "actualizado");
+  assert.deepEqual(nueva.diff, [{ tipo: "igual", texto: "Ansiedad al manejar" }, { tipo: "agregado", texto: "y al salir de casa" }]);
+  assert.equal(nueva.desdeCuando, "Hace un año");
+  assert.equal(nueva.afectaHoy, 7);
+  assert.deepEqual(nueva.metas, [{ meta: "Manejar al trabajo", avance: "3 días", plazo: "2 meses" }]);
+  assert.equal(comparativaMotivo(resp("Algo", "2026-11-11", false)).estado, "sin-base");
+  assert.equal(comparativaMotivo({ ...resp("", "2026-11-12"), datos: { ...resp("", "2026-11-12").datos } }).estado, "sin-cambios", "si no escribió el motivo, se mantiene el inicial");
+  const h = historialMotivo([resp("a", "2026-10-05"), { instrumento: "eapi", datos: {}, createdAt: "2026-11-30" }, resp("Ansiedad al manejar y al salir de casa", "2026-11-10")]);
+  assert.deepEqual(h.map((x) => x.fecha), ["2026-11-10", "2026-10-05"]);
+  const lineas = lineasComparativa(nueva, fechaLegible).join("\n");
+  assert.match(lineas, /Motivo inicial \(expediente .*1 oct 2026\): Ansiedad al manejar/);
+  assert.match(lineas, /Motivo en la ficha 1\.1: Ansiedad al manejar y al salir de casa/);
+  assert.match(lineas, /Cuánto le afecta hoy: 7\/10/);
+  // Comparación nunca va al paciente: el formulario público no importa el módulo.
+  assert.doesNotMatch(leer("../src/components/evaluaciones/ficha-form.tsx"), /motivo\.ts|comparativa/);
+  assert.match(leer("../src/components/evaluaciones/ficha-form.tsx"), /Esto es lo que nos contó al inicio\. Puede dejarlo, ampliarlo o corregirlo\./);
 });
 
 console.log(`\n${ok} pruebas correctas.`);

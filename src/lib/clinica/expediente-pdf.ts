@@ -4,7 +4,8 @@ import { evolucionDelPaciente } from "@/lib/evaluaciones/evolucion-paciente";
 import { perfilesJjr } from "@/lib/evaluaciones/jjr/evolucion";
 import { perfilIntegrado, type MedidaArea } from "@/lib/evaluaciones/perfil-integrado";
 import { esFichaDelTerapeuta } from "@/lib/evaluaciones/fichas/codigo";
-import { resumenIntervencion } from "@/lib/evaluaciones/fichas/intervencion";
+import { fechaLegible, resumenIntervencion } from "@/lib/evaluaciones/fichas/intervencion";
+import { historialMotivo, lineasComparativa } from "@/lib/evaluaciones/fichas/motivo";
 import { resumenRespuesta } from "@/lib/evaluaciones/resumen-respuesta";
 import { nombreCategoria, tamanoLegible, type DocumentoRow } from "./documentos";
 import type { ConsentimientoRow } from "./pacientes";
@@ -399,6 +400,13 @@ export async function exportarExpedientePdf(paciente: PacienteRow, sesiones: Ses
       y += 6;
       heading(`Intervención guiada (${intervencion.length} ficha${intervencion.length === 1 ? "" : "s"})`);
       for (const linea of intervencion) paragraph(linea);
+    }
+    // Motivo de consulta: inicial frente a la ficha 1.1 más reciente.
+    const motivo11 = historialMotivo(respuestas)[0];
+    if (motivo11) {
+      y += 6;
+      heading("Motivo y metas (ficha 1.1)");
+      for (const linea of lineasComparativa(motivo11, fechaLegible)) paragraph(linea);
     }
 
     // Documentos: lista (los archivos se conservan en el expediente digital).

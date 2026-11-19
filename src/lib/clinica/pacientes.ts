@@ -194,6 +194,16 @@ export async function actualizarTarifa(pacienteId: string, tarifa: number | null
   return { error: null };
 }
 
+/** Cambia solo el motivo de consulta (p. ej. con la versión escrita en la ficha 1.1). */
+export async function actualizarMotivoConsulta(pacienteId: string, motivo: string) {
+  const supabase = getSupabaseClient();
+  if (!supabase) return { error: "Faltan las variables de Supabase." };
+  const limpio = motivo.trim().slice(0, 3000);
+  if (!limpio) return { error: "El motivo está vacío." };
+  const { error } = await supabase.from("gestionesjj_pacientes").update({ motivo_consulta: limpio }).eq("id", pacienteId);
+  return { error: error?.message ?? null };
+}
+
 /** Marca (o desmarca) que el paciente es menor de edad. */
 export async function marcarMenor(id: string, esMenor: boolean) {
   const supabase = getSupabaseClient();

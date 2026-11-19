@@ -12,7 +12,7 @@
  */
 import { datosMceaGuardados } from "../mcea/codigo";
 import { camposDeFicha, ETAPAS_FICHAS, FICHAS, FICHA_IDS, fichaPorId, esFichaId, type FichaId } from "./catalogo";
-import { esFichaDelTerapeuta, limpiarBorradorFicha, avanceFicha, respuestasVacias, campoTieneContenido, validarFicha, type FichaRespuesta, type RespuestasFicha } from "./codigo";
+import { esFichaDelTerapeuta, limpiarBorradorFicha, avanceFicha, respuestasVacias, campoTieneContenido, validarFicha, type BaseMotivo, type FichaRespuesta, type RespuestasFicha } from "./codigo";
 import { fichasSugeridas, type FilaRespuesta } from "./sugeridas";
 
 export type RespuestaFila = FilaRespuesta & { id?: string };
@@ -119,7 +119,7 @@ export function sugerenciasIntervencion(respuestas: RespuestaFila[], enlaces: En
   for (const f of siguientesEnRuta(estados)) {
     if (ocupada(f)) continue;
     const ficha = fichaPorId(f)!;
-    const motivo = `Sigue en la ruta (etapa ${ficha.etapa} · ${ETAPAS_FICHAS[ficha.etapa]})`;
+    const motivo = `Recomendada como siguiente paso (etapa ${ficha.etapa} · ${ETAPAS_FICHAS[ficha.etapa]})`;
     const previa = mapa.get(f);
     mapa.set(f, { ficha: f, motivos: [...(previa?.motivos ?? []), motivo], enRuta: true });
   }
@@ -231,12 +231,37 @@ export const tareaDeFicha = (id: FichaId) => {
 };
 
 /** Datos de la respuesta del terapeuta (validados; con `autor: "terapeuta"`). */
-export function datosFichaTerapeuta(fichaId: FichaId, respuestas: RespuestasFicha, ahora = new Date()): { ok: true; datos: FichaRespuesta } | { ok: false; error: string } {
-  const v = validarFicha({ ficha: fichaId, respuestas, autor: "terapeuta", enviado: ahora.toISOString() }, { ficha: fichaId }, { permitirAutor: true });
+export function datosFichaTerapeuta(
+  fichaId: FichaId,
+  respuestas: RespuestasFicha,
+  ahora = new Date(),
+  /** Solo 1.1: motivo del expediente al llenarla (copia fija para la comparativa). */
+  base: BaseMotivo | null = null
+): { ok: true; datos: FichaRespuesta } | { ok: false; error: string } {
+  const v = validarFicha({ ficha: fichaId, respuestas, autor: "terapeuta", enviado: ahora.toISOString(), ...(base ? { base } : {}) }, { ficha: fichaId }, { permitirAutor: true });
   if (!v.ok) return v;
   if (avanceFicha(v.datos).respondidas === 0) return { ok: false, error: "La ficha está vacía: escriba algo antes de guardarla." };
   if (bytes(v.datos) > MAX_BYTES_FICHA) return { ok: false, error: "La ficha es demasiado larga para guardarla. Acorte algunas respuestas." };
   return { ok: true, datos: { ...v.datos, autor: "terapeuta" } };
+}
+
+/**
+ * Opciones y borrador del enlace. En la 1.1 con motivo inicial: la base va en las opciones (fija,
+ * la pone el terapeuta) y, si no hay nada escrito, el borrador lleva el motivo para que el paciente
+ * lo vea, lo deje, lo amplíe o lo corrija.
+ */
+export function enlaceFicha(
+  fichaId: FichaId,
+  conRespuestas: RespuestasFicha | null,
+  base: BaseMotivo | null
+): { ok: true; opciones: Record<string, unknown>; borrador: { ficha: FichaId; respuestas: RespuestasFicha } | null } | { ok: false; error: string } {
+  const conBase = fichaId === "1.1" && base ? base : null;
+  const opciones: Record<string, unknown> = { ficha: fichaId, ...(conBase ? { base: conBase } : {}) };
+  let respuestas = conRespuestas;
+  if (!respuestas && conBase) respuestas = { ...respuestasVacias(fichaPorId(fichaId)!), motivo: conBase.motivo };
+  if (!respuestas) return { ok: true, opciones, borrador: null };
+  const b = borradorInicialFicha(fichaId, respuestas);
+  return b.ok ? { ok: true, opciones, borrador: b.borrador } : b;
 }
 
 /** Borrador inicial del enlace con lo ya escrito (el paciente lo ve y lo completa o corrige). */

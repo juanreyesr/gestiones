@@ -242,6 +242,7 @@ export function CampoFicha({
   falta = false,
   tema = "claro",
   origen,
+  nota,
 }: {
   c: Campo;
   respuestas: RespuestasFicha;
@@ -250,6 +251,8 @@ export function CampoFicha({
   tema?: TemaFicha;
   /** Panel: de dónde salió lo prellenado (se muestra bajo la pregunta). */
   origen?: string;
+  /** Nota visible para quien responde, sobre el control (p. ej. «Esto es lo que nos contó al inicio…»). */
+  nota?: string;
 }) {
   const t = CLASES[tema];
   const v = respuestas[c.id];
@@ -286,6 +289,11 @@ export function CampoFicha({
     >
       <Etiqueta c={c} t={t} />
       {origen ? <span className="w-fit rounded bg-amber-300/15 px-2 py-0.5 text-xs text-amber-200" data-testid="ficha-origen">Prellenado: {origen}</span> : null}
+      {nota ? (
+        <span className={`w-fit rounded-lg px-2.5 py-1 text-xs leading-5 ${tema === "claro" ? "bg-teal-50 text-teal-800" : "bg-teal-400/10 text-teal-200"}`} data-testid="ficha-nota">
+          {nota}
+        </span>
+      ) : null}
       {control}
     </div>
   );

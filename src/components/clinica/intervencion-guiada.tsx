@@ -17,7 +17,7 @@ import {
 import { ETAPAS_FICHAS, FICHAS, fichaPorId, type FichaId } from "@/lib/evaluaciones/fichas/catalogo";
 import { avanceFicha, esFichaDelTerapeuta, type RespuestasFicha, type ValorCampo } from "@/lib/evaluaciones/fichas/codigo";
 import {
-  borradorInicialFicha,
+  enlaceFicha,
   datosFichaTerapeuta,
   estadosFichas,
   fechaLegible,
@@ -28,6 +28,7 @@ import {
   type EstadoFicha,
 } from "@/lib/evaluaciones/fichas/intervencion";
 import { riesgoFicha } from "@/lib/evaluaciones/fichas/riesgo";
+import { baseMotivo } from "@/lib/evaluaciones/fichas/motivo";
 import { urlPublica } from "@/lib/url-publica";
 import { CampoFicha } from "../evaluaciones/ficha-campos";
 import { IconoWhatsApp } from "./boton-whatsapp-paciente";
@@ -115,7 +116,7 @@ export function IntervencionGuiada({ motivoCita, paciente }: { motivoCita?: stri
   const guardar = async () => {
     if (!editando || trabajando) return;
     setError("");
-    const v = datosFichaTerapeuta(editando, campos);
+    const v = datosFichaTerapeuta(editando, campos, new Date(), editando === "1.1" ? baseMotivo(paciente, motivoCita) : null);
     if (!v.ok) {
       setError(v.error);
       return;
@@ -150,18 +151,15 @@ export function IntervencionGuiada({ motivoCita, paciente }: { motivoCita?: stri
   const enviar = async (id: FichaId, conRespuestas: RespuestasFicha | null) => {
     if (trabajando) return;
     setError("");
-    let borrador: Record<string, unknown> | null = null;
-    if (conRespuestas) {
-      const b = borradorInicialFicha(id, conRespuestas);
-      if (!b.ok) {
-        setError(b.error);
-        return;
-      }
-      borrador = b.borrador;
+    const e = enlaceFicha(id, conRespuestas, baseMotivo(paciente, motivoCita));
+    if (!e.ok) {
+      setError(e.error);
+      return;
     }
+    const borrador: Record<string, unknown> | null = e.borrador;
     if (estadoDe(id).enlaceId && !window.confirm("Ya hay un enlace de esta ficha sin responder. ¿Crear otro de todos modos?")) return;
     setTrabajando(true);
-    const { error: err, creadas } = await asignarEvaluacion(paciente.id, "ficha", [paciente.nombre], borrador ? "Enviada con lo ya escrito por el terapeuta" : "", { ficha: id }, borrador);
+    const { error: err, creadas } = await asignarEvaluacion(paciente.id, "ficha", [paciente.nombre], conRespuestas ? "Enviada con lo ya escrito por el terapeuta" : "", e.opciones, borrador);
     if (err || !creadas[0]) {
       setTrabajando(false);
       setError(err ?? "No se pudo crear el enlace.");
@@ -179,7 +177,7 @@ export function IntervencionGuiada({ motivoCita, paciente }: { motivoCita?: stri
     setTrabajando(false);
     setEditando(null);
     setEnlaceNuevo({ ficha: id, url: urlPublica(`/evaluacion/${creadas[0].token}`) });
-    avisar(`Enlace de la ficha ${id} creado${borrador ? " con lo ya escrito: el paciente lo verá y lo completará o corregirá" : ""}.${tarea ? " Se agregó la tarea a la sesión del paciente." : ""}`);
+    avisar(`Enlace de la ficha ${id} creado${conRespuestas ? " con lo ya escrito: el paciente lo verá y lo completará o corregirá" : ""}.${tarea ? " Se agregó la tarea a la sesión del paciente." : ""}`);
   };
 
   const copiar = async (texto: string) => {
@@ -194,7 +192,7 @@ export function IntervencionGuiada({ motivoCita, paciente }: { motivoCita?: stri
     window.open(enlaceWhatsApp(paciente.telefono, mensajeEvaluacion(paciente.nombre, url, { esMenor: paciente.esMenor, respuestas: 1 }), paciente.pais), "_blank", "noopener,noreferrer");
 
   const conRespuesta = estados.filter((e) => e.hecha).length;
-  const resumen = [`${conRespuesta} de ${FICHAS.length} fichas con respuesta`, sugerencias.length ? `${sugerencias.length} sugerida${sugerencias.length === 1 ? "" : "s"}` : ""].filter(Boolean).join(" · ");
+  const resumen = [`${conRespuesta} de ${FICHAS.length} fichas con respuesta`, sugerencias.length ? `${sugerencias.length} recomendada${sugerencias.length === 1 ? "" : "s"}` : ""].filter(Boolean).join(" · ");
 
   /* ------------------------------ editor ------------------------------ */
   if (editando) {
@@ -294,7 +292,7 @@ export function IntervencionGuiada({ motivoCita, paciente }: { motivoCita?: stri
           <span className={`font-semibold ${COLOR_ESTADO[e.estado]}`}>{e.etiqueta}</span>
           {e.fecha ? <span className="text-slate-400"> · {fechaLegible(e.fecha)}</span> : null}
         </div>
-        {sugerida?.length ? <div className="mt-0.5 text-xs text-amber-200">Sugerida: {sugerida.join(" · ")}</div> : null}
+        {sugerida?.length ? <div className="mt-0.5 text-xs text-amber-200">{sugerida.join(" · ")}</div> : null}
       </div>
       <div className="flex flex-wrap gap-1.5">
         <button className={BTN_ACCENT} disabled={trabajando} onClick={() => abrirEditor(f.id)} type="button">
