@@ -52,7 +52,6 @@ export const FORMULARIOS: Record<string, (p: PropsFormulario) => ReactNode> = {
   ficha: (p) => (
     <FichaForm borradorInicial={(p.borrador as FichaBorrador | null) ?? null} codigoCaso={p.codigoCaso}
       ficha={opcionesFicha(p.opciones).ficha}
-      motivoInicial={p.opciones?.motivoInicial === true}
       token={p.token}
     />
   ),

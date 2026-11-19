@@ -246,9 +246,10 @@ export function datosFichaTerapeuta(
 }
 
 /**
- * Opciones y borrador del enlace. En la 1.1 con motivo inicial: la base va en las opciones (fija,
- * la pone el terapeuta) y, si no hay nada escrito, el borrador lleva el motivo para que el paciente
- * lo vea, lo deje, lo amplíe o lo corrija.
+ * Opciones y borrador del enlace. En la 1.1 con motivo inicial, la base va solo en las opciones (fija,
+ * la pone el terapeuta; el paciente NUNCA la ve): el paciente responde la ficha en blanco y la
+ * comparación es solo para el terapeuta. Si el terapeuta envía «con lo escrito» y el motivo sigue
+ * siendo el inicial sin cambios, ese campo se vacía para que el paciente no lo vea.
  */
 export function enlaceFicha(
   fichaId: FichaId,
@@ -258,11 +259,14 @@ export function enlaceFicha(
   const conBase = fichaId === "1.1" && base ? base : null;
   const opciones: Record<string, unknown> = { ficha: fichaId, ...(conBase ? { base: conBase } : {}) };
   let respuestas = conRespuestas;
-  if (!respuestas && conBase) respuestas = { ...respuestasVacias(fichaPorId(fichaId)!), motivo: conBase.motivo };
+  if (respuestas && conBase && mismoTexto(respuestas.motivo, conBase.motivo)) respuestas = { ...respuestas, motivo: "" };
   if (!respuestas) return { ok: true, opciones, borrador: null };
+  if (conBase && avanceFicha({ ficha: fichaId, respuestas }).respondidas === 0) return { ok: true, opciones, borrador: null };
   const b = borradorInicialFicha(fichaId, respuestas);
   return b.ok ? { ok: true, opciones, borrador: b.borrador } : b;
 }
+
+const mismoTexto = (a: unknown, b: string) => typeof a === "string" && a.trim().replace(/\s+/g, " ") === b.trim().replace(/\s+/g, " ");
 
 /** Borrador inicial del enlace con lo ya escrito (el paciente lo ve y lo completa o corrige). */
 export function borradorInicialFicha(fichaId: FichaId, respuestas: RespuestasFicha): { ok: true; borrador: { ficha: FichaId; respuestas: RespuestasFicha } } | { ok: false; error: string } {

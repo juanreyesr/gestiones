@@ -90,3 +90,8 @@ Contexto verificado en el código: la hoja de datos generales (`/datos/<token>`)
 3. **Integración en el perfil**: en la sección de la ficha clínica del expediente, bajo el motivo de consulta, un bloque «Motivo y metas (actualizado en la ficha 1.1 del …)» con la comparativa y los demás datos de la 1.1 más reciente. Botón «Usar esta versión como motivo de consulta del expediente» (actualiza `motivo_consulta` del paciente con la función de actualización existente, con confirmación); el original no se pierde porque queda en `datos.base` de la ficha. Si hay varias 1.1, se compara la más reciente con su propia base y se puede ver el historial.
 4. Si no hay motivo inicial, la 1.1 se envía vacía como hoy y la comparativa dice «No había un motivo de consulta registrado antes de esta ficha».
 5. Sin migraciones; trato de usted en lo que ve el paciente.
+
+### v1.2.1 — El paciente no ve el motivo inicial (decisión del autor)
+- El paciente recibe la 1.1 **en blanco**, sin el motivo inicial ni la nota. La base (`opciones.base` del enlace → `datos.base` de la respuesta) se guarda en silencio y nunca se publica (`opcionesPublicas` no la incluye).
+- «Enviar al paciente con esto»: si el motivo sigue igual al inicial, ese campo se vacía antes de enviarlo.
+- El motivo inicial y la comparación solo se ven en el panel: en «Llenarla yo» de la 1.1 (recuadro «Solo para usted», con los cambios en vivo), en el informe de la ficha, en la ficha clínica y en el PDF del expediente.

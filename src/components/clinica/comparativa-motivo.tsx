@@ -6,7 +6,8 @@ import { actualizarMotivoConsulta } from "@/lib/clinica/pacientes";
 import type { PacienteRow } from "@/lib/clinica/types";
 import { fetchEvaluacionesDePaciente, type EvaluacionRespuestaRow } from "@/lib/evaluaciones/evaluaciones";
 import { fechaLegible } from "@/lib/evaluaciones/fichas/intervencion";
-import { ETIQUETA_MOTIVO, historialMotivo, type ComparativaMotivo } from "@/lib/evaluaciones/fichas/motivo";
+import type { BaseMotivo } from "@/lib/evaluaciones/fichas/codigo";
+import { diffPalabras, ETIQUETA_MOTIVO, historialMotivo, type ComparativaMotivo } from "@/lib/evaluaciones/fichas/motivo";
 import { abrirSeccion, EVENTO_ABRIR_RESPUESTA, EVENTO_EVALUACIONES_CAMBIO } from "./seccion-plegable";
 import { BTN_GHOST } from "./ui";
 
@@ -120,6 +121,39 @@ export function ComparativaMotivoVista({ c, compacta = false }: { c: Comparativa
           ) : null}
         </dl>
       ) : null}
+    </div>
+  );
+}
+
+/** Editor «Llenarla yo» de la 1.1 (solo el terapeuta): motivo inicial y cambios mientras escribe. */
+export function ComparacionEnVivo({ base, actual }: { base: BaseMotivo; actual: string }) {
+  const sinCambios = !actual.trim() || diffPalabras(base.motivo, actual).every((t) => t.tipo === "igual");
+  return (
+    <div className="-mt-1 grid gap-1 rounded-lg border border-sky-300/30 bg-sky-300/5 p-3 text-sm" data-testid="comparacion-en-vivo">
+      <Rotulo>
+        Solo para usted · motivo inicial ({base.fuente}
+        {base.fecha ? `, ${fechaLegible(base.fecha)}` : ""})
+      </Rotulo>
+      <p className="whitespace-pre-wrap leading-6 text-slate-300">{base.motivo}</p>
+      {sinCambios ? (
+        <span className="text-xs text-slate-400">Sin cambios frente al motivo inicial.</span>
+      ) : (
+        <p className="leading-6 text-slate-200">
+          <span className="mr-1 text-xs font-semibold text-emerald-300">Cambios:</span>
+          {diffPalabras(base.motivo, actual).map((t, i) => (
+            <span key={i}>
+              {i ? " " : ""}
+              {t.tipo === "agregado" ? (
+                <ins className="rounded bg-emerald-400/20 px-0.5 text-emerald-100 no-underline">{t.texto}</ins>
+              ) : t.tipo === "quitado" ? (
+                <del className="text-slate-500 line-through">{t.texto}</del>
+              ) : (
+                t.texto
+              )}
+            </span>
+          ))}
+        </p>
+      )}
     </div>
   );
 }

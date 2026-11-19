@@ -22,8 +22,6 @@ import { EAPI_LINEAS_AYUDA } from "@/lib/evaluaciones/eapi/escalas";
 import { CampoFicha, type Poner } from "./ficha-campos";
 import { AvisoFalloEnvio, BarraGuardado, PantallaCerrada, PantallaEnviada, PieEnvio, useFormularioEvaluacion } from "./formulario-comun";
 
-const FICHA_NOTA_MOTIVO_INICIAL = "Esto es lo que nos contó al inicio. Puede dejarlo, ampliarlo o corregirlo.";
-
 // Importante: este formulario NO importa la guía del terapeuta ni ninguna
 // calificación: quien responde solo ve la parte para el paciente.
 
@@ -31,14 +29,11 @@ export function FichaForm({
   borradorInicial,
   codigoCaso,
   ficha: fichaId,
-  motivoInicial = false,
   token,
 }: {
   borradorInicial: FichaBorrador | null;
   codigoCaso: string;
   ficha: FichaId;
-  /** Ficha 1.1 enviada con el motivo de consulta del expediente ya escrito. */
-  motivoInicial?: boolean;
   token: string;
 }) {
   const ficha = fichaPorId(fichaId)!;
@@ -48,9 +43,6 @@ export function FichaForm({
     ...(borradorInicial?.ficha === fichaId ? borradorInicial.respuestas : {}),
   }));
   const [continua] = useState(() => Boolean(borradorInicial && borradorInicial.ficha === fichaId && avanceFicha(borradorInicial).respondidas > 0));
-
-  // Nota sobre el motivo prellenado (1.1): se muestra mientras el campo venga del inicio.
-  const notas: Record<string, string> = motivoInicial && fichaId === "1.1" ? { motivo: FICHA_NOTA_MOTIVO_INICIAL } : {};
 
   const borrador = useCallback((): FichaBorrador => ({ ficha: fichaId, respuestas }), [fichaId, respuestas]);
   const { error, enviar: enviarRespuesta, faltan, fase, guardado, marcarFaltantes, quitarFalta } = useFormularioEvaluacion({ borrador, prefijoId: "ficha", token });
@@ -118,7 +110,7 @@ export function FichaForm({
           <h2 className="border-t border-slate-100 pt-4 text-lg font-semibold text-slate-900">{s.titulo}</h2>
           <p className="-mt-1 rounded-xl bg-teal-50/60 p-3 text-sm leading-6 text-slate-700">{s.intro}</p>
           {s.campos.map((c) => (
-            <CampoFicha c={c} falta={faltan.has(c.id)} key={c.id} nota={notas[c.id]} poner={poner} respuestas={respuestas} />
+            <CampoFicha c={c} falta={faltan.has(c.id)} key={c.id} poner={poner} respuestas={respuestas} />
           ))}
         </section>
       ))}

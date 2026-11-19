@@ -800,19 +800,22 @@ caso("v1.2: baseMotivo toma el expediente y, si no hay, la última cita", () => 
   assert.ok(camposMotivoPresentes(), "la ficha 1.1 conserva los campos que usa la comparativa");
 });
 
-caso("v1.2: el enlace de la 1.1 lleva la base en las opciones y el motivo en el borrador", () => {
+caso("v1.2: el enlace de la 1.1 guarda la base solo para el terapeuta; el paciente la recibe en blanco", () => {
   const base = { motivo: "Ansiedad al manejar", fuente: FUENTE_EXPEDIENTE, fecha: "2026-11-19" };
   const e = enlaceFicha("1.1", null, base);
-  assert.equal(e.ok, true);
-  assert.deepEqual(e.opciones, { ficha: "1.1", base });
-  assert.equal(e.borrador.respuestas.motivo, "Ansiedad al manejar");
-  // Sin base: vacía como siempre. Otra ficha: sin base.
-  const sin = enlaceFicha("1.1", null, null);
-  assert.deepEqual(sin, { ok: true, opciones: { ficha: "1.1" }, borrador: null });
+  assert.deepEqual(e, { ok: true, opciones: { ficha: "1.1", base }, borrador: null }, "sin borrador: el paciente no ve el motivo inicial");
+  // «Con lo escrito» y el motivo sin cambios: se vacía ese campo (y si no queda nada, va en blanco).
+  const vacia = respuestasVacias(fichaPorId("1.1"));
+  assert.equal(enlaceFicha("1.1", { ...vacia, motivo: " Ansiedad  al manejar " }, base).borrador, null);
+  const conMeta = enlaceFicha("1.1", { ...vacia, motivo: "Ansiedad al manejar", desde_cuando: "Hace un año" }, base);
+  assert.equal(conMeta.borrador.respuestas.motivo, "");
+  assert.equal(conMeta.borrador.respuestas.desde_cuando, "Hace un año");
+  // Si el terapeuta lo cambió a propósito, se envía lo que escribió.
+  assert.equal(enlaceFicha("1.1", { ...vacia, motivo: "Ansiedad al manejar y al salir" }, base).borrador.respuestas.motivo, "Ansiedad al manejar y al salir");
+  assert.deepEqual(enlaceFicha("1.1", null, null), { ok: true, opciones: { ficha: "1.1" }, borrador: null });
   assert.deepEqual(enlaceFicha("1.3", null, base), { ok: true, opciones: { ficha: "1.3" }, borrador: null });
-  // Opciones públicas: solo se dice que hay motivo inicial (no se expone el texto).
-  assert.deepEqual(REGISTRO.ficha.opcionesPublicas(e.opciones), { ficha: "1.1", motivoInicial: true });
-  assert.deepEqual(REGISTRO.ficha.opcionesPublicas({ ficha: "1.1" }), { ficha: "1.1" });
+  // Opciones públicas: la base nunca se publica.
+  assert.deepEqual(REGISTRO.ficha.opcionesPublicas(e.opciones), { ficha: "1.1" });
 });
 
 caso("v1.2: el paciente no puede inyectar otra base desde el envío público", () => {
@@ -852,7 +855,8 @@ caso("v1.2: comparativa e historial de la ficha 1.1", () => {
   assert.match(lineas, /Cuánto le afecta hoy: 7\/10/);
   // Comparación nunca va al paciente: el formulario público no importa el módulo.
   assert.doesNotMatch(leer("../src/components/evaluaciones/ficha-form.tsx"), /motivo\.ts|comparativa/);
-  assert.match(leer("../src/components/evaluaciones/ficha-form.tsx"), /Esto es lo que nos contó al inicio\. Puede dejarlo, ampliarlo o corregirlo\./);
+  for (const ruta of ["../src/components/evaluaciones/ficha-form.tsx", "../src/components/evaluaciones/ficha-campos.tsx", "../src/components/evaluaciones/formularios.tsx"]) assert.doesNotMatch(leer(ruta), /nos contó al inicio|motivoInicial|base/, ruta);
+  assert.match(leer("../src/components/clinica/intervencion-guiada.tsx"), /<ComparacionEnVivo/);
 });
 
 console.log(`\n${ok} pruebas correctas.`);
