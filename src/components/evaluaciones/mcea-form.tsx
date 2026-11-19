@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { BEH, EMO, FOCUS, INS, MCEA_CRISIS } from "@/lib/evaluaciones/mcea/contenido";
 import { opcionesMcea, type MceaBorrador } from "@/lib/evaluaciones/mcea/codigo";
+import { TEXTOS_REGISTRO as TR } from "@/lib/evaluaciones/mcea/textos-registro";
 import { buildPlan, etiquetas, type MceaEstado, type RegistroGuiado } from "@/lib/evaluaciones/mcea/motor";
 import { AvisoFalloEnvio, BarraGuardado, PantallaCerrada, PantallaEnviada, useFormularioEvaluacion } from "./formulario-comun";
 
@@ -274,9 +275,10 @@ export function MceaForm({ borradorInicial, opciones, token }: { borradorInicial
         </button>
       );
     };
-    const campo = (k: "sit" | "pen" | "f1" | "f2", label: string, area = true) => (
+    const campo = (k: "sit" | "pen" | "f1" | "f2", area = true) => (
       <label className="grid gap-1.5 text-sm font-medium text-slate-700">
-        {label}
+        {TR[k].pregunta}
+        <span className="-mt-1 text-xs font-normal italic text-slate-400">Ejemplo: {TR[k].ejemplo}</span>
         {area ? (
           <textarea className="field-light min-h-20 resize-y" maxLength={1500} onChange={(e) => setRegistro((r) => ({ ...r, [k]: e.target.value }))} value={registro[k]} />
         ) : (
@@ -286,29 +288,36 @@ export function MceaForm({ borradorInicial, opciones, token }: { borradorInicial
     );
     contenido = (
       <div className="grid gap-4">
-        <h2 className="text-xl font-semibold text-slate-900">Un momento reciente</h2>
-        <p className="text-sm text-slate-500">
-          Esta parte es opcional y no tiene puntuación. Sirve para que usted y su psicólogo vean cómo se conectan lo que pasa, lo que piensa, lo que
-          siente y lo que hace.
-        </p>
-        {campo("sit", "Piense en un momento reciente en que se sintió mal. ¿Qué estaba pasando?")}
+        <h2 className="text-xl font-semibold text-slate-900">{TR.titulo}</h2>
+        <p className="rounded-xl bg-teal-50/60 p-3 text-[15px] leading-6 text-slate-700">{TR.intro}</p>
+        <p className="text-sm text-slate-500">{TR.nota}</p>
+        {campo("sit")}
         <div className="grid gap-1.5">
-          <span className="text-sm font-medium text-slate-700">¿Qué sintió?</span>
+          <span className="text-sm font-medium text-slate-700">
+            {TR.emo.pregunta}
+            <span className="block text-xs font-normal text-slate-500">{TR.emo.ayuda}</span>
+          </span>
           <div className="flex flex-wrap gap-2">{EMO.map((e) => chip("emo", e, e))}</div>
         </div>
         <label className="grid gap-1.5 text-sm font-medium text-slate-700">
-          ¿Con qué intensidad? {registro.int} de 100
+          {TR.int.pregunta} {registro.int} de 100
           <input max={100} min={0} onChange={(e) => setRegistro((r) => ({ ...r, int: Number(e.target.value) }))} type="range" value={registro.int} />
         </label>
-        {campo("pen", "¿Qué pasó por su mente en ese momento?")}
-        {campo("f1", "Si eso fuera cierto, ¿qué significaría para usted?", false)}
-        {campo("f2", "Y si eso también fuera cierto, ¿qué diría de usted, de los demás o de su futuro?", false)}
+        {campo("pen")}
+        {campo("f1", false)}
+        {campo("f2", false)}
         <div className="grid gap-1.5">
-          <span className="text-sm font-medium text-slate-700">¿Qué hizo después?</span>
+          <span className="text-sm font-medium text-slate-700">
+            {TR.beh.pregunta}
+            <span className="block text-xs font-normal text-slate-500">{TR.beh.ayuda}</span>
+          </span>
           <div className="flex flex-wrap gap-2">{BEH.map((e) => chip("beh", e, e))}</div>
         </div>
         <div className="grid gap-1.5">
-          <span className="text-sm font-medium text-slate-700">¿Reconoce alguna de estas formas de pensar en ese momento?</span>
+          <span className="text-sm font-medium text-slate-700">
+            {TR.dis.pregunta}
+            <span className="block text-xs font-normal text-slate-500">{TR.dis.ayuda}</span>
+          </span>
           <div className="grid gap-2">
             {INS.DC.names!.map((n, k) =>
               chip(
@@ -356,7 +365,7 @@ export function MceaForm({ borradorInicial, opciones, token }: { borradorInicial
 
   return (
     <div className="grid gap-5" data-testid="mc-form">
-      <BarraGuardado continua={continua} guardado={guardado} respondidas={respondidas} testId="mc-guardado" total={items.length} trato="usted" />
+      <BarraGuardado continua={continua} guardado={guardado} respondidas={respondidas} testId="mc-guardado" total={items.length} trato="usted" unidad="preguntas respondidas" />
       {fase === "fallo-envio" ? <AvisoFalloEnvio onReintentar={() => enviar(estado, estado.risk.self !== null && paso.t === "risk")} trato="usted" /> : null}
       {error ? (
         <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700" role="alert">

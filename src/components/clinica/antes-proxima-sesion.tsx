@@ -16,6 +16,7 @@ import {
   type SeguimientoRow,
 } from "@/lib/evaluaciones/evaluaciones";
 import { deteriorosFiables, diasDesde, evolucionDelPaciente } from "@/lib/evaluaciones/evolucion-paciente";
+import { esFichaDelTerapeuta } from "@/lib/evaluaciones/fichas/codigo";
 import { nombreCortoInstrumento } from "@/lib/evaluaciones/registro";
 import { resumenRespuesta } from "@/lib/evaluaciones/resumen-respuesta";
 import { AlarmaAtencion } from "./alarma-atencion";
@@ -95,7 +96,9 @@ export function AntesProximaSesion({
     }
 
     // Revisar.
-    const nuevas = respuestas.filter((r) => !ultimaSesion || r.createdAt > ultimaSesion);
+    // Lo que llenó el terapeuta no es una respuesta pendiente de revisar: va aparte, como dato informativo.
+    const delTerapeuta = (r: EvaluacionRespuestaRow) => r.instrumento === "ficha" && esFichaDelTerapeuta(r.datos);
+    const nuevas = respuestas.filter((r) => !delTerapeuta(r) && (!ultimaSesion || r.createdAt > ultimaSesion));
     for (const r of nuevas) {
       puntos.push({
         clave: `nueva-${r.id}`,
@@ -104,6 +107,16 @@ export function AntesProximaSesion({
         detalle: `${formatoFechaCorta(fechaDe(r))} · ${r.respondienteNombre}${ultimaSesion ? " · después de la última sesión" : ""}`,
         ir: () => abrirRespuesta(r.id),
         etiquetaIr: "Ver informe",
+      });
+    }
+    for (const r of respuestas.filter((x) => delTerapeuta(x) && (!ultimaSesion || x.createdAt > ultimaSesion)).slice(0, 3)) {
+      puntos.push({
+        clave: `ficha-terapeuta-${r.id}`,
+        nivel: "info",
+        texto: `Ficha llenada por usted: ${nombreInstrumento(r.instrumento, { ficha: (r.datos as { ficha?: unknown }).ficha })}`,
+        detalle: `${formatoFechaCorta(fechaDe(r))} · solo informativo`,
+        ir: () => abrirRespuesta(r.id),
+        etiquetaIr: "Ver ficha",
       });
     }
     if (compromisos.length) {

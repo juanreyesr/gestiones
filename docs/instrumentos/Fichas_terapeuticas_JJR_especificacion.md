@@ -54,3 +54,30 @@ Cada campo puede llevar `ayuda` (indicación) y `ejemplo` (texto de muestra en g
 
 ## Reglas de redacción
 De usted; frases cortas; sin siglas ni etiquetas diagnósticas; sin género cuando se pueda; normalizar sin minimizar; sin promesas («suele ayudar», no «va a curarse»); sin indicaciones médicas; nada de exposición por cuenta propia (en 2.4 solo se observa y se lista; la exposición se planifica con el terapeuta).
+
+## v1.1 — Instrucciones guiadas y «Intervención guiada» (decisión del autor)
+
+### A. Instrucciones guiadas para el paciente (todas las fichas, el registro guiado/mapa del MCEA y las fichas futuras)
+Problema: títulos como «Mis momentos», «Fila 1», «Situación» no le dicen a la persona qué hacer.
+Reglas (trato de **usted** siempre):
+1. Cada sección abre con una **invitación concreta en segunda persona**, que dice qué recordar o hacer y para qué. Ej. (1.3): «Comencemos recordando un momento reciente que le haya causado ansiedad o malestar. Piense dónde estaba y qué estaba pasando; con eso iremos identificando, paso a paso, lo que pasó por su mente y su cuerpo.»
+2. Cada campo es una **pregunta directa** (no una etiqueta), con su ejemplo debajo: «¿Qué pasó? Cuéntelo en una o dos frases.», «En ese momento, ¿qué pensó? Escriba la frase tal como le cruzó por la mente.», «¿Qué sintió y qué tan fuerte fue, de 0 a 100?»…
+3. En tablas, las filas se llaman según su sentido, no «Fila n»: «Primer momento», «Otro momento (opcional)», «Un tercer momento (opcional)»; la primera fila se presenta como la principal y las demás como opcionales. Cada tabla tiene `etiquetaFila` (p. ej. «momento», «meta», «etapa») y `filaOpcionalDesde`.
+4. Orden de lo concreto a lo reflexivo; una sola tarea por pregunta; nada de jerga.
+5. El contador superior dice «N de M preguntas respondidas».
+6. Se aplica igual a la versión impresa (PDF en blanco).
+7. MCEA: revisar el registro guiado del formulario (pantallas del mapa: situación, pensamiento, emoción, conducta) y aplicar las mismas reglas SOLO a los textos de presentación de esas pantallas, sin cambiar qué se guarda ni el motor (contenido.ts es generado: si los textos viven ahí, hacer la sustitución en el formulario o en una capa de textos propia, sin editar el archivo generado).
+
+### B. «Intervención guiada» (sección nueva del expediente)
+Objetivo: que el terapeuta use las fichas también llenándolas él (en sesión o después), con datos del expediente ya puestos, y que esto se integre con el resto.
+1. **Ubicación**: sección plegable «Intervención guiada» en el expediente (cerca de Evaluaciones), con:
+   - **Sugerencias**: las fichas sugeridas por resultados (misma lógica de `sugeridas.ts`) y las que siguen en la ruta (la primera de la etapa siguiente cuando las de la etapa actual ya están hechas).
+   - **Biblioteca** por etapas (todas las fichas) con, en cada una: «Llenarla yo», «Enviar al paciente» y el estado (sin usar / enviada / respondida por el paciente / llenada por el terapeuta, con fecha).
+2. **«Llenarla yo»**: abre la ficha en el panel (mismo renderizado de campos que el formulario público, en tema del panel) con la guía del terapeuta plegable al lado o arriba. Los campos llegan **prellenados** con lo que el expediente ya tiene; cada campo prellenado muestra de dónde salió («Del motivo de consulta de la ficha clínica»). Fuentes mínimas:
+   - 1.1 motivo de consulta (ficha clínica o el motivo de la última solicitud/cita), metas (si existe un campo de metas u objetivos en el expediente).
+   - 1.2 historia del problema / antecedentes de la ficha clínica.
+   - 1.3 la situación, pensamiento, emociones y conductas del último registro guiado del MCEA si existe.
+   - Cualquier ficha: lo que la misma ficha ya tenga de una respuesta previa del paciente o del terapeuta (la más reciente).
+   Al guardar, se crea una respuesta del instrumento `ficha` (tabla de respuestas existente, `origen: 'codigo'`, sin enlace) con `datos.autor = "terapeuta"` y aparece en el expediente marcada «Llenada por el terapeuta»; no dispara avisos de Telegram ni alarma por riesgo hacia el paciente (sí se marca la alarma si hay frases de riesgo, para el terapeuta). Editar = guardar una versión nueva (las respuestas no se actualizan: se inserta la nueva y se borra la anterior del terapeuta para esa misma ficha, si se confirma).
+3. **«Enviar al paciente» con lo ya escrito**: si el terapeuta ya llenó o prellenó la ficha, puede enviarla con esas respuestas como punto de partida (el enlace se crea con su `borrador` inicial); el paciente ve lo escrito y lo completa o corrige. Sin eso, se envía vacía como hoy. Sigue agregando la tarea a la sesión.
+4. **Integración**: las fichas llenadas por el terapeuta salen en el PDF del expediente y en «Antes de la próxima sesión» solo como dato informativo (no como pendiente). Sin migraciones: usar tablas y políticas existentes (comprobar que el owner puede insertar y borrar respuestas y fijar `borrador` al crear el enlace; si algo no lo permite, detenerse y explicarlo en el informe en vez de crear migraciones).

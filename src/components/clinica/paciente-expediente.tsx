@@ -40,6 +40,7 @@ import { CitasSinPagarAviso, MontoCita, PagadaCheckbox, SaldoPaciente, TarifaEdi
 import { PacienteForm } from "./paciente-form";
 import { ConsentimientosPaciente } from "./consentimientos-paciente";
 import { EvaluacionesPaciente } from "./evaluaciones-paciente";
+import { IntervencionGuiada } from "./intervencion-guiada";
 import { AntesProximaSesion } from "./antes-proxima-sesion";
 import { DocumentosPaciente } from "./documentos-paciente";
 import { PanelEvolucion } from "./panel-evolucion";
@@ -148,6 +149,16 @@ export function PacienteExpediente({
   const citaDeHoy =
     proximaCita && claveDiaLocal(new Date(proximaCita.inicio)) === claveDiaLocal(new Date()) ? proximaCita : null;
   const anios = paciente ? edad(paciente.fechaNacimiento) : null;
+  // Motivo de la próxima cita o, si no tiene, el de la cita más reciente de una sesión (prellena la ficha 1.1).
+  const motivoUltimaCita = useMemo(
+    () =>
+      proximaCita?.motivo?.trim() ||
+      Object.values(citasDeSesiones)
+        .filter((c) => c.motivo?.trim())
+        .sort((a, b) => b.inicio.localeCompare(a.inicio))[0]?.motivo ||
+      null,
+    [proximaCita, citasDeSesiones]
+  );
 
   // Abre (o continúa) la sesión; si se indica la cita, la sesión queda ligada a ella
   // y, al guardar la sesión, la cita se marca como atendida (completada).
@@ -503,6 +514,7 @@ export function PacienteExpediente({
           <PlanTratamiento onCambio={() => void cargar()} sesiones={sesiones} />
           <PanelEvolucion paciente={paciente} sesiones={sesiones} />
           <EvaluacionesPaciente paciente={paciente} />
+          <IntervencionGuiada motivoCita={motivoUltimaCita} paciente={paciente} />
           <DocumentosPaciente pacienteId={paciente.id} sesiones={sesiones} />
           <SectionCard
             plegable={{

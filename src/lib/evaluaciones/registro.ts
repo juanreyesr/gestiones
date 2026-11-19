@@ -343,11 +343,12 @@ export const REGISTRO: Record<string, DefinicionInstrumento> = {
       const f = fichaDeOpciones({ ficha: d.ficha });
       const av = avanceFicha(d);
       const riesgo = riesgoFicha(f, d.respuestas);
+      const porTerapeuta = d.autor === "terapeuta";
       return {
         // Sin puntuaciones: solo identifica la ficha en el PDF del expediente.
-        puntuaciones: [`Ficha ${f.id} · ${f.titulo} (${av.respondidas} de ${av.total} campos respondidos)`],
+        puntuaciones: [`Ficha ${f.id} · ${f.titulo} (${av.respondidas} de ${av.total} preguntas respondidas)${porTerapeuta ? " · Llenada por el terapeuta" : ""}`],
         alertas: riesgo.coincidencias.map((c) => `Posible señal de riesgo en el texto libre: «${c.fragmento}» (${c.campo}). Leer la respuesta completa.`),
-        insignia: `Ficha ${f.id} · ${av.respondidas} de ${av.total} campos`,
+        insignia: `Ficha ${f.id} · ${av.respondidas} de ${av.total} preguntas${porTerapeuta ? " · Llenada por el terapeuta" : ""}`,
         alarma: riesgo.riesgo,
       };
     },

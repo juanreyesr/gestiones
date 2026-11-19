@@ -3,14 +3,16 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import { calificarEapi } from "../src/lib/evaluaciones/eapi/calificacion.ts";
 import { FORMA_MODULOS } from "../src/lib/evaluaciones/eapi/codigo.ts";
-import { camposDeFicha, ETAPAS_FICHAS, FICHA_IDS, FICHAS, fichaPorId, TIPOS_CAMPO } from "../src/lib/evaluaciones/fichas/catalogo.ts";
-import { avanceFicha, campoTieneContenido, datosFichaGuardados, fichaDeOpciones, limpiarBorradorFicha, opcionesFicha, respuestasVacias, validarFicha } from "../src/lib/evaluaciones/fichas/codigo.ts";
+import { camposDeFicha, ETAPAS_FICHAS, FICHA_IDS, FICHAS, fichaPorId, rotuloFila, TIPOS_CAMPO } from "../src/lib/evaluaciones/fichas/catalogo.ts";
+import { avanceFicha, campoTieneContenido, datosFichaGuardados, esFichaDelTerapeuta, fichaDeOpciones, limpiarBorradorFicha, opcionesFicha, respuestasVacias, validarFicha } from "../src/lib/evaluaciones/fichas/codigo.ts";
 import { GUIA_TERAPEUTA } from "../src/lib/evaluaciones/fichas/guia-terapeuta.ts";
 import { fichaEnBlancoHtml, fichaRespondidaHtml } from "../src/lib/evaluaciones/fichas/informe-html.ts";
 import { detectarRiesgo, riesgoFicha } from "../src/lib/evaluaciones/fichas/riesgo.ts";
 import { fichasRespondidas, fichasSugeridas } from "../src/lib/evaluaciones/fichas/sugeridas.ts";
+import { borradorInicialFicha, datosFichaTerapeuta, estadosFichas, fechaLegible, prellenado, resumenIntervencion, siguientesEnRuta, sugerenciasIntervencion, tareaDeFicha } from "../src/lib/evaluaciones/fichas/intervencion.ts";
 import { INSTRUMENTOS, instrumentoPorId } from "../src/lib/evaluaciones/instrumentos.ts";
 import { buildPlan, etiquetas } from "../src/lib/evaluaciones/mcea/motor.ts";
+import { TEXTOS_REGISTRO } from "../src/lib/evaluaciones/mcea/textos-registro.ts";
 import { validarMcea } from "../src/lib/evaluaciones/mcea/codigo.ts";
 import { nombreConOpciones, REGISTRO } from "../src/lib/evaluaciones/registro.ts";
 import { REGISTRO_SERVIDOR } from "../src/lib/evaluaciones/registro-servidor.ts";
@@ -53,7 +55,7 @@ caso("Catálogo: cada ficha con explicación (2–4 párrafos), sección y cierr
     assert.ok(f.explicacion.length >= 2 && f.explicacion.length <= 4, `explicación ${f.id}`);
     assert.ok(f.explicacion.every((p) => p.length > 40), f.id);
     assert.ok(f.secciones.length >= 1, f.id);
-    assert.ok(f.secciones.every((s) => s.titulo && s.campos.length >= 1), f.id);
+    assert.ok(f.secciones.every((s) => s.titulo && s.intro && s.campos.length >= 1), f.id);
     assert.equal(f.cierre.titulo, "Qué haremos con esto en la próxima sesión");
     assert.ok(f.cierre.texto.length > 40 && f.cierre.campos.length >= 1, `cierre ${f.id}`);
   }
@@ -102,6 +104,105 @@ caso("2.4: solo observar y listar, sin exposición por cuenta propia", () => {
   assert.doesNotMatch(t, /enfrente|exponga|tarea de exposición/i);
 });
 
+/* ---------------- v1.1 A: instrucciones guiadas ---------------- */
+
+/** Todos los textos que ve el paciente en una ficha (incluidos los rótulos de las filas de las tablas). */
+const textosDeFicha = (f) => {
+  const out = [f.titulo, f.paraQue, ...f.explicacion, f.cierre.titulo, f.cierre.texto];
+  for (const s of f.secciones) out.push(s.titulo, s.intro);
+  for (const c of camposDeFicha(f)) {
+    out.push(c.etiqueta, c.ayuda ?? "", c.ejemplo ?? "");
+    if (c.tipo === "tabla") {
+      for (const k of c.columnas) out.push(k.titulo, k.ayuda ?? "", k.ejemplo ?? "");
+      for (let i = 0; i < Math.max(c.filas, c.maxFilas); i++) out.push(rotuloFila(c, i));
+    }
+  }
+  return out.filter(Boolean);
+};
+
+/**
+ * Regla de «pregunta» (v1.1, A.2): la etiqueta de cada campo (y el título de cada columna de una tabla) es
+ * una pregunta directa —contiene «¿…?», a veces tras una breve entrada («Hoy, ¿cuánto…?»)— o una instrucción imperativa clara de usted, que
+ * empieza con uno de estos verbos. Una etiqueta suelta («Situación», «Fila 1») no cumple.
+ */
+const IMPERATIVOS = /^(Escriba|Anote|Marque|Cuente|Piense|Describa|Mencione|Elija|Indique|Enumere|Recuerde|Imagine|Complete|Señale)\b/;
+const esPregunta = (t) => /¿[^?]+\?/.test(t) || IMPERATIVOS.test(t);
+/** Regla de invitación (A.1): la introducción de cada sección empieza con un verbo en imperativo de usted o una invitación («Comencemos…»). */
+const INVITACION = /^(Comencemos|Empecemos|Veamos|Pensemos|Ahora|Para terminar|Piense|Recuerde|Recorra|Escriba|Anote|Marque|Cuente|Describa|Imagine|Mire|Observe|Revise|Elija)\b/;
+
+caso("v1.1 A: ninguna ficha usa «Fila» ni «Fila n»", () => {
+  for (const f of FICHAS) {
+    for (const t of textosDeFicha(f)) assert.doesNotMatch(t, /\bfilas?\s*\d*\b/i, `${f.id}: «${t}»`);
+  }
+  assert.doesNotMatch(leer("../src/components/evaluaciones/ficha-campos.tsx"), /Fila \$\{|"Fila|Fila \{/);
+});
+
+caso("v1.1 A: cada sección abre con una invitación concreta de usted (verbo o invitación)", () => {
+  for (const f of FICHAS) {
+    for (const s of f.secciones) {
+      assert.ok(s.intro && s.intro.length > 80, `${f.id}/${s.id}: introducción`);
+      assert.match(s.intro, INVITACION, `${f.id}/${s.id}: «${s.intro.slice(0, 40)}…»`);
+      assert.doesNotMatch(s.intro, /\b(tú|tu|tus|tienes|puedes)\b/i, `${f.id}/${s.id}: trato de tú`);
+    }
+  }
+  const i13 = fichaPorId("1.3").secciones[0].intro;
+  assert.equal(i13, "Comencemos recordando un momento reciente que le haya causado ansiedad o malestar. Piense dónde estaba y qué estaba pasando; con eso iremos identificando, paso a paso, lo que pasó por su mente y su cuerpo.");
+});
+
+caso("v1.1 A: cada campo es una pregunta directa (o una instrucción imperativa clara); también las columnas", () => {
+  assert.ok(esPregunta("¿Qué pasó?") && esPregunta("Marque todas las que correspondan") && !esPregunta("Situación") && !esPregunta("Fila 1") && !esPregunta("Lo que sentí"));
+  for (const f of FICHAS) {
+    for (const c of camposDeFicha(f)) {
+      assert.ok(esPregunta(c.etiqueta), `${f.id}/${c.id}: «${c.etiqueta}»`);
+      if (c.tipo === "tabla") for (const k of c.columnas) assert.ok(esPregunta(k.titulo), `${f.id}/${c.id}/${k.id}: «${k.titulo}»`);
+    }
+  }
+  // Una sola pregunta por campo: sin dos signos «?» seguidos en una etiqueta de texto libre.
+  for (const f of FICHAS) for (const c of camposDeFicha(f)) if (c.tipo === "parrafo" || c.tipo === "texto") assert.ok((c.etiqueta.match(/\?/g) ?? []).length <= 1, `${f.id}/${c.id}: dos preguntas en una`);
+});
+
+caso("v1.1 A: tablas con etiquetaFila y filaOpcionalDesde; rótulos por sentido, primera fila principal", () => {
+  for (const f of FICHAS) {
+    for (const c of camposDeFicha(f).filter((x) => x.tipo === "tabla")) {
+      assert.ok(c.etiquetaFila && /^[a-záéíóúñ ]+$/.test(c.etiquetaFila), `${f.id}/${c.id}: etiquetaFila`);
+      assert.ok(Number.isInteger(c.filaOpcionalDesde) && c.filaOpcionalDesde >= 0 && c.filaOpcionalDesde <= (c.filasFijas?.length ?? c.filas), `${f.id}/${c.id}: filaOpcionalDesde`);
+      if (!c.filasFijas) assert.equal(c.filaOpcionalDesde, 1, `${f.id}/${c.id}: la primera fila es la principal y las demás opcionales`);
+      for (let i = 0; i < c.filas; i++) assert.doesNotMatch(rotuloFila(c, i), /fila/i);
+    }
+  }
+  const ciclo = camposDeFicha(fichaPorId("1.3")).find((c) => c.id === "ciclo");
+  assert.deepEqual([0, 1, 2].map((i) => rotuloFila(ciclo, i)), ["Primer momento", "Otro momento (opcional)", "Un tercer momento (opcional)"]);
+  const metas = camposDeFicha(fichaPorId("1.1")).find((c) => c.id === "metas");
+  assert.equal(metas.etiquetaFila, "meta");
+  assert.deepEqual([0, 1, 2].map((i) => rotuloFila(metas, i)), ["Primera meta", "Otra meta (opcional)", "Una tercera meta (opcional)"]);
+  const valores = camposDeFicha(fichaPorId("1.4")).find((c) => c.id === "valores");
+  assert.equal(rotuloFila(valores, 2), "Trabajo o estudio", "las filas fijas conservan su rótulo");
+  const evita = camposDeFicha(fichaPorId("2.4")).find((c) => c.id === "evitaciones");
+  assert.equal(rotuloFila(evita, 9), "Una décima evitación (opcional)");
+});
+
+caso("v1.1 A: contador «N de M preguntas respondidas» y ejemplo bajo la pregunta (formulario público y MCEA)", () => {
+  assert.match(leer("../src/components/evaluaciones/ficha-form.tsx"), /unidad="preguntas respondidas"/);
+  assert.match(leer("../src/components/evaluaciones/mcea-form.tsx"), /unidad="preguntas respondidas"/);
+  const comun = leer("../src/components/evaluaciones/formulario-comun.tsx");
+  assert.match(comun, /\$\{respondidas\} de \$\{total\} \$\{unidad\}/);
+  assert.match(comun, /unidad = "respondidas"/, "los demás formularios no cambian");
+  assert.match(leer("../src/components/evaluaciones/ficha-campos.tsx"), /Ejemplo: \{c\.ejemplo\}/);
+});
+
+caso("v1.1 A.7 MCEA: textos de presentación del mapa con las mismas reglas, sin tocar el motor ni lo generado", () => {
+  const T = TEXTOS_REGISTRO;
+  assert.match(T.intro, INVITACION);
+  for (const k of ["sit", "emo", "int", "pen", "f1", "f2", "beh", "dis"]) assert.ok(esPregunta(T[k].pregunta), `${k}: «${T[k].pregunta}»`);
+  for (const k of ["sit", "pen", "f1", "f2"]) assert.ok(T[k].ejemplo, `${k}: ejemplo`);
+  assert.ok(/usted|le |su /.test(T.intro) && !/\b(tú|tu|tus)\b/i.test(JSON.stringify(T)));
+  const form = leer("../src/components/evaluaciones/mcea-form.tsx");
+  assert.doesNotMatch(form, /Piense en un momento reciente en que se sintió mal|¿Qué pasó por su mente en ese momento\?|Un momento reciente</, "los textos viven en la capa propia");
+  assert.match(form, /textos-registro/);
+  assert.match(leer("../src/lib/evaluaciones/mcea/textos-registro.ts"), /^\/\*\*[\s\S]*NO se guarda nada de aquí/);
+  assert.doesNotMatch(leer("../src/lib/evaluaciones/mcea/textos-registro.ts"), /^import /m, "sin imports");
+});
+
 caso("Guía del terapeuta para cada ficha, completa", () => {
   for (const id of FICHA_IDS) {
     const g = GUIA_TERAPEUTA[id];
@@ -121,7 +222,7 @@ caso("El catálogo y el formulario público no contienen la guía del terapeuta"
     const g = GUIA_TERAPEUTA[id];
     assert.ok(!JSON.stringify(FICHAS).includes(g.objetivo), `objetivo de ${id} en el catálogo`);
   }
-  for (const ruta of ["../src/components/evaluaciones/ficha-form.tsx", "../src/lib/evaluaciones/fichas/codigo.ts", "../src/lib/evaluaciones/fichas/riesgo.ts"]) {
+  for (const ruta of ["../src/components/evaluaciones/ficha-form.tsx", "../src/components/evaluaciones/ficha-campos.tsx", "../src/lib/evaluaciones/fichas/codigo.ts", "../src/lib/evaluaciones/fichas/riesgo.ts"]) {
     const src = leer(ruta);
     assert.doesNotMatch(src, /guia-terapeuta|sugeridas|calificacion|registro"/, ruta);
   }
@@ -310,13 +411,13 @@ caso("Servidor: la ficha la fija el enlace y el riesgo avisa como alerta", () =>
 
 /* --------- evaluaciones de ejemplo para las sugeridas --------- */
 const eapi = (gad, dass, ptq, fecha = "2026-11-01") => fila("eapi", { v: 1, instrumento: "AEI", gad: Array(FORMA_MODULOS.gad.items).fill(gad), dass: Array(FORMA_MODULOS.dass.items).fill(dass), ptq: Array(FORMA_MODULOS.ptq.items).fill(ptq), docs: null, safety: 0, func: null }, fecha);
-function mcea(valorTope, focus, fecha = "2026-11-02") {
+function mcea(valorTope, focus, fecha = "2026-11-02", registro = null) {
   const e = { modo: "full", anchor: [], focus, gate: "no", answers: {}, risk: { self: "no" }, tr: null };
   for (let pos = 0, g = 0; g < 400; g++, pos++) {
     const st = buildPlan(e)[pos];
     if (!st || st.t === "end") break;
     if (st.t === "item") e.answers[`${st.ins}_${st.i}`] = { v: valorTope ? etiquetas(st.ins).length - 1 : 0, t: 1000 };
-    else if (st.t === "tr") e.tr = { skip: true };
+    else if (st.t === "tr") e.tr = registro ?? { skip: true };
   }
   const v = validarMcea(e, { modo: "full", anchor: [] });
   assert.ok(v.ok, v.error);
@@ -385,6 +486,21 @@ caso("HTML: ficha en blanco de cada ficha (sin guía, con renglones y tablas vac
   assert.match(fichaEnBlancoHtml(fichaPorId("2.1")), /class="caja"/);
 });
 
+caso("v1.1 A.6: PDF en blanco con las mismas reglas (invitación por sección, rótulos por sentido, sin «Fila»)", () => {
+  for (const f of FICHAS) {
+    const html = fichaEnBlancoHtml(f);
+    assert.doesNotMatch(html.replace(/<style>[\s\S]*<\/style>/, ""), /\bfilas?\b\s*\d*/i, `${f.id}: «Fila» en el PDF`);
+    for (const s of f.secciones) assert.ok(html.includes(s.intro.replace(/&/g, "&amp;")), `${f.id}/${s.id}: invitación`);
+    for (const c of camposDeFicha(f)) assert.ok(html.includes(c.etiqueta.replace(/&/g, "&amp;")), `${f.id}/${c.id}: pregunta`);
+  }
+  const h = fichaEnBlancoHtml(fichaPorId("1.3"));
+  assert.match(h, /<td class="fija">Primer momento<\/td>/);
+  assert.match(h, /<td class="fija">Otro momento \(opcional\)<\/td>/);
+  assert.match(h, /<td class="fija">Un tercer momento \(opcional\)<\/td>/);
+  assert.match(h, /<th>¿Qué pasó\?<br>/);
+  assert.match(fichaEnBlancoHtml(fichaPorId("1.1")), /<td class="fija">Primera meta<\/td>/);
+});
+
 caso("HTML: ficha con respuestas (tablas como tablas, escapado, sin respuesta, alarma)", () => {
   for (const f of FICHAS) {
     const resp = respuestasDeMuestra(f);
@@ -400,11 +516,13 @@ caso("HTML: ficha con respuestas (tablas como tablas, escapado, sin respuesta, a
   const f = fichaPorId("1.3");
   const resp = { ...respuestasVacias(f), ciclo: [["Mensaje del jefe", "Me va a regañar", "Miedo, 80", "Estómago apretado", "Revisé el celular"]], efecto: "Quiero morir" };
   const html = fichaRespondidaHtml({ ficha: f, respuestas: resp, nombre: "Ana", fecha: "2026-11-10", riesgo: riesgoFicha(f, resp) });
-  assert.match(html, /<th>Situación<\/th>/);
+  assert.match(html, /<th>¿Qué pasó\?<\/th>/);
+  assert.match(html, /<td class="fija">Primer momento<\/td><td>Mensaje del jefe<\/td>/);
   assert.match(html, /<td>Mensaje del jefe<\/td>/);
   assert.match(html, /class="flag"/);
   assert.match(html, /Sin respuesta/);
-  assert.match(html, /1 de \d+ campos|\d+ de \d+ campos respondidos/);
+  assert.match(html, /\d+ de \d+ preguntas respondidas/);
+  assert.doesNotMatch(html, /Llenada por el terapeuta/);
   const valores = fichaRespondidaHtml({ ficha: fichaPorId("1.4"), respuestas: { ...respuestasVacias(fichaPorId("1.4")), valores: [["", "", ""], ["Cuidar", "8", "Salir"], ...Array(5).fill(["", "", ""])] }, nombre: "Ana", fecha: "2026-11-10" });
   assert.match(valores, /<td class="fija">Pareja<\/td><td>Cuidar<\/td>/);
 });
@@ -433,7 +551,7 @@ caso("Registro: nombres, opciones, avance, resumen, alarma y nueva aplicación",
   const v = validarFicha({ respuestas: { se_repite: "El miedo", tipicos: 6 } }, { ficha: "1.3" });
   const f = fila("ficha", v.datos);
   const r = d.resumen(f);
-  assert.equal(r.insignia, `Ficha 1.3 · 2 de ${total} campos`);
+  assert.equal(r.insignia, `Ficha 1.3 · 2 de ${total} preguntas`);
   assert.equal(r.alarma, false);
   assert.deepEqual(r.alertas, []);
   assert.deepEqual(d.opcionesNueva(f, { ficha: "1.1" }), { ficha: "1.3" });
@@ -444,6 +562,222 @@ caso("Registro: nombres, opciones, avance, resumen, alarma y nueva aplicación",
   assert.equal(alarma.alertas.length, 1);
   assert.match(alarma.alertas[0], /«no quiero vivir»/);
   assert.match(resumenRespuesta(f).puntuaciones[0], /Ficha 1\.3/);
+});
+
+/* ---------------- v1.1 B: Intervención guiada ---------------- */
+
+const ficha = (id, respuestas = {}, extra = {}, fecha = "2026-11-10") => fila("ficha", { v: 1, instrumento: "FICHA", ficha: id, respuestas, ...extra }, fecha);
+const delTerapeuta = (id, respuestas = {}, fecha = "2026-11-10") => ficha(id, respuestas, { autor: "terapeuta" }, fecha);
+const enlace = (id, estado = "abierta", fecha = "2026-11-12", borrador = null) => ({ id: `e${id}${fecha}`, instrumento: "ficha", estado, opciones: { ficha: id }, createdAt: `${fecha}T09:00:00Z`, borrador });
+
+caso("B.1 Estado por ficha: sin usar / enviada / respondida por el paciente / llenada por el terapeuta, con fecha", () => {
+  const sin = estadosFichas([], []);
+  assert.equal(sin.length, 8);
+  assert.deepEqual(sin.map((e) => e.estado), Array(8).fill("sin-usar"));
+  assert.equal(sin[0].etiqueta, "Sin usar");
+  assert.equal(sin[0].fecha, null);
+  const r11 = ficha("1.1", {}, {}, "2026-11-03");
+  const t13 = delTerapeuta("1.3", {}, "2026-11-05");
+  const e = estadosFichas([r11, t13, fila("eapi", { ficha: "2.1" }), ficha("9.9")], [enlace("2.1"), enlace("1.4", "completa"), enlace("2.2", "cerrada"), { ...enlace("1.1"), instrumento: "eapi" }]);
+  const por = (id) => e.find((x) => x.ficha === id);
+  assert.deepEqual([por("1.1").estado, por("1.1").etiqueta, por("1.1").fecha, por("1.1").hecha], ["respondida", "Respondida por el paciente", "2026-11-03", true]);
+  assert.deepEqual([por("1.3").estado, por("1.3").etiqueta, por("1.3").fecha], ["terapeuta", "Llenada por el terapeuta", "2026-11-05"]);
+  assert.equal(por("1.3").terapeutaId, t13.id);
+  assert.deepEqual([por("2.1").estado, por("2.1").etiqueta, por("2.1").fecha, por("2.1").hecha, por("2.1").enlaceId !== null], ["enviada", "Enviada al paciente", "2026-11-12", false, true]);
+  assert.equal(por("1.4").estado, "sin-usar", "un enlace ya cerrado sin respuesta no cuenta como enviada");
+  assert.equal(por("2.2").estado, "sin-usar");
+  assert.equal(por("1.2").estado, "sin-usar");
+  // La respuesta más reciente de cualquier autor manda; un enlace enviado después de ella (repetir la ficha) manda sobre ambas.
+  const mix = estadosFichas([ficha("1.1", {}, {}, "2026-11-03"), delTerapeuta("1.1", {}, "2026-11-08")], []);
+  assert.equal(mix.find((x) => x.ficha === "1.1").estado, "terapeuta");
+  assert.equal(estadosFichas([delTerapeuta("1.1", {}, "2026-11-03"), ficha("1.1", {}, {}, "2026-11-09")], []).find((x) => x.ficha === "1.1").estado, "respondida");
+  assert.equal(estadosFichas([ficha("1.1", {}, {}, "2026-11-03")], [enlace("1.1", "abierta", "2026-11-12")]).find((x) => x.ficha === "1.1").estado, "enviada");
+  assert.equal(estadosFichas([ficha("1.1", {}, {}, "2026-11-20")], [enlace("1.1", "abierta", "2026-11-12")]).find((x) => x.ficha === "1.1").estado, "respondida");
+  assert.equal(tareaDeFicha("1.3"), "Ficha 1.3 · Mi ciclo: situación, pensamiento, emoción, cuerpo y conducta (enviada por enlace)");
+});
+
+caso("B.1 Siguiente en la ruta: la primera de la etapa siguiente cuando las de la etapa actual ya están hechas", () => {
+  const est = (...hechas) => estadosFichas(hechas.map((id) => ficha(id)), []);
+  assert.deepEqual(siguientesEnRuta(est()), ["1.1"], "sin nada hecho, se empieza por la 1.1");
+  assert.deepEqual(siguientesEnRuta(est("1.1")), ["1.2"], "dentro de la etapa, la primera pendiente");
+  assert.deepEqual(siguientesEnRuta(est("1.1", "1.2", "1.3")), ["1.4"]);
+  assert.deepEqual(siguientesEnRuta(est("1.1", "1.2", "1.3", "1.4")), ["2.1"], "etapa 1 completa: la primera de la 2");
+  assert.deepEqual(siguientesEnRuta(est("1.1", "1.2", "1.3", "1.4", "2.1", "2.2")), ["2.3"]);
+  assert.deepEqual(siguientesEnRuta(est("1.1", "1.2", "1.3", "1.4", "2.1", "2.2", "2.3", "2.4")), [], "ruta completa (este lote no tiene etapa 3)");
+  assert.deepEqual(siguientesEnRuta(est("2.1")), ["2.2"], "la etapa actual es la más avanzada con alguna ficha hecha");
+  // Una ficha llenada por el terapeuta también cuenta como hecha.
+  assert.deepEqual(siguientesEnRuta(estadosFichas([delTerapeuta("1.1")], [])), ["1.2"]);
+});
+
+caso("B.1 Sugerencias: las de sugeridas.ts más la ruta, sin las ya hechas o enviadas", () => {
+  assert.deepEqual(sugerenciasIntervencion([], []).map((s) => s.ficha), ["1.1", "1.3"]);
+  const s0 = sugerenciasIntervencion([], []);
+  assert.equal(s0[0].enRuta, true, "1.1 es además la siguiente en la ruta");
+  assert.deepEqual(s0[0].motivos, ["Aún no la ha respondido", "Sigue en la ruta (etapa 1 · Evaluación y formulación)"]);
+  assert.equal(s0[1].enRuta, false);
+  // EAPI alto: 2.1, 2.2, 2.3 y 2.4 por resultados.
+  const alto = eapi(3, 3, 4);
+  assert.deepEqual(sugerenciasIntervencion([alto], []).map((s) => s.ficha), ["1.1", "1.3", "2.1", "2.2", "2.3", "2.4"]);
+  // Con 1.1 hecha (paciente) y 1.3 llenada por el terapeuta, quedan las de resultados y la siguiente de la ruta (1.2).
+  const hechas = [alto, ficha("1.1"), delTerapeuta("1.3")];
+  const s = sugerenciasIntervencion(hechas, []);
+  assert.deepEqual(s.map((x) => x.ficha), ["1.2", "2.1", "2.2", "2.3", "2.4"]);
+  assert.deepEqual(s[0], { ficha: "1.2", motivos: ["Sigue en la ruta (etapa 1 · Evaluación y formulación)"], enRuta: true });
+  assert.match(s[1].motivos.join(" "), /EAPI/);
+  // Las ya enviadas no se sugieren otra vez.
+  assert.deepEqual(sugerenciasIntervencion(hechas, [enlace("2.1"), enlace("1.2")]).map((x) => x.ficha), ["2.2", "2.3", "2.4"]);
+  // La que sigue en la ruta se suma a las de resultados cuando coincide con ellas.
+  const todas1 = ["1.1", "1.2", "1.3", "1.4"].map((id) => ficha(id));
+  const s2 = sugerenciasIntervencion([alto, ...todas1], []);
+  assert.deepEqual(s2.map((x) => x.ficha), ["2.1", "2.2", "2.3", "2.4"]);
+  assert.equal(s2[0].enRuta, true);
+  assert.equal(s2[1].enRuta, false);
+  assert.equal(s2[0].motivos.at(-1), "Sigue en la ruta (etapa 2 · Psicoeducación)");
+});
+
+caso("B.2 Prellenado desde el expediente, con el origen legible de cada campo", () => {
+  const paciente = { motivoConsulta: "  Ansiedad en el trabajo y mal dormir  ", antecedentesPsicologicos: "Tratamiento breve en 2019 por duelo." };
+  const p11 = prellenado("1.1", { paciente });
+  assert.equal(p11.respuestas.motivo, "Ansiedad en el trabajo y mal dormir");
+  assert.deepEqual(p11.origen, { motivo: "Del motivo de consulta de la ficha clínica" });
+  assert.equal(p11.respuestas.desde_cuando, "");
+  assert.deepEqual(Object.keys(p11.respuestas), camposDeFicha(fichaPorId("1.1")).map((c) => c.id), "devuelve todos los campos de la ficha");
+  assert.deepEqual(prellenado("1.1", { paciente: { motivoConsulta: "  " }, motivoCita: "Revisión por insomnio" }).origen, { motivo: "Del motivo de la última cita o solicitud" });
+  assert.deepEqual(prellenado("1.1", { paciente: {} }).origen, {}, "sin datos no se inventa nada");
+  assert.equal(prellenado("1.1", { paciente }).respuestas.metas.every((f) => f.every((x) => x === "")), true, "el expediente no tiene metas: no se prellenan");
+  const p12 = prellenado("1.2", { paciente });
+  assert.equal(p12.respuestas.parecido, "Tratamiento breve en 2019 por duelo.");
+  assert.deepEqual(p12.origen, { parecido: "De los antecedentes psicológicos de la ficha clínica" });
+  assert.deepEqual(prellenado("2.1", { paciente }).origen, {}, "las demás fichas no toman datos del expediente");
+});
+
+caso("B.2 Prellenado de 1.3 desde el último registro guiado del MCEA", () => {
+  const reg = (sit, pen, emo, int, beh) => ({ sit, emo, int, pen, f1: "", f2: "", beh, dis: [] });
+  const viejo = mcea(true, [], "2026-10-01", reg("Situación vieja", "Pensamiento viejo", ["Miedo"], 30, ["Me aislé"]));
+  const nuevo = mcea(true, [], "2026-11-02", reg("Mi jefe me escribió", "Seguro me va a regañar", ["Miedo", "Vergüenza"], 80, ["Evité el tema", "Revisé el teléfono o las redes"]));
+  const omitido = mcea(false, [], "2026-11-09");
+  const p = prellenado("1.3", { respuestas: [viejo, nuevo] });
+  assert.deepEqual(p.respuestas.ciclo[0], ["Mi jefe me escribió", "Seguro me va a regañar", "Miedo, Vergüenza, 80", "", "Evité el tema, Revisé el teléfono o las redes"]);
+  assert.equal(p.respuestas.ciclo.length, 3);
+  assert.deepEqual(p.respuestas.ciclo[1], ["", "", "", "", ""]);
+  assert.match(p.origen.ciclo, /^Del registro guiado del MCEA del 2 nov 2026/);
+  assert.match(p.origen.ciclo, /el cuerpo queda por completar/);
+  // Un MCEA más reciente sin registro (omitido) no tapa al último que sí lo tiene.
+  assert.match(prellenado("1.3", { respuestas: [nuevo, omitido] }).origen.ciclo, /2 nov 2026/);
+  assert.deepEqual(prellenado("1.3", { respuestas: [omitido] }).origen, {});
+  assert.deepEqual(prellenado("1.3", { respuestas: [] }).origen, {});
+  // Un ciclo largo (más de 500 caracteres por celda) se recorta con las reglas del avance guardado.
+  const largo = mcea(true, [], "2026-11-02", reg("x".repeat(900), "", ["Miedo"], 10, []));
+  assert.equal(prellenado("1.3", { respuestas: [largo] }).respuestas.ciclo[0][0].length, 500);
+});
+
+caso("B.2 Prellenado: lo que la misma ficha ya tiene (la respuesta más reciente) manda sobre el expediente", () => {
+  const paciente = { motivoConsulta: "Del expediente" };
+  const delPaciente = ficha("1.1", { motivo: "Lo que escribió el paciente", desde_cuando: "Hace un año" }, {}, "2026-11-03");
+  const p = prellenado("1.1", { paciente, respuestas: [delPaciente] });
+  assert.equal(p.respuestas.motivo, "Lo que escribió el paciente");
+  assert.equal(p.respuestas.desde_cuando, "Hace un año");
+  assert.deepEqual(p.origen, { motivo: "De la respuesta del paciente del 3 nov 2026", desde_cuando: "De la respuesta del paciente del 3 nov 2026" });
+  const versionTerapeuta = delTerapeuta("1.1", { motivo: "Versión del terapeuta", afecta_hoy: 6 }, "2026-11-08");
+  const p2 = prellenado("1.1", { paciente, respuestas: [delPaciente, versionTerapeuta] });
+  assert.equal(p2.respuestas.motivo, "Versión del terapeuta");
+  assert.equal(p2.respuestas.afecta_hoy, 6);
+  assert.equal(p2.respuestas.desde_cuando, "", "solo la más reciente");
+  assert.equal(p2.origen.motivo, "De la versión del terapeuta del 8 nov 2026");
+  // Cualquier ficha: lo que no tiene la respuesta previa lo completa el expediente.
+  const p3 = prellenado("1.1", { paciente, respuestas: [ficha("1.1", { desde_cuando: "Hace un año" })] });
+  assert.equal(p3.respuestas.motivo, "Del expediente");
+  assert.equal(p3.origen.motivo, "Del motivo de consulta de la ficha clínica");
+  assert.equal(fechaLegible("2026-11-02"), "2 nov 2026");
+  // Una respuesta de otra ficha o un dato inválido no se mezcla.
+  assert.deepEqual(prellenado("2.1", { respuestas: [ficha("1.1", { motivo: "x" }), fila("ficha", { ficha: "2.1", respuestas: { fuerza: 99, cuerpo: "no" } })] }).origen, {});
+});
+
+caso("B.2 Guardar como terapeuta: la validación acepta autor «terapeuta» solo en el panel; el envío público lo descarta", () => {
+  const cuerpo = { ficha: "1.1", autor: "terapeuta", respuestas: { motivo: "Ansiedad" } };
+  const panel = validarFicha(cuerpo, { ficha: "1.1" }, { permitirAutor: true });
+  assert.ok(panel.ok);
+  assert.equal(panel.datos.autor, "terapeuta");
+  const publico = validarFicha(cuerpo, { ficha: "1.1" });
+  assert.ok(publico.ok);
+  assert.equal("autor" in publico.datos, false, "nadie se hace pasar por el terapeuta desde el enlace público");
+  assert.equal(REGISTRO_SERVIDOR.ficha.validar(cuerpo, { ficha: "1.1" }).datos.autor, undefined);
+  assert.equal(validarFicha({ ...cuerpo, autor: "paciente" }, { ficha: "1.1" }, { permitirAutor: true }).datos.autor, undefined, "solo se reconoce «terapeuta»");
+  // Lo guardado se vuelve a leer con el autor.
+  assert.equal(datosFichaGuardados(panel.datos).autor, "terapeuta");
+  assert.equal(esFichaDelTerapeuta(panel.datos), true);
+  assert.equal(esFichaDelTerapeuta({ ficha: "1.1" }), false);
+  assert.equal(esFichaDelTerapeuta(null), false);
+  // Datos listos para insertar (origen «codigo»).
+  const d = datosFichaTerapeuta("1.1", { ...respuestasVacias(fichaPorId("1.1")), motivo: "  Ansiedad  ", afecta_hoy: 7 }, new Date("2026-11-15T10:00:00Z"));
+  assert.ok(d.ok);
+  assert.deepEqual([d.datos.autor, d.datos.ficha, d.datos.instrumento, d.datos.v, d.datos.respuestas.motivo, d.datos.enviado], ["terapeuta", "1.1", "FICHA", 1, "Ansiedad", "2026-11-15T10:00:00.000Z"]);
+  assert.equal(datosFichaTerapeuta("1.1", respuestasVacias(fichaPorId("1.1"))).ok, false, "vacía no se guarda");
+  assert.equal(datosFichaTerapeuta("1.1", { motivo: "x".repeat(3001) }).ok, false);
+  assert.equal(datosFichaTerapeuta("1.1", { motivo: "x".repeat(3000), ya_intente: "y".repeat(3000), ya_ayudo: "z".repeat(3000), dia_distinto: "w".repeat(3000), dificultades: "v".repeat(3000), para_sesion: "u".repeat(3000), ...{ } }).ok, false, "más de 18 000 bytes no cabe en el jsonb");
+});
+
+caso("B.3 Enviar con lo ya escrito: borrador inicial del enlace {ficha, respuestas}", () => {
+  const b = borradorInicialFicha("1.1", { motivo: "Ansiedad", extra: "no", afecta_hoy: 99 });
+  assert.ok(b.ok);
+  assert.equal(b.borrador.ficha, "1.1");
+  assert.equal(b.borrador.respuestas.motivo, "Ansiedad");
+  assert.equal(b.borrador.respuestas.afecta_hoy, null, "se limpia como el avance guardado");
+  assert.equal("extra" in b.borrador.respuestas, false);
+  assert.deepEqual(Object.keys(b.borrador.respuestas), camposDeFicha(fichaPorId("1.1")).map((c) => c.id));
+  assert.equal(borradorInicialFicha("1.1", respuestasVacias(fichaPorId("1.1"))).ok, false, "sin nada escrito se envía vacía como hoy");
+  // El formulario público lo lee con su limpieza y cuenta el avance: el paciente «continúa donde se quedó».
+  const leido = limpiarBorradorFicha(b.borrador, { ficha: "1.1" });
+  assert.deepEqual(avanceFicha(leido), { respondidas: 1, total: camposDeFicha(fichaPorId("1.1")).length });
+  assert.deepEqual(REGISTRO.ficha.avance(b.borrador, { ficha: "1.1" }), avanceFicha(leido));
+  assert.ok(new TextEncoder().encode(JSON.stringify(b.borrador)).length <= 18000);
+  assert.equal(borradorInicialFicha("1.1", { motivo: "x".repeat(3000), ya_intente: "y".repeat(3000), ya_ayudo: "z".repeat(3000), dia_distinto: "w".repeat(3000), dificultades: "v".repeat(3000), para_sesion: "u".repeat(3000) }).ok, false);
+});
+
+caso("B.4 Integración: «Llenada por el terapeuta» en la lista, el informe y el PDF; solo informativo en «Antes de la próxima sesión»", () => {
+  const f = delTerapeuta("1.3", { se_repite: "El miedo", efecto: "Quiero morir" });
+  const r = REGISTRO.ficha.resumen(f);
+  assert.match(r.puntuaciones[0], /Ficha 1\.3 .*preguntas respondidas\) · Llenada por el terapeuta$/);
+  assert.match(r.insignia, /· Llenada por el terapeuta$/);
+  assert.equal(r.alarma, true, "las frases de riesgo se marcan también en lo que llena el terapeuta (para el terapeuta)");
+  assert.equal(REGISTRO.ficha.resumen(ficha("1.3", { se_repite: "El miedo" })).insignia.includes("terapeuta"), false);
+  assert.match(resumenRespuesta(f).puntuaciones[0], /Llenada por el terapeuta/);
+  const html = fichaRespondidaHtml({ ficha: fichaPorId("1.3"), respuestas: respuestasVacias(fichaPorId("1.3")), nombre: "Terapeuta", fecha: "2026-11-10", autor: "terapeuta" });
+  assert.match(html, /<strong>Llenada por el terapeuta<\/strong>/);
+  assert.doesNotMatch(html, /Respondió:/);
+  assert.match(fichaRespondidaHtml({ ficha: fichaPorId("1.3"), respuestas: respuestasVacias(fichaPorId("1.3")), nombre: "Ana", fecha: "2026-11-10" }), /Respondió: <strong>Ana<\/strong>/);
+  assert.deepEqual(resumenIntervencion([ficha("1.1", {}, {}, "2026-11-03"), delTerapeuta("1.3", {}, "2026-11-05"), fila("eapi", {})]), [
+    "Ficha 1.1 · Mi motivo de consulta y mis metas: respondida por el paciente (3 nov 2026)",
+    "Ficha 1.3 · Mi ciclo: situación, pensamiento, emoción, cuerpo y conducta: llenada por el terapeuta (5 nov 2026)",
+  ]);
+  assert.deepEqual(resumenIntervencion([]), []);
+  // Cableado (sin migraciones): componente, datos, expediente, PDF y «Antes de la próxima sesión».
+  const comp = leer("../src/components/clinica/intervencion-guiada.tsx");
+  assert.match(comp, /title="Intervención guiada"/);
+  assert.match(comp, /Llenarla yo/);
+  assert.match(comp, /Enviar al paciente/);
+  assert.match(comp, /Enviar con lo escrito/);
+  assert.match(comp, /tema="panel"/, "mismo renderizado de campos que el formulario público, en tema del panel");
+  assert.match(comp, /GuiaTerapeutaFicha/);
+  assert.match(comp, /guardarFichaTerapeuta/);
+  assert.match(comp, /asignarEvaluacion\([^)]*borrador\)/);
+  assert.match(comp, /agregarTareaASesionReciente\(paciente\.id, tareaDeFicha\(id\)\)/);
+  assert.doesNotMatch(comp, /telegram|avisarEvaluacion/i, "llenarla no avisa por Telegram");
+  const datos = leer("../src/lib/evaluaciones/evaluaciones.ts");
+  assert.match(datos, /instrumento: "ficha",[\s\S]*origen: "codigo"/);
+  assert.match(datos, /borrador \? \{ borrador, borrador_at/);
+  assert.match(datos, /borrador: Record<string, unknown> \| null = null/, "asignarEvaluacion sigue siendo compatible: el borrador es opcional");
+  assert.match(leer("../src/components/clinica/paciente-expediente.tsx"), /<IntervencionGuiada motivoCita=\{motivoUltimaCita\} paciente=\{paciente\} \/>/);
+  assert.match(leer("../src/lib/clinica/expediente-pdf.ts"), /resumenIntervencion\(respuestas\)/);
+  const antes = leer("../src/components/clinica/antes-proxima-sesion.tsx");
+  assert.match(antes, /!delTerapeuta\(r\) && \(!ultimaSesion/);
+  assert.match(antes, /solo informativo/);
+  assert.match(leer("../src/components/clinica/evaluaciones-paciente.tsx"), /Llenada por el terapeuta/);
+  assert.match(leer("../src/components/clinica/informe-ficha.tsx"), /Llenada por el terapeuta/);
+  // El formulario público y el servidor no conocen la lógica del panel.
+  for (const ruta of ["../src/components/evaluaciones/ficha-form.tsx", "../src/components/evaluaciones/ficha-campos.tsx", "../src/lib/evaluaciones/fichas/codigo.ts", "../src/lib/evaluaciones/registro-servidor.ts"]) assert.doesNotMatch(leer(ruta), /intervencion/i, ruta);
+  // Sin migraciones: nada nuevo en supabase/migrations por esta función.
+  assert.equal(fs.readdirSync(new URL("../supabase/migrations/", import.meta.url)).filter((n) => /intervencion|ficha/i.test(n)).length, 0);
 });
 
 console.log(`\n${ok} pruebas correctas.`);

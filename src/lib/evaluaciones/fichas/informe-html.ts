@@ -5,8 +5,8 @@
  *  (b) la ficha CON SUS RESPUESTAS (para el expediente).
  * Sin la guía del terapeuta. Mismos estilos sobrios que los demás informes HTML.
  */
-import { camposDeFicha, ETAPAS_FICHAS, FICHA_INTRO_GENERAL, type Campo, type Ficha, type Seccion } from "./catalogo";
-import type { RespuestasFicha, ValorCasillas } from "./codigo";
+import { camposDeFicha, ETAPAS_FICHAS, FICHA_INTRO_GENERAL, rotuloFila, type Campo, type Ficha, type Seccion } from "./catalogo";
+import type { AutorFicha, RespuestasFicha, ValorCasillas } from "./codigo";
 import type { RiesgoFicha } from "./riesgo";
 
 const esc = (s: unknown) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!);
@@ -33,6 +33,7 @@ th{font-size:11px;background:#f1f5f9;color:#475569}td.fija{font-weight:600;backg
 .resp{white-space:pre-wrap;background:#f8fafc;border-radius:8px;padding:8px 10px;margin:4px 0}.sin{color:#94a3b8;font-style:italic}
 ol,ul{margin:4px 0;padding-left:22px}.barra{height:7px;background:#f1f5f9;border-radius:99px;overflow:hidden;max-width:260px;margin-top:4px}.barra i{display:block;height:100%;background:#0d9488}
 .flag{padding:9px 12px;border-radius:8px;margin:8px 0;font-size:13px;border:1px solid #fca5a5;background:#fee2e2;color:#7f1d1d}
+.invita{margin:4px 0 8px;color:#334155}td.fija.ejemplo{font-weight:400}
 .cierre{border:1px solid #e2e8f0;border-radius:8px;padding:8px 12px;background:#f8fafc;margin-top:6px}
 .pie{margin-top:22px;padding-top:8px;border-top:1px solid #e2e8f0;font-size:11.5px;color:#64748b}
 @media print{body{padding:0}h2{break-after:avoid}.campo,tr,.flag{break-inside:avoid}*{-webkit-print-color-adjust:exact;print-color-adjust:exact}}
@@ -71,17 +72,17 @@ function campoEnBlanco(c: Campo): string {
       break;
     case "tabla": {
       const filas = c.filasFijas ? c.filasFijas.length : c.filas;
-      const cab = `<tr>${c.filasFijas ? "<th></th>" : ""}${c.columnas.map((k) => `<th>${esc(k.titulo)}${k.ayuda ? `<br><span style="font-weight:400">${esc(k.ayuda)}</span>` : ""}</th>`).join("")}</tr>`;
-      const ejemplo = !c.filasFijas && c.columnas.some((k) => k.ejemplo) ? `<tr>${c.columnas.map((k) => `<td class="ejemplo">${esc(k.ejemplo ?? "")}</td>`).join("")}</tr>` : "";
-      const cuerpoFilas = Array.from({ length: filas }, (_, i) => `<tr>${c.filasFijas ? `<td class="fija">${esc(c.filasFijas[i])}</td>` : ""}${c.columnas.map(() => `<td class="vacia"></td>`).join("")}</tr>`).join("");
-      cuerpo = `<table class="${c.columnas.length >= 5 ? "ciclo" : ""}"><thead>${cab}</thead><tbody>${ejemplo}${cuerpoFilas}</tbody></table>${ejemplo ? `<div class="ayuda">La primera fila gris es un ejemplo.</div>` : ""}`;
+      const cab = `<tr><th></th>${c.columnas.map((k) => `<th>${esc(k.titulo)}${k.ayuda ? `<br><span style="font-weight:400">${esc(k.ayuda)}</span>` : ""}</th>`).join("")}</tr>`;
+      const ejemplo = !c.filasFijas && c.columnas.some((k) => k.ejemplo) ? `<tr><td class="fija ejemplo">Ejemplo</td>${c.columnas.map((k) => `<td class="ejemplo">${esc(k.ejemplo ?? "")}</td>`).join("")}</tr>` : "";
+      const cuerpoFilas = Array.from({ length: filas }, (_, i) => `<tr><td class="fija">${esc(rotuloFila(c, i))}</td>${c.columnas.map(() => `<td class="vacia"></td>`).join("")}</tr>`).join("");
+      cuerpo = `<table class="${c.columnas.length >= 5 ? "ciclo" : ""}"><thead>${cab}</thead><tbody>${ejemplo}${cuerpoFilas}</tbody></table>${ejemplo ? `<div class="ayuda">El renglón de ejemplo es solo una muestra de cómo responder.</div>` : ""}`;
       break;
     }
   }
   return `<div class="campo" data-corte>${etiquetaCampo(c, c.tipo !== "tabla")}${cuerpo}</div>`;
 }
 
-const seccionEnBlanco = (s: Seccion) => `<h2>${esc(s.titulo)}</h2>${s.intro ? `<p class="muted">${esc(s.intro)}</p>` : ""}${s.campos.map(campoEnBlanco).join("")}`;
+const seccionEnBlanco = (s: Seccion) => `<h2>${esc(s.titulo)}</h2><p class="invita">${esc(s.intro)}</p>${s.campos.map(campoEnBlanco).join("")}`;
 
 /** Ficha en blanco (parte del paciente) lista para imprimir en A4. */
 export function fichaEnBlancoHtml(f: Ficha): string {
@@ -122,9 +123,9 @@ function respuestaDe(c: Campo, valor: unknown): string {
       const conTexto = (f: unknown[]) => f.some((x) => typeof x === "string" && x.trim() !== "");
       const visibles = filas.map((f, i) => ({ f, i })).filter(({ f }) => Array.isArray(f) && conTexto(f));
       if (!visibles.length) return sinRespuesta;
-      const cab = `<tr>${c.filasFijas ? "<th></th>" : ""}${c.columnas.map((k) => `<th>${esc(k.titulo)}</th>`).join("")}</tr>`;
+      const cab = `<tr><th></th>${c.columnas.map((k) => `<th>${esc(k.titulo)}</th>`).join("")}</tr>`;
       const cuerpo = (c.filasFijas ? filas.map((f, i) => ({ f, i })) : visibles)
-        .map(({ f, i }) => `<tr>${c.filasFijas ? `<td class="fija">${esc(c.filasFijas[i] ?? "")}</td>` : ""}${c.columnas.map((_, j) => `<td>${esc(typeof f?.[j] === "string" && f[j] ? f[j] : "—")}</td>`).join("")}</tr>`)
+        .map(({ f, i }) => `<tr><td class="fija">${esc(rotuloFila(c, i).replace(/ \(opcional\)$/, ""))}</td>${c.columnas.map((_, j) => `<td>${esc(typeof f?.[j] === "string" && f[j] ? f[j] : "—")}</td>`).join("")}</tr>`)
         .join("");
       return `<table><thead>${cab}</thead><tbody>${cuerpo}</tbody></table>`;
     }
@@ -141,6 +142,8 @@ export type DatosFichaRespondida = {
   /** Palabras de riesgo halladas en el texto libre (se destacan arriba). */
   riesgo?: RiesgoFicha | null;
   notasPrivadas?: string;
+  /** «terapeuta»: la llenó el psicólogo (no el paciente). */
+  autor?: AutorFicha;
 };
 
 /** Ficha con las respuestas del paciente, para el expediente. */
@@ -154,15 +157,15 @@ export function fichaRespondidaHtml(a: DatosFichaRespondida): string {
         .join("")}</div>`
     : "";
   const cuerpo = `${encabezado(f)}
-<p class="muted">Respondió: <strong>${esc(a.nombre || "—")}</strong> · Fecha: ${esc(fechaLarga(a.fecha) || "—")} · ${
+<p class="muted">${a.autor === "terapeuta" ? `<strong>Llenada por el terapeuta</strong>` : `Respondió: <strong>${esc(a.nombre || "—")}</strong>`} · Fecha: ${esc(fechaLarga(a.fecha) || "—")} · ${
     camposDeFicha(f).filter((c) => respuestaDe(c, resp[c.id]) !== sinRespuesta).length
-  } de ${total} campos respondidos</p>
+  } de ${total} preguntas respondidas</p>
 ${alarma}
 ${f.secciones
   .map((s) => `<h2>${esc(s.titulo)}</h2>${s.campos.map((c) => campoRespondido(c, resp)).join("")}`)
   .join("")}
 <h2>${esc(f.cierre.titulo)}</h2>${f.cierre.campos.map((c) => campoRespondido(c, resp)).join("")}
 ${a.notasPrivadas?.trim() ? `<h2>Notas del profesional</h2><div class="resp">${esc(a.notasPrivadas)}</div>` : ""}
-<div class="pie">Ficha ${esc(f.id)} · Fichas terapéuticas JJR (TCC). Respuestas del paciente sin calificación; las palabras de riesgo se detectan por reglas y no sustituyen la lectura clínica.</div>`;
+<div class="pie">Ficha ${esc(f.id)} · Fichas terapéuticas JJR (TCC). ${a.autor === "terapeuta" ? "Ficha llenada por el terapeuta" : "Respuestas del paciente"}, sin calificación; las palabras de riesgo se detectan por reglas y no sustituyen la lectura clínica.</div>`;
   return documento(`Ficha ${f.id} · ${f.titulo} · ${a.nombre}`, cuerpo);
 }
