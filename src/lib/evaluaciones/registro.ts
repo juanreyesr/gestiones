@@ -22,6 +22,8 @@ import { calificarJjr, camposPrincipales, mediaTexto, ordenPorInteres } from "./
 import { avanceJjr, datosJjrGuardados, formaDeOpciones, limpiarBorradorJjr, type InstrumentoJjr } from "./jjr/codigo";
 import { avanceMcea, datosMceaGuardados, limpiarBorradorMcea, opcionesMcea } from "./mcea/codigo";
 import { A as respuestaMcea, modulosAbiertos, nombreModulo, scoreAll as puntajesMcea } from "./mcea/motor";
+import { avanceFicha, datosFichaGuardados, fichaDeOpciones, limpiarBorradorFicha, opcionesFicha } from "./fichas/codigo";
+import { riesgoFicha } from "./fichas/riesgo";
 import { calificarRiasec, RIASEC_INFO } from "./riasec/calificacion";
 import { avanceRiasec, limpiarBorradorRiasec, validarRiasec } from "./riasec/codigo";
 import { calificarTemperamentos } from "./temperamentos/calificacion";
@@ -321,6 +323,33 @@ export const REGISTRO: Record<string, DefinicionInstrumento> = {
       if (sc.GAD7) puntos.push({ serie: "gad", valor: sc.GAD7.raw });
       if (sc.PTQ) puntos.push({ serie: "ptq", valor: sc.PTQ.raw });
       return { puntos };
+    },
+  },
+  // Fichas terapéuticas JJR: sin calificación ni evolución numérica; solo alarma si el texto libre trae palabras de riesgo.
+  ficha: {
+    sigla: "FICHA",
+    nombreCorto: (o) => {
+      const f = fichaDeOpciones(o);
+      return `Ficha ${f.id} · ${f.titulo}`;
+    },
+    detalleOpciones: (o) => ` · Ficha ${opcionesFicha(o).ficha}`,
+    opcionesPublicas: (o) => ({ ...opcionesFicha(o) }),
+    avance: (b, o) => avanceFicha(limpiarBorradorFicha(b, o)),
+    // Repetir la ficha: la misma.
+    opcionesNueva: (r, o) => ({ ficha: datosFichaGuardados(r.datos)?.ficha ?? opcionesFicha(o).ficha }),
+    resumen: (r) => {
+      const d = datosFichaGuardados(r.datos);
+      if (!d) return null;
+      const f = fichaDeOpciones({ ficha: d.ficha });
+      const av = avanceFicha(d);
+      const riesgo = riesgoFicha(f, d.respuestas);
+      return {
+        // Sin puntuaciones: solo identifica la ficha en el PDF del expediente.
+        puntuaciones: [`Ficha ${f.id} · ${f.titulo} (${av.respondidas} de ${av.total} campos respondidos)`],
+        alertas: riesgo.coincidencias.map((c) => `Posible señal de riesgo en el texto libre: «${c.fragmento}» (${c.campo}). Leer la respuesta completa.`),
+        insignia: `Ficha ${f.id} · ${av.respondidas} de ${av.total} campos`,
+        alarma: riesgo.riesgo,
+      };
     },
   },
 };

@@ -369,3 +369,44 @@ export async function actualizarPropuestasSesion(sesionId: string, propuestas: P
   const { error } = await supabase.from("gestionesjj_sesiones").update({ propuestas_ia: propuestas }).eq("id", sesionId);
   return { error: error?.message ?? null };
 }
+
+/**
+ * Agrega una tarea (tipo «tarea», al final de la lista) a la sesión en curso del
+ * paciente o, si no hay, a la última. Sin sesiones no hace nada (agregada: false).
+ * Pensado para acciones secundarias (p. ej. asignar una ficha): quien llama no debe
+ * bloquear su flujo si esto falla.
+ */
+export async function agregarTareaASesionReciente(pacienteId: string, descripcion: string) {
+  const supabase = getSupabaseClient();
+  if (!supabase) return { agregada: false, sesionId: null as string | null, error: "Faltan las variables de Supabase." };
+  const texto = descripcion.trim();
+  if (!texto) return { agregada: false, sesionId: null as string | null, error: null };
+
+  const { data: sesiones, error: errSesion } = await supabase
+    .from("gestionesjj_sesiones")
+    .select("id,estado,iniciada_at")
+    .eq("paciente_id", pacienteId)
+    .order("iniciada_at", { ascending: false })
+    .limit(10);
+  if (errSesion) return { agregada: false, sesionId: null as string | null, error: errSesion.message };
+  const lista = (sesiones ?? []) as { id: string; estado: string }[];
+  // Primero la última sesión ya cerrada: si la tarea se agregara a una sesión en
+  // curso abierta en el editor, al guardarla el editor la borraría (sincroniza su lista).
+  const sesion = lista.find((x) => x.estado !== "en_curso") ?? lista[0];
+  if (!sesion) return { agregada: false, sesionId: null as string | null, error: null };
+
+  const { data: ultimas, error: errOrden } = await supabase
+    .from("gestionesjj_compromisos")
+    .select("orden")
+    .eq("sesion_id", sesion.id)
+    .eq("tipo", "tarea")
+    .order("orden", { ascending: false })
+    .limit(1);
+  if (errOrden) return { agregada: false, sesionId: sesion.id, error: errOrden.message };
+  const orden = ((ultimas ?? [])[0] as { orden: number } | undefined)?.orden;
+
+  const { error } = await supabase
+    .from("gestionesjj_compromisos")
+    .insert({ sesion_id: sesion.id, paciente_id: pacienteId, tipo: "tarea", descripcion: texto, orden: (orden ?? -1) + 1 });
+  return { agregada: !error, sesionId: sesion.id, error: error?.message ?? null };
+}

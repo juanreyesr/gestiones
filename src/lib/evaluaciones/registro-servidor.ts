@@ -7,6 +7,8 @@
 import { validarBBreve, limpiarBorradorBBreve } from "./b-breve/codigo";
 import { B_BREVE_RELACIONES } from "./b-breve/contenido";
 import { limpiarBorradorEapi, modulosDeOpciones, validarEapi } from "./eapi/codigo";
+import { fichaDeOpciones, limpiarBorradorFicha, validarFicha } from "./fichas/codigo";
+import { riesgoFicha } from "./fichas/riesgo";
 import { formaDeOpciones, limpiarBorradorJjr, validarJjr } from "./jjr/codigo";
 import { limpiarBorradorMcea, validarMcea } from "./mcea/codigo";
 import { limpiarBorradorRiasec, validarRiasec } from "./riasec/codigo";
@@ -27,7 +29,7 @@ export type RespuestaValidada =
   | { ok: false; error: string };
 
 type DefinicionServidor = {
-  limpiarBorrador: (datos: unknown) => unknown;
+  limpiarBorrador: (datos: unknown, opciones?: Record<string, unknown> | null) => unknown;
   validar: (cuerpo: unknown, opciones: Record<string, unknown> | null | undefined) => RespuestaValidada;
 };
 
@@ -60,6 +62,14 @@ export const REGISTRO_SERVIDOR: Record<string, DefinicionServidor> = {
   jjr84: { limpiarBorrador: limpiarBorradorJjr, validar: (cuerpo) => delPaciente(validarJjr(cuerpo, "jjr84", null)) },
   // La forma (A o B) la fija el enlace, no el cuerpo enviado.
   jjr176: { limpiarBorrador: limpiarBorradorJjr, validar: (cuerpo, opciones) => delPaciente(validarJjr(cuerpo, "jjr176", formaDeOpciones(opciones))) },
+  // La ficha la fija el enlace. Palabras de riesgo en el texto libre → aviso urgente (alertaSeguridad = 1).
+  ficha: {
+    limpiarBorrador: limpiarBorradorFicha,
+    validar: (cuerpo, opciones) => {
+      const v = validarFicha(cuerpo, opciones);
+      return delPaciente(v, v.ok && riesgoFicha(fichaDeOpciones(opciones), v.datos.respuestas).riesgo ? 1 : 0);
+    },
+  },
   // El modo y los módulos anclados los fija el enlace. Alerta: ítem 9 del PHQ-9 ≥ 1.
   mcea: {
     limpiarBorrador: (datos) => limpiarBorradorMcea(datos),

@@ -13,7 +13,7 @@
  *     src/components/clinica/registro-informes.tsx.
  *  7. Un script de pruebas en scripts/ (ejemplo completo: jjr, scripts/probar-jjr.mjs).
  */
-export type InstrumentoId = "b-breve" | "eapi" | "riasec" | "valores" | "temperamentos" | "jjr84" | "jjr176" | "mcea";
+export type InstrumentoId = "b-breve" | "eapi" | "riasec" | "valores" | "temperamentos" | "jjr84" | "jjr176" | "mcea" | "ficha";
 
 export type Instrumento = {
   id: InstrumentoId;
@@ -112,6 +112,15 @@ export const INSTRUMENTOS: readonly Instrumento[] = [
     respuestasPorDefecto: 1,
     tituloPublico: "Mapa Cognitivo-Emocional",
     informePaciente: true,
+  },
+  {
+    id: "ficha",
+    nombre: "Fichas terapéuticas JJR (TCC)",
+    descripcion:
+      "Biblioteca propia de fichas de trabajo de terapia cognitivo-conductual, por etapas del tratamiento (lote 1: evaluación y formulación, y psicoeducación; 8 fichas). Se elige la ficha al asignar: motivo de consulta y metas, línea de vida del problema, ciclo situación-pensamiento-emoción-cuerpo-conducta, valores, ansiedad, círculo del desánimo, pensamientos que vuelven y evitación. El paciente la responde por enlace (con ayudas y ejemplos); en el expediente se ve su respuesta con tablas, la guía para el terapeuta, la ficha en blanco para imprimir (PDF A4) y un aviso si el texto libre contiene palabras de riesgo. Sin calificación. Al asignarla se agrega una tarea a la sesión del paciente.",
+    responde: "paciente",
+    respuestasPorDefecto: 1,
+    tituloPublico: "Ficha de trabajo · JJR",
   },
 ];
 
