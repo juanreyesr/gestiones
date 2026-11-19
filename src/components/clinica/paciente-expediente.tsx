@@ -41,6 +41,7 @@ import { PacienteForm } from "./paciente-form";
 import { ConsentimientosPaciente } from "./consentimientos-paciente";
 import { EvaluacionesPaciente } from "./evaluaciones-paciente";
 import { IntervencionGuiada } from "./intervencion-guiada";
+import { MotivoYMetas } from "./comparativa-motivo";
 import { AntesProximaSesion } from "./antes-proxima-sesion";
 import { DocumentosPaciente } from "./documentos-paciente";
 import { PanelEvolucion } from "./panel-evolucion";
@@ -714,6 +715,13 @@ export function PacienteExpediente({
           <SectionCard plegable={{ id: "ficha", resumen: paciente.motivoConsulta ? paciente.motivoConsulta.slice(0, 60) : undefined }} title="Ficha clínica">
             <div className="grid gap-3">
               <DatoFicha label="Motivo de consulta" value={paciente.motivoConsulta} />
+              <MotivoYMetas
+                onActualizado={() => {
+                  void cargar();
+                  onDatosGuardados();
+                }}
+                paciente={paciente}
+              />
               <DatoFicha label="Antecedentes psicológicos" value={paciente.antecedentesPsicologicos} />
               <DatoFicha label="Medicación actual" value={paciente.medicacionActual} />
               <DatoFicha label="Estado civil" value={paciente.estadoCivil} />

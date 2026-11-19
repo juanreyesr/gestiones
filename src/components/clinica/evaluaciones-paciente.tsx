@@ -46,6 +46,9 @@ import { AlarmaAtencion } from "./alarma-atencion";
 import { EVENTO_ABRIR_RESPUESTA, EVENTO_EVALUACIONES_CAMBIO } from "./seccion-plegable";
 import { INFORMES, OPCIONES_ASIGNAR } from "./registro-informes";
 import { BTN_ACCENT, BTN_DANGER, BTN_GHOST, Field, SectionCard } from "./ui";
+import { opcionesFicha } from "@/lib/evaluaciones/fichas/codigo";
+import { enlaceFicha } from "@/lib/evaluaciones/fichas/intervencion";
+import { baseMotivo } from "@/lib/evaluaciones/fichas/motivo";
 
 type Vista = { tipo: "lista" } | { tipo: "informe"; respuestaId: string };
 
@@ -172,8 +175,17 @@ export function EvaluacionesPaciente({ paciente }: { paciente: PacienteRow }) {
       setError(errOpciones);
       return;
     }
-    const opciones = extra ? (extra.preparar?.(opcionesAsignar) ?? opcionesAsignar) : {};
-    const { error: err, creadas } = await asignarEvaluacion(paciente.id, instrumento, etiquetas, nota, opciones);
+    let opciones: Record<string, unknown> = extra ? (extra.preparar?.(opcionesAsignar) ?? opcionesAsignar) : {};
+    let borrador: Record<string, unknown> | null = null;
+    // Ficha 1.1: parte del motivo de consulta del expediente (copia fija para la comparativa).
+    if (instrumento === "ficha" && opcionesFicha(opciones).ficha === "1.1") {
+      const e = enlaceFicha("1.1", null, baseMotivo(paciente));
+      if (e.ok) {
+        opciones = e.opciones;
+        borrador = e.borrador;
+      }
+    }
+    const { error: err, creadas } = await asignarEvaluacion(paciente.id, instrumento, etiquetas, nota, opciones, borrador);
     if (err) {
       setError(err);
       return;

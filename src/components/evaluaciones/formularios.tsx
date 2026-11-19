@@ -50,6 +50,10 @@ export const FORMULARIOS: Record<string, (p: PropsFormulario) => ReactNode> = {
   mcea: (p) => <MceaForm borradorInicial={(p.borrador as MceaBorrador | null) ?? null} opciones={p.opciones} token={p.token} />,
   // La ficha (1.1, 2.3…) la fija el enlace.
   ficha: (p) => (
-    <FichaForm borradorInicial={(p.borrador as FichaBorrador | null) ?? null} codigoCaso={p.codigoCaso} ficha={opcionesFicha(p.opciones).ficha} token={p.token} />
+    <FichaForm borradorInicial={(p.borrador as FichaBorrador | null) ?? null} codigoCaso={p.codigoCaso}
+      ficha={opcionesFicha(p.opciones).ficha}
+      motivoInicial={p.opciones?.motivoInicial === true}
+      token={p.token}
+    />
   ),
 };

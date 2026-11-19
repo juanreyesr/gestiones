@@ -13,6 +13,8 @@ import { descargarPdfDeHtml, nombrePdf } from "@/lib/pdf-desde-html";
 import { InformeFrame } from "./informe-frame";
 import { NotasPrivadas } from "./notas-privadas";
 import { BTN_GHOST } from "./ui";
+import { comparativaMotivo } from "@/lib/evaluaciones/fichas/motivo";
+import { ComparativaMotivoVista } from "./comparativa-motivo";
 
 const fechaDe = (r: EvaluacionRespuestaRow) => r.fecha ?? r.createdAt.slice(0, 10);
 
@@ -62,6 +64,7 @@ export function GuiaTerapeutaFicha({ ficha }: { ficha: Ficha }) {
 /** Informe de una ficha terapéutica: guía del terapeuta (plegable), respuestas del paciente y PDF A4 en blanco o con respuestas. */
 export function InformeFicha({ actual, paciente }: { actual: EvaluacionRespuestaRow; paciente: PacienteRow; respuestas: EvaluacionRespuestaRow[] }) {
   const datos = useMemo(() => datosFichaGuardados(actual.datos), [actual]);
+  const comparativa = useMemo(() => comparativaMotivo(actual), [actual]);
   const [notasPrivadas, setNotasPrivadas] = useState("");
   const [generando, setGenerando] = useState(false);
   const [errorPdf, setErrorPdf] = useState("");
@@ -103,6 +106,13 @@ export function InformeFicha({ actual, paciente }: { actual: EvaluacionRespuesta
               • «{c.fragmento}» · {c.campo}
             </span>
           ))}
+        </div>
+      ) : null}
+
+      {comparativa ? (
+        <div className="grid gap-2 rounded-lg border border-white/10 p-3">
+          <h4 className="text-sm font-semibold text-white">Motivo de consulta: inicial frente a la ficha</h4>
+          <ComparativaMotivoVista c={comparativa} />
         </div>
       ) : null}
 

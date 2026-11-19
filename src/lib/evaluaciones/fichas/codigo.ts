@@ -26,7 +26,25 @@ export type FichaRespuesta = {
   enviado: string;
   /** Solo «terapeuta»: la llenó el psicólogo desde el expediente (Intervención guiada). */
   autor?: AutorFicha;
+  /** Solo ficha 1.1: copia fija del motivo de consulta del expediente al crear la ficha (para comparar). */
+  base?: BaseMotivo;
 };
+
+/** Motivo de consulta del expediente tal como estaba cuando se creó la ficha 1.1 (punto de partida). */
+export type BaseMotivo = { motivo: string; fuente: string; fecha: string };
+
+/** Lee y limpia una base de motivo (null si no es válida o está vacía). */
+export function leerBaseMotivo(x: unknown): BaseMotivo | null {
+  if (!esObjeto(x) || typeof x.motivo !== "string") return null;
+  const motivo = x.motivo.slice(0, LIMITES_FICHA.parrafo).trim();
+  if (!motivo) return null;
+  const fuente = typeof x.fuente === "string" ? x.fuente.slice(0, 80).trim() : "";
+  const fecha = typeof x.fecha === "string" && /^\d{4}-\d{2}-\d{2}$/.test(x.fecha) ? x.fecha : "";
+  return { motivo, fuente, fecha };
+}
+
+/** Base del motivo guardada en las opciones del enlace (la pone el terapeuta al crearlo; solo 1.1). */
+export const baseDeOpciones = (opciones: Opciones): BaseMotivo | null => (opcionesFicha(opciones).ficha === "1.1" ? leerBaseMotivo(opciones?.base) : null);
 
 /** ¿La respuesta guardada la llenó el terapeuta? */
 export const esFichaDelTerapeuta = (datos: unknown) => esObjeto(datos) && datos.autor === "terapeuta";
@@ -145,6 +163,8 @@ export function validarFicha(
   opciones: Opciones,
   { permitirAutor = false }: { permitirAutor?: boolean } = {}
 ): { ok: true; datos: FichaRespuesta } | { ok: false; error: string } {
+  // La base del motivo (1.1) nunca sale del cuerpo enviado por el paciente: en el envío público se toma
+  // de las opciones del enlace (las fija el terapeuta); en el panel y en lo guardado, de los datos.
   if (!esObjeto(datos)) return { ok: false, error: "Las respuestas no son válidas." };
   if (!esFichaId(opciones?.ficha)) return { ok: false, error: "Esta ficha no está disponible." };
   const ficha = fichaPorId(opciones.ficha)!;
@@ -168,6 +188,11 @@ export function validarFicha(
       ref: texto("ref", 40).replace(/[^A-Za-z0-9]/g, "").slice(0, 12),
       enviado: texto("enviado", 40),
       ...(permitirAutor && datos.autor === "terapeuta" ? { autor: "terapeuta" as const } : {}),
+      ...(() => {
+        if (ficha.id !== "1.1") return {};
+        const base = permitirAutor ? leerBaseMotivo(datos.base) : baseDeOpciones(opciones);
+        return base ? { base } : {};
+      })(),
     },
   };
 }
