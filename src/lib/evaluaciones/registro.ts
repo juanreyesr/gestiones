@@ -22,7 +22,7 @@ import { calificarJjr, camposPrincipales, mediaTexto, ordenPorInteres } from "./
 import { avanceJjr, datosJjrGuardados, formaDeOpciones, limpiarBorradorJjr, type InstrumentoJjr } from "./jjr/codigo";
 import { avanceMcea, datosMceaGuardados, limpiarBorradorMcea, opcionesMcea } from "./mcea/codigo";
 import { A as respuestaMcea, modulosAbiertos, nombreModulo, scoreAll as puntajesMcea } from "./mcea/motor";
-import { avanceFicha, baseDeOpciones, datosFichaGuardados, fichaDeOpciones, limpiarBorradorFicha, opcionesFicha } from "./fichas/codigo";
+import { avanceFicha, datosFichaGuardados, fichaDeOpciones, limpiarBorradorFicha, opcionesFicha } from "./fichas/codigo";
 import { riesgoFicha } from "./fichas/riesgo";
 import { calificarRiasec, RIASEC_INFO } from "./riasec/calificacion";
 import { avanceRiasec, limpiarBorradorRiasec, validarRiasec } from "./riasec/codigo";
@@ -333,8 +333,8 @@ export const REGISTRO: Record<string, DefinicionInstrumento> = {
       return `Ficha ${f.id} · ${f.titulo}`;
     },
     detalleOpciones: (o) => ` · Ficha ${opcionesFicha(o).ficha}`,
-    // De la base del motivo (1.1) solo se dice que existe, para mostrar la nota sobre el campo prellenado.
-    opcionesPublicas: (o) => ({ ...opcionesFicha(o), ...(baseDeOpciones(o) ? { motivoInicial: true } : {}) }),
+    // La base del motivo (1.1) nunca se publica: la comparación es solo para el terapeuta.
+    opcionesPublicas: (o) => ({ ...opcionesFicha(o) }),
     avance: (b, o) => avanceFicha(limpiarBorradorFicha(b, o)),
     // Repetir la ficha: la misma.
     opcionesNueva: (r, o) => ({ ficha: datosFichaGuardados(r.datos)?.ficha ?? opcionesFicha(o).ficha }),

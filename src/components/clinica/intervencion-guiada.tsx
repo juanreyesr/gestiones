@@ -1,7 +1,7 @@
 "use client";
 
 import { AlertTriangle, ChevronDown, ChevronLeft, Copy, Eye, PenLine, Send } from "lucide-react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
 import { mensajeEvaluacion } from "@/lib/clinica/mensaje-paciente";
 import { enlaceWhatsApp } from "@/lib/clinica/recordatorio";
 import { agregarTareaASesionReciente } from "@/lib/clinica/sesiones";
@@ -32,6 +32,7 @@ import { baseMotivo } from "@/lib/evaluaciones/fichas/motivo";
 import { urlPublica } from "@/lib/url-publica";
 import { CampoFicha } from "../evaluaciones/ficha-campos";
 import { IconoWhatsApp } from "./boton-whatsapp-paciente";
+import { ComparacionEnVivo } from "./comparativa-motivo";
 import { GuiaTerapeutaFicha } from "./informe-ficha";
 import { abrirSeccion, EVENTO_ABRIR_RESPUESTA, EVENTO_EVALUACIONES_CAMBIO } from "./seccion-plegable";
 import { BTN_ACCENT, BTN_GHOST, SectionCard } from "./ui";
@@ -86,6 +87,8 @@ export function IntervencionGuiada({ motivoCita, paciente }: { motivoCita?: stri
 
   const estados = useMemo(() => estadosFichas(respuestas, evaluaciones), [respuestas, evaluaciones]);
   const sugerencias = useMemo(() => sugerenciasIntervencion(respuestas, evaluaciones), [respuestas, evaluaciones]);
+  // Motivo inicial del expediente (solo se muestra al terapeuta, en el editor de la 1.1).
+  const baseEditor = useMemo(() => baseMotivo(paciente, motivoCita), [paciente, motivoCita]);
   const estadoDe = (id: FichaId) => estados.find((e) => e.ficha === id)!;
 
   const avisar = (mensaje: string, ms = 8000) => {
@@ -250,7 +253,12 @@ export function IntervencionGuiada({ motivoCita, paciente }: { motivoCita?: stri
               <h5 className="border-t border-white/10 pt-3 text-base font-semibold text-white">{s.titulo}</h5>
               <p className="-mt-1 text-sm leading-6 text-slate-300">{s.intro}</p>
               {s.campos.map((c) => (
-                <CampoFicha c={c} key={c.id} origen={origenes[c.id]} poner={poner} respuestas={campos} tema="panel" />
+                <Fragment key={c.id}>
+                  <CampoFicha c={c} origen={origenes[c.id]} poner={poner} respuestas={campos} tema="panel" />
+                  {editando === "1.1" && c.id === "motivo" && baseEditor ? (
+                    <ComparacionEnVivo actual={typeof campos.motivo === "string" ? campos.motivo : ""} base={baseEditor} />
+                  ) : null}
+                </Fragment>
               ))}
             </section>
           ))}
