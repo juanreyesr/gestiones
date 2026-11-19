@@ -27,7 +27,7 @@ type RawGet = {
 
 /** Limpia el avance según el instrumento del enlace. */
 function limpiarBorrador(fila: RawGet, datos: unknown) {
-  return definicionServidor(fila.instrumento)?.limpiarBorrador(datos) ?? null;
+  return definicionServidor(fila.instrumento)?.limpiarBorrador(datos, fila.opciones) ?? null;
 }
 
 async function leerEnlace(token: string) {

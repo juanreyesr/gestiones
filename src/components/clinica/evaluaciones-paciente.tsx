@@ -36,6 +36,8 @@ import {
 } from "@/lib/evaluaciones/evaluaciones";
 import { INSTRUMENTOS, instrumentoPorId } from "@/lib/evaluaciones/instrumentos";
 import { definicion, DIAS_SOLAPE, nombreConOpciones, solapesAlAsignar } from "@/lib/evaluaciones/registro";
+import { agregarTareaASesionReciente } from "@/lib/clinica/sesiones";
+import { fichaDeOpciones } from "@/lib/evaluaciones/fichas/codigo";
 import { urlPublica } from "@/lib/url-publica";
 import { IconoWhatsApp } from "./boton-whatsapp-paciente";
 import { edadEn } from "./informe-jjr";
@@ -172,6 +174,16 @@ export function EvaluacionesPaciente({ paciente }: { paciente: PacienteRow }) {
       setError(err);
       return;
     }
+    // Ficha terapéutica: se agrega como tarea a la sesión en curso o a la última (si no hay o falla, no pasa nada).
+    let tareaAgregada = false;
+    if (instrumento === "ficha") {
+      try {
+        const f = fichaDeOpciones(opciones);
+        tareaAgregada = (await agregarTareaASesionReciente(paciente.id, `Ficha ${f.id} · ${f.titulo} (enviada por enlace)`)).agregada;
+      } catch {
+        tareaAgregada = false;
+      }
+    }
     // Seguimiento programado: uno por cada persona que responde.
     let errSeg: string | null = null;
     if (repetirDias > 0) {
@@ -196,6 +208,7 @@ export function EvaluacionesPaciente({ paciente }: { paciente: PacienteRow }) {
       (etiquetas.length > 1
         ? `Se crearon ${etiquetas.length} enlaces, uno por persona. Envía a cada quien el suyo con su botón de WhatsApp.`
         : "Enlace creado. Envíalo con el botón de WhatsApp o cópialo.") +
+        (tareaAgregada ? " Se agregó la tarea a la sesión del paciente." : "") +
         (repetirDias > 0 && !errSeg ? ` Seguimiento programado ${textoCada(repetirDias)}: te avisaré por Telegram con el mensaje listo.` : "")
     );
     setTimeout(() => setAviso(""), 8000);
@@ -370,7 +383,7 @@ export function EvaluacionesPaciente({ paciente }: { paciente: PacienteRow }) {
           </div>
           {(() => {
             const Opciones = OPCIONES_ASIGNAR[instrumento]?.Componente;
-            return Opciones ? <Opciones onCambio={setOpcionesAsignar} valor={opcionesAsignar} /> : null;
+            return Opciones ? <Opciones onCambio={setOpcionesAsignar} respuestas={respuestas} valor={opcionesAsignar} /> : null;
           })()}
           <Field label="Seguimiento programado">
             <select className="field" onChange={(e) => setRepetirDias(Number(e.target.value))} value={repetirDias}>
