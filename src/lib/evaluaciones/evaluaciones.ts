@@ -124,10 +124,13 @@ export async function asignarEvaluacion(
   instrumento: string,
   etiquetas: string[],
   nota: string,
-  opciones: Record<string, unknown> = {}
+  opciones: Record<string, unknown> = {},
+  /** Avance inicial del enlace (p. ej. una ficha con lo ya escrito por el terapeuta): la persona lo ve y lo completa. */
+  borrador: Record<string, unknown> | null = null
 ) {
+  type Creada = { id: string; etiqueta: string | null; token: string };
   const supabase = getSupabaseClient();
-  if (!supabase) return { error: SIN_SUPABASE, creadas: [] as { id: string; etiqueta: string | null }[] };
+  if (!supabase) return { error: SIN_SUPABASE, creadas: [] as Creada[] };
   const filas = etiquetas.slice(0, 4).map((etiqueta) => ({
     paciente_id: pacienteId,
     instrumento,
@@ -135,10 +138,40 @@ export async function asignarEvaluacion(
     etiqueta: etiqueta.trim().slice(0, 60) || null,
     nota: nota.trim() || null,
     opciones,
+    ...(borrador ? { borrador, borrador_at: new Date().toISOString() } : {}),
   }));
-  if (filas.length === 0) return { error: "Indica al menos una persona que responderá.", creadas: [] };
-  const { data, error } = await supabase.from("gestionesjj_evaluaciones").insert(filas).select("id,etiqueta");
-  return { error: error?.message ?? null, creadas: (data ?? []) as { id: string; etiqueta: string | null }[] };
+  if (filas.length === 0) return { error: "Indica al menos una persona que responderá.", creadas: [] as Creada[] };
+  const { data, error } = await supabase.from("gestionesjj_evaluaciones").insert(filas).select("id,etiqueta,token");
+  return { error: error?.message ?? null, creadas: (data ?? []) as Creada[] };
+}
+
+/** Quien llena la ficha en el panel (la guarda como respuesta con origen «codigo» y sin enlace). */
+export const RESPONDIENTE_TERAPEUTA = "Terapeuta";
+
+/**
+ * Guarda una ficha llenada por el terapeuta como respuesta del instrumento `ficha` (tabla de respuestas
+ * existente, política de inserción del propietario; sin consentimiento previo ni aviso por Telegram,
+ * porque no pasa por el enlace público). Reemplazar una versión anterior = `eliminarRespuesta`.
+ */
+export async function guardarFichaTerapeuta(pacienteId: string, datos: Record<string, unknown>) {
+  const supabase = getSupabaseClient();
+  if (!supabase) return { error: SIN_SUPABASE, id: null as string | null };
+  const hoy = new Date();
+  const fecha = `${hoy.getFullYear()}-${String(hoy.getMonth() + 1).padStart(2, "0")}-${String(hoy.getDate()).padStart(2, "0")}`;
+  const { data, error } = await supabase
+    .from("gestionesjj_evaluacion_respuestas")
+    .insert({
+      paciente_id: pacienteId,
+      instrumento: "ficha",
+      respondiente_nombre: RESPONDIENTE_TERAPEUTA,
+      respondiente_relacion: RESPONDIENTE_TERAPEUTA,
+      fecha,
+      datos,
+      origen: "codigo",
+    })
+    .select("id")
+    .single();
+  return { error: error?.message ?? null, id: (data as { id: string } | null)?.id ?? null };
 }
 
 // ============================================================

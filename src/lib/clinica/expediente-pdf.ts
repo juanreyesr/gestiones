@@ -3,6 +3,8 @@ import type { EvaluacionRespuestaRow, InformeRow } from "@/lib/evaluaciones/eval
 import { evolucionDelPaciente } from "@/lib/evaluaciones/evolucion-paciente";
 import { perfilesJjr } from "@/lib/evaluaciones/jjr/evolucion";
 import { perfilIntegrado, type MedidaArea } from "@/lib/evaluaciones/perfil-integrado";
+import { esFichaDelTerapeuta } from "@/lib/evaluaciones/fichas/codigo";
+import { resumenIntervencion } from "@/lib/evaluaciones/fichas/intervencion";
 import { resumenRespuesta } from "@/lib/evaluaciones/resumen-respuesta";
 import { nombreCategoria, tamanoLegible, type DocumentoRow } from "./documentos";
 import type { ConsentimientoRow } from "./pacientes";
@@ -368,7 +370,13 @@ export async function exportarExpedientePdf(paciente: PacienteRow, sesiones: Ses
       doc.setFontSize(10.5);
       doc.setTextColor(...INK);
       const tituloEval = doc.splitTextToSize(
-        textoPdf(`${formatoFechaLarga(fechaDe(r))} · ${res.instrumento} · respondió ${r.respondienteNombre}${r.respondienteRelacion && r.respondienteRelacion !== "Paciente" ? ` (${r.respondienteRelacion})` : ""}`),
+        textoPdf(
+          `${formatoFechaLarga(fechaDe(r))} · ${res.instrumento} · ${
+            r.instrumento === "ficha" && esFichaDelTerapeuta(r.datos)
+              ? "llenada por el terapeuta"
+              : `respondió ${r.respondienteNombre}${r.respondienteRelacion && r.respondienteRelacion !== "Paciente" ? ` (${r.respondienteRelacion})` : ""}`
+          }`
+        ),
         contentWidth
       );
       ensure(tituloEval.length * 13 + 4);
@@ -383,6 +391,14 @@ export async function exportarExpedientePdf(paciente: PacienteRow, sesiones: Ses
     }
     if (hitos.length) {
       for (const h of hitos) field(formatoFechaCorta(h.fecha), `${h.titulo}: ${h.detalle}`);
+    }
+
+    // Intervención guiada: fichas terapéuticas con alguna respuesta (del paciente o llenadas por el terapeuta).
+    const intervencion = resumenIntervencion(respuestas);
+    if (intervencion.length) {
+      y += 6;
+      heading(`Intervención guiada (${intervencion.length} ficha${intervencion.length === 1 ? "" : "s"})`);
+      for (const linea of intervencion) paragraph(linea);
     }
 
     // Documentos: lista (los archivos se conservan en el expediente digital).

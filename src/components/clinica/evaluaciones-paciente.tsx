@@ -37,7 +37,8 @@ import {
 import { INSTRUMENTOS, instrumentoPorId } from "@/lib/evaluaciones/instrumentos";
 import { definicion, DIAS_SOLAPE, nombreConOpciones, solapesAlAsignar } from "@/lib/evaluaciones/registro";
 import { agregarTareaASesionReciente } from "@/lib/clinica/sesiones";
-import { fichaDeOpciones } from "@/lib/evaluaciones/fichas/codigo";
+import { fichaDeOpciones, esFichaDelTerapeuta } from "@/lib/evaluaciones/fichas/codigo";
+import { tareaDeFicha } from "@/lib/evaluaciones/fichas/intervencion";
 import { urlPublica } from "@/lib/url-publica";
 import { IconoWhatsApp } from "./boton-whatsapp-paciente";
 import { edadEn } from "./informe-jjr";
@@ -116,12 +117,15 @@ export function EvaluacionesPaciente({ paciente }: { paciente: PacienteRow }) {
   // Si se atiende una alarma desde «Antes de la próxima sesión», se actualizan los distintivos.
   useEffect(() => {
     const alCambiar = (e: Event) => {
-      if ((e as CustomEvent<string>).detail !== "alarma") return;
+      const detalle = (e as CustomEvent<string | undefined>).detail;
+      // «Intervención guiada» guardó una ficha o creó un enlace: se recarga la lista.
+      if (detalle === "intervencion") void cargar();
+      if (detalle !== "alarma") return;
       void fetchInformesDeRespuestas(respuestas.map((x) => x.id)).then(setInformes);
     };
     window.addEventListener(EVENTO_EVALUACIONES_CAMBIO, alCambiar);
     return () => window.removeEventListener(EVENTO_EVALUACIONES_CAMBIO, alCambiar);
-  }, [respuestas]);
+  }, [respuestas, cargar]);
 
   // «Antes de la próxima sesión» puede abrir directamente el informe de una respuesta.
   useEffect(() => {
@@ -179,7 +183,7 @@ export function EvaluacionesPaciente({ paciente }: { paciente: PacienteRow }) {
     if (instrumento === "ficha") {
       try {
         const f = fichaDeOpciones(opciones);
-        tareaAgregada = (await agregarTareaASesionReciente(paciente.id, `Ficha ${f.id} · ${f.titulo} (enviada por enlace)`)).agregada;
+        tareaAgregada = (await agregarTareaASesionReciente(paciente.id, tareaDeFicha(f.id))).agregada;
       } catch {
         tareaAgregada = false;
       }
@@ -270,7 +274,7 @@ export function EvaluacionesPaciente({ paciente }: { paciente: PacienteRow }) {
           window.dispatchEvent(new CustomEvent(EVENTO_EVALUACIONES_CAMBIO, { detail: "informe" }));
         }}
         onProgramar={
-          actual
+          actual && !esFichaDelTerapeuta(actual.datos)
             ? (cadaDias: number) =>
                 void programarSeguimiento(
                   actual.instrumento,
@@ -282,7 +286,7 @@ export function EvaluacionesPaciente({ paciente }: { paciente: PacienteRow }) {
             : undefined
         }
         onNuevaAplicacion={
-          actual
+          actual && !esFichaDelTerapeuta(actual.datos)
             ? () =>
                 void nuevaAplicacion(
                   actual.instrumento,
@@ -675,9 +679,15 @@ export function EvaluacionesPaciente({ paciente }: { paciente: PacienteRow }) {
                     {instrumentoPorId(r.instrumento)?.nombre.split(" · ")[0] ?? r.instrumento} · {formatoFechaCorta(fechaDe(r))}
                   </span>
                   <span className="block text-xs text-slate-400">
-                    Respondió: {r.respondienteNombre}
-                    {r.respondienteRelacion ? ` (${r.respondienteRelacion})` : ""}
-                    {r.origen === "codigo" ? " · ingresado manualmente" : ""}
+                    {r.instrumento === "ficha" && esFichaDelTerapeuta(r.datos) ? (
+                      <span className="font-semibold text-sky-300">Llenada por el terapeuta</span>
+                    ) : (
+                      <>
+                        Respondió: {r.respondienteNombre}
+                        {r.respondienteRelacion ? ` (${r.respondienteRelacion})` : ""}
+                        {r.origen === "codigo" ? " · ingresado manualmente" : ""}
+                      </>
+                    )}
                   </span>
                 </span>
                 <span className="flex items-center gap-2">

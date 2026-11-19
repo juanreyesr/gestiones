@@ -14,6 +14,9 @@ export type ValorCasillas = { marcadas: string[]; otra: string };
 export type ValorCampo = string | number | null | string[] | ValorCasillas | string[][];
 export type RespuestasFicha = Record<string, ValorCampo>;
 
+/** Quién llenó la ficha. Ausente = la persona que recibió el enlace (paciente). */
+export type AutorFicha = "terapeuta";
+
 export type FichaRespuesta = {
   v: 1;
   instrumento: "FICHA";
@@ -21,7 +24,12 @@ export type FichaRespuesta = {
   respuestas: RespuestasFicha;
   ref: string;
   enviado: string;
+  /** Solo «terapeuta»: la llenó el psicólogo desde el expediente (Intervención guiada). */
+  autor?: AutorFicha;
 };
+
+/** ¿La respuesta guardada la llenó el terapeuta? */
+export const esFichaDelTerapeuta = (datos: unknown) => esObjeto(datos) && datos.autor === "terapeuta";
 
 export type FichaBorrador = { ficha: FichaId; respuestas: RespuestasFicha };
 
@@ -129,8 +137,14 @@ function validarCampo(c: Campo, valor: unknown): { ok: true; valor: ValorCampo }
 /**
  * Valida la respuesta enviada. La ficha la fija el enlace (opciones.ficha), no el
  * cuerpo. Se acepta cualquier campo vacío; se rechazan tipos o longitudes inválidos.
+ * `autor: "terapeuta"` solo se conserva con `permitirAutor` (lo usa el panel y la lectura de lo
+ * guardado); en el envío público siempre se descarta, para que nadie se haga pasar por el terapeuta.
  */
-export function validarFicha(datos: unknown, opciones: Opciones): { ok: true; datos: FichaRespuesta } | { ok: false; error: string } {
+export function validarFicha(
+  datos: unknown,
+  opciones: Opciones,
+  { permitirAutor = false }: { permitirAutor?: boolean } = {}
+): { ok: true; datos: FichaRespuesta } | { ok: false; error: string } {
   if (!esObjeto(datos)) return { ok: false, error: "Las respuestas no son válidas." };
   if (!esFichaId(opciones?.ficha)) return { ok: false, error: "Esta ficha no está disponible." };
   const ficha = fichaPorId(opciones.ficha)!;
@@ -153,6 +167,7 @@ export function validarFicha(datos: unknown, opciones: Opciones): { ok: true; da
       respuestas,
       ref: texto("ref", 40).replace(/[^A-Za-z0-9]/g, "").slice(0, 12),
       enviado: texto("enviado", 40),
+      ...(permitirAutor && datos.autor === "terapeuta" ? { autor: "terapeuta" as const } : {}),
     },
   };
 }
@@ -160,7 +175,7 @@ export function validarFicha(datos: unknown, opciones: Opciones): { ok: true; da
 /** Datos de una respuesta ya guardada (null si no son válidos). */
 export function datosFichaGuardados(datos: unknown): FichaRespuesta | null {
   if (!esObjeto(datos) || !esFichaId(datos.ficha)) return null;
-  const v = validarFicha(datos, { ficha: datos.ficha });
+  const v = validarFicha(datos, { ficha: datos.ficha }, { permitirAutor: true });
   return v.ok ? v.datos : null;
 }
 

@@ -154,6 +154,7 @@ export function BarraGuardado({
   testId,
   total,
   trato,
+  unidad = "respondidas",
 }: {
   continua: boolean;
   guardado: EstadoGuardado;
@@ -161,6 +162,8 @@ export function BarraGuardado({
   testId: string;
   total?: number;
   trato: Trato;
+  /** Lo que se cuenta tras «N de M» (p. ej. «preguntas respondidas»). */
+  unidad?: string;
 }) {
   const t = trato === "tu";
   const indicador =
@@ -187,7 +190,7 @@ export function BarraGuardado({
       <span className="flex items-center justify-center gap-1.5">
         {guardado === "sin-conexion" ? <CloudOff className="h-3.5 w-3.5" /> : <CheckCircle2 className="h-3.5 w-3.5 text-teal-600" />}
         {indicador}
-        {conAvance ? ` · ${respondidas} de ${total} respondidas` : null}
+        {conAvance ? ` · ${respondidas} de ${total} ${unidad}` : null}
       </span>
       {conAvance ? (
         <span className="h-1.5 overflow-hidden rounded-full bg-slate-100">

@@ -40,11 +40,45 @@ export type ColumnaTabla = { id: string; titulo: string; ayuda?: string; ejemplo
  * Filas × columnas de texto. `filas` son las que se ven al abrir; `maxFilas` las que se pueden
  * tener en total. Con `filasFijas` cada fila lleva su rótulo y no se agregan ni quitan.
  */
-export type CampoTabla = CampoBase & { tipo: "tabla"; columnas: readonly ColumnaTabla[]; filas: number; maxFilas: number; filasFijas?: readonly string[] };
+export type CampoTabla = CampoBase & {
+  tipo: "tabla";
+  columnas: readonly ColumnaTabla[];
+  filas: number;
+  maxFilas: number;
+  filasFijas?: readonly string[];
+  /** Qué es cada fila, en singular y minúscula («momento», «meta», «evitación»): da los rótulos «Primer momento», «Otro momento (opcional)»… */
+  etiquetaFila: string;
+  /** Con «f», los rótulos van en femenino («Primera meta», «Otra meta (opcional)»). */
+  generoFila?: "f";
+  /** Índice (desde 0) de la primera fila opcional: la anterior es la principal. */
+  filaOpcionalDesde: number;
+};
 
 export type Campo = CampoTexto | CampoParrafo | CampoEscala | CampoLista | CampoCasillas | CampoTabla;
 
-export type Seccion = { id: string; titulo: string; intro?: string; campos: readonly Campo[] };
+/** `intro`: invitación concreta, en segunda persona (de usted), que dice qué recordar o hacer y para qué. */
+export type Seccion = { id: string; titulo: string; intro: string; campos: readonly Campo[] };
+
+const ORDINALES = ["", "", "", "tercer", "cuarto", "quinto", "sexto", "séptimo", "octavo", "noveno", "décimo"];
+const ORDINALES_F = ["", "", "", "tercera", "cuarta", "quinta", "sexta", "séptima", "octava", "novena", "décima"];
+
+/**
+ * Rótulo de la fila `i` (desde 0) de una tabla: nunca «Fila n». Con filas fijas, su propio rótulo;
+ * si no, «Primer momento», «Otro momento (opcional)», «Un tercer momento (opcional)»…
+ */
+export function rotuloFila(c: CampoTabla, i: number): string {
+  if (c.filasFijas) return c.filasFijas[i] ?? c.etiquetaFila;
+  const f = c.generoFila === "f";
+  const n = i + 1;
+  const ord = (f ? ORDINALES_F : ORDINALES)[n];
+  const base =
+    n === 1
+      ? `${f ? "Primera" : "Primer"} ${c.etiquetaFila}`
+      : n === 2 || !ord
+        ? `${f ? "Otra" : "Otro"} ${c.etiquetaFila}`
+        : `${f ? "Una" : "Un"} ${ord} ${c.etiquetaFila}`;
+  return i >= c.filaOpcionalDesde ? `${base} (opcional)` : base;
+}
 
 export type Ficha = {
   id: FichaId;
@@ -83,7 +117,7 @@ const CIERRE_TITULO = "Qué haremos con esto en la próxima sesión";
 const paraLaSesion: Campo = {
   id: "para_sesion",
   tipo: "parrafo",
-  etiqueta: "Lo que me gustaría conversar o preguntar en la próxima sesión",
+  etiqueta: "¿Qué le gustaría conversar o preguntar en la próxima sesión?",
   ayuda: "Puede ser una duda, algo que le costó escribir o algo que descubrió al hacer esta ficha.",
   ejemplo: "Me di cuenta de que siempre pienso lo mismo en las noches. Quisiera entender por qué.",
 };
@@ -104,13 +138,15 @@ export const FICHAS: readonly Ficha[] = [
     secciones: [
       {
         id: "motivo",
-        titulo: "Lo que me trajo a consulta",
+        titulo: "Lo que le trajo a consulta",
+        intro:
+          "Comencemos por lo que le hizo buscar ayuda. Cuéntelo con sus palabras, como si se lo explicara a una persona de confianza; con eso iremos aclarando, paso a paso, qué es lo que más le pesa.",
         campos: [
           {
             id: "motivo",
             tipo: "parrafo",
             etiqueta: "¿Qué le hizo buscar ayuda en este momento?",
-            ayuda: "Escriba como si se lo contara a una persona de confianza. Puede ir en desorden.",
+            ayuda: "Puede ir en desorden; luego lo ordenamos juntos.",
             ejemplo: "Desde hace unos meses duermo mal, estoy de mal humor con mi familia y ya no tengo ganas de salir.",
           },
           { id: "desde_cuando", tipo: "texto", etiqueta: "¿Desde cuándo ocurre, más o menos?", ejemplo: "Hace como ocho meses, poco después de cambiar de trabajo." },
@@ -126,21 +162,30 @@ export const FICHAS: readonly Ficha[] = [
       },
       {
         id: "hoy",
-        titulo: "Cuánto me afecta hoy",
+        titulo: "Cuánto le afecta hoy",
+        intro:
+          "Ahora piense en cómo ha sido esta última semana y póngale un número a lo que le pasa. No hay un número correcto: solo nos sirve como punto de partida para ver más adelante si algo cambia.",
         campos: [
           { id: "afecta_hoy", tipo: "escala", etiqueta: "Hoy, ¿cuánto le afecta este problema en su vida diaria?", extremos: ["0 = nada", "10 = muchísimo"] },
           {
             id: "ya_intente",
             tipo: "parrafo",
-            etiqueta: "¿Qué ha intentado hasta ahora para sentirse mejor? ¿Qué le ha ayudado, aunque sea un poco?",
-            ejemplo: "Salir a caminar a veces me ayuda. Hablar con mi hermana también. Tomar café para el sueño no me ha servido.",
+            etiqueta: "¿Qué ha intentado hasta ahora para sentirse mejor?",
+            ejemplo: "Salir a caminar, hablar con mi hermana, tomar café para dormir.",
+          },
+          {
+            id: "ya_ayudo",
+            tipo: "parrafo",
+            etiqueta: "De todo eso, ¿qué le ha ayudado, aunque sea un poco?",
+            ejemplo: "Salir a caminar a veces me ayuda. Hablar con mi hermana también.",
           },
         ],
       },
       {
         id: "metas",
-        titulo: "Mis metas",
-        intro: "Piense en lo que le gustaría que fuera distinto. Intente que cada meta se pueda ver o contar.",
+        titulo: "Lo que le gustaría que fuera distinto",
+        intro:
+          "Imagine que dentro de unos meses las cosas han mejorado. Escriba qué estaría haciendo distinto y luego conviértalo en metas que se puedan ver o contar; con una meta basta para empezar.",
         campos: [
           {
             id: "dia_distinto",
@@ -151,17 +196,20 @@ export const FICHAS: readonly Ficha[] = [
           {
             id: "metas",
             tipo: "tabla",
-            etiqueta: "Mis metas (hasta tres)",
-            ayuda: "Una meta por fila.",
+            etiqueta: "¿Qué metas concretas le gustaría lograr?",
+            ayuda: "Escriba primero la más importante. Las otras dos son opcionales.",
             columnas: [
-              { id: "meta", titulo: "Meta (concreta)", ejemplo: "Viajar en camioneta hasta mi parada" },
-              { id: "avance", titulo: "Cómo sabré que voy avanzando (algo que se pueda contar o ver)", ejemplo: "Tres días a la semana, sin bajarme antes" },
-              { id: "plazo", titulo: "En cuánto tiempo me gustaría lograrlo", ejemplo: "Dos meses" },
+              { id: "meta", titulo: "¿Qué le gustaría lograr?", ayuda: "Una meta concreta, que se pueda ver", ejemplo: "Viajar en camioneta hasta mi parada" },
+              { id: "avance", titulo: "¿Cómo se daría cuenta de que va avanzando?", ayuda: "Algo que se pueda contar o ver", ejemplo: "Tres días a la semana, sin bajarme antes" },
+              { id: "plazo", titulo: "¿En cuánto tiempo le gustaría lograrlo?", ejemplo: "Dos meses" },
             ],
             filas: 3,
             maxFilas: 3,
+            etiquetaFila: "meta",
+            generoFila: "f",
+            filaOpcionalDesde: 1,
           },
-          { id: "primera", tipo: "texto", etiqueta: "De esas metas, ¿cuál es la más importante para empezar?" },
+          { id: "primera", tipo: "texto", etiqueta: "De esas metas, ¿con cuál le gustaría empezar?" },
           { id: "confianza", tipo: "escala", etiqueta: "¿Cuánta confianza tiene hoy en poder lograr esa meta?", extremos: ["0 = ninguna", "10 = mucha"] },
           {
             id: "dificultades",
@@ -195,34 +243,40 @@ export const FICHAS: readonly Ficha[] = [
     secciones: [
       {
         id: "inicio",
-        titulo: "Cuándo empezó",
+        titulo: "Cómo empezó",
+        intro:
+          "Comencemos por el principio. Piense en la época en que notó por primera vez el problema y escriba lo que recuerde de ese tiempo; no hace falta que sea exacto.",
         campos: [
           { id: "inicio", tipo: "texto", etiqueta: "¿Cuándo empezó el problema, más o menos?", ejemplo: "A mediados del año pasado, poco después de cambiar de trabajo." },
           {
             id: "antes",
             tipo: "parrafo",
-            etiqueta: "¿Cómo era su vida poco antes de que empezara? ¿Qué estaba pasando en ese tiempo?",
+            etiqueta: "¿Qué estaba pasando en su vida poco antes de que empezara?",
             ayuda: "Por ejemplo: trabajo, familia, salud, mudanzas, pérdidas, cambios o épocas de mucha carga.",
           },
-          { id: "parecido", tipo: "parrafo", etiqueta: "Antes de eso, ¿había vivido algo parecido alguna vez? ¿Cómo fue?" },
+          { id: "parecido", tipo: "parrafo", etiqueta: "Antes de eso, ¿había vivido algo parecido alguna vez?", ayuda: "Si lo recuerda, cuente brevemente cómo fue." },
         ],
       },
       {
         id: "altibajos",
         titulo: "Los altibajos",
-        intro: "Anote los momentos en que el problema cambió: cuando mejoró o cuando empeoró. No hace falta que sean muchos.",
+        intro:
+          "Ahora recorra el tiempo desde que empezó hasta hoy. Anote los momentos en que el problema cambió, ya sea porque mejoró o porque empeoró; con uno basta para empezar y los demás son opcionales.",
         campos: [
           {
             id: "altibajos",
             tipo: "tabla",
-            etiqueta: "Momentos de cambio",
+            etiqueta: "¿En qué momentos cambió el problema?",
+            ayuda: "No hace falta que sean muchos.",
             columnas: [
-              { id: "cuando", titulo: "Cuándo (año, mes o etapa)", ejemplo: "Diciembre del año pasado" },
+              { id: "cuando", titulo: "¿Cuándo fue?", ayuda: "Año, mes o etapa de la vida", ejemplo: "Diciembre del año pasado" },
               { id: "como", titulo: "¿Mejoró o empeoró? ¿Cuánto, de 0 a 10?", ejemplo: "Mejoró: pasó de 8 a 4" },
-              { id: "pasaba", titulo: "Qué estaba pasando en mi vida", ejemplo: "Vacaciones, dormía más, salía a caminar" },
+              { id: "pasaba", titulo: "¿Qué estaba pasando en su vida?", ejemplo: "Vacaciones, dormía más, salía a caminar" },
             ],
             filas: 5,
             maxFilas: 8,
+            etiquetaFila: "momento",
+            filaOpcionalDesde: 1,
           },
           {
             id: "mejor",
@@ -235,11 +289,14 @@ export const FICHAS: readonly Ficha[] = [
       {
         id: "hoy",
         titulo: "Lo que lo mantiene hoy",
+        intro:
+          "Para terminar, mire cómo está el problema hoy. Anote lo que lo hace más fuerte, lo que lo alivia y lo que le da apoyo a usted, aunque sean cosas pequeñas.",
         campos: [
           {
             id: "empeora",
             tipo: "lista",
-            etiqueta: "Cosas que hacen que el problema se sienta más fuerte hoy",
+            etiqueta: "¿Qué cosas hacen que el problema se sienta más fuerte hoy?",
+            ayuda: "Escriba una por renglón.",
             minFilas: 1,
             maxFilas: 6,
             ejemplo: "Dormir poco; revisar el celular de noche; las reuniones con mi jefe",
@@ -247,7 +304,8 @@ export const FICHAS: readonly Ficha[] = [
           {
             id: "alivia",
             tipo: "lista",
-            etiqueta: "Cosas que lo alivian, aunque sea un rato",
+            etiqueta: "¿Qué cosas lo alivian, aunque sea un rato?",
+            ayuda: "Escriba una por renglón.",
             minFilas: 1,
             maxFilas: 6,
             ejemplo: "Caminar; platicar con mi hermana; escuchar música",
@@ -255,7 +313,8 @@ export const FICHAS: readonly Ficha[] = [
           {
             id: "apoyos",
             tipo: "lista",
-            etiqueta: "Personas, lugares o actividades que me dan apoyo o fuerza",
+            etiqueta: "¿Qué personas, lugares o actividades le dan apoyo o fuerza?",
+            ayuda: "Escriba una por renglón.",
             minFilas: 1,
             maxFilas: 6,
           },
@@ -287,33 +346,39 @@ export const FICHAS: readonly Ficha[] = [
     explicacion: [
       "Lo que sentimos y hacemos en un momento difícil no depende solo de lo que pasó. También influye lo que pensamos en ese momento, lo que sentimos en el cuerpo y lo que hacemos después. Esas cinco cosas se influyen entre sí, como un círculo.",
       "Por ejemplo, su jefe le escribe por WhatsApp: «Mañana hablamos». Usted piensa: «Seguro me va a regañar». Siente miedo. En el cuerpo, el estómago se le aprieta. Y hace lo siguiente: revisa el teléfono toda la noche y repasa su trabajo. Esa noche sin dormir hace que mañana llegue más cansado y más nervioso, y el círculo sigue.",
-      "Al verlo por escrito empieza a notarse dónde se podría hacer un pequeño cambio. Elija dos o tres momentos recientes que le hayan molestado, de esta semana o de la pasada. No hace falta que sean los más difíciles de su vida.",
+      "Al verlo por escrito empieza a notarse dónde se podría hacer un pequeño cambio. Elija un momento reciente que le haya molestado, de esta semana o de la pasada, y, si quiere, agregue otros dos. No hace falta que sean los más difíciles de su vida.",
     ],
     secciones: [
       {
         id: "momentos",
-        titulo: "Mis momentos",
-        intro: "Una fila por cada momento. Escriba lo que recuerde; no tiene que ser perfecto.",
+        titulo: "Un momento reciente que le molestó",
+        intro:
+          "Comencemos recordando un momento reciente que le haya causado ansiedad o malestar. Piense dónde estaba y qué estaba pasando; con eso iremos identificando, paso a paso, lo que pasó por su mente y su cuerpo.",
         campos: [
           {
             id: "ciclo",
             tipo: "tabla",
-            etiqueta: "Mi ciclo en tres momentos recientes",
+            etiqueta: "¿Cómo fue ese momento, paso a paso?",
+            ayuda: "Empiece por el primer momento. Si quiere, agregue otros dos: son opcionales. Escriba lo que recuerde; no tiene que ser perfecto.",
             columnas: [
-              { id: "situacion", titulo: "Situación", ayuda: "Qué pasó, dónde y con quién", ejemplo: "Mi jefe me escribió: «Mañana hablamos»" },
-              { id: "pensamiento", titulo: "Lo que pensé", ayuda: "La frase que cruzó por mi mente", ejemplo: "Seguro me va a regañar" },
-              { id: "emocion", titulo: "Lo que sentí y cuánto (0 a 100)", ayuda: "Miedo, enojo, tristeza, vergüenza…", ejemplo: "Miedo, 80" },
-              { id: "cuerpo", titulo: "Lo que sentí en el cuerpo", ejemplo: "Estómago apretado, no podía dormir" },
-              { id: "conducta", titulo: "Lo que hice (o dejé de hacer)", ejemplo: "Revisé el celular toda la noche" },
+              { id: "situacion", titulo: "¿Qué pasó?", ayuda: "Cuéntelo en una o dos frases: dónde estaba y con quién", ejemplo: "Mi jefe me escribió: «Mañana hablamos»" },
+              { id: "pensamiento", titulo: "En ese momento, ¿qué pensó?", ayuda: "Escriba la frase tal como le cruzó por la mente", ejemplo: "Seguro me va a regañar" },
+              { id: "emocion", titulo: "¿Qué sintió y qué tan fuerte fue, de 0 a 100?", ayuda: "Miedo, enojo, tristeza, vergüenza…", ejemplo: "Miedo, 80" },
+              { id: "cuerpo", titulo: "¿Qué sintió en el cuerpo?", ejemplo: "Estómago apretado, no podía dormir" },
+              { id: "conducta", titulo: "¿Qué hizo, o qué dejó de hacer?", ejemplo: "Revisé el celular toda la noche" },
             ],
             filas: 3,
             maxFilas: 3,
+            etiquetaFila: "momento",
+            filaOpcionalDesde: 1,
           },
         ],
       },
       {
         id: "mirando",
-        titulo: "Mirando mi ciclo",
+        titulo: "Mirando su ciclo",
+        intro:
+          "Ahora mire juntos los momentos que escribió. Observe qué se parece de uno a otro y qué efecto tuvo lo que hizo; no hace falta buscar la causa de todo.",
         campos: [
           {
             id: "se_repite",
@@ -324,8 +389,14 @@ export const FICHAS: readonly Ficha[] = [
           {
             id: "efecto",
             tipo: "parrafo",
-            etiqueta: "Lo que hizo en esos momentos, ¿qué efecto tuvo enseguida? ¿Y después, con el paso de las horas o los días?",
-            ejemplo: "Enseguida me calmaba un poco, pero al otro día estaba más cansado y con más miedo.",
+            etiqueta: "Lo que hizo en esos momentos, ¿qué efecto tuvo enseguida?",
+            ejemplo: "Enseguida me calmaba un poco.",
+          },
+          {
+            id: "efecto_despues",
+            tipo: "parrafo",
+            etiqueta: "¿Y qué efecto tuvo después, con el paso de las horas o los días?",
+            ejemplo: "Al otro día estaba más cansado y con más miedo.",
           },
           { id: "tipicos", tipo: "escala", etiqueta: "¿Qué tan típicos son estos momentos de lo que le pasa en general?", extremos: ["0 = nada típicos", "10 = muy típicos"] },
         ],
@@ -354,17 +425,18 @@ export const FICHAS: readonly Ficha[] = [
     secciones: [
       {
         id: "areas",
-        titulo: "Mis áreas de vida",
-        intro: "Para cada área escriba qué le importa (cómo quiere ser o actuar) y una acción pequeña, de pocos minutos, con la que podría acercarse a eso esta semana.",
+        titulo: "Lo que me importa en cada área de mi vida",
+        intro:
+          "Recorra las áreas de su vida una por una. En cada una, escriba qué le importa y una acción pequeña, de pocos minutos, con la que podría acercarse a eso esta semana. Si en alguna no se le ocurre nada, déjela en blanco.",
         campos: [
           {
             id: "valores",
             tipo: "tabla",
-            etiqueta: "Mis valores por áreas",
+            etiqueta: "¿Qué le importa en cada área de su vida?",
             columnas: [
-              { id: "importa", titulo: "Qué me importa en esta área", ejemplo: "Estar presente con mis hijos" },
-              { id: "importancia", titulo: "Qué tanto me importa (0 a 10)", ejemplo: "9" },
-              { id: "accion", titulo: "Una acción pequeña que podría hacer esta semana", ejemplo: "Cenar con ellos sin celular, dos noches" },
+              { id: "importa", titulo: "¿Qué le importa en esta área?", ayuda: "Cómo le gustaría ser o actuar", ejemplo: "Estar presente con mis hijos" },
+              { id: "importancia", titulo: "¿Cuánto le importa, de 0 a 10?", ejemplo: "9" },
+              { id: "accion", titulo: "¿Qué acción pequeña podría hacer esta semana?", ejemplo: "Cenar con ellos sin celular, dos noches" },
             ],
             filas: 7,
             maxFilas: 7,
@@ -377,27 +449,31 @@ export const FICHAS: readonly Ficha[] = [
               "Ocio y tiempo libre",
               "Espiritualidad o sentido de vida",
             ],
+            etiquetaFila: "área de vida",
+            filaOpcionalDesde: 7,
           },
         ],
       },
       {
         id: "distancia",
         titulo: "Lo que se interpone",
+        intro:
+          "Ahora piense en las últimas semanas. Recuerde un momento en que sí actuó de acuerdo con lo que le importa y también lo que se ha interpuesto en el camino; ver ambas cosas ayuda a elegir por dónde empezar.",
         campos: [
+          {
+            id: "reciente",
+            tipo: "parrafo",
+            etiqueta: "¿Qué hizo en un momento reciente en que actuó de acuerdo con algo que le importa?",
+            ayuda: "Puede ser algo pequeño.",
+          },
           {
             id: "interpone",
             tipo: "parrafo",
             etiqueta: "¿Qué se ha interpuesto últimamente entre usted y lo que le importa?",
             ejemplo: "El cansancio y el miedo a equivocarme me hacen cancelar planes.",
           },
-          {
-            id: "reciente",
-            tipo: "parrafo",
-            etiqueta: "Piense en un momento reciente en que actuó de acuerdo con algo que le importa. ¿Qué hizo?",
-            ayuda: "Puede ser algo pequeño.",
-          },
           { id: "empezar", tipo: "texto", etiqueta: "Si tuviera que elegir una sola área para empezar, ¿cuál sería?" },
-          { id: "vivido", tipo: "escala", etiqueta: "En las últimas semanas, ¿qué tanto ha vivido de acuerdo con lo que le importa?", extremos: ["0 = nada", "10 = totalmente"] },
+          { id: "vivido", tipo: "escala", etiqueta: "En las últimas semanas, ¿cuánto ha vivido de acuerdo con lo que le importa?", extremos: ["0 = nada", "10 = totalmente"] },
         ],
       },
     ],
@@ -426,11 +502,14 @@ export const FICHAS: readonly Ficha[] = [
       {
         id: "senales",
         titulo: "Mis señales de alarma",
+        intro:
+          "Marque las señales que reconozca en usted cuando siente ansiedad, pensando en las últimas semanas. No hace falta que le pasen todas: conocer las suyas ya es parte del trabajo.",
         campos: [
           {
             id: "cuerpo",
             tipo: "casillas",
-            etiqueta: "En el cuerpo: marque lo que siente cuando tiene ansiedad",
+            etiqueta: "En el cuerpo, ¿qué siente cuando tiene ansiedad?",
+            ayuda: "Marque todo lo que le pase.",
             opciones: [
               "Corazón acelerado o palpitaciones",
               "Falta de aire o presión en el pecho",
@@ -449,7 +528,8 @@ export const FICHAS: readonly Ficha[] = [
           {
             id: "pensamientos",
             tipo: "casillas",
-            etiqueta: "En los pensamientos: marque lo que le pasa",
+            etiqueta: "En los pensamientos, ¿qué le pasa?",
+            ayuda: "Marque todo lo que le pase.",
             opciones: [
               "Pienso en lo peor que podría pasar",
               "Siento que algo malo va a ocurrir",
@@ -464,7 +544,8 @@ export const FICHAS: readonly Ficha[] = [
           {
             id: "conducta",
             tipo: "casillas",
-            etiqueta: "En lo que hago: marque lo que suele pasar",
+            etiqueta: "En lo que hace, ¿qué suele pasar?",
+            ayuda: "Marque todo lo que le pase.",
             opciones: [
               "Me alejo o evito ciertos lugares o personas",
               "Pregunto varias veces si todo está bien",
@@ -481,11 +562,13 @@ export const FICHAS: readonly Ficha[] = [
       {
         id: "momento",
         titulo: "Un momento reciente",
+        intro:
+          "Ahora recuerde una vez reciente en que la alarma sonó. Piense dónde estaba y qué estaba pasando, y observe cómo subió y cómo bajó; así vemos cómo funciona en su caso.",
         campos: [
           {
             id: "momento",
             tipo: "parrafo",
-            etiqueta: "Cuente un momento reciente en que sintió esa alarma: ¿dónde estaba y qué estaba pasando?",
+            etiqueta: "¿Dónde estaba y qué estaba pasando cuando sintió esa alarma?",
             ejemplo: "Iba en la camioneta llena, de pronto me dio calor, el corazón me latía fuerte y pensé que me iba a desmayar.",
           },
           { id: "fuerza", tipo: "escala", etiqueta: "En ese momento, ¿qué tan fuerte fue la alarma?", extremos: ["0 = ninguna", "10 = la más fuerte que he sentido"] },
@@ -493,8 +576,8 @@ export const FICHAS: readonly Ficha[] = [
           {
             id: "final",
             tipo: "parrafo",
-            etiqueta: "¿Cómo terminó? ¿La alarma bajó? ¿Cuánto tardó?",
-            ayuda: "Observe si bajó aunque usted no haya hecho nada especial.",
+            etiqueta: "Al final, ¿qué pasó con la alarma?",
+            ayuda: "Observe si bajó, cuánto tardó y si bajó aunque usted no hiciera nada especial.",
           },
           {
             id: "util",
@@ -527,46 +610,54 @@ export const FICHAS: readonly Ficha[] = [
     secciones: [
       {
         id: "circulo",
-        titulo: "Mi círculo",
+        titulo: "Mi círculo del desánimo",
+        intro:
+          "Piense en un momento reciente en que su ánimo estuvo bajo y anote cómo se fue armando el círculo: cómo estaba, qué dejó de hacer y cómo se sintió después. Con un momento basta; si quiere, agregue otros dos.",
         campos: [
           {
             id: "circulo",
             tipo: "tabla",
-            etiqueta: "Mi círculo en tres momentos recientes",
+            etiqueta: "¿Cómo se armó el círculo en esos momentos?",
+            ayuda: "Empiece por el primer momento; los otros son opcionales.",
             columnas: [
-              { id: "animo", titulo: "Cómo estaba mi ánimo", ejemplo: "Sin ganas, cansado" },
-              { id: "hice", titulo: "Lo que dejé de hacer o hice menos", ejemplo: "Cancelé la salida con mi amiga" },
-              { id: "despues", titulo: "Cómo me sentí después", ejemplo: "Más solo y más cansado" },
+              { id: "animo", titulo: "¿Cómo estaba su ánimo?", ejemplo: "Sin ganas, cansado" },
+              { id: "hice", titulo: "¿Qué dejó de hacer o hizo menos?", ejemplo: "Cancelé la salida con mi amiga" },
+              { id: "despues", titulo: "¿Cómo se sintió después?", ejemplo: "Más solo y más cansado" },
             ],
             filas: 3,
             maxFilas: 3,
+            etiquetaFila: "momento",
+            filaOpcionalDesde: 1,
           },
           {
             id: "dejado",
             tipo: "lista",
-            etiqueta: "Cosas que antes hacía o disfrutaba y hoy hago menos",
+            etiqueta: "¿Qué cosas que antes hacía o disfrutaba hace hoy menos?",
+            ayuda: "Escriba una por renglón.",
             minFilas: 1,
             maxFilas: 8,
             ejemplo: "Caminar por la tarde; ver a mis amigos; cocinar los sábados",
           },
-          { id: "animo_semana", tipo: "escala", etiqueta: "Su ánimo en general esta semana", extremos: ["0 = muy bajo", "10 = muy bueno"] },
+          { id: "animo_semana", tipo: "escala", etiqueta: "¿Cómo ha estado su ánimo en general esta semana?", extremos: ["0 = muy bajo", "10 = muy bueno"] },
         ],
       },
       {
         id: "salida",
         titulo: "Mi salida pequeña",
-        intro: "No se trata de hacer mucho, sino de empezar con algo muy pequeño que usted pueda lograr aun en un día difícil.",
+        intro:
+          "Ahora elija algo muy pequeño con lo que aflojar el círculo. No se trata de hacer mucho, sino de empezar por una acción que usted pueda lograr aun en un día difícil.",
         campos: [
           {
             id: "pequenas",
             tipo: "lista",
-            etiqueta: "Acciones de 5 a 10 minutos que podría hacer y que antes le daban gusto o la sensación de haber hecho algo",
+            etiqueta: "¿Qué acciones de 5 a 10 minutos podría hacer, de las que antes le daban gusto o la sensación de haber hecho algo?",
+            ayuda: "Escriba una por renglón.",
             minFilas: 1,
             maxFilas: 6,
             ejemplo: "Salir al patio a tomar sol cinco minutos; mandarle un mensaje a mi hermana; lavar los trastes de la cena",
           },
           { id: "elegida", tipo: "texto", etiqueta: "De esa lista, ¿cuál podría hacer esta semana?" },
-          { id: "cuando", tipo: "texto", etiqueta: "¿Cuándo y dónde la haría? (día y hora)", ejemplo: "El miércoles a las 5 de la tarde, en el patio" },
+          { id: "cuando", tipo: "texto", etiqueta: "¿Cuándo y dónde la haría?", ayuda: "Día y hora.", ejemplo: "El miércoles a las 5 de la tarde, en el patio" },
           {
             id: "dificultad",
             tipo: "escala",
@@ -577,8 +668,14 @@ export const FICHAS: readonly Ficha[] = [
           {
             id: "obstaculo",
             tipo: "parrafo",
-            etiqueta: "¿Qué podría impedírselo y qué podría hacer en ese caso?",
-            ejemplo: "Si llego muy cansado, la hago solo por cinco minutos.",
+            etiqueta: "¿Qué podría impedirle hacerla?",
+            ejemplo: "Llegar muy cansado.",
+          },
+          {
+            id: "si_pasa",
+            tipo: "parrafo",
+            etiqueta: "Si eso pasara, ¿qué podría hacer en ese caso?",
+            ejemplo: "La haría solo por cinco minutos.",
           },
         ],
       },
@@ -607,12 +704,15 @@ export const FICHAS: readonly Ficha[] = [
     secciones: [
       {
         id: "pensamientos",
-        titulo: "Mis pensamientos que vuelven",
+        titulo: "Los pensamientos que me vuelven",
+        intro:
+          "Comencemos por reconocer esos pensamientos. Escriba los que más le vuelven y recuerde veces recientes en que aparecieron; solo se trata de observar, no de luchar contra ellos.",
         campos: [
           {
             id: "frases",
             tipo: "lista",
-            etiqueta: "Escriba los pensamientos que más le vuelven",
+            etiqueta: "¿Qué pensamientos son los que más le vuelven?",
+            ayuda: "Escriba uno por renglón, tal como se le presentan.",
             minFilas: 1,
             maxFilas: 6,
             ejemplo: "¿Por qué no puedo ser como los demás?; ¿y si me despiden?",
@@ -620,39 +720,46 @@ export const FICHAS: readonly Ficha[] = [
           {
             id: "registro",
             tipo: "tabla",
-            etiqueta: "Tres veces en que aparecieron esta semana",
+            etiqueta: "¿Cuándo aparecieron esta semana?",
+            ayuda: "Empiece por la primera vez que recuerde; las otras son opcionales.",
             columnas: [
-              { id: "cuando", titulo: "Cuándo, dónde y qué pasaba antes", ejemplo: "En la cama, después de ver un correo del trabajo" },
-              { id: "pensamiento", titulo: "Qué pensamiento volvió", ejemplo: "¿Y si me despiden?" },
-              { id: "duro", titulo: "Cuánto tiempo estuve en eso", ejemplo: "Casi una hora" },
-              { id: "despues", titulo: "Cómo me sentí después (0 a 10 de malestar)", ejemplo: "7, muy cansado" },
+              { id: "cuando", titulo: "¿Cuándo y dónde apareció, y qué había pasado antes?", ejemplo: "En la cama, después de ver un correo del trabajo" },
+              { id: "pensamiento", titulo: "¿Qué pensamiento volvió?", ejemplo: "¿Y si me despiden?" },
+              { id: "duro", titulo: "¿Cuánto tiempo estuvo en eso?", ejemplo: "Casi una hora" },
+              { id: "despues", titulo: "¿Cómo se sintió después, de 0 a 10 de malestar?", ejemplo: "7, muy cansado" },
             ],
             filas: 3,
             maxFilas: 3,
+            etiquetaFila: "vez",
+            generoFila: "f",
+            filaOpcionalDesde: 1,
           },
         ],
       },
       {
         id: "preguntas",
         titulo: "«¿Por qué?» o «¿qué puedo hacer?»",
+        intro:
+          "Ahora observe qué preguntas se hace cuando le da vueltas a algo y pruebe cambiar una de ellas por otra que lo lleve a la acción. Es solo un ensayo: no tiene que creerla ni lograrlo a la primera.",
         campos: [
           {
             id: "por_que",
             tipo: "parrafo",
-            etiqueta: "Anote algunas de las preguntas que se hace cuando le da vueltas a algo",
+            etiqueta: "¿Qué preguntas se hace cuando le da vueltas a algo?",
             ayuda: "Las que empiezan con «¿por qué…?» o «¿y si…?».",
           },
           {
             id: "que_hacer",
             tipo: "parrafo",
-            etiqueta: "Para una de esas preguntas, escriba una pregunta distinta: «¿Qué puedo hacer ahora, aunque sea algo pequeño?» o «¿Hay algo que dependa de mí?»",
-            ayuda: "Si no hay nada que dependa de usted en este momento, escríbalo también.",
+            etiqueta: "Para una de esas preguntas, ¿qué pregunta distinta podría hacerse?",
+            ayuda: "Por ejemplo: «¿Qué puedo hacer ahora, aunque sea algo pequeño?» o «¿Hay algo que dependa de mí?». Si no hay nada que dependa de usted en este momento, escríbalo también.",
             ejemplo: "En lugar de «¿y si me despiden?»: «¿Qué puedo hacer hoy para hacer bien mi trabajo?». Si no depende de mí, lo anoto.",
           },
           {
             id: "hago",
             tipo: "casillas",
             etiqueta: "Cuando le da vueltas a algo, ¿qué suele hacer?",
+            ayuda: "Marque todo lo que le pase.",
             opciones: [
               "Me quedo en la cama",
               "Trato de dejar de pensar",
@@ -695,24 +802,30 @@ export const FICHAS: readonly Ficha[] = [
       {
         id: "evito",
         titulo: "Lo que evito",
+        intro:
+          "Comencemos haciendo una lista de lo que evita. Piense en lugares, personas, actividades, conversaciones o pensamientos que prefiere esquivar, y anote qué teme que pase y qué le cuesta evitarlos. Solo observe y anote.",
         campos: [
           {
             id: "evitaciones",
             tipo: "tabla",
-            etiqueta: "Lo que evito (hasta diez)",
-            ayuda: "Puede ser un lugar, una persona, una actividad, una conversación o un pensamiento.",
+            etiqueta: "¿Qué cosas evita?",
+            ayuda: "Puede ser un lugar, una persona, una actividad, una conversación o un pensamiento. Escriba primero la que más le pesa; las demás son opcionales.",
             columnas: [
-              { id: "evito", titulo: "Lo que evito", ejemplo: "Subirme a la camioneta llena" },
-              { id: "temo", titulo: "Qué temo que pase", ejemplo: "Que me dé una crisis y no pueda bajarme" },
-              { id: "cuesta", titulo: "Qué me cuesta o qué pierdo por evitarlo", ejemplo: "Gasto más en taxi y no visito a mi mamá" },
+              { id: "evito", titulo: "¿Qué evita?", ejemplo: "Subirme a la camioneta llena" },
+              { id: "temo", titulo: "¿Qué teme que pase?", ejemplo: "Que me dé una crisis y no pueda bajarme" },
+              { id: "cuesta", titulo: "¿Qué le cuesta o qué pierde por evitarlo?", ejemplo: "Gasto más en taxi y no visito a mi mamá" },
             ],
             filas: 6,
             maxFilas: 10,
+            etiquetaFila: "evitación",
+            generoFila: "f",
+            filaOpcionalDesde: 1,
           },
           {
             id: "sutiles",
             tipo: "casillas",
-            etiqueta: "A veces se evita de formas menos visibles. ¿Alguna le pasa?",
+            etiqueta: "¿Alguna de estas formas menos visibles de evitar le pasa?",
+            ayuda: "Marque todas las que correspondan.",
             opciones: [
               "Pongo excusas o cancelo planes",
               "Solo voy si me acompaña alguien",
@@ -728,12 +841,20 @@ export const FICHAS: readonly Ficha[] = [
       {
         id: "costo",
         titulo: "El alivio y el costo",
+        intro:
+          "Ahora piense en lo que pasa después de evitar. Recuerde cómo se siente enseguida y cómo se siente con el paso de los días; así se ve mejor lo que la evitación le da y lo que le quita.",
         campos: [
           {
             id: "alivio",
             tipo: "parrafo",
-            etiqueta: "Cuando evita algo, ¿cómo se siente enseguida? ¿Y unos días después?",
-            ejemplo: "Enseguida, alivio. A los días, tristeza y enojo conmigo.",
+            etiqueta: "Cuando evita algo, ¿cómo se siente enseguida?",
+            ejemplo: "Alivio.",
+          },
+          {
+            id: "alivio_despues",
+            tipo: "parrafo",
+            etiqueta: "¿Y cómo se siente unos días después?",
+            ejemplo: "Tristeza y enojo conmigo.",
           },
           {
             id: "dejado",
