@@ -3,24 +3,34 @@
  *  - `baseMotivo`: el punto de partida que se copia, fijo, en la ficha (enlace o «Llenarla yo»).
  *  - `diffPalabras`: comparación simple por palabras (subsecuencia común más larga).
  *  - `comparativaMotivo` / `historialMotivo`: original frente a lo escrito en cada ficha 1.1.
- * La hoja de datos generales pública no pregunta el motivo: el del expediente sale de lo escrito al
- * agendar o en la ficha clínica, y no se puede distinguir cuál de los dos fue.
+ * El motivo inicial sale, por orden, de la hoja de datos generales («¿Qué le gustaría trabajar?»), del
+ * motivo de consulta del expediente (al agendar o en la ficha clínica) o de la última cita.
  */
 import { camposDeFicha, fichaPorId } from "./catalogo";
 import { datosFichaGuardados, esFichaDelTerapeuta, type BaseMotivo, type ValorCasillas } from "./codigo";
 import type { FilaRespuesta } from "./sugeridas";
 
+export const FUENTE_HOJA = "hoja de datos generales";
 export const FUENTE_EXPEDIENTE = "expediente (al agendar o en la ficha clínica)";
 export const FUENTE_CITA = "última cita o solicitud";
 
 const hoyIso = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 
-/** Motivo inicial del expediente (o, si no hay, el de la última cita o solicitud), con fuente y fecha de hoy. */
+/**
+ * Motivo inicial, por orden: lo que escribió el paciente en la hoja de datos generales («¿Qué le
+ * gustaría trabajar?», con la fecha en que la completó), el motivo de consulta del expediente y el de
+ * la última cita o solicitud (con la fecha de hoy).
+ */
 export function baseMotivo(
-  paciente: { motivoConsulta?: string | null } | null | undefined,
+  paciente: { motivoConsulta?: string | null; motivoPaciente?: string | null; datosCompletadosAt?: string | null } | null | undefined,
   motivoCita?: string | null,
   ahora = new Date()
 ): BaseMotivo | null {
+  const hoja = paciente?.motivoPaciente?.trim();
+  if (hoja) {
+    const f = paciente?.datosCompletadosAt?.slice(0, 10);
+    return { motivo: hoja.slice(0, 3000), fuente: FUENTE_HOJA, fecha: f && /^\d{4}-\d{2}-\d{2}$/.test(f) ? f : hoyIso(ahora) };
+  }
   const delExpediente = paciente?.motivoConsulta?.trim();
   const deCita = motivoCita?.trim();
   const motivo = delExpediente || deCita;

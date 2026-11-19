@@ -10,7 +10,9 @@ así que las migraciones se acumulan aquí y se aplican **juntas desde la comput
   computadora y aprobar cada ventana de Supabase.
 
 ## Pendientes
-Ninguna por ahora.
+| Migración | Qué hace | Sin aplicarla |
+| --- | --- | --- |
+| `066_gestionesjj_motivo_paciente.sql` | Columna `motivo_paciente` y RPC pública `gestionesjj_public_datos_motivo` para la pregunta «¿Qué le gustaría trabajar?» de la hoja de datos generales. | La hoja de datos se guarda igual; la respuesta a esa pregunta no se guarda (aviso en el registro del servidor) y la ficha 1.1 usa el motivo del expediente o de la cita. |
 
 ## Aplicadas
 | Migración | Fecha | Verificación |

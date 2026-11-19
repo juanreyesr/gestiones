@@ -45,6 +45,8 @@ export type PacienteRow = {
   emergenciaTelefono: string | null;
   emergenciaRelacion: string | null;
   motivoConsulta: string | null;
+  /** «¿Qué le gustaría trabajar?» de la hoja de datos generales (migración 066; ausente si no está aplicada). */
+  motivoPaciente?: string | null;
   antecedentesMedicos: string | null;
   antecedentesPsicologicos: string | null;
   antecedentesFamiliares: string | null;

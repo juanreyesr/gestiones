@@ -10,7 +10,7 @@ import { fichaEnBlancoHtml, fichaRespondidaHtml } from "../src/lib/evaluaciones/
 import { detectarRiesgo, riesgoFicha } from "../src/lib/evaluaciones/fichas/riesgo.ts";
 import { fichasRespondidas, fichasSugeridas } from "../src/lib/evaluaciones/fichas/sugeridas.ts";
 import { borradorInicialFicha, datosFichaTerapeuta, estadosFichas, fechaLegible, prellenado, resumenIntervencion, siguientesEnRuta, sugerenciasIntervencion, tareaDeFicha } from "../src/lib/evaluaciones/fichas/intervencion.ts";
-import { baseMotivo, comparativaMotivo, diffPalabras, FUENTE_CITA, FUENTE_EXPEDIENTE, historialMotivo, lineasComparativa, camposMotivoPresentes } from "../src/lib/evaluaciones/fichas/motivo.ts";
+import { baseMotivo, comparativaMotivo, diffPalabras, FUENTE_CITA, FUENTE_EXPEDIENTE, FUENTE_HOJA, historialMotivo, lineasComparativa, camposMotivoPresentes } from "../src/lib/evaluaciones/fichas/motivo.ts";
 import { enlaceFicha } from "../src/lib/evaluaciones/fichas/intervencion.ts";
 import { INSTRUMENTOS, instrumentoPorId } from "../src/lib/evaluaciones/instrumentos.ts";
 import { buildPlan, etiquetas } from "../src/lib/evaluaciones/mcea/motor.ts";
@@ -769,7 +769,7 @@ caso("B.4 Integración: «Llenada por el terapeuta» en la lista, el informe y e
   assert.match(datos, /instrumento: "ficha",[\s\S]*origen: "codigo"/);
   assert.match(datos, /borrador \? \{ borrador, borrador_at/);
   assert.match(datos, /borrador: Record<string, unknown> \| null = null/, "asignarEvaluacion sigue siendo compatible: el borrador es opcional");
-  assert.match(leer("../src/components/clinica/paciente-expediente.tsx"), /<IntervencionGuiada motivoCita=\{motivoUltimaCita\} paciente=\{paciente\} \/>/);
+  assert.match(leer("../src/components/clinica/paciente-expediente.tsx"), /<IntervencionGuiada citaInicial=\{sesiones\.length === 0\} motivoCita=\{motivoUltimaCita\} paciente=\{paciente\} \/>/);
   assert.match(leer("../src/lib/clinica/expediente-pdf.ts"), /resumenIntervencion\(respuestas\)/);
   const antes = leer("../src/components/clinica/antes-proxima-sesion.tsx");
   assert.match(antes, /!delTerapeuta\(r\) && \(!ultimaSesion/);
@@ -857,6 +857,31 @@ caso("v1.2: comparativa e historial de la ficha 1.1", () => {
   assert.doesNotMatch(leer("../src/components/evaluaciones/ficha-form.tsx"), /motivo\.ts|comparativa/);
   for (const ruta of ["../src/components/evaluaciones/ficha-form.tsx", "../src/components/evaluaciones/ficha-campos.tsx", "../src/components/evaluaciones/formularios.tsx"]) assert.doesNotMatch(leer(ruta), /nos contó al inicio|motivoInicial|base/, ruta);
   assert.match(leer("../src/components/clinica/intervencion-guiada.tsx"), /<ComparacionEnVivo/);
+});
+
+caso("v1.3: «¿Qué le gustaría trabajar?» de la hoja de datos es el primer punto de partida de la 1.1", () => {
+  const hoy = new Date(2026, 10, 19);
+  const p = { motivoPaciente: " Quiero dejar de sentir ansiedad al manejar ", motivoConsulta: "Ansiedad", datosCompletadosAt: "2026-11-02T15:00:00Z" };
+  assert.deepEqual(baseMotivo(p, "Cita", hoy), { motivo: "Quiero dejar de sentir ansiedad al manejar", fuente: FUENTE_HOJA, fecha: "2026-11-02" });
+  assert.equal(baseMotivo({ ...p, motivoPaciente: "" }, null, hoy).fuente, FUENTE_EXPEDIENTE);
+  const pre = prellenado("1.1", { paciente: p });
+  assert.equal(pre.respuestas.motivo, "Quiero dejar de sentir ansiedad al manejar");
+  assert.match(pre.origen.motivo, /hoja de datos generales/);
+  // La hoja pregunta solo «¿Qué te gustaría trabajar?»; «desde cuándo» queda en la ficha 1.1.
+  const hoja = leer("../src/components/booking/datos-paciente-page.tsx");
+  assert.match(hoja, /¿Qué te gustaría trabajar en la consulta\?/);
+  assert.doesNotMatch(hoja, /desde cuándo/i);
+  const ruta = leer("../src/app/api/datos/[token]/route.ts");
+  assert.ok(ruta.indexOf("gestionesjj_public_datos_motivo") < ruta.indexOf("gestionesjj_public_datos_save"), "el motivo se guarda antes de cerrar el enlace");
+  assert.match(leer("../supabase/migrations/066_gestionesjj_motivo_paciente.sql"), /datos_completados_at is not null/);
+  assert.match(leer("../src/lib/clinica/pacientes.ts"), /select\("motivo_paciente"\)/, "consulta aparte: sin la migración el expediente sigue funcionando");
+});
+
+caso("v1.3: la ficha 1.1 se sugiere en la cita inicial (expediente sin sesiones y primera sesión)", () => {
+  const ig = leer("../src/components/clinica/intervencion-guiada.tsx");
+  assert.match(ig, /sugerencia-cita-inicial/);
+  assert.match(ig, /\(citaInicial \|\| modo === "cita-inicial"\) && !e11\.hecha/);
+  assert.match(leer("../src/components/clinica/sesion-activa.tsx"), /!sesionAnterior \? <IntervencionGuiada modo="cita-inicial"/);
 });
 
 console.log(`\n${ok} pruebas correctas.`);

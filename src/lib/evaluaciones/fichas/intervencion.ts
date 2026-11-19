@@ -137,7 +137,7 @@ export function fechaLegible(iso: string) {
 
 export type FuentesPrellenado = {
   /** Ficha clínica del paciente. */
-  paciente?: { motivoConsulta?: string | null; antecedentesPsicologicos?: string | null } | null;
+  paciente?: { motivoConsulta?: string | null; motivoPaciente?: string | null; antecedentesPsicologicos?: string | null } | null;
   /** Motivo de la última solicitud o cita (si la ficha clínica no tiene motivo de consulta). */
   motivoCita?: string | null;
   /** Respuestas del paciente (MCEA con registro guiado, respuestas previas de la misma ficha). */
@@ -187,8 +187,10 @@ export function prellenado(fichaId: FichaId, fuentes: FuentesPrellenado): Prelle
   const respuestas = fuentes.respuestas ?? [];
 
   if (fichaId === "1.1") {
+    const hoja = texto(fuentes.paciente?.motivoPaciente);
     const motivo = texto(fuentes.paciente?.motivoConsulta);
-    if (motivo) poner("motivo", motivo, "Del motivo de consulta de la ficha clínica");
+    if (hoja) poner("motivo", hoja, "De «¿Qué le gustaría trabajar?» en la hoja de datos generales");
+    else if (motivo) poner("motivo", motivo, "Del motivo de consulta de la ficha clínica");
     else if (texto(fuentes.motivoCita)) poner("motivo", texto(fuentes.motivoCita), "Del motivo de la última cita o solicitud");
   }
   if (fichaId === "1.2") {

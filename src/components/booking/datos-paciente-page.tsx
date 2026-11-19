@@ -31,6 +31,8 @@ type FormState = {
   emergenciaTelefono: string;
   emergenciaRelacion: string;
   referidoPor: string;
+  /** «¿Qué te gustaría trabajar?» (opcional; punto de partida de la ficha 1.1). */
+  motivoPaciente: string;
   pais: string;
   zonaHoraria: string;
 };
@@ -47,6 +49,7 @@ const VACIO: FormState = {
   emergenciaTelefono: "",
   emergenciaRelacion: "",
   referidoPor: "",
+  motivoPaciente: "",
   pais: "GT",
   zonaHoraria: "",
 };
@@ -136,6 +139,7 @@ export function DatosPacientePage({ token }: { token: string }) {
         emergenciaTelefono: data.emergenciaTelefono ?? "",
         emergenciaRelacion: data.emergenciaRelacion ?? "",
         referidoPor: data.referidoPor ?? "",
+        motivoPaciente: "",
         // Pais: el del expediente; si no, el del +codigo del telefono; si no hay telefono, el de la zona del navegador.
         ...(() => {
           const zonaNavegador = zonaDelNavegador();
@@ -404,6 +408,21 @@ export function DatosPacientePage({ token }: { token: string }) {
                   <SituacionFields light onChange={setSituacion} value={situacion} />
                 </>
               )}
+
+              <label className="grid gap-1.5">
+                <span className="text-xs font-semibold uppercase text-slate-400">
+                  {esMenor ? "¿Qué les gustaría trabajar en la consulta?" : "¿Qué te gustaría trabajar en la consulta?"}
+                </span>
+                <span className="text-xs leading-5 text-slate-500">Opcional. Con tus palabras, lo que quieras contar; lo conversaremos en la primera sesión.</span>
+                <textarea
+                  className="field-light resize-y"
+                  data-testid="datos-motivo-paciente"
+                  maxLength={2000}
+                  onChange={(e) => set("motivoPaciente")(e.target.value)}
+                  rows={3}
+                  value={form.motivoPaciente}
+                />
+              </label>
 
               <Campo
                 label={esMenor ? "¿Cómo llegaron a la consulta?" : "¿Cómo llegaste a la consulta?"}

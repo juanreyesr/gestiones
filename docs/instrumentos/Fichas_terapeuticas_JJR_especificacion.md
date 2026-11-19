@@ -95,3 +95,8 @@ Contexto verificado en el código: la hoja de datos generales (`/datos/<token>`)
 - El paciente recibe la 1.1 **en blanco**, sin el motivo inicial ni la nota. La base (`opciones.base` del enlace → `datos.base` de la respuesta) se guarda en silencio y nunca se publica (`opcionesPublicas` no la incluye).
 - «Enviar al paciente con esto»: si el motivo sigue igual al inicial, ese campo se vacía antes de enviarlo.
 - El motivo inicial y la comparación solo se ven en el panel: en «Llenarla yo» de la 1.1 (recuadro «Solo para usted», con los cambios en vivo), en el informe de la ficha, en la ficha clínica y en el PDF del expediente.
+
+### v1.3 — Hoja de datos y cita inicial (decisión del autor)
+- La hoja de datos generales pregunta (opcional) «¿Qué te gustaría trabajar en la consulta?» (tuteo, como el resto de la hoja; en plural si es menor). «¿Desde cuándo?» se queda solo en la ficha 1.1. Se guarda en `motivo_paciente` (migración 066, RPC pública que se llama antes de cerrar el enlace).
+- Punto de partida de la 1.1 (base y prellenado de «Llenarla yo»): hoja de datos → motivo de consulta del expediente → última cita.
+- Cita inicial: si el paciente aún no tiene sesiones, «Intervención guiada» muestra arriba «Cita inicial · sugerida: Ficha 1.1» con «Llenarla en la sesión» y «Enviar al paciente»; en la primera sesión (sin sesión anterior) aparece la misma tarjeta dentro de la sesión.
