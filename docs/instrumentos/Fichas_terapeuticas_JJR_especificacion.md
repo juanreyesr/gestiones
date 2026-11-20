@@ -172,3 +172,15 @@ Fichas (8, en el orden de un tratamiento), id · nombre · modelo:
 7. `exposicion` · Exposición y prevención de respuesta · Craske (aprendizaje inhibitorio); Foa. Fichas: 2.4, 4.2, 4.4.
 8. `cierre-recaidas` · Cierre del tratamiento y prevención de recaídas · J. S. Beck; Bieling, McCabe y Antony. Fichas: 5.1, 5.2, 5.3.
 Reglas: redacción ORIGINAL (no copiar manuales ni materiales comerciales); tono técnico y claro para psicólogos y estudiantes; español de Guatemala; diálogos de ejemplo de usted, verosímiles y breves; evidencia dicha con honestidad (sin exagerar); referencias reales.
+
+## Bibliotecas JJR — «Métodos de diagnóstico» (biblioteca de técnicas)
+Mismo tipo que «Psicoterapia del adulto» (`tipo: "tecnicas"`, `FichaTecnica`), id `metodos-diagnostico`. Fichas (8, en el orden de una evaluación), id · nombre · modelo:
+1. `entrevista-inicial` · Entrevista clínica inicial · Entrevista semiestructurada y motivo de consulta (Othmer y Othmer; Morrison). Fichas: 1.1, 1.2.
+2. `examen-mental` · Examen del estado mental · Apariencia, conducta, lenguaje, afecto y ánimo, pensamiento (curso y contenido), percepción, cognición, juicio e introspección (Trzepacz y Baker; Morrison).
+3. `riesgo-suicida` · Evaluación del riesgo suicida · Preguntar directamente; ideación, plan, intención, medios, antecedentes, factores de riesgo y protectores; plan de seguridad (Stanley y Brown); C-SSRS como apoyo (Posner et al.). Fichas: 5.1.
+4. `pruebas-psicometricas` · Elegir y usar pruebas psicométricas · Validez, confiabilidad, baremos y adaptación al contexto; cribado frente a diagnóstico; ética del uso de pruebas (Estándares AERA, APA y NCME 2014; Comisión Internacional de Tests).
+5. `diagnostico-diferencial` · Diagnóstico diferencial · Árbol de decisión: simulación, sustancias, causa médica, curso, edad, trastorno primario frente a comorbilidad (First, 2014: «DSM-5-TR Handbook of Differential Diagnosis»).
+6. `diagnostico-dsm-cie` · Integrar el diagnóstico con DSM-5-TR y CIE-11 · Codificación, especificadores, «otro especificado» y «no especificado», diferencias entre manuales, diagnóstico provisional; nunca reemplaza la formulación.
+7. `informe-psicologico` · Redacción del informe psicológico · Estructura (motivo, procedimiento, resultados, interpretación integrada, conclusiones y recomendaciones), lenguaje claro, sin jerga ni etiquetas, confidencialidad y destinatario (Groth-Marnat y Wright).
+8. `devolucion-resultados` · Devolución de resultados al paciente · Evaluación terapéutica y devolución colaborativa (Finn): empezar por lo que la persona ya sabe, lenguaje sencillo, esperanza realista. Fichas: 1.1.
+Reglas: como las de «Psicoterapia del adulto» (redacción ORIGINAL, sin copiar manuales, criterios ni ítems de pruebas; tono técnico y claro; diálogos de usted; evidencia prudente; referencias reales). En riesgo suicida: nunca citar ítems de escalas del sistema ante el paciente; siempre preguntar de forma directa y documentar; líneas de ayuda locales sin inventar números.
