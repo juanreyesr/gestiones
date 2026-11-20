@@ -15,7 +15,7 @@
 import { calificarEapi } from "../eapi/calificacion";
 import { MODULOS_EAPI, validarEapi } from "../eapi/codigo";
 import { datosMceaGuardados } from "../mcea/codigo";
-import { scoreAll } from "../mcea/motor";
+import { A, rng, scoreAll } from "../mcea/motor";
 import { FICHA_IDS, esFichaId, type FichaId } from "./catalogo";
 
 export type FilaRespuesta = { instrumento: string; datos: unknown; fecha?: string | null; createdAt: string };
@@ -40,8 +40,16 @@ export function fichasRespondidas(respuestas: FilaRespuesta[]): Set<FichaId> {
   return out;
 }
 
-type Area = "ansiedad" | "tension" | "animo" | "pensamientos";
-const FICHAS_DE_AREA: Record<Area, FichaId[]> = { ansiedad: ["2.1", "2.4"], tension: ["2.1", "2.4"], animo: ["2.2"], pensamientos: ["2.3"] };
+type Area = "ansiedad" | "tension" | "animo" | "pensamientos" | "automaticos" | "distorsiones";
+const FICHAS_DE_AREA: Record<Area, FichaId[]> = {
+  ansiedad: ["2.1", "2.4"],
+  tension: ["2.1", "2.4"],
+  animo: ["2.2"],
+  pensamientos: ["2.3"],
+  // Técnicas cognitivas (etapa 3): solo el MCEA mide pensamientos automáticos y distorsiones.
+  automaticos: ["3.1", "3.3"],
+  distorsiones: ["3.2"],
+};
 
 /** Áreas altas (con el motivo) del último EAPI. */
 function areasEapi(respuestas: FilaRespuesta[]): { area: Area; motivo: string }[] {
@@ -72,6 +80,9 @@ function areasMcea(respuestas: FilaRespuesta[]): { area: Area; motivo: string }[
   if (sc.GAD7 && sc.GAD7.lvl >= 2) out.push({ area: "ansiedad", motivo: `${de}: preocupación y ansiedad ${baja(sc.GAD7.label)} (GAD-7 ${sc.GAD7.raw})` });
   if (sc.PHQ9 && sc.PHQ9.lvl >= 2) out.push({ area: "animo", motivo: `${de}: ánimo ${baja(sc.PHQ9.label)} (PHQ-9 ${sc.PHQ9.raw})` });
   if (sc.PTQ && sc.PTQ.lvl >= 1) out.push({ area: "pensamientos", motivo: `${de}: pensamientos que vuelven, ${baja(sc.PTQ.label)} (PTQ ${sc.PTQ.raw})` });
+  if (sc.PAN && sc.PAN.lvl >= 2) out.push({ area: "automaticos", motivo: `${de}: pensamientos automáticos negativos frecuentes, ${baja(sc.PAN.label)}` });
+  const distorsiones = rng(10).filter((i) => (A(d, `DC_${i}`) ?? 0) >= 3).length;
+  if (distorsiones) out.push({ area: "distorsiones", motivo: `${de}: ${distorsiones} forma${distorsiones === 1 ? "" : "s"} de pensar marcada${distorsiones === 1 ? "" : "s"} con 3 o más` });
   return out;
 }
 
