@@ -68,6 +68,15 @@ export async function vpSemanas(cursoId: string) {
   return (data ?? []) as { id: string; numero: number; titulo: string | null; fecha: string | null }[];
 }
 
+/** Vista previa del docente: bibliotecas activas del curso (lectura del propietario). */
+export async function vpBibliotecas(cursoId: string) {
+  const supabase = getSupabaseClient();
+  if (!supabase) return [];
+  const { data, error } = await supabase.from("gestionesjj_curso_bibliotecas").select("biblioteca_id").eq("curso_id", cursoId).order("created_at");
+  if (error) return [];
+  return ((data ?? []) as { biblioteca_id: string }[]).map((r) => r.biblioteca_id);
+}
+
 export async function vpContenidos(semanaId: string) {
   const supabase = getSupabaseClient();
   if (!supabase) return [];

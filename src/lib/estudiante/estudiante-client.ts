@@ -1,9 +1,11 @@
 import type { Idioma } from "@/lib/cursos/types";
+import { bibliotecaPorId } from "@/lib/bibliotecas";
 import { getSupabaseClient } from "@/lib/supabase";
 import {
   AVISO_VISTA_PREVIA,
   vistaPreviaActiva,
   vpActividades,
+  vpBibliotecas,
   vpContenidos,
   vpCursos,
   vpSemanas,
@@ -131,6 +133,20 @@ export async function fetchMisSemanas(cursoId: string): Promise<{ data: MiSemana
 
   const filas = (data ?? []) as Array<{ id: string; numero: number; titulo: string | null; fecha: string | null }>;
   return { data: filas.map((fila) => ({ id: fila.id, numero: fila.numero, titulo: fila.titulo, fecha: fila.fecha })), error: null };
+}
+
+/**
+ * Bibliotecas JJR activas en el curso (solo ids que existen en el código). La RPC valida inscripción
+ * activa y acceso del curso. Sin la migración 067 (o con error) devuelve una lista vacía: el Aula
+ * sigue igual que antes.
+ */
+export async function fetchMisBibliotecas(cursoId: string): Promise<string[]> {
+  if (vistaPreviaActiva()) return vpBibliotecas(cursoId);
+  const supabase = getSupabaseClient();
+  if (!supabase) return [];
+  const { data, error } = await supabase.rpc("gestionesjj_estudiante_bibliotecas_curso", { p_curso_id: cursoId });
+  if (error) return [];
+  return ((data ?? []) as { biblioteca_id: string }[]).map((r) => r.biblioteca_id).filter((id) => bibliotecaPorId(id));
 }
 
 export type MiContenido = {

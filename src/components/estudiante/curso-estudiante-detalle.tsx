@@ -22,6 +22,7 @@ import {
   type MiEstadoCurso,
   type MiSemana,
 } from "@/lib/estudiante/estudiante-client";
+import { BibliotecaCurso } from "./biblioteca-curso";
 import { useIdioma } from "./idioma-context";
 import { PerfilModal } from "./perfil-modal";
 
@@ -195,6 +196,8 @@ export function CursoEstudianteDetalle({ curso, onVolver }: { curso: MiCurso; on
           />
         )}
       </div>
+
+      <BibliotecaCurso cursoId={curso.cursoId} />
 
       {perfilAbierto ? (
         <PerfilModal
