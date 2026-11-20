@@ -158,3 +158,17 @@ Se agregan a la biblioteca «Psicopatología» (mismos tipos, reglas y redacció
 - `insomnio` — Trastorno de insomnio (F51.01 · 7A00). Plan: 1.3; 2.3; 3.4; 4.2, 4.3 (TCC para el insomnio: control de estímulos, restricción del tiempo en cama con supervisión, higiene del sueño; Morin; Perlis); 5.1, 5.3. Alertas: apnea del sueño (ronquidos, pausas), piernas inquietas, bipolaridad (la restricción de sueño puede desencadenar manía), somnolencia al manejar, medicamentos y sustancias.
 - `depresion-persistente` — Trastorno depresivo persistente (distimia) (F34.1 · 6A72). Duración: al menos 2 años (1 en niños y adolescentes). Plan: 1.1, 1.2; 2.2; 3.1, 3.2, 3.3; 4.1, 4.5 (CBASP, McCullough; activación conductual); 5.1, 5.2, 5.3. Alertas: depresión mayor sobreagregada («doble depresión»), riesgo suicida, manía o hipomanía.
 - Relación con resultados: la hipótesis `panic` del EAPI (que en el sistema incluye ansiedad social y agorafobia) también sugiere `ansiedad-social`. Las demás se consultan desde la biblioteca.
+
+## Bibliotecas JJR — «Psicoterapia del adulto» (biblioteca de técnicas)
+Segundo tipo de biblioteca (`tipo: "tecnicas"`, tipo `FichaTecnica` en `src/lib/bibliotecas/tipos.ts`): técnicas y habilidades del terapeuta, no trastornos. Misma activación por curso en el Aula; en el panel se consulta desde «Biblioteca clínica» (selector por biblioteca).
+Vista terapeuta: todo menos caso, preguntas y clave. Vista estudiante: todo, con caso, preguntas de práctica y clave.
+Fichas (8, en el orden de un tratamiento), id · nombre · modelo:
+1. `formulacion-caso` · Formulación de caso en TCC · Conceptualización cognitiva (J. S. Beck; Persons; Kuyken, Padesky y Dudley). Fichas: 1.1, 1.2, 1.3.
+2. `alianza-terapeutica` · Alianza terapéutica y reparación de rupturas · Bordin; Safran y Muran. Fichas: —.
+3. `entrevista-motivacional` · Entrevista motivacional · Miller y Rollnick (OARS: preguntas abiertas, afirmaciones, reflejos, resúmenes; evocar el discurso de cambio). Fichas: 1.1, 1.4.
+4. `psicoeducacion` · Psicoeducación eficaz · TCC; Protocolo Unificado (Barlow). Fichas: 2.1, 2.2, 2.3, 2.4.
+5. `dialogo-socratico` · Diálogo socrático y reestructuración cognitiva · Beck; Padesky («descubrimiento guiado»). Fichas: 3.1, 3.2, 3.3.
+6. `activacion-conductual` · Activación conductual · Martell, Dimidjian y Herman-Dunn; Jacobson. Fichas: 2.2, 4.1, 4.5.
+7. `exposicion` · Exposición y prevención de respuesta · Craske (aprendizaje inhibitorio); Foa. Fichas: 2.4, 4.2, 4.4.
+8. `cierre-recaidas` · Cierre del tratamiento y prevención de recaídas · J. S. Beck; Bieling, McCabe y Antony. Fichas: 5.1, 5.2, 5.3.
+Reglas: redacción ORIGINAL (no copiar manuales ni materiales comerciales); tono técnico y claro para psicólogos y estudiantes; español de Guatemala; diálogos de ejemplo de usted, verosímiles y breves; evidencia dicha con honestidad (sin exagerar); referencias reales.

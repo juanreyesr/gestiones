@@ -1,14 +1,16 @@
 // Pruebas de las Bibliotecas JJR (fichas clínicas de referencia). Ejecutar: pnpm test:bibliotecas
 import assert from "node:assert/strict";
 import fs from "node:fs";
-import { BIBLIOTECAS, FICHAS_DE_DX_EAPI, fichaClinicaPorId, fichasDeEapi, fichasDeMcea } from "../src/lib/bibliotecas/index.ts";
+import { BIBLIOTECAS, FICHAS_DE_DX_EAPI, fichaBibliotecaPorId, fichaClinicaPorId, fichasDeEapi, fichasDeMcea } from "../src/lib/bibliotecas/index.ts";
 import { FICHA_IDS } from "../src/lib/evaluaciones/fichas/catalogo.ts";
 import { calificarEapi } from "../src/lib/evaluaciones/eapi/calificacion.ts";
-import { fichaClinicaHtml } from "../src/lib/bibliotecas/html.ts";
+import { fichaBibliotecaHtml, fichaClinicaHtml } from "../src/lib/bibliotecas/html.ts";
 import { traducir } from "../src/lib/estudiante/i18n.ts";
 
 let ok = 0;
 const caso = (n, fn) => { fn(); ok++; console.log(`✔ ${n}`); };
+const clinicas = () => BIBLIOTECAS.filter((b) => b.tipo === "clinica").flatMap((b) => b.fichas);
+const tecnicas = () => BIBLIOTECAS.filter((b) => b.tipo === "tecnicas").flatMap((b) => b.fichas);
 const leer = (ruta) => fs.readFileSync(new URL(ruta, import.meta.url), "utf8");
 const entre = (arr, min, max, que) => assert.ok(arr.length >= min && arr.length <= max, `${que}: ${arr.length} (esperado ${min}–${max})`);
 
@@ -24,7 +26,7 @@ caso("Biblioteca «Psicopatología»: 12 fichas con ids estables y únicos", () 
 });
 
 caso("Cada ficha cumple la estructura (cantidades, textos no vacíos y < 600 caracteres)", () => {
-  for (const f of BIBLIOTECAS.flatMap((b) => b.fichas)) {
+  for (const f of clinicas()) {
     entre(f.sintomasClave, 5, 8, `${f.id} síntomas`);
     entre(f.noConfundir, 3, 5, `${f.id} no confundir`);
     entre(f.preguntas, 6, 8, `${f.id} preguntas`);
@@ -42,7 +44,7 @@ caso("Cada ficha cumple la estructura (cantidades, textos no vacíos y < 600 car
 });
 
 caso("El plan solo enlaza fichas terapéuticas que existen y las etapas van de 1 a 5", () => {
-  for (const f of BIBLIOTECAS.flatMap((b) => b.fichas)) {
+  for (const f of clinicas()) {
     for (const p of f.plan) {
       assert.ok([1, 2, 3, 4, 5].includes(p.etapa), `${f.id}: etapa ${p.etapa}`);
       for (const id of p.fichas) assert.ok(FICHA_IDS.includes(id), `${f.id}: ficha ${id} no existe`);
@@ -159,7 +161,7 @@ caso("Lote 3: las fichas clínicas enlazan las técnicas conductuales (4.x)", ()
 });
 
 caso("Lote 4: todas las fichas clínicas cierran con prevención de recaídas (5.1 y 5.3)", () => {
-  for (const f of BIBLIOTECAS.flatMap((b) => b.fichas)) {
+  for (const f of clinicas()) {
     const etapa5 = f.plan.filter((p) => p.etapa === 5).flatMap((p) => p.fichas);
     assert.ok(etapa5.includes("5.1") && etapa5.includes("5.3"), f.id);
   }
@@ -173,6 +175,49 @@ caso("Lote 2 de la biblioteca: seguridad en TEPT, insomnio y duelo", () => {
   assert.match(txt("insomnio"), /apnea/);
   assert.match(txt("duelo-prolongado"), /12 meses/);
   assert.match(txt("depresion-persistente"), /2 años|dos años/);
+});
+
+caso("Biblioteca «Psicoterapia del adulto»: 8 fichas de técnica con su estructura", () => {
+  const b = BIBLIOTECAS.find((x) => x.id === "psicoterapia-adulto");
+  assert.ok(b && b.tipo === "tecnicas");
+  assert.deepEqual(b.fichas.map((f) => f.id), [
+    "formulacion-caso", "alianza-terapeutica", "entrevista-motivacional", "psicoeducacion",
+    "dialogo-socratico", "activacion-conductual", "exposicion", "cierre-recaidas",
+  ]);
+  for (const f of tecnicas()) {
+    entre(f.indicaciones, 4, 6, `${f.id} indicaciones`);
+    entre(f.precauciones, 3, 5, `${f.id} precauciones`);
+    entre(f.pasos, 5, 8, `${f.id} pasos`);
+    entre(f.dialogo, 4, 8, `${f.id} diálogo`);
+    entre(f.errores, 4, 6, `${f.id} errores`);
+    entre(f.preguntas, 3, 4, `${f.id} preguntas`);
+    entre(f.referencias, 2, 4, `${f.id} referencias`);
+    for (const l of f.dialogo) assert.match(l, /^(Terapeuta|Paciente): /, `${f.id}: turno de diálogo`);
+    for (const id of f.fichas) assert.ok(FICHA_IDS.includes(id), `${f.id}: ficha ${id} no existe`);
+    const textos = [f.nombre, f.modelo, f.enPocasPalabras, f.evidencia, f.caso, f.clave, ...f.indicaciones, ...f.precauciones, ...f.pasos, ...f.dialogo, ...f.errores, ...f.preguntas, ...f.referencias];
+    for (const t of textos) assert.ok(typeof t === "string" && t.trim() && t.length < 600, `${f.id}: texto inválido`);
+  }
+  // Ids únicos entre todas las bibliotecas.
+  const todos = BIBLIOTECAS.flatMap((x) => x.fichas.map((f) => f.id));
+  assert.equal(new Set(todos).size, todos.length);
+  // La exposición pide formulación y formación en trauma; las fichas clínicas no se confunden con técnicas.
+  assert.match(JSON.stringify(fichaBibliotecaPorId("exposicion").ficha.precauciones).toLowerCase(), /trauma/);
+  assert.equal(fichaClinicaPorId("exposicion"), null);
+});
+
+caso("Técnicas: vista y PDF del estudiante con caso, preguntas y clave; el terapeuta sin ellos", () => {
+  const { ficha, biblioteca } = fichaBibliotecaPorId("entrevista-motivacional");
+  const est = fichaBibliotecaHtml(ficha, biblioteca, "estudiante");
+  const ter = fichaBibliotecaHtml(ficha, biblioteca, "terapeuta");
+  assert.match(est, /Caso para practicar/);
+  assert.match(est, /Preguntas para practicar/);
+  assert.doesNotMatch(ter, /Caso para practicar|Preguntas para practicar|Clave para recordar/);
+  assert.match(ter, /Ejemplo de diálogo/);
+  const vista = leer("../src/components/bibliotecas/ficha-tecnica-vista.tsx");
+  assert.match(vista, /vista === "estudiante" \? \(/);
+  // Aula y panel usan el visor común (elige por tipo de biblioteca).
+  assert.match(leer("../src/components/estudiante/biblioteca-curso.tsx"), /<FichaBibliotecaVista biblioteca=\{biblioteca\}/);
+  assert.match(leer("../src/components/clinica/fichas-clinicas.tsx"), /<FichaBibliotecaVista/);
 });
 
 console.log(`\n${ok} pruebas correctas.`);

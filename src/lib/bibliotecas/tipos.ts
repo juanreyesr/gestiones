@@ -47,12 +47,48 @@ export type FichaClinica = {
   referencias: string[];
 };
 
-export type Biblioteca = {
+/** Ficha de una técnica o habilidad terapéutica (bibliotecas de psicoterapia). */
+export type FichaTecnica = {
+  /** Id estable (minúsculas y guiones): «entrevista-motivacional». */
   id: string;
-  titulo: string;
-  descripcion: string;
-  fichas: FichaClinica[];
+  nombre: string;
+  /** Modelo o enfoque y autores de origen (1 línea): «Terapia cognitiva (Beck)». */
+  modelo: string;
+  /** 2–3 frases: qué es y para qué sirve en consulta. */
+  enPocasPalabras: string;
+  /** 4–6 situaciones en que está indicada. */
+  indicaciones: string[];
+  /** 3–5 situaciones en que no conviene o hay que adaptarla (con qué hacer en su lugar). */
+  precauciones: string[];
+  /** 5–8 pasos para aplicarla en sesión, en orden. */
+  pasos: string[];
+  /** Diálogo breve de ejemplo (4–8 turnos alternando «Terapeuta:» y «Paciente:»). */
+  dialogo: string[];
+  /** 4–6 errores frecuentes del terapeuta y cómo evitarlos. */
+  errores: string[];
+  /** 1–2 frases sobre la evidencia (honestas, sin exagerar). */
+  evidencia: string;
+  /** Fichas terapéuticas JJR que la apoyan (solo ids existentes). */
+  fichas: FichaId[];
+  /** SOLO estudiantes: caso breve para practicar (4–6 frases, ficticio, Guatemala). */
+  caso: string;
+  /** SOLO estudiantes: 3–4 preguntas de reflexión o práctica. */
+  preguntas: string[];
+  /** SOLO estudiantes: clave para recordar (1 frase). */
+  clave: string;
+  /** Referencias (autor, año, obra), 2–4. */
+  referencias: string[];
 };
+
+type BibliotecaBase = { id: string; titulo: string; descripcion: string };
+/** Biblioteca de trastornos (fichas clínicas). */
+export type BibliotecaClinica = BibliotecaBase & { tipo: "clinica"; fichas: FichaClinica[] };
+/** Biblioteca de técnicas y habilidades terapéuticas. */
+export type BibliotecaTecnicas = BibliotecaBase & { tipo: "tecnicas"; fichas: FichaTecnica[] };
+export type Biblioteca = BibliotecaClinica | BibliotecaTecnicas;
+
+/** Cualquier ficha de una biblioteca. */
+export type FichaBiblioteca = FichaClinica | FichaTecnica;
 
 /** Quién la lee: cambia qué partes se muestran. */
 export type VistaFicha = "terapeuta" | "estudiante";

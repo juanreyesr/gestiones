@@ -2,8 +2,8 @@
 
 import { BookOpen, ChevronLeft, ChevronRight, PenLine, Send, X } from "lucide-react";
 import { useState } from "react";
-import { FichaClinicaVista } from "@/components/bibliotecas/ficha-clinica-vista";
-import { BIBLIOTECAS, fichaClinicaPorId, type VistaFicha } from "@/lib/bibliotecas";
+import { FichaBibliotecaVista } from "@/components/bibliotecas/ficha-biblioteca-vista";
+import { BIBLIOTECAS, fichaBibliotecaPorId, fichaClinicaPorId, type VistaFicha } from "@/lib/bibliotecas";
 import { ModalPortal } from "../modal-portal";
 import { EVENTO_ACCION_FICHA, type AccionFicha } from "./seccion-plegable";
 import { BTN_GHOST } from "./ui";
@@ -28,7 +28,7 @@ export function FichaClinicaModal({
   vista?: VistaFicha;
 }) {
   const [id, setId] = useState(fichaId);
-  const actual = fichaClinicaPorId(id) ?? fichaClinicaPorId(fichaId);
+  const actual = fichaBibliotecaPorId(id) ?? fichaBibliotecaPorId(fichaId);
   if (!actual) return null;
   const { ficha, biblioteca } = actual;
   const i = biblioteca.fichas.findIndex((f) => f.id === ficha.id);
@@ -81,7 +81,7 @@ export function FichaClinicaModal({
               </button>
             </div>
           </div>
-          <FichaClinicaVista
+          <FichaBibliotecaVista
             accionesFicha={
               conAcciones
                 ? (f) => (
@@ -96,6 +96,7 @@ export function FichaClinicaModal({
                   )
                 : undefined
             }
+            biblioteca={biblioteca}
             ficha={ficha}
             vista={vista}
           />
