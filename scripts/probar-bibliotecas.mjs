@@ -127,8 +127,8 @@ caso("PR 2 · Aula: el estudiante solo ve las bibliotecas de su curso (RPC) y en
   assert.match(cli, /rpc\("gestionesjj_estudiante_bibliotecas_curso", \{ p_curso_id: cursoId \}\)/);
   assert.match(cli, /if \(error\) return \[\];/, "sin la migración: lista vacía, el Aula sigue igual");
   const comp = leer("../src/components/estudiante/biblioteca-curso.tsx");
-  assert.match(comp, /<FichaClinicaVista ficha=\{ficha\} tema="claro" vista="estudiante" \/>/);
-  assert.match(comp, /fichaClinicaHtml\(ficha, biblioteca, "estudiante"\)/);
+  assert.match(comp, /<FichaBibliotecaVista biblioteca=\{biblioteca\} ficha=\{ficha\} tema="claro" vista="estudiante" \/>/);
+  assert.match(comp, /fichaBibliotecaHtml\(ficha, biblioteca, "estudiante"\)/);
   assert.doesNotMatch(comp, /vista="terapeuta"|"terapeuta"/);
   assert.match(leer("../src/components/estudiante/curso-estudiante-detalle.tsx"), /<BibliotecaCurso cursoId=\{curso\.cursoId\} \/>/);
   // Docente: pestaña «Bibliotecas» y vista previa como estudiante.
