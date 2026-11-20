@@ -2,12 +2,14 @@
 
 import { useMemo, useState } from "react";
 import { formatoFechaCorta } from "@/lib/clinica/slots";
+import { fichasDeEapi } from "@/lib/bibliotecas";
 import type { PacienteRow } from "@/lib/clinica/types";
-import { NOMBRES_MODULOS, unirEapi, type ModuloEapi } from "@/lib/evaluaciones/eapi/calificacion";
+import { calificarEapi, NOMBRES_MODULOS, unirEapi, type ModuloEapi } from "@/lib/evaluaciones/eapi/calificacion";
 import { MODULOS_EAPI, validarEapi } from "@/lib/evaluaciones/eapi/codigo";
 import { informeEapiHtml, soloModuloEapi, type AplicacionEapi } from "@/lib/evaluaciones/eapi/informe-html";
 import { areasEapi, informePacienteEapi, opcionesPorDefectoEapi } from "@/lib/evaluaciones/eapi/informe-paciente";
 import type { EvaluacionRespuestaRow } from "@/lib/evaluaciones/evaluaciones";
+import { FichasClinicasRelacionadas } from "./fichas-clinicas";
 import { InformeFrame } from "./informe-frame";
 import { InformePacientePanel, PROFESIONAL_INFORME } from "./informe-paciente-panel";
 import { NotasPrivadas } from "./notas-privadas";
@@ -159,6 +161,7 @@ export function InformeEapi({
         </p>
       ) : null}
       <NotasPrivadas onCambio={setNotasPrivadas} pacienteId={paciente.id} respuestaId={actual.id} />
+      <FichasClinicasRelacionadas ids={fichasDeEapi(calificarEapi(efectivos).dx)} />
       <InformeFrame html={html} textoBoton="Descargar PDF (informe profesional)" titulo="Informe EAPI" />
       <InformePacientePanel
         areas={areasEapi(efectivos, Boolean(ant))}

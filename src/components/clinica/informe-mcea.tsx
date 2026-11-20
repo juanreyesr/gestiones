@@ -2,12 +2,14 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { formatoFechaCorta } from "@/lib/clinica/slots";
+import { fichasDeMcea } from "@/lib/bibliotecas";
 import type { PacienteRow } from "@/lib/clinica/types";
 import { atencionDe, fetchInforme, type EvaluacionRespuestaRow } from "@/lib/evaluaciones/evaluaciones";
 import { datosMceaGuardados } from "@/lib/evaluaciones/mcea/codigo";
 import { informeMceaHtml, type AplicacionMcea } from "@/lib/evaluaciones/mcea/informe-html";
 import { AREAS_MCEA, informePacienteMcea, opcionesPorDefectoMcea } from "@/lib/evaluaciones/mcea/informe-paciente";
-import { A } from "@/lib/evaluaciones/mcea/motor";
+import { A, scoreAll } from "@/lib/evaluaciones/mcea/motor";
+import { FichasClinicasRelacionadas } from "./fichas-clinicas";
 import { InformeFrame } from "./informe-frame";
 import { InformePacientePanel, PROFESIONAL_INFORME } from "./informe-paciente-panel";
 import { NotasPrivadas } from "./notas-privadas";
@@ -75,6 +77,7 @@ export function InformeMcea({ actual, paciente, respuestas }: { actual: Evaluaci
         </Field>
       ) : null}
       <NotasPrivadas onCambio={setNotasPrivadas} pacienteId={paciente.id} respuestaId={actual.id} />
+      <FichasClinicasRelacionadas ids={fichasDeMcea(scoreAll(datos))} />
       <InformeFrame html={html} textoBoton="Descargar PDF (informe clínico)" titulo="Informe MCEA" />
       {conAlerta && !atendida ? (
         <p className="border border-red-400/40 bg-red-500/10 p-3 text-sm leading-6 text-red-100">

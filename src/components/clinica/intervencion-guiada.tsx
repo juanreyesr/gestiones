@@ -1,7 +1,7 @@
 "use client";
 
 import { AlertTriangle, ChevronDown, ChevronLeft, Copy, Eye, PenLine, Send } from "lucide-react";
-import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { mensajeEvaluacion } from "@/lib/clinica/mensaje-paciente";
 import { enlaceWhatsApp } from "@/lib/clinica/recordatorio";
 import { agregarTareaASesionReciente } from "@/lib/clinica/sesiones";
@@ -34,7 +34,8 @@ import { CampoFicha } from "../evaluaciones/ficha-campos";
 import { IconoWhatsApp } from "./boton-whatsapp-paciente";
 import { ComparacionEnVivo } from "./comparativa-motivo";
 import { GuiaTerapeutaFicha } from "./informe-ficha";
-import { abrirSeccion, EVENTO_ABRIR_RESPUESTA, EVENTO_EVALUACIONES_CAMBIO } from "./seccion-plegable";
+import { BotonBibliotecaClinica } from "./fichas-clinicas";
+import { abrirSeccion, EVENTO_ABRIR_RESPUESTA, EVENTO_ACCION_FICHA, EVENTO_EVALUACIONES_CAMBIO, type AccionFicha } from "./seccion-plegable";
 import { BTN_ACCENT, BTN_GHOST, SectionCard } from "./ui";
 
 const COLOR_ESTADO: Record<EstadoClave, string> = {
@@ -208,6 +209,24 @@ export function IntervencionGuiada({
 
   const conRespuesta = estados.filter((e) => e.hecha).length;
   const resumen = [`${conRespuesta} de ${FICHAS.length} fichas con respuesta`, sugerencias.length ? `${sugerencias.length} recomendada${sugerencias.length === 1 ? "" : "s"}` : ""].filter(Boolean).join(" · ");
+
+  // Pedidos desde la Biblioteca clínica («Llenarla yo» / «Enviar al paciente»): solo la sección completa.
+  const accionRef = useRef<(d: AccionFicha) => void>(() => {});
+  useEffect(() => {
+    accionRef.current = (d) => {
+      const f = fichaPorId(d.ficha);
+      if (!f) return;
+      abrirSeccion("intervencion");
+      if (d.accion === "llenar") abrirEditor(f.id);
+      else if (window.confirm(`¿Enviar al paciente la ficha ${f.id} · ${f.titulo}?`)) void enviar(f.id, null);
+    };
+  });
+  useEffect(() => {
+    if (modo !== "completo") return;
+    const escuchar = (e: Event) => accionRef.current((e as CustomEvent<AccionFicha>).detail);
+    window.addEventListener(EVENTO_ACCION_FICHA, escuchar);
+    return () => window.removeEventListener(EVENTO_ACCION_FICHA, escuchar);
+  }, [modo]);
 
   const idSeccion = modo === "cita-inicial" ? "intervencion-cita-inicial" : "intervencion";
   const tituloSeccion = modo === "cita-inicial" ? "Cita inicial · Ficha 1.1" : "Intervención guiada";
@@ -420,6 +439,9 @@ export function IntervencionGuiada({
       {avisos}
       {bannerCitaInicial}
 
+      <div className="mb-3 flex justify-end">
+        <BotonBibliotecaClinica />
+      </div>
       <p className="mb-3 text-xs leading-5 text-slate-400">
         Use las fichas usted mismo, en sesión o después: se abren con datos del expediente ya puestos, o se envían al paciente (vacías o con lo ya escrito). Las que usted llena
         quedan en el expediente como «Llenada por el terapeuta» y no generan aviso ni pendiente.
