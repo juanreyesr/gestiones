@@ -430,4 +430,186 @@ export const GUIA_TERAPEUTA: Record<FichaId, GuiaTerapeuta> = {
       "Decidir si conviene un tiempo de preocupación, entrenamiento atencional o pasar a técnicas conductuales.",
     ],
   },
+  "4.1": {
+    base: "Activación conductual (Martell, Dimidjian y Herman-Dunn, 2010; Lewinsohn, 1974, programación de actividades agradables); actuar según el plan y no según el ánimo.",
+    objetivo:
+      "Que el paciente planee actividades pequeñas de gusto (G) y de logro (L) para la semana, las registre con el ánimo antes y después (0–10) y compruebe que actuar mueve el ánimo, sin esperar a tener ganas.",
+    cuandoUsarla: [
+      "Con ánimo bajo, desgano, aislamiento o abandono de actividades, después de la ficha 2.2.",
+      "Cuando el paciente espera «tener ganas» para empezar y se queda en el círculo de hacer menos.",
+      "Como tarea semanal de seguimiento, ajustando el plan en cada sesión.",
+    ],
+    cuandoNoUsarla: [
+      "Con riesgo suicida o de daño activo: primero evaluación de riesgo y plan de seguridad; la ficha no los sustituye.",
+      "En depresión grave, con muy poca energía: no pedir una semana completa; usar pasos muy pequeños (2 a 5 minutos), pocos días, y revisar el riesgo en cada sesión.",
+      "Si las actividades se vuelven una lista de obligaciones que aumenta la culpa o el agotamiento (descanso y cuidado también cuentan).",
+      "En agotamiento físico importante o duelo reciente, sin adaptar el ritmo.",
+    ],
+    presentar: [
+      "Retomar el círculo del desánimo (2.2) y explicar la regla: actuar según el plan, no según el ánimo; las ganas suelen llegar después.",
+      "Explicar la diferencia entre actividades de gusto (G) y de logro (L) y pedir ejemplos propios de cada tipo, pequeños y concretos.",
+      "En sesión, elegir juntos una actividad por día (al menos tres días), mezclando G y L, y fijar día y hora; si dudó (más de 7 de dificultad), hacerla más pequeña.",
+      "Explicar el registro: ánimo antes y después (0–10) y si la hizo; aclarar que no hacerla también es un dato y no un fracaso.",
+      "Anticipar un obstáculo probable y acordar un plan B (versión de cinco minutos).",
+    ],
+    errores: [
+      "Proponer actividades demasiado grandes o muchas a la vez.",
+      "Convertir la ficha en una evaluación del paciente: el interés está en lo que descubre sobre su ánimo.",
+      "Olvidar las actividades de logro y quedarse solo en las agradables (o al revés).",
+      "Esperar subidas grandes del ánimo; el cambio inicial suele ser pequeño, de uno o dos puntos.",
+      "Ajustar el plan según el ánimo de ese día y no según lo acordado.",
+    ],
+    revisar: [
+      "Leer el plan día por día: qué hizo, qué no y qué se interpuso.",
+      "Comparar el ánimo antes y después; destacar las actividades que más lo movieron.",
+      "Preguntar qué aprendió sobre la relación entre actuar y sentirse.",
+      "Ajustar el plan de la semana siguiente: repetir lo que sirvió, achicar lo que costó, agregar un paso o una actividad de acuerdo con sus valores (ficha 1.4).",
+      "Volver a revisar riesgo y ánimo general si hay desesperanza.",
+    ],
+  },
+  "4.2": {
+    base: "Relajación muscular progresiva (Jacobson, 1938; Bernstein y Borkovec, 1973) y relajación aplicada (Öst, 1987); respiración lenta con exhalación más larga (unas 6 respiraciones por minuto).",
+    objetivo:
+      "Que el paciente aprenda dos herramientas de calma, la respiración lenta (inhalar unos 4 s, exhalar unos 6 s, 5 minutos) y la relajación muscular breve por grupos, las practique a diario y registre la tensión antes y después (0–10).",
+    cuandoUsarla: [
+      "Con tensión muscular, inquietud, dificultad para dormir o activación fisiológica alta (ansiedad generalizada, estrés, adaptación).",
+      "Después de la psicoeducación de la ansiedad (2.1), cuando el paciente entiende la respuesta de alarma.",
+      "Como recurso de calma entre sesiones, practicado en momentos tranquilos antes de usarlo en situaciones difíciles.",
+    ],
+    cuandoNoUsarla: [
+      "En trastorno de pánico, no usarla como conducta de seguridad durante la exposición o ante los síntomas: sostiene la idea de que la ansiedad es peligrosa; usarla solo como práctica de calma general y acordar con el paciente cuándo.",
+      "Si la respiración lenta le provoca mareo, hormigueo o más ansiedad: pausar, ajustar el ritmo (menos profunda) o usar solo la relajación muscular.",
+      "Con dolor, lesiones musculares o condiciones médicas que limiten tensar músculos: omitir o adaptar los grupos afectados.",
+      "Si el paciente la usa para evitar la ansiedad o para escapar de situaciones temidas.",
+    ],
+    presentar: [
+      "Explicar para qué sirve y aclarar que es una herramienta de calma que se aprende con práctica, no un recurso para evitar la ansiedad.",
+      "Practicar la respiración lenta en sesión: 4 s inhalando por la nariz, 6 s exhalando por la boca, durante unos 5 minutos, y preguntar cómo se siente.",
+      "Practicar en sesión la relajación muscular por grupos (manos y brazos, cara y cuello, hombros y espalda, abdomen, piernas y pies): tensar unos 5 segundos y soltar 15 a 20.",
+      "Acordar hora y lugar fijos para practicar, un ejercicio por día (o ambos), y explicar el registro de tensión antes y después (0–10).",
+      "Dar el aviso de parar si se marea o siente más ansiedad, y avisarle al terapeuta en la próxima sesión.",
+    ],
+    errores: [
+      "Esperar resultados inmediatos o presentarla como «cura» de la ansiedad.",
+      "Prescribirla para usarla solo en el momento de la crisis, sin práctica previa.",
+      "Pedir una respiración profunda y rápida: aumenta el mareo y puede parecerse a hiperventilar.",
+      "Ignorar que la práctica se vuelve un escape o un ritual de seguridad.",
+      "Tensar con dolor o durante más de unos segundos.",
+    ],
+    revisar: [
+      "Leer el registro: días practicados, minutos, y diferencia de tensión antes y después.",
+      "Preguntar qué ejercicio le sentó mejor y qué molestias tuvo (mareo, hormigueo, más ansiedad).",
+      "Revisar si la usa como herramienta de calma o como forma de evitar; en pánico, confirmar que no la usa como conducta de seguridad.",
+      "Ajustar tiempos y ritmo, y decidir si pasa a la versión corta (sin tensar) o a otra técnica (4.3 o 4.4).",
+    ],
+  },
+  "4.3": {
+    base: "Control de estímulos y posposición de la preocupación (Borkovec, Wilkinson, Folensbee y Lerman, 1983; Wells, 2009, terapia metacognitiva).",
+    objetivo:
+      "Que el paciente posponga la preocupación a un momento fijo del día (15 a 20 minutos, mismo lugar, lejos de la hora de dormir), anote las preocupaciones durante el día, las revise en ese momento y separe las que tienen solución de las que debe soltar.",
+    cuandoUsarla: [
+      "Con preocupación excesiva y difícil de controlar (ansiedad generalizada, rumiación, estrés).",
+      "Después de 2.3 (por qué vuelven los pensamientos) o 3.4 (lo que sí controlo y lo que no).",
+      "Cuando la preocupación ocupa gran parte del día y el paciente cree que no puede dejar de pensar.",
+    ],
+    cuandoNoUsarla: [
+      "En TOC, no usarla con las obsesiones: posponer o revisar se vuelve un ritual; preferir exposición con prevención de respuesta guiada.",
+      "En crisis o con riesgo sin evaluación previa.",
+      "Si el paciente la entiende como «prohibido preocuparse» o intenta suprimir el pensamiento.",
+      "En depresión grave, con rumiación de desesperanza: empezar por activación conductual (4.1) y revisar riesgo.",
+    ],
+    presentar: [
+      "Explicar la lógica: la preocupación se vuelve un hábito que aparece a toda hora; se la cita a un momento fijo en vez de pelear con ella.",
+      "Elegir con el paciente hora, lugar y duración (15 a 20 minutos; no justo antes de dormir ni en la cama).",
+      "Enseñar a anotar la preocupación en pocas palabras durante el día y volver a la tarea, sin analizarla ni intentar no pensar.",
+      "Practicar la revisión en sesión con una o dos preocupaciones: ¿tiene solución? Si sí, primer paso concreto; si no, dejarla ir con calma.",
+      "Acordar qué hacer si la preocupación llega fuera de horario (anotarla y posponer) y la escala de cuánto le funcionó.",
+    ],
+    errores: [
+      "Convertir el tiempo de preocupación en una sesión larga de rumiación; cerrar a la hora acordada.",
+      "Tratar de suprimir el pensamiento en lugar de posponerlo.",
+      "Programarlo antes de dormir o en la cama.",
+      "Resolver todas las preocupaciones como problemas, incluso las que no dependen de la persona.",
+      "Pedir que se anoten demasiado detalle: la nota es una palabra clave.",
+    ],
+    revisar: [
+      "Revisar si cumplió con la hora y el lugar, y cuántas veces logró posponer.",
+      "Leer la lista: cuáles tenían solución y qué paso dio; cuáles pudo soltar y cómo.",
+      "Preguntar qué notó de las preocupaciones al llegar el momento (¿perdieron fuerza?).",
+      "Ajustar hora, duración o forma de anotar, y decidir si se pasa a entrenamiento atencional o a 4.2.",
+    ],
+  },
+  "4.4": {
+    base: "Exposición gradual y aprendizaje inhibitorio (Craske, Treanor, Conway, Zbozinek y Vervliet, 2014); modelo de evitación y exposición (Barlow); exposición con prevención de respuesta en TOC (Foa, Yadin y Lichner, 2012).",
+    objetivo:
+      "Que el paciente y el terapeuta armen en sesión una escalera de 6 a 10 pasos, de lo menos a lo más difícil (malestar esperado 0–10), identifiquen las conductas de seguridad a dejar y registren cada práctica guiada (malestar al inicio, máximo y al final, y qué aprendió).",
+    cuandoUsarla: [
+      "Con miedo y evitación bien identificados en la formulación (pánico, agorafobia, ansiedad social, fobias específicas, ansiedad por la salud, TOC).",
+      "Después de la formulación del caso y la psicoeducación de la evitación y la ansiedad (2.1 y 2.4).",
+      "Cuando el paciente comprende la lógica y acepta practicar con acompañamiento.",
+    ],
+    cuandoNoUsarla: [
+      "Sin una formulación del caso ni la psicoeducación previa (2.1 y 2.4).",
+      "Con riesgo activo (suicida o de daño), crisis o consumo de sustancias que interfiera: primero seguridad y estabilización.",
+      "En TOC, la escalera incluye siempre prevención de respuesta y la planifica y conduce el terapeuta; no entregarla como tarea autónoma.",
+      "En trauma complejo o sin recursos de regulación, sin una planificación específica.",
+      "Nunca enviarla ni usarla como instrucciones para que el paciente se exponga solo a lo más temido.",
+    ],
+    presentar: [
+      "Explicar la lógica del aprendizaje inhibitorio: el objetivo es aprender que el malestar sube, llega a un máximo y baja, y que lo temido no ocurre o se puede manejar, no que el malestar desaparezca.",
+      "Llenar juntos la primera sección en sesión: la meta final del paciente y 6 a 10 pasos ordenados de menor a mayor malestar esperado (0–10); empezar la práctica por un paso de 3 a 4.",
+      "Identificar las conductas de seguridad y acordar cuáles dejar en cada escalón, sin imponer cambios que el paciente no pueda sostener.",
+      "Practicar el primer escalón en sesión, con el paciente midiendo el malestar al inicio, el máximo y al final, y subrayando lo que aprendió.",
+      "Acordar con precisión qué práctica guiada hará entre sesiones (si la hace), con qué frecuencia y cómo se registra; no avanzar de escalón sin revisar.",
+    ],
+    errores: [
+      "Empezar por los pasos más difíciles o saltar escalones demasiado pronto.",
+      "Permitir conductas de seguridad que anulan el aprendizaje, o cortar la práctica en el pico de malestar.",
+      "Medir el éxito por la ausencia de ansiedad en vez de por lo aprendido.",
+      "Dejar al paciente practicar sin indicación del terapeuta o sin acuerdo previo.",
+      "En TOC, omitir la prevención de respuesta o dejar que el paciente la maneje solo.",
+    ],
+    revisar: [
+      "Leer cada práctica: malestar al inicio, máximo y al final, y qué aprendió.",
+      "Revisar si se usaron conductas de seguridad y qué efecto tuvieron.",
+      "Comparar el malestar esperado con el real y qué predicciones se confirmaron o no.",
+      "Decidir con el paciente el siguiente escalón (o repetir el actual), ajustando la escalera si hace falta.",
+      "Volver a revisar riesgo y ánimo general, y planificar la fase de mantenimiento y prevención de recaídas.",
+    ],
+  },
+  "4.5": {
+    base: "Intenciones de implementación (Gollwitzer, 1999, «si… entonces…») y solución de problemas (D'Zurilla y Nezu).",
+    objetivo:
+      "Que el paciente convierta una meta en planes concretos «si pasa X (cuándo, dónde, señal), entonces haré Y», anticipe los obstáculos probables, tenga un plan B y mida su confianza (0–10).",
+    cuandoUsarla: [
+      "Cuando la persona tiene claro lo que quiere hacer pero no lo concreta (tareas de activación, hábitos, citas médicas, sueño).",
+      "Para dar seguimiento a una meta de la ficha 1.1 o a una actividad de 4.1.",
+      "En cualquier etapa del tratamiento cuando las intenciones no se traducen en acciones.",
+    ],
+    cuandoNoUsarla: [
+      "Con riesgo suicida o de daño activo: primero evaluación y plan de seguridad.",
+      "Si la meta es vaga o depende de otros: aclarar primero la meta (ficha 1.1).",
+      "En TOC, no usarla para anticipar y planear contra las obsesiones: puede alimentar la comprobación.",
+      "Si el plan se vuelve una exigencia rígida que aumenta la culpa cuando no se cumple.",
+    ],
+    presentar: [
+      "Explicar la idea: decidir de antemano cuándo y dónde, así la señal dispara la acción sin depender de las ganas.",
+      "Elegir una meta concreta y pequeña con el paciente y escribir juntos el primer plan «si… entonces…» (señal clara + acción pequeña).",
+      "Pedir hasta dos planes más para la semana, con situación, momento y lugar reconocibles.",
+      "Anticipar los obstáculos más probables y escribir un plan B para cada uno en la misma forma.",
+      "Preguntar la confianza (0–10); si es 6 o menos, achicar el plan o aclarar la señal.",
+    ],
+    errores: [
+      "Escribir un «si» vago («si tengo tiempo») o una acción grande.",
+      "Hacer demasiados planes a la vez.",
+      "Olvidar los obstáculos o el plan B.",
+      "Tomar un plan no cumplido como falta de voluntad en lugar de revisar la señal y el obstáculo.",
+    ],
+    revisar: [
+      "Leer cada plan y preguntar cuál se cumplió, cuál no y qué señal ayudó o no.",
+      "Revisar qué obstáculos aparecieron y si el plan B sirvió.",
+      "Ajustar el «si» o el «entonces» de lo que no se cumplió, achicando la acción.",
+      "Comparar la confianza con lo logrado y elegir el próximo plan o la próxima meta.",
+    ],
+  },
 };
