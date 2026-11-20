@@ -38,11 +38,11 @@ const valorDeMuestra = (c) => {
 const respuestasDeMuestra = (f) => Object.fromEntries(camposDeFicha(f).map((c) => [c.id, valorDeMuestra(c)]));
 const fila = (instrumento, datos, fecha = "2026-11-10", id = Math.random().toString(36).slice(2)) => ({ id, instrumento, datos, fecha, createdAt: `${fecha}T10:00:00Z`, respondienteNombre: "Ana" });
 
-caso("Catálogo: 8 fichas, números únicos «etapa.n», etapa válida", () => {
-  assert.equal(FICHAS.length, 8);
+caso("Catálogo: 12 fichas, números únicos «etapa.n», etapa válida", () => {
+  assert.equal(FICHAS.length, 12);
   assert.deepEqual(FICHAS.map((f) => f.id), [...FICHA_IDS]);
-  assert.equal(new Set(FICHAS.map((f) => f.id)).size, 8);
-  assert.deepEqual(FICHAS.map((f) => f.id), ["1.1", "1.2", "1.3", "1.4", "2.1", "2.2", "2.3", "2.4"]);
+  assert.equal(new Set(FICHAS.map((f) => f.id)).size, 12);
+  assert.deepEqual(FICHAS.map((f) => f.id), ["1.1", "1.2", "1.3", "1.4", "2.1", "2.2", "2.3", "2.4", "3.1", "3.2", "3.3", "3.4"]);
   for (const f of FICHAS) {
     assert.equal(Number(f.id.split(".")[0]), f.etapa, f.id);
     assert.ok(ETAPAS_FICHAS[f.etapa], f.id);
@@ -456,7 +456,7 @@ caso("Sugeridas: solo cuenta el último EAPI (el más reciente manda)", () => {
 
 caso("Sugeridas: MCEA alto → ánimo, ansiedad y pensamientos; MCEA bajo → nada extra", () => {
   const s = fichasSugeridas([mcea(true, ["ansiedad", "pensamientos"])]);
-  assert.deepEqual(s.map((x) => x.ficha), ["1.1", "1.3", "2.1", "2.2", "2.3", "2.4"]);
+  assert.deepEqual(s.map((x) => x.ficha), ["1.1", "1.3", "2.1", "2.2", "2.3", "2.4", "3.1", "3.2", "3.3"]);
   assert.match(s.find((x) => x.ficha === "2.2").motivos.join(" "), /MCEA/);
   assert.deepEqual(fichasSugeridas([mcea(false, [])]).map((x) => x.ficha), ["1.1", "1.3"]);
 });
@@ -574,8 +574,8 @@ const enlace = (id, estado = "abierta", fecha = "2026-11-12", borrador = null) =
 
 caso("B.1 Estado por ficha: sin usar / enviada / respondida por el paciente / llenada por el terapeuta, con fecha", () => {
   const sin = estadosFichas([], []);
-  assert.equal(sin.length, 8);
-  assert.deepEqual(sin.map((e) => e.estado), Array(8).fill("sin-usar"));
+  assert.equal(sin.length, 12);
+  assert.deepEqual(sin.map((e) => e.estado), Array(12).fill("sin-usar"));
   assert.equal(sin[0].etiqueta, "Sin usar");
   assert.equal(sin[0].fecha, null);
   const r11 = ficha("1.1", {}, {}, "2026-11-03");
@@ -605,7 +605,8 @@ caso("B.1 Siguiente en la ruta: la primera de la etapa siguiente cuando las de l
   assert.deepEqual(siguientesEnRuta(est("1.1", "1.2", "1.3")), ["1.4"]);
   assert.deepEqual(siguientesEnRuta(est("1.1", "1.2", "1.3", "1.4")), ["2.1"], "etapa 1 completa: la primera de la 2");
   assert.deepEqual(siguientesEnRuta(est("1.1", "1.2", "1.3", "1.4", "2.1", "2.2")), ["2.3"]);
-  assert.deepEqual(siguientesEnRuta(est("1.1", "1.2", "1.3", "1.4", "2.1", "2.2", "2.3", "2.4")), [], "ruta completa (este lote no tiene etapa 3)");
+  assert.deepEqual(siguientesEnRuta(est("1.1", "1.2", "1.3", "1.4", "2.1", "2.2", "2.3", "2.4")), ["3.1"], "etapa 2 completa: la primera de la 3");
+  assert.deepEqual(siguientesEnRuta(est("1.1", "1.2", "1.3", "1.4", "2.1", "2.2", "2.3", "2.4", "3.1", "3.2", "3.3", "3.4")), [], "ruta completa (aún no hay etapas 4 y 5)");
   assert.deepEqual(siguientesEnRuta(est("2.1")), ["2.2"], "la etapa actual es la más avanzada con alguna ficha hecha");
   // Una ficha llenada por el terapeuta también cuenta como hecha.
   assert.deepEqual(siguientesEnRuta(estadosFichas([delTerapeuta("1.1")], [])), ["1.2"]);
@@ -882,6 +883,22 @@ caso("v1.3: la ficha 1.1 se sugiere en la cita inicial (expediente sin sesiones 
   assert.match(ig, /sugerencia-cita-inicial/);
   assert.match(ig, /\(citaInicial \|\| modo === "cita-inicial"\) && !e11\.hecha/);
   assert.match(leer("../src/components/clinica/sesion-activa.tsx"), /!sesionAnterior \? <IntervencionGuiada modo="cita-inicial"/);
+});
+
+caso("Lote 2: el MCEA sugiere 3.1 y 3.3 por pensamientos automáticos y 3.2 por formas de pensar", () => {
+  const src = leer("../src/lib/evaluaciones/fichas/sugeridas.ts");
+  assert.match(src, /automaticos: \["3\.1", "3\.3"\]/);
+  assert.match(src, /distorsiones: \["3\.2"\]/);
+  assert.match(src, /sc\.PAN && sc\.PAN\.lvl >= 2/);
+  assert.match(src, /\(A\(d, `DC_\$\{i\}`\) \?\? 0\) >= 3/);
+  // Etapa 3 completa: escalas 0–10, cierre común y guía del terapeuta con las advertencias de TOC.
+  for (const id of ["3.1", "3.2", "3.3", "3.4"]) {
+    const f = fichaPorId(id);
+    assert.equal(f.etapa, 3);
+    assert.ok(camposDeFicha(f).some((c) => c.id === "para_sesion"), `${id}: cierre común`);
+    assert.ok(GUIA_TERAPEUTA[id]?.presentar.length >= 3, `${id}: guía`);
+  }
+  assert.match(JSON.stringify(GUIA_TERAPEUTA["3.3"].cuandoNoUsarla), /TOC|obsesi/);
 });
 
 console.log(`\n${ok} pruebas correctas.`);

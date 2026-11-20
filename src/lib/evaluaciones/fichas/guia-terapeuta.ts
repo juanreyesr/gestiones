@@ -290,4 +290,144 @@ export const GUIA_TERAPEUTA: Record<FichaId, GuiaTerapeuta> = {
       "Revisar las evitaciones sutiles y cómo se relacionan con el miedo.",
     ],
   },
+  "3.1": {
+    base: "Registro de pensamientos disfuncionales (Beck, 1979; J. S. Beck, 2011/2020; Greenberger y Padesky, 2016).",
+    objetivo:
+      "Que el paciente aprenda a atrapar el pensamiento automático en el momento, a medir cuánto lo cree y la intensidad de la emoción (0–10), a escribir una respuesta más equilibrada y a ver cuánto cambia su malestar.",
+    cuandoUsarla: [
+      "Cuando ya entiende el ciclo situación, pensamiento, emoción y conducta (ficha 1.3) y reconoce sus pensamientos como interpretaciones.",
+      "Con ansiedad, ánimo bajo, enojo o vergüenza ligados a pensamientos automáticos identificables.",
+      "Como tarea entre sesiones, después de haber llenado un registro juntos en sesión.",
+    ],
+    cuandoNoUsarla: [
+      "En crisis o con riesgo suicida o de daño sin evaluación previa: la reestructuración no sustituye la evaluación de riesgo.",
+      "En TOC, no usarla con las obsesiones: buscar una respuesta «equilibrada» puede volverse un ritual de comprobación; preferir 2.3, 2.4 y exposición con prevención de respuesta guiada.",
+      "En depresión grave, con poca energía y concentración: empezar por la activación conductual (ficha 2.2) y dejar el registro para después.",
+      "Si el paciente la vive como «pensar en positivo» o como una obligación de convencerse.",
+    ],
+    presentar: [
+      "Explicar qué es un pensamiento automático y enseñar la pregunta «¿qué pasó por mi mente justo antes de sentirme así?».",
+      "Llenar juntos la primera fila en sesión con un episodio real y reciente, columna por columna.",
+      "Distinguir el pensamiento (una frase) de la emoción (una palabra con su intensidad) y pedir los dos números (0–10).",
+      "Para la respuesta equilibrada, preguntar qué le diría a una persona querida que lo viviera; no aceptar frases forzadas.",
+      "Pedir uno o dos registros más esta semana, con episodios reales, sin buscar los más difíciles.",
+    ],
+    errores: [
+      "Mezclar pensamiento y emoción («pensé que me sentía mal»).",
+      "Exigir una respuesta equilibrada que el paciente no cree: se vuelve un eslogan.",
+      "Discutir o refutar el pensamiento en lugar de explorarlo con curiosidad.",
+      "Esperar que el malestar baje siempre; a veces el cambio es pequeño o viene después.",
+    ],
+    revisar: [
+      "Leer cada registro y comparar «cuánto lo creía» y la emoción antes y después.",
+      "Buscar pensamientos o temas que se repiten (indicio de creencias más profundas).",
+      "Preguntar qué respuesta equilibrada le resultó creíble y cuál no, y por qué.",
+      "Decidir si sigue 3.2 (nombrar las formas de pensar) o 3.3 (examinar las pruebas de un pensamiento clave).",
+    ],
+  },
+  "3.2": {
+    base: "Distorsiones cognitivas (Beck, 1979; Burns, 1980), presentadas en lenguaje sencillo.",
+    objetivo:
+      "Que el paciente reconozca las formas de pensar que más usa, las vea como atajos comunes y no como defectos, y practique una pregunta que le ayude a mirar 2 o 3 pensamientos propios de otra manera.",
+    cuandoUsarla: [
+      "Después de 3.1, cuando ya identifica pensamientos automáticos pero se queda sin recursos para cuestionarlos.",
+      "Cuando el MCEA marca distorsiones con puntaje alto (3 o más).",
+      "Con patrones de pensamiento rígidos o muy repetidos, de ansiedad, ánimo bajo o enojo.",
+    ],
+    cuandoNoUsarla: [
+      "En crisis o con riesgo sin evaluación previa.",
+      "En TOC, no usarla para etiquetar o discutir las obsesiones: puede convertirse en comprobación.",
+      "En depresión grave, empezar por activación conductual (ficha 2.2).",
+      "Si el paciente se juzga por «pensar mal» o usa los nombres como un reproche.",
+    ],
+    presentar: [
+      "Normalizar: a todas las personas nos pasa, son atajos de la mente y no defectos.",
+      "Recorrer la lista con un ejemplo cotidiano de cada forma, sin pedir que memorice los nombres.",
+      "Pedir que marque las que reconoce y que identifique cuál es la más frecuente, con una frase real.",
+      "Practicar en sesión con un pensamiento suyo: nombrar la forma, elegir una pregunta y escribir otra forma de verlo.",
+      "Dejar de tarea otros dos pensamientos, aclarando que no hay un nombre «correcto».",
+    ],
+    errores: [
+      "Convertirla en un examen de vocabulario o en un debate sobre cuál es la etiqueta exacta.",
+      "Usar los nombres como reproche («está catastrofizando»).",
+      "Dar por hecho que toda emoción intensa es una distorsión: a veces la situación es realmente difícil.",
+      "Dejar de lado los hechos: la pregunta útil sirve para explorar, no para forzar otra conclusión.",
+    ],
+    revisar: [
+      "Revisar cuáles formas marcó y si coinciden con lo que se observa en sesión.",
+      "Leer las tres prácticas y preguntar qué pregunta le resultó más útil.",
+      "Notar si la otra forma de verlo le convenció (0–10) o si sonó forzada.",
+      "Decidir si sigue 3.3 con un pensamiento que le pese mucho.",
+    ],
+  },
+  "3.3": {
+    base: "Reestructuración cognitiva y preguntas socráticas (Beck, 1979; J. S. Beck, 2011/2020; Padesky, 1993, «Socratic questioning»).",
+    objetivo:
+      "Que el paciente tome un solo pensamiento que le pesa, lo trate como una hipótesis, examine los hechos a favor y en contra, busque otra explicación y llegue a un pensamiento equilibrado, midiendo cuánto lo cree antes y después.",
+    cuandoUsarla: [
+      "Cuando hay un pensamiento nuclear o muy repetido que sostiene la emoción.",
+      "Después de 3.1 y 3.2, con el paciente ya capaz de distinguir pensamiento de hecho.",
+      "Cuando el MCEA marca pensamientos automáticos en nivel 2 o más.",
+    ],
+    cuandoNoUsarla: [
+      "En crisis o con riesgo sin evaluación previa: no sustituye la evaluación del riesgo.",
+      "En TOC, no usarla con las obsesiones: «examinar las pruebas» puede volverse un ritual de comprobación; preferir 2.3, 2.4 y EPR guiada.",
+      "En depresión grave, empezar por activación conductual (ficha 2.2); con desesperanza intensa, abordar primero el riesgo.",
+      "Si el pensamiento es en gran parte cierto (p. ej., una pérdida real): pasar a solución de problemas o aceptación (ficha 3.4).",
+    ],
+    presentar: [
+      "Elegir con el paciente UN pensamiento concreto y pedir cuánto se lo cree (0–10) antes de examinarlo.",
+      "Explicar la idea del juez que escucha a las dos partes, y que las pruebas son hechos, no sentimientos.",
+      "Con preguntas socráticas, ayudarle a buscar los hechos a favor y en contra, y otras explicaciones (¿qué le diría a un amigo?, ¿qué es lo peor, lo mejor y lo más probable?).",
+      "Pedir una frase equilibrada que el paciente pueda creer, y medir de nuevo cuánto se cree el pensamiento y la emoción.",
+      "Dejar el resto de la ficha para completar en casa con otro pensamiento.",
+    ],
+    errores: [
+      "Dirigir al paciente hacia la conclusión que el terapeuta prefiere; la curiosidad debe ser genuina.",
+      "Aceptar «sentimientos» como pruebas.",
+      "Sobrecargar con varios pensamientos a la vez.",
+      "Insistir cuando el pensamiento no cambia: explorar qué más pesa en lugar de repetir el ejercicio.",
+    ],
+    revisar: [
+      "Comparar cuánto cree el pensamiento antes y después, y la emoción.",
+      "Revisar si las pruebas son hechos y si faltó mirar algo.",
+      "Preguntar cómo le sonó la frase equilibrada y ajustarla hasta que sea creíble.",
+      "Valorar si aparece una creencia más profunda detrás del pensamiento y planear cómo trabajarla.",
+    ],
+  },
+  "3.4": {
+    base: "Solución de problemas (D'Zurilla y Nezu), intolerancia a la incertidumbre en la preocupación (Dugas y Robichaud, 2007) y aceptación (Hayes).",
+    objetivo:
+      "Que el paciente separe una preocupación en lo que depende de él, lo que influye en parte y lo que no, dé un paso concreto sobre lo controlable y practique formas de soltar lo demás.",
+    cuandoUsarla: [
+      "Con preocupación excesiva, ansiedad generalizada, rumiación o estrés por situaciones inciertas.",
+      "Después de 2.3, cuando el paciente ya distingue pensar para resolver de darle vueltas.",
+      "Cuando la preocupación mezcla problemas reales resolubles con asuntos que no dependen de él.",
+    ],
+    cuandoNoUsarla: [
+      "En crisis o con riesgo sin evaluación previa.",
+      "En TOC, no usarla con las obsesiones: separar lo controlable puede alimentar la comprobación; preferir EPR guiada.",
+      "En depresión grave, empezar por activación conductual (ficha 2.2) antes de pedir planes.",
+      "Si el paciente puede entender «soltar» como resignarse o minimizar un problema real.",
+    ],
+    presentar: [
+      "Explicar con un ejemplo cotidiano que la preocupación mezcla cosas muy distintas.",
+      "Elegir una preocupación concreta y escribir juntos las tres listas: depende de mí, influyo en parte y no depende de mí.",
+      "Elegir un paso pequeño, concreto y posible esta semana, con día y lugar.",
+      "Explorar con el paciente formas de soltar lo que no controla y elegir una o dos para ensayar; aclarar que soltar no es rendirse.",
+      "Acordar cómo revisar el paso la próxima sesión, sin reproches si no lo logró.",
+    ],
+    errores: [
+      "Prometer certeza o tranquilizar con «no va a pasar nada».",
+      "Convertir todo en un problema por resolver, incluso lo que no depende de la persona.",
+      "Pedir demasiados pasos a la vez.",
+      "Presentar soltar como una orden de «dejar de preocuparse»: aumenta la rumiación.",
+    ],
+    revisar: [
+      "Leer qué puso en cada parte y si algo está mal ubicado.",
+      "Preguntar si dio el paso y qué pasó; si no, qué lo impidió y ajustar.",
+      "Revisar qué forma de soltar usó y qué efecto tuvo.",
+      "Decidir si conviene un tiempo de preocupación, entrenamiento atencional o pasar a técnicas conductuales.",
+    ],
+  },
 };
