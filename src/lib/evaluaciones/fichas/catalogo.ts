@@ -1,6 +1,6 @@
 /**
  * Fichas terapéuticas JJR (TCC): catálogo declarativo y parte PARA EL PACIENTE
- * de cada ficha (lotes 1 a 3: etapas 1 «Evaluación y formulación», 2 «Psicoeducación», 3 «Técnicas cognitivas» y 4 «Técnicas conductuales»).
+ * de cada ficha (lotes 1 a 4: etapas 1 «Evaluación y formulación», 2 «Psicoeducación», 3 «Técnicas cognitivas», 4 «Técnicas conductuales» y 5 «Prevención de recaídas»; biblioteca completa).
  * Especificación clínica: docs/instrumentos/Fichas_terapeuticas_JJR_especificacion.md
  *
  * Este archivo lo importa el formulario público (/evaluacion/<token>) y el
@@ -9,7 +9,7 @@
  * Sin imports en tiempo de ejecución.
  */
 
-export const FICHA_IDS = ["1.1", "1.2", "1.3", "1.4", "2.1", "2.2", "2.3", "2.4", "3.1", "3.2", "3.3", "3.4", "4.1", "4.2", "4.3", "4.4", "4.5"] as const;
+export const FICHA_IDS = ["1.1", "1.2", "1.3", "1.4", "2.1", "2.2", "2.3", "2.4", "3.1", "3.2", "3.3", "3.4", "4.1", "4.2", "4.3", "4.4", "4.5", "5.1", "5.2", "5.3"] as const;
 export type FichaId = (typeof FICHA_IDS)[number];
 
 export const TIPOS_CAMPO = ["texto", "parrafo", "escala", "lista", "casillas", "tabla"] as const;
@@ -82,7 +82,7 @@ export function rotuloFila(c: CampoTabla, i: number): string {
 
 export type Ficha = {
   id: FichaId;
-  /** Etapa del tratamiento (1 a 5; por ahora hay fichas de las etapas 1 a 4). */
+  /** Etapa del tratamiento (1 a 5; la biblioteca está completa). */
   etapa: number;
   titulo: string;
   /** Para qué sirve (una línea; se muestra al asignar). */
@@ -1803,6 +1803,448 @@ export const FICHAS: readonly Ficha[] = [
       campos: [paraLaSesion],
     },
   },
+  /* ============================ 5.1 ============================ */
+  {
+    id: "5.1",
+    etapa: 5,
+    titulo: "Mis señales de alerta",
+    paraQue: "Reconocer sus señales tempranas y situaciones de riesgo, distinguir un tropiezo de una recaída y tener un semáforo con qué hacer en cada color.",
+    tiempo: "25 a 35 minutos",
+    explicacion: [
+      "Llegar hasta esta etapa es un logro suyo: usted ya aprendió formas distintas de pensar, de actuar y de cuidarse. El tratamiento termina, pero lo aprendido se queda con usted. Esta ficha le ayuda a cuidar ese avance: aprender a reconocer a tiempo cuando algo empieza a moverse otra vez, para actuar antes de que crezca.",
+      "Casi siempre hay señales tempranas, pequeñas y propias de cada persona. Por ejemplo, alguien nota que, cuando empieza a tener problemas, deja de contestar mensajes, duerme menos, se salta el desayuno y piensa «para qué intento». Ninguna de esas cosas es grave por sí sola, pero juntas avisan. Conocer sus señales es como conocer el cielo antes de la lluvia: no la evita, pero le da tiempo de abrir el paraguas.",
+      "Tener un mal día, o una mala semana, no significa que todo se perdió. Un tropiezo es volver por un rato a un viejo hábito o a un malestar conocido, algo que le puede pasar a cualquiera, sobre todo en épocas de cansancio, pérdidas o mucha carga. Se vuelve una recaída cuando el malestar se instala y dura, y vuelve a afectar su vida diaria como al principio. Un tropiezo no borra lo que usted logró; es una oportunidad de usar lo aprendido.",
+      "Por eso armará un semáforo propio: en verde, cómo es cuando está bien; en amarillo, qué señales le avisan y qué hará; y en rojo, qué hará si siente que se está hundiendo. En rojo no hay que esperar ni aguantar solo: busque ayuda de inmediato, con su psicólogo o con una persona de confianza. Y si aparecen ideas de hacerse daño, comuníquese enseguida con alguna de las líneas de ayuda de esta ficha.",
+    ],
+    secciones: [
+      {
+        id: "senales",
+        titulo: "Mis señales tempranas",
+        intro:
+          "Comencemos recordando cómo era su malestar cuando empezaba, antes de ponerse fuerte. Piense en esos primeros días y marque lo que solía aparecer; con eso iremos armando su propia lista de señales.",
+        campos: [
+          {
+            id: "pensamientos",
+            tipo: "casillas",
+            etiqueta: "¿Qué pensamientos solían aparecer primero?",
+            ayuda: "Marque los que le suenen conocidos.",
+            ejemplo: "«No voy a poder»",
+            opciones: [
+              "«No voy a poder con esto»",
+              "«Todo va a salir mal»",
+              "«Soy un fracaso»",
+              "Preocuparme por todo, una y otra vez",
+              "Darle vueltas a lo que pasó",
+              "«Para qué intento»",
+            ],
+            conOtra: true,
+          },
+          {
+            id: "emociones",
+            tipo: "casillas",
+            etiqueta: "¿Qué emociones solían subir primero?",
+            ayuda: "Marque las que correspondan.",
+            opciones: ["Nervios o miedo", "Tristeza", "Irritabilidad o enojo", "Culpa", "Desánimo o vacío", "Sentirme sin energía"],
+            conOtra: true,
+          },
+          {
+            id: "cuerpo",
+            tipo: "casillas",
+            etiqueta: "¿Qué cambios notaba en el cuerpo?",
+            ayuda: "Marque los que correspondan.",
+            opciones: ["Tensión en el cuello o la espalda", "Palpitaciones o falta de aire", "Dolor de cabeza", "Cansancio o pesadez", "Molestias en el estómago", "Dificultad para relajarme"],
+            conOtra: true,
+          },
+          {
+            id: "conductas",
+            tipo: "casillas",
+            etiqueta: "¿Qué cosas empezaba a hacer o a dejar de hacer?",
+            ayuda: "Marque las que correspondan.",
+            opciones: [
+              "Evitar lugares o personas",
+              "Aislarme o no contestar mensajes",
+              "Dejar de hacer lo que me gusta",
+              "Posponer tareas o compromisos",
+              "Revisar o comprobar las cosas varias veces",
+              "Buscar tranquilidad en otros una y otra vez",
+            ],
+            conOtra: true,
+          },
+          {
+            id: "rutinas",
+            tipo: "casillas",
+            etiqueta: "¿Qué cambios notaba en sus rutinas, como el sueño y la comida?",
+            ayuda: "Marque los que correspondan.",
+            opciones: [
+              "Dormir menos o despertar en la madrugada",
+              "Dormir mucho y costarme levantarme",
+              "Comer menos o saltarme comidas",
+              "Comer más o comer a todas horas",
+              "Dejar de moverme o de salir a caminar",
+              "Descuidar mi aseo o mi casa",
+            ],
+            conOtra: true,
+          },
+          {
+            id: "otras",
+            tipo: "lista",
+            etiqueta: "¿Qué otras señales suyas, que solo usted conoce, le avisaban?",
+            ayuda: "Escriba una por renglón. A veces son detalles pequeños.",
+            minFilas: 0,
+            maxFilas: 6,
+            ejemplo: "Dejo de regar las plantas; no contesto las llamadas de mi mamá",
+          },
+          {
+            id: "primera_senal",
+            tipo: "texto",
+            etiqueta: "De todas, ¿cuál suele ser la primera en aparecer?",
+            ayuda: "Esa es su señal más temprana; vale la pena vigilarla.",
+            ejemplo: "Dormir menos de lo normal",
+          },
+        ],
+      },
+      {
+        id: "riesgo",
+        titulo: "Situaciones que me ponen a prueba",
+        intro:
+          "Ahora piense en los momentos o situaciones en que le resulta más difícil mantenerse bien. Conocerlos de antemano le permite prepararse en vez de sorprenderse.",
+        campos: [
+          {
+            id: "situaciones",
+            tipo: "lista",
+            etiqueta: "¿Qué situaciones o épocas podrían ponerle a prueba en los próximos meses?",
+            ayuda: "Piense en el trabajo, la familia, el dinero, la salud, las fechas difíciles o los cambios. Una por renglón.",
+            minFilas: 1,
+            maxFilas: 8,
+            ejemplo: "Cierre de año en el trabajo; una discusión fuerte con mi hermano; quedarme sin dormir por varias noches",
+          },
+          {
+            id: "la_vez_pasada",
+            tipo: "parrafo",
+            etiqueta: "Cuando una situación así se presentó antes, ¿qué fue lo que más le ayudó a salir adelante?",
+            ayuda: "Piense también en lo que aprendió en este tratamiento.",
+            ejemplo: "Salir a caminar, hablar con mi hermana y no quedarme dándole vueltas a lo mismo en la noche.",
+          },
+        ],
+      },
+      {
+        id: "semaforo",
+        titulo: "Mi semáforo",
+        intro:
+          "Para terminar, arme su semáforo. En cada color, escriba cómo se da cuenta, qué hará y a quién le avisará; una frase corta por casilla basta. Escríbalo cuando se sienta con calma, para tenerlo listo el día que lo necesite.",
+        campos: [
+          {
+            id: "semaforo",
+            tipo: "tabla",
+            etiqueta: "¿Cómo se ve su semáforo?",
+            ayuda:
+              "En verde, anote cómo es cuando está bien. En amarillo, sus señales tempranas y lo que hará. En rojo, no espere ni aguante solo: busque ayuda de inmediato con su psicólogo o con una persona de confianza; si aparecen ideas de hacerse daño, comuníquese enseguida con una de las líneas de ayuda.",
+            columnas: [
+              {
+                id: "como",
+                titulo: "¿Cómo me doy cuenta?",
+                ayuda: "Lo que pienso, siento o hago en ese color",
+                ejemplo: "Verde: duermo bien, salgo a caminar. Amarillo: duermo menos y dejo de contestar mensajes. Rojo: no puedo levantarme y todo me parece sin salida",
+              },
+              {
+                id: "hago",
+                titulo: "¿Qué hago?",
+                ayuda: "Una o dos acciones concretas",
+                ejemplo: "Verde: sigo mi rutina. Amarillo: retomo mi plan de actividades y la respiración lenta. Rojo: llamo a mi psicólogo ese mismo día",
+              },
+              {
+                id: "aviso",
+                titulo: "¿A quién aviso?",
+                ayuda: "Una persona de confianza o su psicólogo",
+                ejemplo: "Verde: a nadie. Amarillo: a mi hermana. Rojo: a mi psicólogo y a mi hermana",
+              },
+            ],
+            filas: 3,
+            maxFilas: 3,
+            filasFijas: ["Verde: estoy bien", "Amarillo: aparecen señales", "Rojo: necesito ayuda ya"],
+            etiquetaFila: "color",
+            filaOpcionalDesde: 3,
+          },
+          {
+            id: "hoy",
+            tipo: "escala",
+            etiqueta: "Hoy, ¿cómo se siente en general?",
+            ayuda: "Sirve de punto de comparación para los próximos meses.",
+            extremos: ["0 = muy mal", "10 = muy bien"],
+          },
+        ],
+      },
+    ],
+    cierre: {
+      titulo: CIERRE_TITULO,
+      texto:
+        "Revisaremos sus señales y su semáforo, y nos aseguraremos de que cada color tenga acciones posibles y personas a quienes avisar. Conversaremos también sobre la diferencia entre un tropiezo y una recaída, para que, si algún día se presenta uno, usted sepa qué hacer.",
+      campos: [paraLaSesion],
+    },
+  },
+
+  /* ============================ 5.2 ============================ */
+  {
+    id: "5.2",
+    etapa: 5,
+    titulo: "Mi caja de herramientas",
+    paraQue: "Repasar lo aprendido: qué herramientas le sirvieron, cuándo usarlas, frases que le ayudan y personas de apoyo.",
+    tiempo: "25 a 35 minutos",
+    explicacion: [
+      "A lo largo del tratamiento usted fue aprendiendo cosas que le sirven: formas de calmar el cuerpo, de revisar un pensamiento, de moverse cuando no hay ganas. Esta ficha las junta en una caja de herramientas propia, para que no se queden en la libreta ni en la memoria de la última sesión.",
+      "Piense en un carpintero. No usa el martillo para todo: sabe qué herramienta sirve para cada trabajo. Igual con la suya. Por ejemplo, alguien descubre que la respiración lenta le sirve cuando siente el pecho apretado en la camioneta, y que el plan de actividades le sirve cuando amanece sin ganas. Saber cuál usar y cuándo es lo que hace que las herramientas funcionen.",
+      "La caja también incluye cosas que no se aprenden en una ficha: las frases que le dan fuerza y las personas que le hacen bien. Pedir apoyo no es un fracaso ni una carga para los demás; es una de las herramientas más útiles que existen. Y si un día se le olvida usarla o no le funciona a la primera, no se pierde nada: se vuelve a la caja y se prueba otra.",
+    ],
+    secciones: [
+      {
+        id: "herramientas",
+        titulo: "Lo que aprendí",
+        intro:
+          "Comencemos repasando lo que trabajó en este tiempo. Recuerde las técnicas o ejercicios que le ayudaron, aunque fuera un poco, y anote para qué le sirven y en qué momento los usaría.",
+        campos: [
+          {
+            id: "herramientas",
+            tipo: "tabla",
+            etiqueta: "¿Qué herramientas aprendió que le sirvieron?",
+            ayuda:
+              "Puede incluir cosas como el registro de pensamientos, el plan de actividades, la respiración lenta, el tiempo de preocupación, examinar las pruebas o la escalera. Empiece por la que más le ayudó; las demás son opcionales.",
+            columnas: [
+              { id: "herramienta", titulo: "¿Cuál es la herramienta?", ayuda: "Su nombre o cómo la llama usted", ejemplo: "Respiración lenta" },
+              { id: "sirve", titulo: "¿Para qué me sirve?", ayuda: "Lo que logra con ella", ejemplo: "Me calma el cuerpo cuando siento el pecho apretado" },
+              { id: "cuando", titulo: "¿Cuándo la voy a usar?", ayuda: "La señal o el momento", ejemplo: "Cuando note que se me acelera el corazón antes de una reunión" },
+            ],
+            filas: 3,
+            maxFilas: 8,
+            etiquetaFila: "herramienta",
+            generoFila: "f",
+            filaOpcionalDesde: 1,
+          },
+          {
+            id: "mas_ayudo",
+            tipo: "texto",
+            etiqueta: "De todas, ¿cuál es la que más le ha ayudado?",
+            ejemplo: "El plan de actividades",
+          },
+        ],
+      },
+      {
+        id: "frases",
+        titulo: "Frases y personas que me ayudan",
+        intro:
+          "Ahora piense en lo que le da fuerza en los momentos difíciles. Escriba las frases que le sirven y las personas con quienes puede contar; así las tendrá a la mano cuando las necesite.",
+        campos: [
+          {
+            id: "frases",
+            tipo: "lista",
+            etiqueta: "¿Qué frases le ayudan cuando la cosa se pone difícil?",
+            ayuda: "Frases que se diría a sí mismo o que le dijo alguien. Una por renglón.",
+            minFilas: 1,
+            maxFilas: 6,
+            ejemplo: "Un mal día no es una mala vida; Ya salí de esto antes; Paso a paso",
+          },
+          {
+            id: "personas",
+            tipo: "tabla",
+            etiqueta: "¿Con qué personas puede contar y cómo se comunicaría con ellas?",
+            ayuda: "Escriba primero a la persona en quien más confía; las otras son opcionales.",
+            columnas: [
+              { id: "persona", titulo: "¿Quién es?", ayuda: "Nombre y cómo localizarla", ejemplo: "Mi hermana Lucía, por WhatsApp o llamándola" },
+              { id: "ayuda", titulo: "¿Cómo me ayuda?", ejemplo: "Me escucha sin juzgarme y me anima a salir a caminar" },
+            ],
+            filas: 2,
+            maxFilas: 5,
+            etiquetaFila: "persona",
+            generoFila: "f",
+            filaOpcionalDesde: 1,
+          },
+        ],
+      },
+      {
+        id: "confianza",
+        titulo: "Mi confianza para seguir solo",
+        intro:
+          "Para terminar, mire su caja completa y piense en cómo se siente al usarla por su cuenta. No hay un número ideal: nos sirve para saber qué podemos reforzar juntos.",
+        campos: [
+          {
+            id: "confianza",
+            tipo: "escala",
+            etiqueta: "¿Cuánta confianza tiene en poder usar su caja de herramientas por su cuenta?",
+            ayuda: "Si le parece un 6 o menos, lo conversamos: quizá falta practicar alguna herramienta.",
+            extremos: ["0 = ninguna", "10 = mucha"],
+          },
+          {
+            id: "falta",
+            tipo: "parrafo",
+            etiqueta: "¿Qué herramienta le gustaría practicar más antes de seguir por su cuenta?",
+            ejemplo: "Me gustaría practicar más el registro de pensamientos, porque a veces se me olvida usarlo.",
+          },
+        ],
+      },
+    ],
+    cierre: {
+      titulo: CIERRE_TITULO,
+      texto:
+        "Revisaremos su caja de herramientas, veremos si falta alguna o si conviene practicar más alguna de ellas, y conversaremos sobre las personas de apoyo que anotó. Si hay una herramienta que no le convenció, lo vemos con calma.",
+      campos: [paraLaSesion],
+    },
+  },
+
+  /* ============================ 5.3 ============================ */
+  {
+    id: "5.3",
+    etapa: 5,
+    titulo: "Mi plan de mantenimiento",
+    paraQue: "Dejar por escrito su plan para los próximos meses: hábitos, práctica, metas nuevas, cómo revisarse y cuándo pedir una cita de refuerzo.",
+    tiempo: "30 a 40 minutos",
+    explicacion: [
+      "Terminar el tratamiento no significa dejar de cuidarse: significa que ahora usted sabe cómo hacerlo. Esta ficha reúne todo en un plan escrito para los próximos meses, de modo que lo que logró siga creciendo y no dependa de la memoria ni del ánimo del día.",
+      "Piense en alguien que hizo un curso de primeros auxilios o aprendió a manejar. Si no practica, con el tiempo se le olvida; si repasa un poco cada semana, se le queda. Con el bienestar pasa algo parecido. Por ejemplo, una persona decide mantener sus caminatas, repasar el domingo cómo le fue en la semana y anotar una meta nueva cada mes. Son cosas pequeñas, pero sostenidas.",
+      "El plan también deja decidido de antemano qué hacer si aparecen señales y cuándo pedir una cita de refuerzo. Pedirla no significa que fracasó ni que empezó de nuevo: es parte del plan, como una revisión para que todo siga en buen estado. Y la carta que escribirá al final es para usted: un recordatorio, con sus propias palabras, de lo que ya logró y de que puede volver a lograrlo.",
+    ],
+    secciones: [
+      {
+        id: "habitos",
+        titulo: "Lo que voy a mantener",
+        intro:
+          "Comencemos por lo que ya le está funcionando. Piense en los hábitos y prácticas de estos meses que quiere conservar, y decida cómo los hará parte de su semana.",
+        campos: [
+          {
+            id: "habitos",
+            tipo: "lista",
+            etiqueta: "¿Qué hábitos de los que ha logrado quiere mantener?",
+            ayuda: "Piense en el sueño, el movimiento, la comida, el tiempo con otras personas o las herramientas de su caja. Uno por renglón.",
+            minFilas: 1,
+            maxFilas: 8,
+            ejemplo: "Salir a caminar tres tardes por semana; acostarme a la misma hora; llamar a mi hermana los domingos",
+          },
+          {
+            id: "practica",
+            tipo: "tabla",
+            etiqueta: "¿Qué práctica hará cada semana y cuándo?",
+            ayuda: "Escriba primero la práctica más importante; las otras son opcionales. Indique el día o los días en que la hará.",
+            columnas: [
+              { id: "que", titulo: "¿Qué hará?", ayuda: "Una práctica concreta", ejemplo: "Repasar cómo me fue en la semana y anotar mis señales" },
+              { id: "cuando", titulo: "¿Qué días y a qué hora?", ejemplo: "Los domingos a las 7 de la noche, en la sala" },
+            ],
+            filas: 2,
+            maxFilas: 5,
+            etiquetaFila: "práctica",
+            generoFila: "f",
+            filaOpcionalDesde: 1,
+          },
+        ],
+      },
+      {
+        id: "metas",
+        titulo: "Mis metas para los próximos meses",
+        intro:
+          "Ahora mire hacia adelante. Piense en lo que le gustaría lograr en los próximos meses, ya con el problema más tranquilo, y dé el primer paso de cada meta con una fecha.",
+        campos: [
+          {
+            id: "metas",
+            tipo: "tabla",
+            etiqueta: "¿Qué metas nuevas le gustaría lograr?",
+            ayuda: "Escriba primero la más importante; las otras son opcionales. Mejor pocas y claras.",
+            columnas: [
+              { id: "meta", titulo: "¿Cuál es la meta?", ayuda: "Algo concreto, que se pueda ver", ejemplo: "Retomar mis clases de pintura" },
+              { id: "paso", titulo: "¿Cuál es el primer paso?", ayuda: "Algo pequeño que pueda hacer pronto", ejemplo: "Preguntar por los horarios del curso" },
+              { id: "fecha", titulo: "¿Para cuándo?", ejemplo: "Antes de que termine este mes" },
+            ],
+            filas: 2,
+            maxFilas: 4,
+            etiquetaFila: "meta",
+            generoFila: "f",
+            filaOpcionalDesde: 1,
+          },
+        ],
+      },
+      {
+        id: "revision",
+        titulo: "Cómo me voy a revisar",
+        intro:
+          "Piense ahora en cómo se va a dar cuenta de que sigue bien. Una revisión breve y regular, hecha con calma, le permite notar los cambios temprano y actuar a tiempo.",
+        campos: [
+          {
+            id: "cada_cuanto",
+            tipo: "casillas",
+            etiqueta: "¿Cada cuánto se va a revisar?",
+            ayuda: "Marque la que le parezca posible de sostener.",
+            opciones: ["Cada semana", "Cada dos semanas", "Cada mes"],
+            conOtra: true,
+          },
+          {
+            id: "que_miro",
+            tipo: "parrafo",
+            etiqueta: "¿Qué va a mirar en cada revisión?",
+            ayuda: "Sus señales tempranas, su semáforo, su sueño, su ánimo y si está haciendo lo que planeó.",
+            ejemplo: "Cómo dormí, si salí a caminar, si aparecieron mis señales amarillas y cómo me sentí de ánimo.",
+          },
+          {
+            id: "como_estoy",
+            tipo: "escala",
+            etiqueta: "Hoy, ¿cómo está su bienestar en general?",
+            ayuda: "Este número será su punto de partida: en cada revisión podrá comparar.",
+            extremos: ["0 = muy mal", "10 = muy bien"],
+          },
+          {
+            id: "si_senales",
+            tipo: "parrafo",
+            etiqueta: "Si aparecen señales amarillas, ¿qué hará?",
+            ayuda: "Retome lo que escribió en su semáforo (ficha 5.1) y en su caja de herramientas (ficha 5.2).",
+            ejemplo: "Retomo mi plan de actividades, hago respiración lenta y le aviso a mi hermana. Si pasan unos días y sigo igual, escribo a mi psicólogo.",
+          },
+        ],
+      },
+      {
+        id: "refuerzo",
+        titulo: "Cuándo pediré una cita de refuerzo",
+        intro:
+          "Elija ahora, con calma, en qué casos pedirá una cita de refuerzo con su psicólogo. Dejarlo definido de antemano evita esperar demasiado cuando las cosas se complican.",
+        campos: [
+          {
+            id: "cita_refuerzo",
+            tipo: "casillas",
+            etiqueta: "¿En qué casos pedirá una cita de refuerzo?",
+            ayuda: "Marque todos los que correspondan. Pedirla es parte del plan, no una señal de fracaso.",
+            opciones: [
+              "Si las señales amarillas duran más de dos semanas",
+              "Si llego a rojo",
+              "En una fecha acordada con mi psicólogo",
+            ],
+            conOtra: true,
+          },
+          {
+            id: "fecha_refuerzo",
+            tipo: "texto",
+            etiqueta: "Si ya lo acordaron, ¿en qué fecha o en cuánto tiempo será la cita de refuerzo?",
+            ejemplo: "Dentro de tres meses",
+          },
+        ],
+      },
+      {
+        id: "carta",
+        titulo: "Una carta para mí",
+        intro:
+          "Para terminar, escríbase una carta corta para un día difícil. Recuerde lo que logró, lo que aprendió y lo que le ayuda; léala cuando sienta que todo se le viene encima.",
+        campos: [
+          {
+            id: "carta",
+            tipo: "parrafo",
+            etiqueta: "¿Qué le diría a usted mismo en un momento difícil?",
+            ayuda: "Escríbale como se lo diría a alguien a quien quiere. Puede recordarse lo que ya logró y lo que sabe hacer.",
+            ejemplo: "Ya salí de esto antes y puedo volver a hacerlo. Un mal día no borra lo que logré. Voy a respirar despacio, usar mi caja de herramientas y avisarle a mi hermana.",
+          },
+        ],
+      },
+    ],
+    cierre: {
+      titulo: CIERRE_TITULO,
+      texto:
+        "Revisaremos su plan completo, lo ajustaremos para que sea posible de sostener y acordaremos cuándo y cómo seguirá en contacto conmigo. El tratamiento termina, pero lo que aprendió queda con usted.",
+      campos: [paraLaSesion],
+    },
+  },
+
 ];
 
 export const fichaPorId = (id: string | null | undefined) => FICHAS.find((f) => f.id === id) ?? null;

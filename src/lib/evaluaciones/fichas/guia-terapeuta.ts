@@ -612,4 +612,106 @@ export const GUIA_TERAPEUTA: Record<FichaId, GuiaTerapeuta> = {
       "Comparar la confianza con lo logrado y elegir el próximo plan o la próxima meta.",
     ],
   },
+  "5.1": {
+    base: "Prevención de recaídas (Marlatt y Gordon, 1985; Bieling, McCabe y Antony, 2006) y planes de bienestar; distinción entre desliz (lapso) y recaída.",
+    objetivo:
+      "Que el paciente reconozca sus señales tempranas (pensamientos, emociones, cuerpo, conductas y rutinas) y sus situaciones de riesgo, distinga un tropiezo de una recaída y salga con un semáforo propio (verde, amarillo y rojo) que diga cómo se da cuenta, qué hace y a quién avisa.",
+    cuandoUsarla: [
+      "En la fase final del tratamiento, cuando ya hay mejoría estable y se piensa en el cierre.",
+      "Antes de espaciar las sesiones o de acordar el alta.",
+      "Después de un tropiezo, para convertirlo en aprendizaje y revisar el plan.",
+    ],
+    cuandoNoUsarla: [
+      "Si el paciente aún no ha logrado una mejoría estable: antes conviene consolidar las etapas anteriores.",
+      "Con riesgo suicida o de daño activo: primero la evaluación y el plan de seguridad; esta ficha no lo sustituye.",
+      "Si se vuelve una vigilancia ansiosa de cada síntoma (en ansiedad por la salud o TOC, enfocarla en señales de conducta y no en chequeo corporal).",
+    ],
+    presentar: [
+      "Reconocer el logro: el tratamiento termina, lo aprendido queda y esta ficha cuida ese avance.",
+      "Explicar la diferencia entre tropiezo (volver un rato a un hábito o malestar conocido) y recaída (el malestar se instala y vuelve a afectar la vida diaria), normalizando los tropiezos.",
+      "Recorrer con el paciente la historia reciente para identificar sus señales tempranas por tipo y cuál suele aparecer primero.",
+      "Identificar las situaciones de riesgo de los próximos meses y qué le ayudó antes a salir adelante.",
+      "Armar el semáforo con acciones concretas y personas a quienes avisar; en rojo, buscar ayuda de inmediato (terapeuta, persona de confianza y líneas de ayuda ante ideas de hacerse daño) y confirmar que tiene esos contactos a la mano.",
+    ],
+    errores: [
+      "Tratar cualquier malestar como señal de recaída, o negar que existan los tropiezos.",
+      "Semáforo vago («cuidarme más») en vez de acciones concretas y personas con nombre.",
+      "Dejar el color rojo sin una acción inmediata o sin contactos de ayuda.",
+      "Llenar la ficha solo desde la teoría y no desde las señales reales del paciente.",
+    ],
+    revisar: [
+      "Leer las señales marcadas y confirmar la primera en aparecer; preguntar si falta alguna.",
+      "Revisar que cada color tenga una acción posible y una persona de aviso real.",
+      "Verificar que el paciente puede explicar con sus palabras la diferencia entre tropiezo y recaída.",
+      "Revisar el riesgo y acordar dónde guardará el semáforo (en el celular o impreso).",
+    ],
+  },
+  "5.2": {
+    base: "Consolidación y generalización de habilidades en TCC (J. S. Beck, 2020); habilidades comunes del Protocolo Unificado (Barlow et al., 2018).",
+    objetivo:
+      "Que el paciente repase lo aprendido, nombre las herramientas que le sirvieron, para qué y cuándo usarlas, reúna frases y personas de apoyo y mida su confianza (0–10) para usar la caja por su cuenta.",
+    cuandoUsarla: [
+      "En la fase final del tratamiento, después de haber practicado varias técnicas (etapas 3 y 4).",
+      "Antes de espaciar las sesiones, para consolidar el aprendizaje.",
+      "Cuando el paciente dice que «no recuerda» lo que le sirvió o duda de poder seguir solo.",
+    ],
+    cuandoNoUsarla: [
+      "Si el paciente aún no ha practicado técnicas ni logrado una mejoría estable: la caja quedaría vacía.",
+      "Con riesgo activo: primero la evaluación y el plan de seguridad.",
+      "Si se usa como lista de obligaciones o rituales que el paciente debe cumplir para sentirse seguro.",
+    ],
+    presentar: [
+      "Explicar la idea de la caja: no se usa todo siempre, sino la herramienta adecuada para cada momento.",
+      "Repasar juntos las fichas y técnicas trabajadas (registro de pensamientos, plan de actividades, respiración lenta, tiempo de preocupación, examinar las pruebas, escalera) y dejar que el paciente elija las que le sirvieron.",
+      "Para cada una, anotar con sus palabras para qué sirve y cuándo la usará (señal o situación concreta).",
+      "Reunir frases que le ayudan y personas de apoyo, con cómo las contactará y cómo le ayudan.",
+      "Preguntar la confianza (0–10) para usar la caja por su cuenta; si es 6 o menos, decidir qué práctica falta.",
+    ],
+    errores: [
+      "Llenar la caja con técnicas que el paciente nunca usó o no le sirvieron.",
+      "Escribir «para qué sirve» y «cuándo» en términos vagos.",
+      "Omitir las personas de apoyo o no confirmar cómo las contactaría.",
+      "Ignorar una confianza baja en vez de explorar qué le falta.",
+    ],
+    revisar: [
+      "Leer cada herramienta, su utilidad y la señal que la activa; ajustar lo que sea vago.",
+      "Comprobar que las frases y personas anotadas son reales y accesibles.",
+      "Revisar la confianza (0–10) y qué herramienta quiere practicar más.",
+      "Acordar cómo y cuándo recurrirá a la caja y cómo se conecta con el semáforo de la ficha 5.1.",
+    ],
+  },
+  "5.3": {
+    base: "Mantenimiento y sesiones de refuerzo (booster) en TCC; terapia cognitiva basada en la atención plena para prevenir recaídas (Segal, Williams y Teasdale, 2013).",
+    objetivo:
+      "Que el paciente deje por escrito un plan para los próximos meses: hábitos a mantener, práctica semanal, metas nuevas con primer paso y fecha, cómo se revisará (frecuencia y escala 0–10), qué hará ante señales, cuándo pedirá una cita de refuerzo y una carta a sí mismo para un día difícil.",
+    cuandoUsarla: [
+      "En la última o penúltima sesión, antes del alta o de espaciar las sesiones.",
+      "Cuando el paciente ya tiene su semáforo (5.1) y su caja de herramientas (5.2).",
+      "Al planear una cita de refuerzo o el seguimiento posterior.",
+    ],
+    cuandoNoUsarla: [
+      "Si el paciente aún no ha logrado una mejoría estable: antes consolidar las etapas anteriores.",
+      "Con riesgo activo: primero la evaluación y el plan de seguridad.",
+      "Si el plan se vuelve tan exigente que el paciente lo viva como una obligación o con culpa cuando no lo cumple.",
+    ],
+    presentar: [
+      "Recordar que el tratamiento termina, pero lo aprendido queda, y que el plan sostiene el avance.",
+      "Elegir con el paciente pocos hábitos y una práctica semanal posibles de sostener, con día y hora.",
+      "Definir una o dos metas nuevas con su primer paso y una fecha realista.",
+      "Acordar cómo y cada cuánto se revisará, qué mirará y su punto de partida (0–10); remitir a la ficha 5.1 para lo que hará ante señales.",
+      "Acordar los criterios para pedir una cita de refuerzo (señales amarillas de más de dos semanas, rojo, o fecha acordada) y dejar que escriba su carta.",
+    ],
+    errores: [
+      "Plan largo y exigente, con demasiados hábitos y metas.",
+      "Revisión sin frecuencia ni criterios claros.",
+      "No dejar claro cuándo y cómo pedir la cita de refuerzo, o presentarla como un fracaso.",
+      "Pedir la carta al final, sin tiempo ni calma, o corregirla en vez de acompañarla.",
+    ],
+    revisar: [
+      "Si hubo cita de refuerzo o seguimiento, leer cómo le fue con cada hábito y práctica.",
+      "Revisar las puntuaciones (0–10) de bienestar y si aparecieron señales amarillas o rojas.",
+      "Ajustar el plan: quitar lo que no se sostiene y reforzar lo que funcionó.",
+      "Releer la carta con el paciente si lo desea y reconocer lo que ha mantenido.",
+    ],
+  },
 };

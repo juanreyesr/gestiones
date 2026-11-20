@@ -38,11 +38,11 @@ const valorDeMuestra = (c) => {
 const respuestasDeMuestra = (f) => Object.fromEntries(camposDeFicha(f).map((c) => [c.id, valorDeMuestra(c)]));
 const fila = (instrumento, datos, fecha = "2026-11-10", id = Math.random().toString(36).slice(2)) => ({ id, instrumento, datos, fecha, createdAt: `${fecha}T10:00:00Z`, respondienteNombre: "Ana" });
 
-caso("Catálogo: 17 fichas, números únicos «etapa.n», etapa válida", () => {
-  assert.equal(FICHAS.length, 17);
+caso("Catálogo: 20 fichas, números únicos «etapa.n», etapa válida", () => {
+  assert.equal(FICHAS.length, 20);
   assert.deepEqual(FICHAS.map((f) => f.id), [...FICHA_IDS]);
-  assert.equal(new Set(FICHAS.map((f) => f.id)).size, 17);
-  assert.deepEqual(FICHAS.map((f) => f.id), ["1.1", "1.2", "1.3", "1.4", "2.1", "2.2", "2.3", "2.4", "3.1", "3.2", "3.3", "3.4", "4.1", "4.2", "4.3", "4.4", "4.5"]);
+  assert.equal(new Set(FICHAS.map((f) => f.id)).size, 20);
+  assert.deepEqual(FICHAS.map((f) => f.id), ["1.1", "1.2", "1.3", "1.4", "2.1", "2.2", "2.3", "2.4", "3.1", "3.2", "3.3", "3.4", "4.1", "4.2", "4.3", "4.4", "4.5", "5.1", "5.2", "5.3"]);
   for (const f of FICHAS) {
     assert.equal(Number(f.id.split(".")[0]), f.etapa, f.id);
     assert.ok(ETAPAS_FICHAS[f.etapa], f.id);
@@ -575,8 +575,8 @@ const enlace = (id, estado = "abierta", fecha = "2026-11-12", borrador = null) =
 
 caso("B.1 Estado por ficha: sin usar / enviada / respondida por el paciente / llenada por el terapeuta, con fecha", () => {
   const sin = estadosFichas([], []);
-  assert.equal(sin.length, 17);
-  assert.deepEqual(sin.map((e) => e.estado), Array(17).fill("sin-usar"));
+  assert.equal(sin.length, 20);
+  assert.deepEqual(sin.map((e) => e.estado), Array(20).fill("sin-usar"));
   assert.equal(sin[0].etiqueta, "Sin usar");
   assert.equal(sin[0].fecha, null);
   const r11 = ficha("1.1", {}, {}, "2026-11-03");
@@ -608,7 +608,8 @@ caso("B.1 Siguiente en la ruta: la primera de la etapa siguiente cuando las de l
   assert.deepEqual(siguientesEnRuta(est("1.1", "1.2", "1.3", "1.4", "2.1", "2.2")), ["2.3"]);
   assert.deepEqual(siguientesEnRuta(est("1.1", "1.2", "1.3", "1.4", "2.1", "2.2", "2.3", "2.4")), ["3.1"], "etapa 2 completa: la primera de la 3");
   assert.deepEqual(siguientesEnRuta(est("1.1", "1.2", "1.3", "1.4", "2.1", "2.2", "2.3", "2.4", "3.1", "3.2", "3.3", "3.4")), ["4.1"], "etapa 3 completa: la primera de la 4");
-  assert.deepEqual(siguientesEnRuta(est("1.1", "1.2", "1.3", "1.4", "2.1", "2.2", "2.3", "2.4", "3.1", "3.2", "3.3", "3.4", "4.1", "4.2", "4.3", "4.4", "4.5")), [], "ruta completa (aún no hay etapa 5)");
+  assert.deepEqual(siguientesEnRuta(est("1.1", "1.2", "1.3", "1.4", "2.1", "2.2", "2.3", "2.4", "3.1", "3.2", "3.3", "3.4", "4.1", "4.2", "4.3", "4.4", "4.5")), ["5.1"], "etapa 4 completa: la primera de la 5");
+  assert.deepEqual(siguientesEnRuta(est("1.1", "1.2", "1.3", "1.4", "2.1", "2.2", "2.3", "2.4", "3.1", "3.2", "3.3", "3.4", "4.1", "4.2", "4.3", "4.4", "4.5", "5.1", "5.2", "5.3")), [], "ruta completa (etapas 1 a 5)");
   assert.deepEqual(siguientesEnRuta(est("2.1")), ["2.2"], "la etapa actual es la más avanzada con alguna ficha hecha");
   // Una ficha llenada por el terapeuta también cuenta como hecha.
   assert.deepEqual(siguientesEnRuta(estadosFichas([delTerapeuta("1.1")], [])), ["1.2"]);
@@ -913,6 +914,16 @@ caso("Lote 3: 4.4 se arma con el psicólogo y sin instrucciones para exponerse s
   assert.match(JSON.stringify(GUIA_TERAPEUTA["4.4"].cuandoNoUsarla), /psicoeducación|2\.1|2\.4/);
   assert.match(fichaPorId("4.2").explicacion.join(" "), /mare/);
   for (const id of ["4.1", "4.2", "4.3", "4.4", "4.5"]) assert.equal(fichaPorId(id).etapa, 4);
+});
+
+caso("Lote 4: 5.1 lleva al semáforo con ayuda inmediata en rojo; la biblioteca de fichas queda completa (5 etapas)", () => {
+  const sem = camposDeFicha(fichaPorId("5.1")).find((c) => c.tipo === "tabla" && c.filasFijas?.length === 3);
+  assert.ok(sem, "semáforo verde, amarillo y rojo");
+  assert.deepEqual(sem.filasFijas.map((x) => x.split(":")[0]), ["Verde", "Amarillo", "Rojo"]);
+  assert.match(JSON.stringify(fichaPorId("5.1")), /de inmediato/);
+  assert.doesNotMatch(JSON.stringify(fichaPorId("5.1")), /ítem|PHQ|DASS/);
+  assert.deepEqual([...new Set(FICHAS.map((f) => f.etapa))], [1, 2, 3, 4, 5]);
+  assert.match(JSON.stringify(GUIA_TERAPEUTA["5.1"].cuandoNoUsarla), /seguridad|riesgo/);
 });
 
 console.log(`\n${ok} pruebas correctas.`);
