@@ -5,12 +5,13 @@
 import type { DxId } from "../evaluaciones/eapi/calificacion";
 import type { Puntaje } from "../evaluaciones/mcea/motor";
 import { BIBLIOTECA_PSICOPATOLOGIA } from "./psicopatologia";
+import { BIBLIOTECA_METODOS_DIAGNOSTICO } from "./metodos-diagnostico";
 import { BIBLIOTECA_PSICOTERAPIA_ADULTO } from "./psicoterapia-adulto";
 import type { Biblioteca, BibliotecaClinica, FichaBiblioteca, FichaClinica } from "./tipos";
 
 export type { Biblioteca, BibliotecaClinica, BibliotecaTecnicas, FichaBiblioteca, FichaClinica, FichaTecnica, PasoPlan, VistaFicha } from "./tipos";
 
-export const BIBLIOTECAS: Biblioteca[] = [BIBLIOTECA_PSICOPATOLOGIA, BIBLIOTECA_PSICOTERAPIA_ADULTO];
+export const BIBLIOTECAS: Biblioteca[] = [BIBLIOTECA_PSICOPATOLOGIA, BIBLIOTECA_PSICOTERAPIA_ADULTO, BIBLIOTECA_METODOS_DIAGNOSTICO];
 
 export const bibliotecaPorId = (id: string) => BIBLIOTECAS.find((b) => b.id === id) ?? null;
 

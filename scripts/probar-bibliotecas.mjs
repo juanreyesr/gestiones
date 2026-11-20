@@ -220,4 +220,18 @@ caso("Técnicas: vista y PDF del estudiante con caso, preguntas y clave; el tera
   assert.match(leer("../src/components/clinica/fichas-clinicas.tsx"), /<FichaBibliotecaVista/);
 });
 
+caso("Biblioteca «Métodos de diagnóstico»: 8 fichas de técnica; riesgo suicida con plan de seguridad", () => {
+  const b = BIBLIOTECAS.find((x) => x.id === "metodos-diagnostico");
+  assert.ok(b && b.tipo === "tecnicas");
+  assert.deepEqual(b.fichas.map((f) => f.id), [
+    "entrevista-inicial", "examen-mental", "riesgo-suicida", "pruebas-psicometricas",
+    "diagnostico-diferencial", "diagnostico-dsm-cie", "informe-psicologico", "devolucion-resultados",
+  ]);
+  const r = JSON.stringify(fichaBibliotecaPorId("riesgo-suicida").ficha).toLowerCase();
+  assert.match(r, /plan de seguridad/);
+  assert.match(r, /direct/);
+  assert.doesNotMatch(r, /\b\d{4}[- ]?\d{4}\b/, "sin números telefónicos inventados");
+  assert.deepEqual(BIBLIOTECAS.map((x) => x.id), ["psicopatologia", "psicoterapia-adulto", "metodos-diagnostico"]);
+});
+
 console.log(`\n${ok} pruebas correctas.`);
