@@ -286,7 +286,7 @@ export const BIBLIOTECA_PSICOPATOLOGIA: Biblioteca = {
       ],
       alertas: [
         "Ideas de muerte, de suicidio o planes: preguntar de forma directa y sin rodeos, valorar intención, plan, acceso a medios y antecedentes. Si el riesgo es alto o inminente, no dejar sola a la persona, avisar a un familiar y coordinar atención de urgencia.",
-        "Antecedentes de periodos de euforia, poca necesidad de dormir o irritabilidad marcada: sospechar trastorno bipolar y derivar a psiquiatría antes de seguir con la psicoterapia como único tratamiento.",
+        "Antecedentes de periodos de euforia, poca necesidad de dormir o irritabilidad marcada (posible manía o hipomanía): sospechar trastorno bipolar y derivar a psiquiatría antes de seguir con la psicoterapia como único tratamiento.",
         "Síntomas psicóticos (voces, ideas delirantes de culpa o ruina) o rechazo de alimentos: interconsulta psiquiátrica urgente.",
         "Causas médicas o consumo: solicitar valoración médica (tiroides, anemia, B12) y explorar alcohol u otras sustancias.",
       ],
@@ -434,7 +434,7 @@ export const BIBLIOTECA_PSICOPATOLOGIA: Biblioteca = {
       ],
       deteccion: [
         "Evaluación inicial (EAPI): se sugiere cuando la subescala de estrés del DASS está en banda moderada o más alta.",
-        "Esta ficha funciona como cuadro de exclusión: se considera cuando el malestar es claro, hay un estresor identificable y no se alcanzan los puntos de corte de depresión o ansiedad generalizada.",
+        "El sistema no detecta el estresor: la hipótesis se confirma en entrevista si el malestar empezó después de un cambio o suceso identificable y no cumple los criterios de depresión, ansiedad generalizada u otro trastorno.",
         "Ningún puntaje define el trastorno: la clave es el estresor, el momento de inicio y la afectación en la vida diaria.",
       ],
       caso:
