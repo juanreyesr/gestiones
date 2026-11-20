@@ -1,7 +1,7 @@
 // Pruebas de las Bibliotecas JJR (fichas clínicas de referencia). Ejecutar: pnpm test:bibliotecas
 import assert from "node:assert/strict";
 import fs from "node:fs";
-import { BIBLIOTECAS, FICHA_DE_DX_EAPI, fichaClinicaPorId, fichasDeEapi, fichasDeMcea } from "../src/lib/bibliotecas/index.ts";
+import { BIBLIOTECAS, FICHAS_DE_DX_EAPI, fichaClinicaPorId, fichasDeEapi, fichasDeMcea } from "../src/lib/bibliotecas/index.ts";
 import { FICHA_IDS } from "../src/lib/evaluaciones/fichas/catalogo.ts";
 import { calificarEapi } from "../src/lib/evaluaciones/eapi/calificacion.ts";
 import { fichaClinicaHtml } from "../src/lib/bibliotecas/html.ts";
@@ -12,10 +12,13 @@ const caso = (n, fn) => { fn(); ok++; console.log(`✔ ${n}`); };
 const leer = (ruta) => fs.readFileSync(new URL(ruta, import.meta.url), "utf8");
 const entre = (arr, min, max, que) => assert.ok(arr.length >= min && arr.length <= max, `${que}: ${arr.length} (esperado ${min}–${max})`);
 
-caso("Biblioteca «Psicopatología»: 6 fichas con ids estables y únicos", () => {
+caso("Biblioteca «Psicopatología»: 12 fichas con ids estables y únicos", () => {
   const b = BIBLIOTECAS.find((x) => x.id === "psicopatologia");
   assert.ok(b);
-  assert.deepEqual(b.fichas.map((f) => f.id), ["ansiedad-generalizada", "panico", "depresion-mayor", "adaptacion", "toc", "rumiacion-estres"]);
+  assert.deepEqual(b.fichas.map((f) => f.id), [
+    "ansiedad-generalizada", "panico", "depresion-mayor", "adaptacion", "toc", "rumiacion-estres",
+    "ansiedad-social", "fobia-especifica", "estres-postraumatico", "duelo-prolongado", "insomnio", "depresion-persistente",
+  ]);
   const todos = BIBLIOTECAS.flatMap((x) => x.fichas.map((f) => f.id));
   assert.equal(new Set(todos).size, todos.length);
 });
@@ -56,9 +59,10 @@ caso("Riesgo: depresión y adaptación mencionan riesgo suicida; depresión, man
 });
 
 caso("Hipótesis del EAPI → fichas (todas las hipótesis con ficha apuntan a una que existe)", () => {
-  for (const [dx, id] of Object.entries(FICHA_DE_DX_EAPI)) if (id) assert.ok(fichaClinicaPorId(id), `${dx} → ${id}`);
-  assert.equal(FICHA_DE_DX_EAPI.safety, null);
+  for (const [dx, ids] of Object.entries(FICHAS_DE_DX_EAPI)) for (const id of ids) assert.ok(fichaClinicaPorId(id), `${dx} → ${id}`);
+  assert.deepEqual(FICHAS_DE_DX_EAPI.safety, []);
   assert.deepEqual(fichasDeEapi([{ id: "tag" }, { id: "tag_sub" }, { id: "safety" }, { id: "dep" }]), ["ansiedad-generalizada", "depresion-mayor"]);
+  assert.deepEqual(fichasDeEapi([{ id: "panic" }]), ["panico", "ansiedad-social"], "la hipótesis de pánico del EAPI incluye ansiedad social");
   // Con una calificación real: GAD-7 alto → TAG.
   const c = calificarEapi({ gad: [3, 3, 3, 3, 3, 3, 3], dass: null, ptq: null, docs: null, func: 2, safety: 0 });
   assert.ok(fichasDeEapi(c.dx).includes("ansiedad-generalizada"));
@@ -159,6 +163,16 @@ caso("Lote 4: todas las fichas clínicas cierran con prevención de recaídas (5
     const etapa5 = f.plan.filter((p) => p.etapa === 5).flatMap((p) => p.fichas);
     assert.ok(etapa5.includes("5.1") && etapa5.includes("5.3"), f.id);
   }
+});
+
+caso("Lote 2 de la biblioteca: seguridad en TEPT, insomnio y duelo", () => {
+  const txt = (id) => JSON.stringify(fichaClinicaPorId(id).ficha).toLowerCase();
+  assert.match(txt("estres-postraumatico"), /formación en trauma|formacion en trauma/);
+  assert.match(txt("estres-postraumatico"), /suicid/);
+  assert.match(txt("insomnio"), /bipolar|manía|mania/);
+  assert.match(txt("insomnio"), /apnea/);
+  assert.match(txt("duelo-prolongado"), /12 meses/);
+  assert.match(txt("depresion-persistente"), /2 años|dos años/);
 });
 
 console.log(`\n${ok} pruebas correctas.`);

@@ -22,23 +22,24 @@ export function fichaClinicaPorId(id: string): { ficha: FichaClinica; biblioteca
   return null;
 }
 
-/** Hipótesis del EAPI → ficha clínica. «safety» no tiene ficha (se atiende con el protocolo de riesgo). */
-export const FICHA_DE_DX_EAPI: Record<DxId, string | null> = {
-  tag: "ansiedad-generalizada",
-  tag_sub: "ansiedad-generalizada",
-  panic: "panico",
-  stress: "adaptacion",
-  dep: "depresion-mayor",
-  rnt: "rumiacion-estres",
-  ocd: "toc",
-  ocd_sub: "toc",
-  safety: null,
+/** Hipótesis del EAPI → fichas clínicas. «safety» no tiene ficha (se atiende con el protocolo de riesgo). */
+export const FICHAS_DE_DX_EAPI: Record<DxId, string[]> = {
+  tag: ["ansiedad-generalizada"],
+  tag_sub: ["ansiedad-generalizada"],
+  // La hipótesis del EAPI abarca pánico, agorafobia y ansiedad social.
+  panic: ["panico", "ansiedad-social"],
+  stress: ["adaptacion"],
+  dep: ["depresion-mayor"],
+  rnt: ["rumiacion-estres"],
+  ocd: ["toc"],
+  ocd_sub: ["toc"],
+  safety: [],
 };
 
 const unicos = (ids: (string | null | undefined)[]) => [...new Set(ids.filter((x): x is string => Boolean(x)))].filter((id) => fichaClinicaPorId(id));
 
 /** Fichas clínicas relacionadas con las hipótesis del EAPI, en el orden de las hipótesis. */
-export const fichasDeEapi = (dx: { id: DxId }[]) => unicos(dx.map((d) => FICHA_DE_DX_EAPI[d.id]));
+export const fichasDeEapi = (dx: { id: DxId }[]) => unicos(dx.flatMap((d) => FICHAS_DE_DX_EAPI[d.id]));
 
 /**
  * Fichas clínicas relacionadas con el MCEA (mismas reglas que sus hipótesis): PHQ-9 ≥ 10 → depresión;

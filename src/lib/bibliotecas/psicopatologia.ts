@@ -1,5 +1,5 @@
 /**
- * Biblioteca JJR «Psicopatología» (lote 1): seis fichas clínicas de referencia.
+ * Biblioteca JJR «Psicopatología» (lotes 1 y 2): doce fichas clínicas de referencia.
  * Redacción propia. Del DSM-5-TR y la CIE-11 solo se citan códigos; los umbrales se resumen con palabras propias.
  * Base: terapia cognitivo-conductual (TCC) con respaldo empírico.
  */
@@ -9,7 +9,7 @@ export const BIBLIOTECA_PSICOPATOLOGIA: Biblioteca = {
   id: "psicopatologia",
   titulo: "Psicopatología",
   descripcion:
-    "Seis fichas clínicas de referencia sobre ansiedad, pánico, depresión, adaptación, obsesiones y compulsiones, y procesos de rumiación y estrés. Cada una resume cómo se presenta el cuadro, con qué no confundirlo y cómo abordarlo con terapia cognitivo-conductual.",
+    "Doce fichas clínicas de referencia sobre ansiedad generalizada, pánico, ansiedad social, fobia específica, depresión mayor y persistente, adaptación, obsesiones y compulsiones, estrés postraumático, duelo prolongado, insomnio, y procesos de rumiación y estrés. Cada una resume cómo se presenta el cuadro, con qué no confundirlo y cómo abordarlo con terapia cognitivo-conductual.",
   fichas: [
     // 1. ANSIEDAD GENERALIZADA
     {
@@ -669,6 +669,649 @@ export const BIBLIOTECA_PSICOPATOLOGIA: Biblioteca = {
         "Wells, A. (2009). Metacognitive therapy for anxiety and depression. Guilford Press.",
         "Barlow, D. H., Farchione, T. J., Sauer-Zavala, S. et al. (2018). Unified protocol for transdiagnostic treatment of emotional disorders: Therapist guide (2.ª ed.). Oxford University Press.",
         "Borkovec, T. D., Alcaine, O. y Behar, E. (2004). Avoidance theory of worry and generalized anxiety disorder. En R. G. Heimberg, C. L. Turk y D. S. Mennin (Eds.), Generalized anxiety disorder (pp. 77-108). Guilford Press.",
+      ],
+    },
+
+    // 7. ANSIEDAD SOCIAL
+    {
+      id: "ansiedad-social",
+      nombre: "Trastorno de ansiedad social",
+      codigos: { dsm: "F40.10", cie: "6B04" },
+      enPocasPalabras:
+        "Es un miedo intenso a ser juzgado, quedar en ridículo o que los demás noten que uno está nervioso, en situaciones donde hay otras personas (hablar en público, conversar, comer frente a otros). La persona evita esas situaciones o las aguanta con mucha angustia, y después repasa lo que hizo y lo que «habrán pensado» de ella.",
+      sintomasClave: [
+        "Miedo marcado a que los demás la evalúen mal: parecer torpe, aburrida, ansiosa o rara.",
+        "Temor a que se le note el rubor, el temblor, la sudoración o la voz quebrada.",
+        "Evitación de reuniones, exposiciones, llamadas, comer o firmar frente a otros.",
+        "Conductas de seguridad: hablar poco, ensayar cada frase, sujetarse las manos, mirar el celular, llegar con alguien.",
+        "Atención muy centrada en sí misma durante la interacción, con una imagen interna de «cómo me veo».",
+        "Anticipación angustiosa días antes de un evento social.",
+        "Repaso mental posterior de lo que dijo o hizo, casi siempre con juicios duros.",
+        "Limitación real de estudios, empleo, amistades o pareja.",
+      ],
+      duracion:
+        "El miedo es persistente, de unos 6 meses o más, y casi siempre aparece en las situaciones sociales temidas. Es desproporcionado frente al riesgo real y causa sufrimiento o limita la vida de la persona.",
+      noConfundir: [
+        {
+          con: "Timidez o nerviosismo normal",
+          diferencia:
+            "La timidez no impide hacer lo que importa y se calma con el tiempo. En el trastorno hay evitación sostenida, sufrimiento y limitación en el trabajo, los estudios o las relaciones.",
+        },
+        {
+          con: "Trastorno de pánico y agorafobia",
+          diferencia:
+            "En ansiedad social el miedo gira en torno a la evaluación de los demás. En el pánico hay ataques inesperados y miedo a las sensaciones; en la agorafobia, miedo a situaciones de las que sería difícil escapar.",
+        },
+        {
+          con: "Ansiedad generalizada",
+          diferencia:
+            "En esta las preocupaciones abarcan muchos temas de la vida. En la social, el temor se concentra en situaciones de exposición o de interacción con otras personas.",
+        },
+        {
+          con: "Depresión o rasgos de personalidad evitativa",
+          diferencia:
+            "En la depresión el retraimiento se debe a la falta de interés o de energía, no al miedo. La personalidad evitativa es un patrón más amplio y de toda la vida; pueden coexistir y conviene evaluarlas.",
+        },
+        {
+          con: "Trastorno del espectro autista o miedo por un defecto físico real",
+          diferencia:
+            "En el autismo hay diferencias de comunicación desde la infancia, no solo miedo a ser juzgado. Si el temor se centra en un defecto corporal, explorar dismorfia corporal.",
+        },
+      ],
+      preguntas: [
+        "¿En qué situaciones con otras personas se siente más incómodo o con más miedo?",
+        "¿Qué teme que pase, o qué piensa que los demás van a notar o pensar de usted?",
+        "¿Qué siente en el cuerpo en esos momentos y qué teme que se le note?",
+        "¿Qué hace para sentirse más seguro (ensayar, callarse, evitar la mirada, llevar a alguien)?",
+        "¿Qué situaciones evita o a cuáles va sufriendo? ¿Qué le ha costado por ello en el trabajo o los estudios?",
+        "Después de una reunión o una conversación, ¿qué suele pensar de cómo le fue?",
+        "¿Desde cuándo le pasa esto y cómo era en la niñez o la adolescencia?",
+        "¿Usa alcohol u otras sustancias para poder estar con la gente?",
+      ],
+      alertas: [
+        "Ideas de muerte o de no querer seguir, a veces por soledad o vergüenza crónica: preguntar directamente y evaluar plan, intención y acceso a medios.",
+        "Alcohol, sedantes u otras sustancias para poder socializar: explorar sin juzgar, ya que mantiene el problema y puede llevar a dependencia.",
+        "Depresión asociada, que es frecuente tras años de evitación: evaluarla siempre y valorar su gravedad.",
+        "Aislamiento marcado, abandono de estudios o del trabajo: aumentar el apoyo y priorizar metas que devuelvan funcionamiento.",
+      ],
+      plan: [
+        {
+          etapa: 2,
+          texto:
+            "Explicar el miedo como alarma ante la evaluación social y mostrar cómo la atención en uno mismo, las conductas de seguridad y el repaso posterior lo mantienen (modelo de Clark y Wells).",
+          fichas: ["2.1", "2.4"],
+        },
+        {
+          etapa: 3,
+          texto:
+            "Identificar las predicciones («se van a dar cuenta», «me voy a quedar en blanco») y la imagen que la persona tiene de sí misma en público. Ponerlas a prueba con evidencia y con otra mirada sobre el repaso posterior.",
+          fichas: ["3.1", "3.3"],
+        },
+        {
+          etapa: 4,
+          texto:
+            "Exposición con experimentos conductuales: armar una escalera de situaciones temidas, practicarlas sin conductas de seguridad y con la atención puesta afuera, y comparar lo que ocurrió con lo que se predecía (Clark y Wells; Heimberg). La arma el terapeuta junto con la persona.",
+          fichas: ["4.4"],
+        },
+        {
+          etapa: 5,
+          texto:
+            "Consolidar los avances, seguir buscando situaciones sociales en lugar de volver a evitarlas y escribir un plan para los períodos de más exigencia. Espaciar las sesiones.",
+          fichas: ["5.1", "5.3"],
+        },
+      ],
+      deteccion: [
+        "Evaluación inicial (EAPI): la hipótesis de activación autonómica / pánico y otros trastornos de ansiedad incluye la ansiedad social; en ese caso el sistema sugiere esta ficha. No hay una escala propia de ansiedad social dentro del sistema.",
+        "Seguimiento (MCEA): un GAD-7 de 10 o más lista la ansiedad social como diferencial, pero no la detecta. Se confirma en entrevista según la situación que provoca el miedo.",
+        "Como instrumento externo validado puede usarse la LSAS (Escala de Ansiedad Social de Liebowitz) o la SPIN, para medir gravedad y cambio. Se aplican por separado y con su propia licencia; sus ítems no se reproducen aquí.",
+      ],
+      caso:
+        "Diego, de 24 años, estudia Administración en la Universidad de San Carlos y trabaja medio tiempo en una tienda de Mixco. Evita las exposiciones en clase y ya reprobó un curso por no presentar. Antes de una reunión ensaya cada frase y, cuando habla, aprieta las manos porque cree que «todos notan que me tiemblan». Al llegar a casa repasa cada palabra que dijo y se dice que quedó como tonto. Rechazó un ascenso que le exigía dirigir al equipo.",
+      clave:
+        "Lo que mantiene el miedo no son los demás, sino la atención en uno mismo, las conductas de seguridad y la evitación que impiden comprobar que no pasa lo temido.",
+      referencias: [
+        "Clark, D. M. y Wells, A. (1995). A cognitive model of social phobia. En R. G. Heimberg, M. R. Liebowitz, D. A. Hope y F. R. Schneier (Eds.), Social phobia: Diagnosis, assessment, and treatment (pp. 69-93). Guilford Press.",
+        "Heimberg, R. G. y Becker, R. E. (2002). Cognitive-behavioral group therapy for social phobia: Basic mechanisms and clinical strategies. Guilford Press.",
+        "American Psychiatric Association (2022). Diagnostic and statistical manual of mental disorders (5.ª ed., texto rev.; DSM-5-TR). APA.",
+        "Organización Mundial de la Salud (2019/2022). Clasificación Internacional de Enfermedades, 11.ª revisión (CIE-11). OMS.",
+      ],
+    },
+
+    // 8. FOBIA ESPECÍFICA
+    {
+      id: "fobia-especifica",
+      nombre: "Fobia específica",
+      codigos: { dsm: "F40.2xx", cie: "6B03" },
+      enPocasPalabras:
+        "Es un miedo intenso y desproporcionado a un objeto o situación concreta (animales, alturas, tormentas, inyecciones, volar, espacios cerrados) que casi siempre provoca ansiedad inmediata. La persona lo evita o lo soporta con mucha angustia, aunque sabe que el peligro real es mucho menor.",
+      sintomasClave: [
+        "Miedo o ansiedad intensa y casi inmediata ante un objeto o situación concreta.",
+        "Reconocimiento (en adultos) de que el miedo es exagerado, aunque no logra controlarlo.",
+        "Evitación activa o resistencia con gran malestar cuando no queda más remedio.",
+        "Respuesta del cuerpo: taquicardia, temblor, sudor, náusea o ganas de huir.",
+        "Anticipación angustiosa de que se vaya a encontrar con lo temido.",
+        "Cambios en la vida diaria para evitarlo: rutas, trabajos, viajes, controles médicos.",
+        "En niños, llanto, rabia, quedarse paralizados o aferrarse a un adulto.",
+      ],
+      duracion:
+        "El miedo es persistente, dura unos 6 meses o más, y causa sufrimiento o limita de forma importante la vida de la persona. No se explica mejor por otro trastorno.",
+      noConfundir: [
+        {
+          con: "Miedo normal o cautela razonable",
+          diferencia:
+            "Un miedo proporcionado al riesgo no limita la vida. En la fobia hay desproporción, evitación y deterioro claro.",
+        },
+        {
+          con: "Trastorno de pánico y agorafobia",
+          diferencia:
+            "En el pánico los ataques surgen sin desencadenante claro. En la fobia el miedo aparece solo ante lo temido. En la agorafobia el miedo es a múltiples situaciones de las que sería difícil escapar.",
+        },
+        {
+          con: "Ansiedad social",
+          diferencia:
+            "Aquí el miedo es a ser evaluado por otros. Si el temor a la inyección o a la sangre se centra en lo que pensarán de uno, explorar ansiedad social.",
+        },
+        {
+          con: "TEPT o TOC",
+          diferencia:
+            "Si el miedo nace de un suceso traumático (por ejemplo un accidente), con pesadillas y reexperimentación, pensar en TEPT. Si la evitación se debe a obsesiones de contaminación y hay rituales, pensar en TOC.",
+        },
+      ],
+      preguntas: [
+        "¿A qué le tiene miedo exactamente y qué es lo peor que cree que podría pasar?",
+        "¿Qué siente en el cuerpo cuando se encuentra con eso, o cuando sabe que se va a encontrar?",
+        "¿Qué hace para no encontrarse con eso, o qué hace para aguantarlo cuando no puede evitarlo?",
+        "¿Desde cuándo le pasa y recuerda algún momento o experiencia que lo marcó?",
+        "¿Qué cosas ha dejado de hacer o qué le ha costado por este miedo (viajes, estudios, controles médicos)?",
+        "¿Alguna vez se ha desmayado o ha sentido que se desmayaba ante eso?",
+        "¿Qué tan importante es para usted superarlo ahora y qué le gustaría poder hacer?",
+        "¿Hay en su familia otras personas con miedos parecidos, y cómo reaccionaban ante ellos?",
+      ],
+      alertas: [
+        "Fobia a la sangre, las inyecciones o las heridas: puede haber desmayo vasovagal (baja la presión y el pulso). Se trabaja con tensión aplicada y con la persona sentada o acostada, no con relajación que baje más la presión.",
+        "Evitación de controles o tratamientos médicos necesarios (vacunas, odontología, estudios): coordinar con el médico y priorizar esa meta.",
+        "Ideas de muerte o consumo de alcohol o sedantes para soportar lo temido: explorar y abordar de forma directa.",
+        "Miedo de un suceso traumático reciente con pesadillas y flashbacks: evaluar estrés postraumático antes de decidir el enfoque.",
+      ],
+      plan: [
+        {
+          etapa: 1,
+          texto:
+            "Precisar qué teme exactamente, qué evita, qué conductas de seguridad usa y qué tanto le limita. Fijar una meta concreta y observable (por ejemplo «subir al bus sin acompañante»).",
+          fichas: [],
+        },
+        {
+          etapa: 2,
+          texto:
+            "Explicar la respuesta de alarma y cómo la evitación mantiene el miedo: cada vez que se huye, el cerebro aprende que era necesario. Normalizar sin minimizar.",
+          fichas: ["2.1", "2.4"],
+        },
+        {
+          etapa: 4,
+          texto:
+            "Exposición gradual a lo temido, con escalera de 6 a 10 pasos, sin conductas de seguridad y con práctica repetida. En fobias circunscritas funciona bien una sesión prolongada guiada (Öst) o varias sesiones breves, siempre con el terapeuta.",
+          fichas: ["4.4"],
+        },
+        {
+          etapa: 5,
+          texto:
+            "Mantener la exposición con prácticas ocasionales, para evitar que el miedo regrese. Anticipar situaciones nuevas y escribir un plan de mantenimiento.",
+          fichas: ["5.1", "5.3"],
+        },
+      ],
+      deteccion: [
+        "Ni el EAPI ni el MCEA tienen una escala propia para fobias específicas. Una subescala de ansiedad del DASS elevada puede aparecer, pero no orienta hacia este cuadro.",
+        "La fobia específica se identifica en entrevista: objeto o situación concreta, miedo inmediato y evitación. No requiere puntos de corte.",
+        "Como instrumento externo puede usarse un cuestionario de miedos específico para el objeto temido (por ejemplo para inyecciones o alturas) o el seguimiento con escalas de malestar 0–10 durante la exposición.",
+      ],
+      caso:
+        "Sofía, de 31 años, vive en Antigua Guatemala y trabaja como enfermera de consulta externa. Desde niña le tiene pavor a las cucarachas; cuando ve una, grita, sube a una silla y no puede entrar a la cocina por horas. Revisa la casa antes de dormir y dejó de visitar a una tía cuya casa «está llena». Reconoce que su miedo es exagerado, pero no puede controlarlo. Quiere superarlo porque piensa mudarse a un apartamento y le da miedo hacerlo sola.",
+      clave:
+        "La fobia se mantiene porque se evita; se supera enfrentando lo temido de forma gradual, con guía y sin huir, hasta que el cerebro aprende que no era peligroso.",
+      referencias: [
+        "Öst, L.-G. (1989). One-session treatment for specific phobias. Behaviour Research and Therapy, 27(1), 1-7.",
+        "Öst, L.-G. y Sterner, U. (1987). Applied tension: A specific behavioral method for treatment of blood phobia. Behaviour Research and Therapy, 25(1), 25-29.",
+        "Craske, M. G., Treanor, M., Conway, C. C., Zbozinek, T. y Vervliet, B. (2014). Maximizing exposure therapy: An inhibitory learning approach. Behaviour Research and Therapy, 58, 10-23.",
+        "American Psychiatric Association (2022). Diagnostic and statistical manual of mental disorders (5.ª ed., texto rev.; DSM-5-TR). APA.",
+      ],
+    },
+
+    // 9. ESTRÉS POSTRAUMÁTICO
+    {
+      id: "estres-postraumatico",
+      nombre: "Trastorno de estrés postraumático (TEPT)",
+      codigos: { dsm: "F43.10", cie: "6B40 (TEPT complejo: 6B41)" },
+      enPocasPalabras:
+        "Aparece después de vivir o presenciar un suceso con amenaza de muerte, lesión grave o violencia. La persona revive lo ocurrido (recuerdos, pesadillas), evita todo lo que se lo recuerda, vive en alerta y cambia su forma de verse y de ver el mundo. La CIE-11 distingue además un TEPT complejo, con dificultades persistentes de regulación emocional, de autoestima y de relaciones, tras traumas prolongados.",
+      sintomasClave: [
+        "Recuerdos intrusivos, pesadillas o la sensación de volver a vivir el suceso (flashbacks).",
+        "Malestar intenso o reacciones del cuerpo ante cualquier recordatorio.",
+        "Evitación de lugares, personas, conversaciones o pensamientos ligados a lo ocurrido.",
+        "Hipervigilancia, sobresalto fácil, irritabilidad y sueño muy alterado.",
+        "Creencias negativas persistentes sobre uno mismo o el mundo («fue mi culpa», «nadie es seguro»).",
+        "Culpa, vergüenza, miedo o enojo constantes, y pérdida de interés en lo que antes se disfrutaba.",
+        "Sentirse separado de los demás o sin capacidad de sentir emociones positivas.",
+        "En el TEPT complejo: dificultad para regular emociones, sensación de ser inútil y problemas para mantener vínculos.",
+      ],
+      duracion:
+        "Los síntomas se mantienen más de un mes después del suceso y causan sufrimiento o deterioro importante. Pueden comenzar tarde, incluso meses después. Menos de un mes corresponde a una reacción aguda y no se descarta que mejore sola.",
+      noConfundir: [
+        {
+          con: "Trastorno de estrés agudo o reacción normal al trauma",
+          diferencia:
+            "En las primeras semanas muchas personas tienen síntomas que ceden solos. Se diagnostica TEPT cuando persisten más de un mes con deterioro.",
+        },
+        {
+          con: "Trastorno de adaptación",
+          diferencia:
+            "El estresor puede ser fuerte, pero no cumple las características de un suceso traumático ni el cuadro de reexperimentación, evitación e hiperalerta.",
+        },
+        {
+          con: "Depresión mayor y ansiedad generalizada",
+          diferencia:
+            "Pueden coexistir. La clave es que el sufrimiento se organiza alrededor de recuerdos del suceso y de la evitación de lo que los dispara.",
+        },
+        {
+          con: "Trastorno de pánico",
+          diferencia:
+            "Los ataques en el TEPT suelen tener un disparador ligado al trauma. En el pánico son inesperados y el miedo es a las sensaciones corporales.",
+        },
+        {
+          con: "Psicosis, consumo de sustancias o lesión cerebral",
+          diferencia:
+            "Los flashbacks se viven como recuerdos y la persona sabe que no son presentes, pero a veces se confunden con alucinaciones. Descartar sustancias, traumatismo craneal u otras causas.",
+        },
+      ],
+      preguntas: [
+        "¿Ha vivido o presenciado algo muy difícil o que puso en peligro su vida o la de otros? (Si no quiere detallarlo ahora, no es necesario.)",
+        "¿Qué tan seguido le vienen recuerdos, imágenes o pesadillas de eso, y qué le provocan?",
+        "¿Hay lugares, personas o temas que evita porque se lo recuerdan?",
+        "¿Cómo está su sueño, su sobresalto ante ruidos y su nivel de alerta durante el día?",
+        "¿Qué piensa de lo que pasó y de usted mismo desde entonces? ¿Siente culpa o vergüenza?",
+        "¿Hoy se siente seguro en su casa, su trabajo y su entorno? ¿Hay violencia o amenazas actuales?",
+        "¿Qué ha cambiado en sus relaciones, en su trabajo o en su capacidad de disfrutar?",
+        "¿Cómo ha cambiado el consumo de alcohol, tabaco u otras sustancias desde entonces?",
+      ],
+      alertas: [
+        "Ideas de suicidio o de hacerse daño, más frecuentes con culpa, vergüenza o desesperanza: preguntar directamente, evaluar el riesgo y construir un plan de seguridad.",
+        "Violencia actual o amenazas persistentes (pareja, familia, pandillas, extorsión): primero la seguridad de la persona; no iniciar trabajo con el trauma mientras el peligro continúe. Coordinar protección.",
+        "Disociación marcada (quedarse ausente, sentirse irreal, lagunas) o flashbacks que no cede: usar anclaje al presente y valorar derivar a quien tenga formación en trauma.",
+        "Consumo de alcohol u otras sustancias para dormir o no sentir: explorar y abordar en paralelo.",
+        "La exposición al recuerdo traumático la dirige solo un terapeuta con formación en trauma; quien no la tiene deriva, en lugar de improvisar.",
+      ],
+      plan: [
+        {
+          etapa: 1,
+          texto:
+            "Garantizar seguridad, evaluar riesgo suicida, disociación, consumo y apoyo disponible. Reunir la historia sin pedir detalles del trauma antes de tiempo y acordar el ritmo con la persona.",
+          fichas: ["1.1", "1.2"],
+        },
+        {
+          etapa: 2,
+          texto:
+            "Explicar la reacción de estrés como respuesta de alarma y cómo la evitación y los recordatorios mantienen el cuadro. Normalizar los síntomas y preparar para el trabajo posterior.",
+          fichas: ["2.1", "2.4"],
+        },
+        {
+          etapa: 3,
+          texto:
+            "Trabajar los «puntos de atoramiento» (culpa, «debí haber hecho algo», pérdida de confianza) con terapia de procesamiento cognitivo (Resick): examinar los pensamientos y construir una visión más equilibrada del suceso.",
+          fichas: ["3.1", "3.3"],
+        },
+        {
+          etapa: 4,
+          texto:
+            "Enseñar regulación (respiración lenta, anclaje en el presente) y, solo con un terapeuta formado en trauma, exposición prolongada (Foa): revivir el recuerdo en sesión y enfrentar de forma gradual los lugares evitados.",
+          fichas: ["4.2", "4.4"],
+        },
+        {
+          etapa: 5,
+          texto:
+            "Consolidar los avances, anticipar fechas y recordatorios difíciles, y escribir un plan para cuando reaparezcan síntomas. Espaciar las sesiones.",
+          fichas: ["5.1", "5.3"],
+        },
+      ],
+      deteccion: [
+        "Evaluación inicial (EAPI): el sistema no tiene una escala de trauma. Puede observarse ansiedad o ánimo alterados, pero no orienta por sí mismo hacia estrés postraumático.",
+        "Seguimiento (MCEA): menciona el estrés postraumático como diferencial cuando el GAD-7 es de 10 o más; no lo detecta. Se confirma preguntando por exposición a un suceso y por sus síntomas.",
+        "Como instrumento externo validado puede usarse la PCL-5 (lista de síntomas de TEPT) para tamizar y seguir el cambio, o una entrevista estructurada como la CAPS-5. Se aplican por separado y no se reproducen aquí.",
+      ],
+      caso:
+        "Julio, de 36 años, es piloto de microbús en la zona 18 de Ciudad de Guatemala. Hace ocho meses lo asaltaron en su ruta y vio cómo hirieron a un pasajero. Desde entonces tiene pesadillas, se sobresalta con los frenazos y rechaza esa ruta, por lo que perdió ingresos. Piensa que «debí haber hecho algo» y no logra hablar del asunto con su familia. Toma más guaro para dormir. Dice que nunca se ha sentido tan solo.",
+      clave:
+        "Primero seguridad y estabilización; el trabajo con el recuerdo traumático se hace con ritmo, con apoyo y solo con formación en trauma.",
+      referencias: [
+        "Resick, P. A., Monson, C. M. y Chard, K. M. (2017). Cognitive processing therapy for PTSD: A comprehensive manual. Guilford Press.",
+        "Foa, E. B., Hembree, E. A. y Rothbaum, B. O. (2007). Prolonged exposure therapy for PTSD: Emotional processing of traumatic experiences, therapist guide. Oxford University Press.",
+        "American Psychiatric Association (2022). Diagnostic and statistical manual of mental disorders (5.ª ed., texto rev.; DSM-5-TR). APA.",
+        "Organización Mundial de la Salud (2019/2022). Clasificación Internacional de Enfermedades, 11.ª revisión (CIE-11). OMS.",
+      ],
+    },
+
+    // 10. DUELO PROLONGADO
+    {
+      id: "duelo-prolongado",
+      nombre: "Trastorno de duelo prolongado",
+      codigos: { dsm: "F43.81", cie: "6B42" },
+      enPocasPalabras:
+        "Es un duelo que, mucho tiempo después de la muerte de un ser querido, sigue dominando la vida: añoranza intensa, dolor emocional que no baja y dificultad para retomar proyectos o relaciones. Es distinto del duelo esperado, que duele pero con el tiempo se integra, y debe valorarse con respeto por la cultura y la familia.",
+      sintomasClave: [
+        "Añoranza o preocupación constante por la persona fallecida.",
+        "Dolor emocional intenso: tristeza, culpa, enojo o negación de la pérdida.",
+        "Dificultad para aceptar la muerte o sentirse «detenido» en el momento de la pérdida.",
+        "Sentir que se ha perdido una parte de uno mismo o que la vida ya no tiene sentido.",
+        "Evitar lo que recuerda que la persona murió, o aferrarse a sus objetos y rutinas.",
+        "Dificultad para confiar en otros, soledad o vacío emocional.",
+        "Problemas para retomar el trabajo, las amistades o los planes a futuro.",
+      ],
+      duracion:
+        "El DSM-5-TR pide que hayan pasado al menos 12 meses desde la muerte en adultos (6 meses en niños y adolescentes). La CIE-11 requiere al menos 6 meses. Además, la reacción debe exceder claramente lo esperado en su cultura y afectar la vida.",
+      noConfundir: [
+        {
+          con: "Duelo esperado",
+          diferencia:
+            "Es doloroso, con olas de tristeza ligadas al recuerdo, pero la persona conserva su valor y va retomando la vida. Hay que normalizarlo, sobre todo el primer año, y respetar rezos, novenarios, la visita al cementerio y el Día de Todos los Santos.",
+        },
+        {
+          con: "Depresión mayor",
+          diferencia:
+            "En el duelo prolongado el sufrimiento se centra en la pérdida y en la añoranza. En la depresión el ánimo bajo, la culpa global y la inutilidad abarcan toda la vida. Ambas pueden coexistir.",
+        },
+        {
+          con: "Estrés postraumático",
+          diferencia:
+            "Si la muerte fue violenta o repentina, puede haber síntomas de trauma (imágenes, evitación, hiperalerta) además del duelo. Se evalúa ambos cuadros.",
+        },
+        {
+          con: "Trastorno de adaptación",
+          diferencia:
+            "Es una reacción a un estresor sin la añoranza ni la preocupación centradas en la persona fallecida.",
+        },
+      ],
+      preguntas: [
+        "Cuénteme sobre la persona que murió y cómo era su relación con ella.",
+        "¿Cómo fue la muerte y cómo se enteró? ¿Pudo despedirse o participar en los ritos que para ustedes son importantes?",
+        "¿Cómo viven en su familia y en su comunidad el duelo (rezos, novenarios, fechas)? ¿Eso le ayuda?",
+        "¿Qué es lo más difícil de la pérdida hoy y qué ha cambiado en su vida diaria desde entonces?",
+        "¿Qué evita (lugares, objetos, fotos, conversaciones) y qué hace para sentirla cerca?",
+        "¿Qué pensamientos le vienen sobre la muerte, sobre su culpa o sobre lo que pudo haber hecho distinto?",
+        "¿Con quién cuenta para apoyarse y qué proyectos o actividades siguen siendo importantes para usted?",
+        "¿Ha pensado en reunirse con la persona fallecida o en que no vale la pena seguir?",
+      ],
+      alertas: [
+        "Ideas de reunirse con la persona fallecida, de no querer vivir o de hacerse daño: preguntar directamente, evaluar plan, intención y medios, y no esperar a que lo diga.",
+        "Depresión mayor asociada (sin esperanza, culpa global, pérdida de peso o de funcionamiento): evaluarla y considerar derivación a psiquiatría.",
+        "Consumo de alcohol u otras sustancias para aguantar el dolor: explorar y abordar.",
+        "Pérdida violenta, repentina o de un hijo o un hijo no nacido, con riesgo de trauma: evaluar estrés postraumático y ofrecer acompañamiento sostenido.",
+      ],
+      plan: [
+        {
+          etapa: 1,
+          texto:
+            "Escuchar la historia de la relación y de la muerte, evaluar el riesgo suicida y la depresión asociada, y explorar el significado cultural y familiar del duelo. Construir con la persona la formulación.",
+          fichas: ["1.1", "1.4"],
+        },
+        {
+          etapa: 2,
+          texto:
+            "Explicar el duelo como un proceso natural y por qué a veces se «atasca»: la evitación, la culpa y la separación de la vida. Normalizar el dolor esperado y la añoranza sin apresurar.",
+          fichas: ["2.2"],
+        },
+        {
+          etapa: 3,
+          texto:
+            "Revisar pensamientos de culpa y de «no puedo vivir sin él o ella» con ayuda del registro de pensamientos, y reencuadrar las creencias que mantienen el dolor sin invalidar el vínculo.",
+          fichas: ["3.1"],
+        },
+        {
+          etapa: 4,
+          texto:
+            "Retomar actividades y metas propias (activación y planes concretos), y trabajar los recordatorios evitados: relato de la pérdida, conversaciones imaginadas con la persona fallecida y visitas a lugares ligados a ella. Seguir la terapia de duelo complicado (Shear; Boelen).",
+          fichas: ["4.1", "4.5"],
+        },
+        {
+          etapa: 5,
+          texto:
+            "Fortalecer la vida propia y dejar un lugar para el recuerdo: rituales, fechas y señales de alerta. Preparar aniversarios y festividades difíciles.",
+          fichas: ["5.1", "5.3"],
+        },
+      ],
+      deteccion: [
+        "Ni el EAPI ni el MCEA tienen una escala de duelo. El PHQ-9 o el DASS pueden salir altos por la tristeza, pero no distinguen entre depresión y duelo.",
+        "Se detecta en entrevista y por la historia: pérdida de una persona significativa, tiempo transcurrido y presencia de añoranza o preocupación dominantes.",
+        "Como instrumento externo validado puede usarse el PG-13-R (Escala de Duelo Prolongado) o el Inventario de Duelo Complicado. Se aplican por separado y no se reproducen aquí.",
+      ],
+      caso:
+        "Doña Ofelia, de 58 años, vive en Cobán y perdió a su esposo hace dos años, de un infarto, mientras ella estaba en el mercado. Aún guarda su ropa tal como la dejó, prepara su café por costumbre y no ha vuelto a la iglesia porque «ya no tiene sentido». Se culpa por no haber estado en casa. Rechaza las invitaciones de sus hijas y dice que a veces desearía «irse con él». Antes cuidaba un puesto de comida y ahora casi no sale.",
+      clave:
+        "El duelo esperado se acompaña, no se corrige; el prolongado se reconoce cuando, pasado el tiempo, la vida sigue detenida en la pérdida.",
+      referencias: [
+        "Shear, K., Frank, E., Houck, P. R. y Reynolds, C. F. (2005). Treatment of complicated grief: A randomized controlled trial. JAMA, 293(21), 2601-2608.",
+        "Boelen, P. A., de Keijser, J., van den Hout, M. A. y van den Bout, J. (2007). Treatment of complicated grief: A comparison between cognitive-behavioral therapy and supportive counseling. Journal of Consulting and Clinical Psychology, 75(2), 277-284.",
+        "American Psychiatric Association (2022). Diagnostic and statistical manual of mental disorders (5.ª ed., texto rev.; DSM-5-TR). APA.",
+        "Organización Mundial de la Salud (2019/2022). Clasificación Internacional de Enfermedades, 11.ª revisión (CIE-11). OMS.",
+      ],
+    },
+
+    // 11. INSOMNIO
+    {
+      id: "insomnio",
+      nombre: "Trastorno de insomnio",
+      codigos: { dsm: "F51.01", cie: "7A00" },
+      enPocasPalabras:
+        "Es la dificultad persistente para quedarse dormido, mantener el sueño o despertarse demasiado temprano, a pesar de tener la oportunidad de dormir, con malestar o cansancio durante el día. Con el tiempo se sostiene por hábitos y por la preocupación por no dormir, aunque haya comenzado por otra causa.",
+      sintomasClave: [
+        "Tardar mucho en dormirse o quedar despierto en la noche durante largos ratos.",
+        "Despertares tempranos sin poder volver a dormir.",
+        "Cansancio, falta de concentración, mal humor o somnolencia durante el día.",
+        "Preocupación y tensión por no dormir, sobre todo al acercarse la hora de acostarse.",
+        "Pasar mucho tiempo en la cama despierto, o usar la cama para trabajar, ver el celular o preocuparse.",
+        "Siestas largas o cambios en el horario de dormir que desordenan el reloj interno.",
+        "Uso de café, alcohol o pastillas para controlar el sueño.",
+      ],
+      duracion:
+        "Las dificultades se presentan al menos 3 noches por semana y durante 3 meses o más (menos de eso corresponde a insomnio de corta duración). Debe haber malestar o afectación durante el día y no explicarse solo por otro trastorno del sueño.",
+      noConfundir: [
+        {
+          con: "Poco tiempo para dormir por trabajo, turnos o ruido",
+          diferencia:
+            "Si la persona no tiene oportunidad suficiente de dormir, el problema es de horario o de ambiente, no de insomnio. En el insomnio hay oportunidad y aun así no logra dormir.",
+        },
+        {
+          con: "Apnea del sueño y síndrome de piernas inquietas",
+          diferencia:
+            "Ronquidos fuertes, pausas respiratorias, sueño no reparador con somnolencia o sensación de hormigueo en las piernas que obliga a moverse orientan a causas médicas del sueño que requieren evaluación.",
+        },
+        {
+          con: "Depresión, ansiedad o estrés postraumático",
+          diferencia:
+            "El mal dormir es frecuente en estos cuadros y puede ser síntoma o factor de mantenimiento. Se tratan ambos, ya que si no se atiende el insomnio, puede persistir aunque mejore el ánimo.",
+        },
+        {
+          con: "Trastornos del ritmo circadiano",
+          diferencia:
+            "Si la persona duerme bien pero en horarios desfasados (se acuesta de madrugada, por ejemplo), el problema es el horario del reloj interno.",
+        },
+        {
+          con: "Efecto de sustancias o medicamentos",
+          diferencia:
+            "Cafeína, alcohol, estimulantes, algunos antidepresivos o corticoides alteran el sueño. Se revisa el consumo antes de concluir.",
+        },
+      ],
+      preguntas: [
+        "Cuénteme cómo es una noche típica: ¿a qué hora se acuesta, cuánto tarda en dormirse y cuántas veces despierta?",
+        "¿A qué hora se despierta, a qué hora se levanta y cómo se siente al día siguiente?",
+        "¿Qué piensa y qué hace cuando no puede dormir?",
+        "¿Qué hace en la cama además de dormir (celular, tele, trabajo, preocuparse)?",
+        "¿Cuánto café, té, bebidas energéticas, alcohol, tabaco o pastillas para dormir consume, y a qué hora?",
+        "¿Alguien le ha dicho que ronca fuerte o que se le corta la respiración? ¿Tiene molestia en las piernas por la noche?",
+        "¿Cuándo empezó el problema y qué pasaba en su vida en ese momento?",
+        "¿Cómo ha afectado su trabajo, su manejo, su ánimo y su relación con los demás?",
+      ],
+      alertas: [
+        "Ronquidos intensos, pausas al respirar o somnolencia marcada de día: derivar a evaluación médica para descartar apnea del sueño antes de iniciar la terapia.",
+        "Bipolaridad (o antecedentes de manía o hipomanía), epilepsia o riesgo de accidentes: la restricción del tiempo en cama está contraindicada o se usa con mucha cautela y coordinación con el médico, porque la falta de sueño puede desencadenar manía o crisis.",
+        "Somnolencia al manejar o con maquinaria: indicar no manejar si hay riesgo y priorizar la seguridad.",
+        "Uso de alcohol, sedantes o hipnóticos para dormir, o medicamentos que alteren el sueño: coordinar con el médico y no suspenderlos sin supervisión.",
+        "Ideas de muerte o desesperanza por el cansancio, frecuentes en insomnio crónico: preguntar directamente y evaluar el riesgo.",
+      ],
+      plan: [
+        {
+          etapa: 1,
+          texto:
+            "Llevar un diario de sueño durante una o dos semanas (hora de acostarse, de dormirse, despertares, hora de levantarse) y revisar hábitos, consumo y salud. Identificar los factores que lo mantienen.",
+          fichas: ["1.3"],
+        },
+        {
+          etapa: 2,
+          texto:
+            "Explicar cómo funciona el sueño (necesidad y reloj interno) y cómo la preocupación por dormir y los intentos de compensar lo empeoran. Normalizar que una mala noche no daña la salud.",
+          fichas: ["2.3"],
+        },
+        {
+          etapa: 3,
+          texto:
+            "Trabajar los pensamientos y las preocupaciones sobre el sueño («si no duermo, mañana no podré hacer nada»). Separar lo que se puede controlar de lo que no, sin forzar el sueño.",
+          fichas: ["3.4"],
+        },
+        {
+          etapa: 4,
+          texto:
+            "Aplicar la TCC para el insomnio (Morin; Perlis): control de estímulos (la cama solo para dormir), horario fijo de levantarse, restricción del tiempo en cama con supervisión del terapeuta y revisión de higiene del sueño. Sumar relajación y tiempo de preocupación en la tarde.",
+          fichas: ["4.2", "4.3"],
+        },
+        {
+          etapa: 5,
+          texto:
+            "Mantener el horario, reconocer las noches malas como parte de la vida y tener un plan para épocas de estrés. Retirar poco a poco las ayudas externas en coordinación con el médico.",
+          fichas: ["5.1", "5.3"],
+        },
+      ],
+      deteccion: [
+        "Evaluación inicial (EAPI) y seguimiento (MCEA): el sistema no tiene una escala de insomnio. El ítem de sueño del PHQ-9 y del DASS indica que hay molestia, pero no basta para diagnosticar insomnio ni distingue su causa.",
+        "Se detecta en entrevista y con un diario de sueño de una o dos semanas: tiempo para dormirse, despertares, horas en cama y consecuencias del día.",
+        "Como instrumento externo validado puede usarse el ISI (Índice de Gravedad del Insomnio) para medir gravedad y cambio. Se aplica por separado y sus ítems no se reproducen aquí.",
+      ],
+      caso:
+        "Rubén, de 45 años, es contador y vive en Villa Nueva. Desde hace casi un año tarda más de una hora en dormirse y se despierta a las tres de la mañana pensando en el trabajo. Para compensar se queda en la cama hasta las ocho, duerme siesta por la tarde y toma varias tazas de café. Revisa el celular acostado y cada noche se angustia al ver la hora. Está cansado, irritable y teme quedarse dormido manejando. No ronca ni tiene antecedentes de manía.",
+      clave:
+        "El insomnio crónico lo mantienen los hábitos y la preocupación por dormir; se trata ordenando el horario y la cama, no forzando el sueño.",
+      referencias: [
+        "Morin, C. M. (1993). Insomnia: Psychological assessment and management. Guilford Press.",
+        "Perlis, M. L., Jungquist, C., Smith, M. T. y Posner, D. (2005). Cognitive behavioral treatment of insomnia: A session-by-session guide. Springer.",
+        "American Psychiatric Association (2022). Diagnostic and statistical manual of mental disorders (5.ª ed., texto rev.; DSM-5-TR). APA.",
+        "Organización Mundial de la Salud (2019/2022). Clasificación Internacional de Enfermedades, 11.ª revisión (CIE-11). OMS.",
+      ],
+    },
+
+    // 12. DEPRESIÓN PERSISTENTE (DISTIMIA)
+    {
+      id: "depresion-persistente",
+      nombre: "Trastorno depresivo persistente (distimia)",
+      codigos: { dsm: "F34.1", cie: "6A72" },
+      enPocasPalabras:
+        "Es un ánimo bajo crónico, más leve que un episodio mayor pero que dura años, hasta el punto de que la persona lo siente como parte de su forma de ser («siempre he sido así de triste»). Con frecuencia empieza en la adolescencia, y sobre este fondo pueden aparecer episodios de depresión mayor.",
+      sintomasClave: [
+        "Ánimo bajo o apagado la mayor parte de los días, durante años.",
+        "Poca energía, cansancio constante o sensación de que todo cuesta.",
+        "Baja autoestima y autocrítica constante («no sirvo para nada»).",
+        "Desesperanza o visión pesimista del futuro.",
+        "Dificultad para concentrarse o para tomar decisiones.",
+        "Cambios en el apetito o en el sueño (dormir demasiado o poco).",
+        "Poco disfrute de la vida, sin llegar a perder todo el interés.",
+        "Aislamiento gradual o estilo de relaciones marcado por la desconfianza y el sentirse inferior.",
+      ],
+      duracion:
+        "El DSM-5-TR pide un ánimo bajo la mayor parte del día durante al menos 2 años en adultos (1 año en niños y adolescentes), sin periodos de más de 2 meses sin síntomas. La CIE-11 usa un criterio de 2 años con una descripción similar.",
+      noConfundir: [
+        {
+          con: "Episodio depresivo mayor",
+          diferencia:
+            "El episodio mayor es más intenso y marcado, y puede ser reciente. La distimia es más leve y de larga duración. Pueden coexistir y se llama «doble depresión»: se evalúan los dos.",
+        },
+        {
+          con: "Trastorno bipolar (ciclotimia)",
+          diferencia:
+            "Se pregunta siempre por periodos de ánimo elevado, mucha energía o poca necesidad de dormir. Si existieron, no es distimia.",
+        },
+        {
+          con: "Personalidad depresiva o rasgos de carácter",
+          diferencia:
+            "La persona puede creer que es su manera de ser. Pero el ánimo bajo es un cuadro tratable, con respuesta a psicoterapia, y suele haber un cambio claro respecto de su mejor momento.",
+        },
+        {
+          con: "Depresión por causa médica o por sustancias",
+          diferencia:
+            "Hipotiroidismo, anemia, apnea del sueño, alcohol y algunos medicamentos pueden mantener un ánimo bajo crónico. Se descarta con el médico.",
+        },
+        {
+          con: "Trastorno de adaptación o duelo prolongado",
+          diferencia:
+            "Se vinculan a un estresor o a una pérdida concreta, mientras que en la distimia el ánimo bajo es un fondo de años y no depende de un hecho único.",
+        },
+      ],
+      preguntas: [
+        "¿Cómo describiría su ánimo en general durante los últimos años? ¿Hubo épocas en que se sintiera bien por más de un par de meses?",
+        "¿Desde cuándo se siente así? ¿Recuerda cómo era antes, en la adolescencia o la niñez?",
+        "¿Qué dice de sí mismo cuando se siente decaído y qué espera del futuro?",
+        "¿Qué cosas disfruta o ha dejado de disfrutar? ¿Qué le cuesta más hacer cada día?",
+        "¿Cómo están su sueño, su apetito y su energía?",
+        "¿Han habido épocas peores, con más tristeza, desesperanza o ideas de no querer vivir?",
+        "¿Alguna vez ha tenido temporadas de mucha energía, de dormir muy poco sin cansarse o de sentirse extraordinariamente bien?",
+        "¿Cómo son sus relaciones con familia y amistades? ¿Qué tanto cuenta con alguien de confianza?",
+      ],
+      alertas: [
+        "Depresión mayor sobreagregada («doble depresión»): si aparece un empeoramiento marcado con pérdida de interés, sueño o apetito alterados o ideas de muerte, evaluar de inmediato la gravedad.",
+        "Ideas de suicidio o desesperanza crónica: se subestiman porque la persona lleva años así. Preguntar directamente y evaluar plan, intención y medios.",
+        "Antecedentes de manía o hipomanía: sospechar trastorno bipolar y derivar a psiquiatría antes de seguir solo con psicoterapia.",
+        "Consumo de alcohol u otras sustancias como forma de afrontar: explorar y tratar en paralelo.",
+      ],
+      plan: [
+        {
+          etapa: 1,
+          texto:
+            "Evaluar riesgo suicida, descartar bipolaridad y causas médicas, y reconstruir la historia del ánimo bajo (inicio, mejores épocas, eventos de vida). Fijar metas realistas, pensando en un tratamiento más largo.",
+          fichas: ["1.1", "1.2"],
+        },
+        {
+          etapa: 2,
+          texto:
+            "Explicar que el ánimo bajo crónico es un problema tratable y no un rasgo fijo de la persona, y cómo la inactividad, la autocrítica y el aislamiento lo sostienen.",
+          fichas: ["2.2"],
+        },
+        {
+          etapa: 3,
+          texto:
+            "Identificar las creencias antiguas sobre sí mismo («soy defectuoso», «nada va a cambiar») y las distorsiones que las mantienen, y ponerlas a prueba con evidencia y experimentos (Beck).",
+          fichas: ["3.1", "3.2", "3.3"],
+        },
+        {
+          etapa: 4,
+          texto:
+            "Activación conductual con metas pequeñas y planes concretos. En lo interpersonal, revisar cómo los patrones de relación y las consecuencias de lo que la persona hace mantienen el problema (CBASP, McCullough).",
+          fichas: ["4.1", "4.5"],
+        },
+        {
+          etapa: 5,
+          texto:
+            "Consolidar los cambios, reconocer señales tempranas de empeoramiento y planear sesiones de refuerzo a más largo plazo, ya que la recaída es frecuente en cuadros crónicos.",
+          fichas: ["5.1", "5.2", "5.3"],
+        },
+      ],
+      deteccion: [
+        "Evaluación inicial (EAPI): la subescala de depresión del DASS o los ítems de depresión pueden salir elevados y el sistema sugiere la ficha de depresión mayor, pero no distingue la cronicidad ni la duración de 2 años.",
+        "Seguimiento (MCEA): un PHQ-9 de 10 o más sugiere depresión, sin diferenciar distimia. Un puntaje leve sostenido en varias medidas durante años también merece explorar este cuadro.",
+        "Se detecta en entrevista y por la historia: ánimo bajo casi todos los días durante 2 años o más, sin periodos largos de bienestar. No hay una escala específica dentro del sistema.",
+      ],
+      caso:
+        "Gabriela, de 39 años, es secretaria en una clínica de Quetzaltenango. Desde la adolescencia se describe como «apagada y gris»; nunca ha tenido periodos largos de alegría. Cumple con su trabajo, pero llega a casa agotada, se critica con dureza por cualquier error y piensa que «así soy yo y ya no voy a cambiar». Hace unas semanas empeoró: duerme mal, no come y ha dejado de ver a sus hermanas. Nunca ha tenido temporadas de euforia ni consume alcohol.",
+      clave:
+        "Lo crónico se vuelve «forma de ser»; reconocerlo como un problema tratable y vigilar el empeoramiento hacia depresión mayor es el primer paso.",
+      referencias: [
+        "McCullough, J. P. (2000). Treatment for chronic depression: Cognitive behavioral analysis system of psychotherapy (CBASP). Guilford Press.",
+        "Martell, C. R., Dimidjian, S. y Herman-Dunn, R. (2010). Behavioral activation for depression: A clinician's guide. Guilford Press.",
+        "American Psychiatric Association (2022). Diagnostic and statistical manual of mental disorders (5.ª ed., texto rev.; DSM-5-TR). APA.",
+        "Organización Mundial de la Salud (2019/2022). Clasificación Internacional de Enfermedades, 11.ª revisión (CIE-11). OMS.",
       ],
     },
   ],
