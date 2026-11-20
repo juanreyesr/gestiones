@@ -96,7 +96,7 @@ export const BIBLIOTECA_PSICOPATOLOGIA: Biblioteca = {
           etapa: 4,
           texto:
             "Entrenar relajación aplicada o muscular progresiva, resolución de problemas para lo resoluble, tiempo programado para preocuparse y exposición gradual a conductas de seguridad (revisar, preguntar, posponer).",
-          fichas: ["2.4"],
+          fichas: ["2.4", "4.2", "4.3"],
         },
         {
           etapa: 5,
@@ -202,7 +202,7 @@ export const BIBLIOTECA_PSICOPATOLOGIA: Biblioteca = {
           etapa: 4,
           texto:
             "Exposición interoceptiva gradual (provocar sensaciones como acelerar el pulso o hiperventilar de forma controlada) y exposición en vivo a lugares evitados. Reducir las conductas de seguridad.",
-          fichas: [],
+          fichas: ["4.2", "4.4"],
         },
         {
           etapa: 5,
@@ -313,7 +313,7 @@ export const BIBLIOTECA_PSICOPATOLOGIA: Biblioteca = {
           etapa: 4,
           texto:
             "Activación conductual: registrar la actividad, programar tareas de placer y de dominio ligadas a valores y avanzar de a poco, aunque no haya ganas (Martell, Dimidjian y Herman-Dunn).",
-          fichas: ["1.4"],
+          fichas: ["1.4", "4.1", "4.5"],
         },
         {
           etapa: 5,
@@ -423,7 +423,7 @@ export const BIBLIOTECA_PSICOPATOLOGIA: Biblioteca = {
           etapa: 4,
           texto:
             "Resolución de problemas sobre el estresor, reactivar rutinas y actividades valiosas, buscar apoyo social y entrenar habilidades de afrontamiento y regulación emocional.",
-          fichas: [],
+          fichas: ["4.1", "4.2"],
         },
         {
           etapa: 5,
@@ -535,7 +535,7 @@ export const BIBLIOTECA_PSICOPATOLOGIA: Biblioteca = {
           etapa: 4,
           texto:
             "Exposición con prevención de respuesta (Foa): armar una jerarquía y exponerse de forma gradual y prolongada a lo temido sin hacer el ritual. Se hace con guía del terapeuta y con acuerdo explícito de la persona.",
-          fichas: [],
+          fichas: ["4.4"],
         },
         {
           etapa: 5,
@@ -646,7 +646,7 @@ export const BIBLIOTECA_PSICOPATOLOGIA: Biblioteca = {
           etapa: 4,
           texto:
             "Entrenar atención al presente y desanclaje de los pensamientos, tiempo programado para preocuparse, resolución de problemas para lo que sí se puede resolver, y reducción de fuentes de estrés con rutinas, descanso y límites.",
-          fichas: [],
+          fichas: ["4.3", "4.2"],
         },
         {
           etapa: 5,
