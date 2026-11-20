@@ -38,11 +38,11 @@ const valorDeMuestra = (c) => {
 const respuestasDeMuestra = (f) => Object.fromEntries(camposDeFicha(f).map((c) => [c.id, valorDeMuestra(c)]));
 const fila = (instrumento, datos, fecha = "2026-11-10", id = Math.random().toString(36).slice(2)) => ({ id, instrumento, datos, fecha, createdAt: `${fecha}T10:00:00Z`, respondienteNombre: "Ana" });
 
-caso("Catálogo: 12 fichas, números únicos «etapa.n», etapa válida", () => {
-  assert.equal(FICHAS.length, 12);
+caso("Catálogo: 17 fichas, números únicos «etapa.n», etapa válida", () => {
+  assert.equal(FICHAS.length, 17);
   assert.deepEqual(FICHAS.map((f) => f.id), [...FICHA_IDS]);
-  assert.equal(new Set(FICHAS.map((f) => f.id)).size, 12);
-  assert.deepEqual(FICHAS.map((f) => f.id), ["1.1", "1.2", "1.3", "1.4", "2.1", "2.2", "2.3", "2.4", "3.1", "3.2", "3.3", "3.4"]);
+  assert.equal(new Set(FICHAS.map((f) => f.id)).size, 17);
+  assert.deepEqual(FICHAS.map((f) => f.id), ["1.1", "1.2", "1.3", "1.4", "2.1", "2.2", "2.3", "2.4", "3.1", "3.2", "3.3", "3.4", "4.1", "4.2", "4.3", "4.4", "4.5"]);
   for (const f of FICHAS) {
     assert.equal(Number(f.id.split(".")[0]), f.etapa, f.id);
     assert.ok(ETAPAS_FICHAS[f.etapa], f.id);
@@ -168,7 +168,8 @@ caso("v1.1 A: tablas con etiquetaFila y filaOpcionalDesde; rótulos por sentido,
     for (const c of camposDeFicha(f).filter((x) => x.tipo === "tabla")) {
       assert.ok(c.etiquetaFila && /^[a-záéíóúñ ]+$/.test(c.etiquetaFila), `${f.id}/${c.id}: etiquetaFila`);
       assert.ok(Number.isInteger(c.filaOpcionalDesde) && c.filaOpcionalDesde >= 0 && c.filaOpcionalDesde <= (c.filasFijas?.length ?? c.filas), `${f.id}/${c.id}: filaOpcionalDesde`);
-      if (!c.filasFijas) assert.equal(c.filaOpcionalDesde, 1, `${f.id}/${c.id}: la primera fila es la principal y las demás opcionales`);
+      // La primera es la principal y las demás opcionales; salvo una escalera que pide un mínimo (4.4: 6 escalones).
+      if (!c.filasFijas) assert.ok(c.filaOpcionalDesde === 1 || (f.id === "4.4" && c.id === "escalones" && c.filaOpcionalDesde === c.filas), `${f.id}/${c.id}: la primera fila es la principal y las demás opcionales`);
       for (let i = 0; i < c.filas; i++) assert.doesNotMatch(rotuloFila(c, i), /fila/i);
     }
   }
@@ -574,8 +575,8 @@ const enlace = (id, estado = "abierta", fecha = "2026-11-12", borrador = null) =
 
 caso("B.1 Estado por ficha: sin usar / enviada / respondida por el paciente / llenada por el terapeuta, con fecha", () => {
   const sin = estadosFichas([], []);
-  assert.equal(sin.length, 12);
-  assert.deepEqual(sin.map((e) => e.estado), Array(12).fill("sin-usar"));
+  assert.equal(sin.length, 17);
+  assert.deepEqual(sin.map((e) => e.estado), Array(17).fill("sin-usar"));
   assert.equal(sin[0].etiqueta, "Sin usar");
   assert.equal(sin[0].fecha, null);
   const r11 = ficha("1.1", {}, {}, "2026-11-03");
@@ -606,7 +607,8 @@ caso("B.1 Siguiente en la ruta: la primera de la etapa siguiente cuando las de l
   assert.deepEqual(siguientesEnRuta(est("1.1", "1.2", "1.3", "1.4")), ["2.1"], "etapa 1 completa: la primera de la 2");
   assert.deepEqual(siguientesEnRuta(est("1.1", "1.2", "1.3", "1.4", "2.1", "2.2")), ["2.3"]);
   assert.deepEqual(siguientesEnRuta(est("1.1", "1.2", "1.3", "1.4", "2.1", "2.2", "2.3", "2.4")), ["3.1"], "etapa 2 completa: la primera de la 3");
-  assert.deepEqual(siguientesEnRuta(est("1.1", "1.2", "1.3", "1.4", "2.1", "2.2", "2.3", "2.4", "3.1", "3.2", "3.3", "3.4")), [], "ruta completa (aún no hay etapas 4 y 5)");
+  assert.deepEqual(siguientesEnRuta(est("1.1", "1.2", "1.3", "1.4", "2.1", "2.2", "2.3", "2.4", "3.1", "3.2", "3.3", "3.4")), ["4.1"], "etapa 3 completa: la primera de la 4");
+  assert.deepEqual(siguientesEnRuta(est("1.1", "1.2", "1.3", "1.4", "2.1", "2.2", "2.3", "2.4", "3.1", "3.2", "3.3", "3.4", "4.1", "4.2", "4.3", "4.4", "4.5")), [], "ruta completa (aún no hay etapa 5)");
   assert.deepEqual(siguientesEnRuta(est("2.1")), ["2.2"], "la etapa actual es la más avanzada con alguna ficha hecha");
   // Una ficha llenada por el terapeuta también cuenta como hecha.
   assert.deepEqual(siguientesEnRuta(estadosFichas([delTerapeuta("1.1")], [])), ["1.2"]);
@@ -899,6 +901,18 @@ caso("Lote 2: el MCEA sugiere 3.1 y 3.3 por pensamientos automáticos y 3.2 por 
     assert.ok(GUIA_TERAPEUTA[id]?.presentar.length >= 3, `${id}: guía`);
   }
   assert.match(JSON.stringify(GUIA_TERAPEUTA["3.3"].cuandoNoUsarla), /TOC|obsesi/);
+});
+
+caso("Lote 3: 4.4 se arma con el psicólogo y sin instrucciones para exponerse solo; 4.2 avisa el mareo", () => {
+  const f44 = fichaPorId("4.4");
+  assert.match(f44.explicacion.join(" "), /junto con su psicólogo/);
+  assert.match(f44.explicacion.join(" "), /no empiece/i);
+  const esc = camposDeFicha(f44).find((c) => c.id === "escalones");
+  assert.equal(rotuloFila(esc, 5), "Un sexto escalón");
+  assert.equal(rotuloFila(esc, 6), "Un séptimo escalón (opcional)");
+  assert.match(JSON.stringify(GUIA_TERAPEUTA["4.4"].cuandoNoUsarla), /psicoeducación|2\.1|2\.4/);
+  assert.match(fichaPorId("4.2").explicacion.join(" "), /mare/);
+  for (const id of ["4.1", "4.2", "4.3", "4.4", "4.5"]) assert.equal(fichaPorId(id).etapa, 4);
 });
 
 console.log(`\n${ok} pruebas correctas.`);

@@ -1,6 +1,6 @@
 /**
  * Fichas terapéuticas JJR (TCC): catálogo declarativo y parte PARA EL PACIENTE
- * de cada ficha (lotes 1 y 2: etapas 1 «Evaluación y formulación», 2 «Psicoeducación» y 3 «Técnicas cognitivas»).
+ * de cada ficha (lotes 1 a 3: etapas 1 «Evaluación y formulación», 2 «Psicoeducación», 3 «Técnicas cognitivas» y 4 «Técnicas conductuales»).
  * Especificación clínica: docs/instrumentos/Fichas_terapeuticas_JJR_especificacion.md
  *
  * Este archivo lo importa el formulario público (/evaluacion/<token>) y el
@@ -9,7 +9,7 @@
  * Sin imports en tiempo de ejecución.
  */
 
-export const FICHA_IDS = ["1.1", "1.2", "1.3", "1.4", "2.1", "2.2", "2.3", "2.4", "3.1", "3.2", "3.3", "3.4"] as const;
+export const FICHA_IDS = ["1.1", "1.2", "1.3", "1.4", "2.1", "2.2", "2.3", "2.4", "3.1", "3.2", "3.3", "3.4", "4.1", "4.2", "4.3", "4.4", "4.5"] as const;
 export type FichaId = (typeof FICHA_IDS)[number];
 
 export const TIPOS_CAMPO = ["texto", "parrafo", "escala", "lista", "casillas", "tabla"] as const;
@@ -82,7 +82,7 @@ export function rotuloFila(c: CampoTabla, i: number): string {
 
 export type Ficha = {
   id: FichaId;
-  /** Etapa del tratamiento (1 a 5; por ahora hay fichas de las etapas 1 a 3). */
+  /** Etapa del tratamiento (1 a 5; por ahora hay fichas de las etapas 1 a 4). */
   etapa: number;
   titulo: string;
   /** Para qué sirve (una línea; se muestra al asignar). */
@@ -1267,6 +1267,539 @@ export const FICHAS: readonly Ficha[] = [
       titulo: CIERRE_TITULO,
       texto:
         "Revisaremos qué puso en cada parte, veremos cómo le fue con el paso de la semana y ajustaremos la forma de soltar lo que no depende de usted. Si no logró dar el paso, lo conversamos sin reproches.",
+      campos: [paraLaSesion],
+    },
+  },
+
+  /* ============================ 4.1 ============================ */
+  {
+    id: "4.1",
+    etapa: 4,
+    titulo: "Mi plan de actividades",
+    paraQue: "Planear actividades pequeñas de gusto y de logro para la semana, anotar si las hizo y cómo cambió su ánimo.",
+    tiempo: "20 a 30 minutos, más un registro breve cada día",
+    explicacion: [
+      "Cuando el ánimo está bajo, solemos esperar a «tener ganas» para hacer las cosas. Pero las ganas muchas veces llegan después de empezar, no antes. Por eso esta ficha propone otra regla: actuar según el plan y no según el ánimo del momento.",
+      "Hay dos clases de actividades que conviene tener cada semana. Las de gusto (G) son las que se disfrutan, como tomar un café con una amiga o ver un partido con la familia. Las de logro (L) dan la sensación de haber hecho algo, como lavar la ropa, pagar el recibo de la luz o ir a hacer las compras al mercado. Una semana con las dos clases pesa distinto que una con solo obligaciones o con solo descanso.",
+      "Por ejemplo, una persona sin ánimo planea para el martes caminar diez minutos después del almuerzo (G) y ordenar el escritorio (L). Antes de caminar su ánimo está en 3; al volver, en 4. Es un cambio pequeño, pero es información: le muestra que hacer algo sí mueve el ánimo, aunque sea poco.",
+      "Empiece con actividades pequeñas, de 10 a 15 minutos. Si un día no logra hacer una, no es un fracaso: anótelo y vea qué se interpuso. Lo que importa es lo que va descubriendo, no cumplir todo.",
+    ],
+    secciones: [
+      {
+        id: "posibles",
+        titulo: "Actividades posibles",
+        intro:
+          "Comencemos haciendo una lista de lo que podría hacer. Piense en cosas pequeñas que antes le daban gusto y en cosas que, al terminarlas, le dan la sensación de haber logrado algo; de aquí elegirá las de la semana.",
+        campos: [
+          {
+            id: "gusto",
+            tipo: "lista",
+            etiqueta: "¿Qué actividades pequeñas le daban gusto, o podrían dárselo? (G)",
+            ayuda: "Escriba una por renglón. Que sean cosas de pocos minutos y posibles de hacer esta semana.",
+            minFilas: 2,
+            maxFilas: 8,
+            ejemplo: "Caminar diez minutos; llamar a mi hermana; escuchar música mientras cocino; tomar un café en el parque",
+          },
+          {
+            id: "logro",
+            tipo: "lista",
+            etiqueta: "¿Qué actividades pequeñas le darían la sensación de haber logrado algo? (L)",
+            ayuda: "Tareas que lleva tiempo posponiendo o que le dan tranquilidad cuando están hechas. Una por renglón.",
+            minFilas: 2,
+            maxFilas: 8,
+            ejemplo: "Lavar los trastes; pagar el agua; contestar un mensaje pendiente; ordenar el escritorio",
+          },
+        ],
+      },
+      {
+        id: "semana",
+        titulo: "Mi semana",
+        intro:
+          "Ahora elija una actividad pequeña para cada día de la semana, mezclando las de gusto y las de logro. Anótela antes de hacerla y complete las otras columnas cuando termine cada día; si un día no la hizo, escríbalo igual.",
+        campos: [
+          {
+            id: "plan",
+            tipo: "tabla",
+            etiqueta: "¿Qué planea hacer cada día y cómo le fue?",
+            ayuda: "Primero llene solo la actividad y el tipo. Después, cada día, complete lo demás. Si un día no la hizo, escriba «no» y, si quiere, qué se interpuso.",
+            columnas: [
+              { id: "actividad", titulo: "¿Qué actividad planea hacer ese día?", ayuda: "Pequeña y concreta, de 10 a 15 minutos", ejemplo: "Caminar diez minutos después del almuerzo" },
+              { id: "tipo", titulo: "¿Es de gusto (G) o de logro (L)?", ejemplo: "G" },
+              { id: "hizo", titulo: "¿La hizo?", ayuda: "Escriba sí, a medias o no", ejemplo: "Sí" },
+              { id: "antes", titulo: "¿Cómo estaba su ánimo antes de hacerla, de 0 a 10?", ayuda: "0 = muy bajo, 10 = muy bueno", ejemplo: "3" },
+              { id: "despues", titulo: "¿Y cómo estuvo después, de 0 a 10?", ejemplo: "4" },
+            ],
+            filas: 7,
+            maxFilas: 7,
+            filasFijas: ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"],
+            etiquetaFila: "día",
+            filaOpcionalDesde: 7,
+          },
+        ],
+      },
+      {
+        id: "noto",
+        titulo: "Lo que noté",
+        intro:
+          "Para terminar, mire la semana completa y observe qué pasó con su ánimo cuando hizo las actividades y cuando no las hizo. No se trata de calificarse, sino de descubrir qué le sirve.",
+        campos: [
+          {
+            id: "noto",
+            tipo: "parrafo",
+            etiqueta: "Al mirar la semana, ¿qué notó en su ánimo después de hacer las actividades?",
+            ayuda: "Compare el ánimo de antes y de después. Si no cambió, también sirve anotarlo.",
+            ejemplo: "Casi siempre subió un punto o dos, sobre todo con las de gusto. Con las de logro me sentí más tranquilo.",
+          },
+          {
+            id: "obstaculo",
+            tipo: "parrafo",
+            etiqueta: "¿Qué hizo más difícil hacer alguna actividad?",
+            ejemplo: "El jueves llegué muy cansado y me quedé en el celular.",
+          },
+          {
+            id: "ayudo_plan",
+            tipo: "escala",
+            etiqueta: "¿Cuánto le ayudó actuar según el plan, aunque no tuviera ganas?",
+            extremos: ["0 = nada", "10 = muchísimo"],
+          },
+        ],
+      },
+    ],
+    cierre: {
+      titulo: CIERRE_TITULO,
+      texto:
+        "Revisaremos qué actividades le subieron el ánimo y cuáles no, ajustaremos el plan de la próxima semana y pensaremos juntos qué hacer con lo que se interpuso. Si no pudo hacer varias, no hay reproche: nos sirve para hacerlas más pequeñas.",
+      campos: [paraLaSesion],
+    },
+  },
+
+  /* ============================ 4.2 ============================ */
+  {
+    id: "4.2",
+    etapa: 4,
+    titulo: "Respiración lenta y relajación",
+    paraQue: "Aprender a respirar lento y a soltar la tensión de los músculos, y anotar cómo cambia su tensión cada día.",
+    tiempo: "10 minutos al día durante una semana",
+    explicacion: [
+      "Cuando estamos tensos o con miedo, la respiración se acelera y los músculos se ponen duros, casi sin que lo notemos. Respirar despacio y soltar los músculos le avisa al cuerpo que puede bajar la guardia. Es una herramienta de calma; se aprende con práctica, como andar en bicicleta, y funciona mejor si se practica en momentos tranquilos, no solo cuando uno ya está mal.",
+      "Respiración lenta, paso a paso. Siéntese cómodo, con la espalda apoyada y las manos sobre el abdomen. Inhale por la nariz contando hasta 4, de modo que el abdomen se infle suavemente. Haga una pausa corta y exhale despacio por la boca contando hasta 6, como si soplara una vela sin apagarla. Repita durante 5 minutos, a un ritmo de unas 6 respiraciones por minuto. Si contar hasta 4 y 6 le cuesta, empiece con 3 y 5: lo importante es que la exhalación sea más larga que la inhalación.",
+      "Relajación muscular breve. Vaya por grupos: manos y brazos, cara y cuello, hombros y espalda, abdomen, piernas y pies. En cada grupo, apriete los músculos unos 5 segundos, sin dolor, y luego suéltelos de golpe y note cómo se siente la diferencia durante unos 15 a 20 segundos. Por ejemplo, cierre los puños con fuerza, cuente hasta 5, ábralos y deje las manos pesadas sobre las piernas. Haga el recorrido completo en unos 10 minutos.",
+      "Dos avisos importantes. Si respirar lento le marea, le hormiguean las manos o siente más ansiedad, pare, respire normal y coméntelo con su psicólogo: se ajusta el ritmo. Y recuerde que esto sirve para calmar el cuerpo, no para evitar la ansiedad ni para escapar de lo que le da miedo: la ansiedad no es peligrosa, aunque se sienta fuerte.",
+    ],
+    secciones: [
+      {
+        id: "inicio",
+        titulo: "Cuándo y dónde lo voy a practicar",
+        intro:
+          "Comencemos eligiendo un momento fijo del día para practicar. Piense en un rato en que pueda estar tranquilo y sin interrupciones, y en cuánta tensión siente hoy, para tener un punto de partida.",
+        campos: [
+          {
+            id: "momento",
+            tipo: "texto",
+            etiqueta: "¿A qué hora del día practicará?",
+            ayuda: "Un momento que pueda repetir cada día.",
+            ejemplo: "A las 7 de la noche, después de la cena",
+          },
+          {
+            id: "lugar",
+            tipo: "texto",
+            etiqueta: "¿Dónde lo hará?",
+            ayuda: "Un lugar cómodo y donde nadie lo interrumpa.",
+            ejemplo: "Sentado en mi cuarto, con el celular en silencio",
+          },
+          {
+            id: "tension_hoy",
+            tipo: "escala",
+            etiqueta: "Hoy, antes de empezar, ¿cuánta tensión siente en el cuerpo?",
+            extremos: ["0 = ninguna", "10 = muchísima"],
+          },
+        ],
+      },
+      {
+        id: "practica",
+        titulo: "Mi práctica de la semana",
+        intro:
+          "Ahora anote su práctica de cada día. Antes de empezar, califique su tensión; haga el ejercicio y, al terminar, vuelva a calificarla. Si un día no practicó, escríbalo igual, sin reproches.",
+        campos: [
+          {
+            id: "registro",
+            tipo: "tabla",
+            etiqueta: "¿Cómo le fue con la práctica de cada día?",
+            ayuda: "Si un día no practicó, escriba «no» en el ejercicio y, si quiere, qué se interpuso.",
+            columnas: [
+              { id: "ejercicio", titulo: "¿Qué ejercicio hizo?", ayuda: "Respiración, relajación de los músculos o ambos", ejemplo: "Respiración lenta" },
+              { id: "minutos", titulo: "¿Cuántos minutos practicó?", ejemplo: "5" },
+              { id: "antes", titulo: "¿Cuánta tensión sentía antes, de 0 a 10?", ayuda: "0 = ninguna, 10 = muchísima", ejemplo: "7" },
+              { id: "despues", titulo: "¿Y cuánta sintió después, de 0 a 10?", ejemplo: "5" },
+            ],
+            filas: 7,
+            maxFilas: 7,
+            filasFijas: ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"],
+            etiquetaFila: "día",
+            filaOpcionalDesde: 7,
+          },
+        ],
+      },
+      {
+        id: "noto",
+        titulo: "Lo que noté",
+        intro:
+          "Para terminar, mire la semana completa y observe qué efecto tuvo la práctica. Anote también cualquier molestia que haya sentido al practicar, porque eso nos sirve para ajustar el ejercicio.",
+        campos: [
+          {
+            id: "efecto",
+            tipo: "parrafo",
+            etiqueta: "¿Qué notó en su cuerpo y en su ánimo al practicar?",
+            ejemplo: "Los hombros se me aflojaban y dormí un poco mejor. Al principio me costaba concentrarme.",
+          },
+          {
+            id: "molestia",
+            tipo: "parrafo",
+            etiqueta: "¿Se mareó, le hormiguearon las manos o sintió más ansiedad al respirar lento?",
+            ayuda: "Si le pasó, pare y cuéntele a su psicólogo; se ajusta el ritmo.",
+            ejemplo: "Un día me mareé un poco y respiré normal hasta que se me pasó.",
+          },
+          {
+            id: "ayudo",
+            tipo: "escala",
+            etiqueta: "En general, ¿cuánto le ayudó a calmarse?",
+            extremos: ["0 = nada", "10 = muchísimo"],
+          },
+        ],
+      },
+    ],
+    cierre: {
+      titulo: CIERRE_TITULO,
+      texto:
+        "Revisaremos su registro, veremos qué ejercicio le sentó mejor y ajustaremos el ritmo si hizo falta. También conversaremos cuándo usarlo y cuándo no: sirve para calmar el cuerpo, no para huir de lo que le da miedo.",
+      campos: [paraLaSesion],
+    },
+  },
+
+  /* ============================ 4.3 ============================ */
+  {
+    id: "4.3",
+    etapa: 4,
+    titulo: "Tiempo de preocupación",
+    paraQue: "Dejar las preocupaciones para un rato fijo del día y separar las que tienen solución de las que no.",
+    tiempo: "20 minutos para prepararla, más un rato diario durante una semana",
+    explicacion: [
+      "Cuando algo nos preocupa, la mente suele darle vueltas a toda hora: en el bus, en el trabajo, en la cama. Esta ficha propone un acuerdo con la mente: «Ahora no; lo veo más tarde, en mi tiempo de preocupación». Así se aprende a no responder a cada preocupación en el momento en que aparece.",
+      "El tiempo de preocupación es un rato fijo del día, de 15 a 20 minutos, a la misma hora y en el mismo lugar, y no justo antes de dormir. Durante el día, cuando llega una preocupación, solo se anota en una libreta, con unas pocas palabras, y se vuelve a lo que se estaba haciendo. No se intenta no pensar en ella; se pospone.",
+      "Por ejemplo, una persona se preocupa en el trabajo por el pago de la tarjeta. Anota «tarjeta» en su libreta y sigue con su tarea. A las 5 de la tarde, en el comedor, revisa su lista. Para la tarjeta sí hay algo que hacer: llamar al banco mañana. Otra preocupación, «y si mi hijo se enferma», no tiene una acción posible hoy, y la deja ir con calma. Para muchas personas, al llegar la hora, algunas preocupaciones ya perdieron fuerza.",
+    ],
+    secciones: [
+      {
+        id: "acuerdo",
+        titulo: "Mi tiempo de preocupación",
+        intro:
+          "Comencemos eligiendo cuándo y dónde será su tiempo de preocupación. Piense en un rato de la tarde o de la noche, lejos de la hora de dormir, en que pueda sentarse unos minutos a revisar su libreta.",
+        campos: [
+          {
+            id: "hora",
+            tipo: "texto",
+            etiqueta: "¿A qué hora será su tiempo de preocupación?",
+            ayuda: "La misma hora cada día y no justo antes de dormir.",
+            ejemplo: "A las 5 de la tarde",
+          },
+          {
+            id: "lugar",
+            tipo: "texto",
+            etiqueta: "¿En qué lugar lo hará?",
+            ayuda: "Un lugar donde pueda sentarse con su libreta, que no sea la cama.",
+            ejemplo: "En el comedor, con mi libreta",
+          },
+          {
+            id: "duracion",
+            tipo: "texto",
+            etiqueta: "¿Cuánto tiempo le dedicará?",
+            ayuda: "Entre 15 y 20 minutos; al terminar, se cierra la libreta.",
+            ejemplo: "20 minutos, con la alarma del celular",
+          },
+        ],
+      },
+      {
+        id: "dia",
+        titulo: "Lo que me preocupó durante el día",
+        intro:
+          "Ahora, durante el día, cada vez que llegue una preocupación, anótela con pocas palabras y vuelva a lo que estaba haciendo. Al llegar su tiempo de preocupación, pase esas anotaciones a esta lista.",
+        campos: [
+          {
+            id: "anotadas",
+            tipo: "lista",
+            etiqueta: "¿Qué preocupaciones anotó durante el día?",
+            ayuda: "Una por renglón, con pocas palabras.",
+            minFilas: 1,
+            maxFilas: 10,
+            ejemplo: "El pago de la tarjeta; que mi hijo se enferme; la reunión del jueves",
+          },
+        ],
+      },
+      {
+        id: "revision",
+        titulo: "La revisión en mi tiempo de preocupación",
+        intro:
+          "Ahora, en su tiempo de preocupación, revise una por una las preocupaciones de la lista. Pregúntese si hay algo que pueda hacer; si lo hay, elija el primer paso, y si no, vea si puede dejarla ir por hoy.",
+        campos: [
+          {
+            id: "revision",
+            tipo: "tabla",
+            etiqueta: "¿Qué hará con cada preocupación?",
+            ayuda: "Empiece por la primera preocupación; las demás son opcionales. Llene la columna que corresponda según su respuesta.",
+            columnas: [
+              { id: "preocupacion", titulo: "¿Cuál es la preocupación?", ejemplo: "El pago de la tarjeta" },
+              { id: "solucion", titulo: "¿Tiene solución, es decir, hay algo que pueda hacer?", ayuda: "Escriba sí o no", ejemplo: "Sí" },
+              { id: "paso", titulo: "Si la tiene, ¿cuál es el primer paso y cuándo lo hará?", ejemplo: "Llamar al banco mañana a las 9 de la mañana" },
+              { id: "soltar", titulo: "Si no la tiene, ¿pudo soltarla por hoy?", ayuda: "Escriba sí, un poco o no, y qué le ayudó", ejemplo: "Un poco; respiré lento y volví a mi cena" },
+            ],
+            filas: 3,
+            maxFilas: 8,
+            generoFila: "f",
+            etiquetaFila: "preocupación",
+            filaOpcionalDesde: 1,
+          },
+        ],
+      },
+      {
+        id: "balance",
+        titulo: "Cómo me fue",
+        intro:
+          "Para terminar, piense en esta semana y observe qué cambió con el tiempo de preocupación. Anote también lo que le costó, porque eso nos ayuda a ajustar el acuerdo.",
+        campos: [
+          {
+            id: "funciono",
+            tipo: "escala",
+            etiqueta: "¿Cuánto le funcionó dejar las preocupaciones para su tiempo de preocupación?",
+            extremos: ["0 = nada", "10 = muchísimo"],
+          },
+          {
+            id: "dificil",
+            tipo: "parrafo",
+            etiqueta: "¿Qué fue lo más difícil de esperar hasta ese momento?",
+            ejemplo: "Me costó sobre todo en la noche, cuando me acostaba y me llegaban de golpe.",
+          },
+          {
+            id: "notado",
+            tipo: "parrafo",
+            etiqueta: "¿Qué notó de las preocupaciones cuando llegó la hora de revisarlas?",
+            ejemplo: "Varias ya no me parecían tan graves y de otras me di cuenta de que sí podía hacer algo.",
+          },
+        ],
+      },
+    ],
+    cierre: {
+      titulo: CIERRE_TITULO,
+      texto:
+        "Revisaremos su lista, veremos qué preocupaciones tenían solución y cuáles pudo soltar, y ajustaremos la hora o el lugar si hizo falta. Si le costó esperar, es normal: es una habilidad que se afina con la práctica.",
+      campos: [paraLaSesion],
+    },
+  },
+
+  /* ============================ 4.4 ============================ */
+  {
+    id: "4.4",
+    etapa: 4,
+    titulo: "Mi escalera de exposición",
+    paraQue: "Armar con su psicólogo una escalera de pasos, de lo menos a lo más difícil, y registrar cada práctica guiada.",
+    tiempo: "Una parte en sesión (30 a 40 minutos) y un registro breve después de cada práctica",
+    explicacion: [
+      "Esta ficha se arma junto con su psicólogo; no empiece los pasos por su cuenta. Primero se llena en sesión, y sus pasos se practican solo cuando su psicólogo lo indique y de la manera en que lo acuerden. Si por algún motivo quiere hacer algo antes, converse primero con él.",
+      "Cuando algo nos da miedo, lo normal es evitarlo, y el alivio inmediato hace que el miedo crezca con el tiempo. Una escalera de exposición ordena lo que se evita en pasos pequeños, del que da menos malestar al que da más. Se sube de a un escalón a la vez, con apoyo, hasta que cada paso se siente más manejable.",
+      "Por ejemplo, una persona evita viajar en camioneta desde que se sintió mal en una. Su escalera podría empezar por mirar una camioneta parada y llegar, poco a poco, a viajar varias paradas sola. Cada escalón se practica las veces que haga falta. Lo que se busca descubrir es que el malestar sube, llega a un máximo y baja, y que uno puede con él, aun sin hacer lo que antes hacía para sentirse seguro.",
+      "Por eso también anotaremos las «conductas de seguridad»: cosas que hace para sentirse más seguro, como llevar siempre una botella de agua, sentarse junto a la puerta o revisar el teléfono una y otra vez. Con su psicólogo decidirán cuáles dejar y cuándo, poco a poco.",
+    ],
+    secciones: [
+      {
+        id: "escalera",
+        titulo: "La armamos juntos en sesión",
+        intro:
+          "Comencemos con esta parte, que se llena junto con su psicólogo en la sesión. Hablen de qué le gustaría poder hacer sin miedo y ordenen, de menos a más difícil, los pasos para llegar ahí. Solo se escribe; los pasos no se practican hasta que su psicólogo lo indique.",
+        campos: [
+          {
+            id: "meta",
+            tipo: "parrafo",
+            etiqueta: "¿Qué le gustaría poder hacer, al final, sin que el miedo se lo impida?",
+            ayuda: "Una meta concreta, que se pueda ver. Se escribe junto con su psicólogo.",
+            ejemplo: "Viajar en camioneta hasta mi trabajo, sola y sin bajarme antes de mi parada.",
+          },
+          {
+            id: "escalones",
+            tipo: "tabla",
+            etiqueta: "¿Cuáles son los pasos de su escalera, ordenados de menos a más difícil?",
+            ayuda:
+              "Entre 6 y 10 pasos. Empiecen por uno que dé poco malestar y suban de a poco. Los pasos se escriben aquí, pero se practican solo cuando su psicólogo lo indique.",
+            columnas: [
+              { id: "paso", titulo: "¿Cuál es el paso?", ayuda: "Una situación concreta y específica", ejemplo: "Mirar una camioneta parada desde la banqueta" },
+              { id: "malestar", titulo: "¿Cuánto malestar espera sentir, de 0 a 10?", ayuda: "0 = ninguno, 10 = el máximo", ejemplo: "2" },
+            ],
+            filas: 6,
+            maxFilas: 10,
+            etiquetaFila: "escalón",
+            filaOpcionalDesde: 6,
+          },
+          {
+            id: "seguridad",
+            tipo: "lista",
+            etiqueta: "¿Qué cosas hace para sentirse más seguro en esas situaciones?",
+            ayuda: "Cosas que lleva, que hace o que evita para sentirse a salvo. Con su psicólogo decidirán cuáles dejar y cuándo. Una por renglón.",
+            minFilas: 1,
+            maxFilas: 8,
+            ejemplo: "Llevar siempre agua; sentarme junto a la puerta; avisarle a mi mamá por mensaje en cuanto subo",
+          },
+        ],
+      },
+      {
+        id: "practicas",
+        titulo: "Mi registro de prácticas",
+        intro:
+          "Ahora, después de cada práctica que su psicólogo le indique, anote cómo le fue. Piense en cuánto malestar sintió al empezar, cuál fue el máximo y cuánto había al final, y en qué descubrió.",
+        campos: [
+          {
+            id: "registro",
+            tipo: "tabla",
+            etiqueta: "¿Cómo le fue en cada práctica?",
+            ayuda: "Llene una línea por cada práctica, después de hacerla con la indicación de su psicólogo.",
+            columnas: [
+              { id: "escalon", titulo: "¿Qué escalón practicó?", ejemplo: "El 1: mirar una camioneta parada" },
+              { id: "fecha", titulo: "¿Qué día lo hizo?", ejemplo: "Miércoles 12" },
+              { id: "inicio", titulo: "¿Cuánto malestar sintió al empezar, de 0 a 10?", ejemplo: "3" },
+              { id: "maximo", titulo: "¿Cuál fue el máximo que sintió, de 0 a 10?", ejemplo: "5" },
+              { id: "final", titulo: "¿Cuánto sentía al terminar, de 0 a 10?", ejemplo: "2" },
+              { id: "aprendi", titulo: "¿Qué aprendió?", ayuda: "Algo que descubrió o notó", ejemplo: "El malestar subió y luego bajó solo, sin que yo hiciera nada." },
+            ],
+            filas: 3,
+            maxFilas: 12,
+            generoFila: "f",
+            etiquetaFila: "práctica",
+            filaOpcionalDesde: 1,
+          },
+        ],
+      },
+      {
+        id: "balance",
+        titulo: "Lo que fui notando",
+        intro:
+          "Para terminar, mire en conjunto sus prácticas y observe qué descubrió sobre el malestar y sobre usted. No se trata de calificarse: lo que le haya costado también es información útil para su psicólogo.",
+        campos: [
+          {
+            id: "descubri",
+            tipo: "parrafo",
+            etiqueta: "Al mirar sus prácticas, ¿qué descubrió sobre el malestar?",
+            ejemplo: "Que sube y baja, y que lo que temía no pasó.",
+          },
+          {
+            id: "dificil",
+            tipo: "parrafo",
+            etiqueta: "¿Qué fue lo más difícil de las prácticas?",
+            ejemplo: "El segundo escalón: casi me bajo, pero me quedé dos paradas más.",
+          },
+          {
+            id: "confianza",
+            tipo: "escala",
+            etiqueta: "¿Cuánta confianza tiene hoy en poder seguir subiendo su escalera, con el apoyo de su psicólogo?",
+            extremos: ["0 = ninguna", "10 = mucha"],
+          },
+        ],
+      },
+    ],
+    cierre: {
+      titulo: CIERRE_TITULO,
+      texto:
+        "Revisaremos juntos su escalera y sus registros, veremos qué descubrió con cada práctica y decidiremos cuál es el siguiente escalón y cuándo. Los pasos siguen siendo en sesión o como lo acordemos: no avance por su cuenta.",
+      campos: [paraLaSesion],
+    },
+  },
+
+  /* ============================ 4.5 ============================ */
+  {
+    id: "4.5",
+    etapa: 4,
+    titulo: "Plan «si… entonces…»",
+    paraQue: "Convertir una meta en planes concretos, con el momento y el lugar, y prever obstáculos con un plan B.",
+    tiempo: "20 a 30 minutos",
+    explicacion: [
+      "Muchas veces sabemos qué queremos hacer y no lo hacemos porque, cuando llega el momento, no hay un plan claro. Un plan «si… entonces…» deja decidido de antemano cuándo y dónde lo va a hacer: «Si pasa tal cosa, entonces haré tal otra».",
+      "Por ejemplo, quiere caminar más. En lugar de «voy a caminar más», escribe: «Si termino de almorzar entre semana, entonces camino diez minutos por la cuadra». La señal («terminar de almorzar») le recuerda la acción sin tener que pensarlo ni esperar a tener ganas. Mientras más concreto sea el «si», mejor.",
+      "También ayuda pensar de antemano qué puede salir mal y qué hará en ese caso, es decir, tener un plan B. Por ejemplo: «Si llueve, entonces camino dentro de la casa, subiendo y bajando las gradas». Así un obstáculo no echa a perder el plan, solo lo cambia.",
+    ],
+    secciones: [
+      {
+        id: "meta",
+        titulo: "Mi meta",
+        intro:
+          "Comencemos eligiendo una sola meta para las próximas semanas. Piense en algo que le importe y que sea posible de lograr con acciones pequeñas, y escríbalo de forma concreta.",
+        campos: [
+          {
+            id: "meta",
+            tipo: "texto",
+            etiqueta: "¿Qué meta quiere lograr en las próximas semanas?",
+            ayuda: "Algo concreto, que se pueda ver o contar.",
+            ejemplo: "Caminar más durante la semana",
+          },
+          {
+            id: "importa",
+            tipo: "parrafo",
+            etiqueta: "¿Por qué le importa esta meta?",
+            ejemplo: "Me siento con más energía y de mejor ánimo cuando me muevo.",
+          },
+        ],
+      },
+      {
+        id: "planes",
+        titulo: "Mis planes «si… entonces…»",
+        intro:
+          "Ahora convierta la meta en tres planes concretos. En cada uno, escriba la situación que le avisará (qué pasa, cuándo y dónde) y lo que hará en ese momento, tan específico que no deje dudas.",
+        campos: [
+          {
+            id: "planes",
+            tipo: "tabla",
+            etiqueta: "¿Cuáles son sus planes «si… entonces…»?",
+            ayuda: "Empiece por el primer plan; los otros son opcionales. El «si» es una señal clara; el «entonces» es una acción pequeña.",
+            columnas: [
+              { id: "si", titulo: "Si… ¿cuál es la situación, cuándo y dónde?", ayuda: "Una señal que usted pueda reconocer", ejemplo: "Si termino de almorzar de lunes a viernes, en casa" },
+              { id: "entonces", titulo: "Entonces… ¿qué haré?", ayuda: "Una acción concreta y pequeña", ejemplo: "Entonces me pongo los tenis y camino diez minutos por la cuadra" },
+            ],
+            filas: 3,
+            maxFilas: 3,
+            etiquetaFila: "plan",
+            filaOpcionalDesde: 1,
+          },
+        ],
+      },
+      {
+        id: "obstaculos",
+        titulo: "Obstáculos y plan B",
+        intro:
+          "Piense ahora en lo que podría interponerse. Anote los obstáculos más probables y, para cada uno, un plan B también en la forma «si… entonces…»; así estará listo si ocurre.",
+        campos: [
+          {
+            id: "obstaculos",
+            tipo: "tabla",
+            etiqueta: "¿Qué podría interponerse y qué haría en ese caso?",
+            ayuda: "Empiece por el primer obstáculo; los otros son opcionales.",
+            columnas: [
+              { id: "obstaculo", titulo: "¿Qué podría impedirle cumplir el plan?", ejemplo: "Que llueva, o que llegue muy cansado" },
+              { id: "planb", titulo: "Si eso pasa, ¿qué hará en su lugar?", ayuda: "Su plan B, en la forma «si… entonces…»", ejemplo: "Si llueve, entonces camino dentro de la casa, subiendo y bajando las gradas cinco minutos" },
+            ],
+            filas: 2,
+            maxFilas: 4,
+            etiquetaFila: "obstáculo",
+            filaOpcionalDesde: 1,
+          },
+          {
+            id: "confianza",
+            tipo: "escala",
+            etiqueta: "¿Cuánta confianza tiene en poder cumplir estos planes?",
+            ayuda: "Si le parece un 6 o menos, conviene hacer el plan más pequeño o más claro.",
+            extremos: ["0 = ninguna", "10 = mucha"],
+          },
+        ],
+      },
+    ],
+    cierre: {
+      titulo: CIERRE_TITULO,
+      texto:
+        "Revisaremos sus planes, veremos si el «si» es lo bastante claro y si el «entonces» es lo bastante pequeño, y miraremos cómo le fue con los obstáculos. Si no cumplió algún plan, lo ajustamos sin reproches.",
       campos: [paraLaSesion],
     },
   },

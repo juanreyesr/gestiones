@@ -146,4 +146,12 @@ caso("Lote 2: las fichas clínicas enlazan las técnicas cognitivas (3.x), y el 
   assert.ok(!etapa3("toc").some((f) => ["3.1", "3.2", "3.3"].includes(f)), "con obsesiones, examinar pruebas puede volverse comprobación");
 });
 
+caso("Lote 3: las fichas clínicas enlazan las técnicas conductuales (4.x)", () => {
+  const etapa4 = (id) => fichaClinicaPorId(id).ficha.plan.filter((p) => p.etapa === 4).flatMap((p) => p.fichas);
+  assert.ok(etapa4("panico").includes("4.4") && etapa4("panico").includes("4.2"));
+  assert.ok(etapa4("depresion-mayor").includes("4.1"));
+  assert.deepEqual(etapa4("toc"), ["4.4"]);
+  assert.ok(etapa4("ansiedad-generalizada").includes("4.3"));
+});
+
 console.log(`\n${ok} pruebas correctas.`);
