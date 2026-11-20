@@ -102,7 +102,7 @@ export const BIBLIOTECA_PSICOPATOLOGIA: Biblioteca = {
           etapa: 5,
           texto:
             "Repasar lo aprendido, identificar señales tempranas y escribir un plan para recaídas. Espaciar las sesiones y normalizar que la preocupación vuelva en épocas de estrés.",
-          fichas: [],
+          fichas: ["5.1", "5.2", "5.3"],
         },
       ],
       deteccion: [
@@ -208,7 +208,7 @@ export const BIBLIOTECA_PSICOPATOLOGIA: Biblioteca = {
           etapa: 5,
           texto:
             "Consolidar lo aprendido, anticipar situaciones de riesgo y diseñar un plan para qué hacer si reaparece un ataque. Ir espaciando las sesiones.",
-          fichas: [],
+          fichas: ["5.1", "5.2", "5.3"],
         },
       ],
       deteccion: [
@@ -319,7 +319,7 @@ export const BIBLIOTECA_PSICOPATOLOGIA: Biblioteca = {
           etapa: 5,
           texto:
             "Identificar señales tempranas de recaída, consolidar hábitos de actividad y de sueño, y planear sesiones de refuerzo. Valorar entrenamiento en atención plena para prevenir recaídas en depresión recurrente (Segal, Williams y Teasdale).",
-          fichas: [],
+          fichas: ["5.1", "5.2", "5.3"],
         },
       ],
       deteccion: [
@@ -429,7 +429,7 @@ export const BIBLIOTECA_PSICOPATOLOGIA: Biblioteca = {
           etapa: 5,
           texto:
             "Revisar lo aprendido y preparar a la persona para futuros cambios. Cerrar pronto: en adaptación suele bastar un proceso breve.",
-          fichas: [],
+          fichas: ["5.1", "5.3"],
         },
       ],
       deteccion: [
@@ -541,7 +541,7 @@ export const BIBLIOTECA_PSICOPATOLOGIA: Biblioteca = {
           etapa: 5,
           texto:
             "Consolidar ganancias, retomar las áreas de vida limitadas por el TOC y preparar un plan ante recaídas: reconocer rituales sutiles, evitar buscar seguridad y mantener la práctica de exposición.",
-          fichas: [],
+          fichas: ["5.1", "5.3"],
         },
       ],
       deteccion: [
@@ -652,7 +652,7 @@ export const BIBLIOTECA_PSICOPATOLOGIA: Biblioteca = {
           etapa: 5,
           texto:
             "Reconocer señales tempranas de que el pensamiento repetitivo vuelve, mantener las estrategias que sirvieron y planear sesiones de refuerzo en épocas de más estrés.",
-          fichas: [],
+          fichas: ["5.1", "5.3"],
         },
       ],
       deteccion: [

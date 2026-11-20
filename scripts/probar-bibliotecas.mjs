@@ -154,4 +154,11 @@ caso("Lote 3: las fichas clínicas enlazan las técnicas conductuales (4.x)", ()
   assert.ok(etapa4("ansiedad-generalizada").includes("4.3"));
 });
 
+caso("Lote 4: todas las fichas clínicas cierran con prevención de recaídas (5.1 y 5.3)", () => {
+  for (const f of BIBLIOTECAS.flatMap((b) => b.fichas)) {
+    const etapa5 = f.plan.filter((p) => p.etapa === 5).flatMap((p) => p.fichas);
+    assert.ok(etapa5.includes("5.1") && etapa5.includes("5.3"), f.id);
+  }
+});
+
 console.log(`\n${ok} pruebas correctas.`);

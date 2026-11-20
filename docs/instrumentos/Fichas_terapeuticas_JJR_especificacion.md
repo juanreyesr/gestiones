@@ -135,3 +135,16 @@ Reglas: las mismas del lote 2 (contenido original, de usted, instrucciones guiad
 - **4.2**: aviso de que si respirar lento le marea o le da más ansiedad, pare y lo comente; respiración como herramienta de calma, no como forma de evitar la ansiedad (en pánico, no usarla como conducta de seguridad durante la exposición).
 - Sugerencias: las fichas de etapa 4 llegan por la ruta (después de la etapa 3) y desde la biblioteca clínica; no por resultados (para no saltarse etapas).
 - Biblioteca clínica, pasos de etapa 4: ansiedad generalizada 4.2 y 4.3; pánico 4.2 y 4.4; depresión 4.1 y 4.5; adaptación 4.1 y 4.2; TOC 4.4; rumiación y estrés 4.3 y 4.2.
+
+## Lote 4 — Etapa 5: prevención de recaídas (3 fichas)
+| Nº | Título | Para qué | Base |
+| --- | --- | --- | --- |
+| 5.1 | Mis señales de alerta | Reconocer señales tempranas propias (pensamientos, emociones, cuerpo, conductas, rutinas) y situaciones de riesgo; distinguir un tropiezo (lapso) de una recaída; semáforo verde, amarillo y rojo con qué hacer en cada color | Prevención de recaídas (Marlatt y Gordon; Bieling, McCabe y Antony); planes de bienestar |
+| 5.2 | Mi caja de herramientas | Repasar lo aprendido en el tratamiento: qué técnicas le ayudaron (con enlace a las fichas que hizo), cuándo usar cada una, frases que le sirven y personas de apoyo | Consolidación y generalización en TCC (J. S. Beck); Protocolo Unificado (Barlow) |
+| 5.3 | Mi plan de mantenimiento | Plan escrito para los próximos meses: hábitos que mantener, práctica semanal, metas nuevas, cómo revisarse (cada semana o mes, escala 0–10), qué hacer si aparecen señales y cuándo pedir una cita de refuerzo; carta a sí mismo para un momento difícil | Mantenimiento y sesiones de refuerzo (booster) en TCC; terapia cognitiva basada en atención plena para prevenir recaídas (Segal, Williams y Teasdale) |
+
+Reglas: las mismas de los lotes anteriores (contenido original, de usted, instrucciones guiadas con ejemplos en gris, escalas 0–10, tablas con `etiquetaFila`, cierre común con `paraLaSesion`, guía del terapeuta completa).
+- 5.1 incluye en la zona roja «buscar ayuda de inmediato»: comunicarse con su psicólogo o con una persona de confianza, y las líneas de ayuda si hay ideas de hacerse daño (sin citar ítems de escalas).
+- Tono de logro y continuidad: el tratamiento termina, lo aprendido queda; un tropiezo no borra el avance.
+- Sugerencias: llegan por la ruta (después de la etapa 4) y desde la biblioteca clínica; no por resultados.
+- Biblioteca clínica, pasos de etapa 5: todas las fichas clínicas enlazan 5.1 y 5.3; depresión, ansiedad generalizada y pánico también 5.2.
