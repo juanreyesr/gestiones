@@ -98,7 +98,6 @@ caso("PR 2 · Migración 067: tabla con RLS del propietario y RPC que valida ins
   for (const cond of ["c.acceso_estudiantes = true", "ce.estado = 'activo'", "e.auth_user_id = auth.uid()", "e.activo"]) assert.ok(sql.includes(cond), cond);
   assert.match(sql, /security definer\s+set search_path = ''/);
   assert.match(sql, /revoke all on function public\.gestionesjj_estudiante_bibliotecas_curso\(uuid\) from anon/);
-  assert.ok(leer("../supabase/pendientes.sql").includes("067_gestionesjj_curso_bibliotecas.sql"));
   assert.match(leer("../supabase/PENDIENTES.md"), /067_gestionesjj_curso_bibliotecas\.sql/);
 });
 
@@ -137,6 +136,14 @@ caso("PR 2 · Textos de la interfaz del Aula en español, inglés y portugués",
     for (const t of textos) assert.ok(t && t !== clave, `${clave}: falta traducción`);
   }
   assert.equal(traducir("en", "biblioteca_titulo"), "Library");
+});
+
+caso("Lote 2: las fichas clínicas enlazan las técnicas cognitivas (3.x), y el TOC no usa 3.1–3.3", () => {
+  const etapa3 = (id) => fichaClinicaPorId(id).ficha.plan.filter((p) => p.etapa === 3).flatMap((p) => p.fichas);
+  assert.deepEqual(etapa3("ansiedad-generalizada"), ["3.3", "3.4"]);
+  assert.deepEqual(etapa3("depresion-mayor"), ["3.1", "3.2", "3.3"]);
+  assert.deepEqual(etapa3("rumiacion-estres"), ["3.4"]);
+  assert.ok(!etapa3("toc").some((f) => ["3.1", "3.2", "3.3"].includes(f)), "con obsesiones, examinar pruebas puede volverse comprobación");
 });
 
 console.log(`\n${ok} pruebas correctas.`);

@@ -108,3 +108,15 @@ Una sola fuente con dos vistas. Tipos en `src/lib/bibliotecas/tipos.ts`.
 - **Aula (PR 2)**: bibliotecas activables por curso (migración: tabla curso–biblioteca con RLS para que el estudiante lea solo las de sus cursos); pestaña «Biblioteca» con la vista estudiante (sin «Cómo lo detecta el sistema»; con caso y clave) y PDF.
 - Mapeo de hipótesis → ficha: EAPI `tag`/`tag_sub` → ansiedad generalizada; `panic` → pánico; `stress` → adaptación; `dep` → depresión; `rnt` → rumiación y estrés; `ocd`/`ocd_sub` → TOC. MCEA: PHQ-9 ≥ 10 → depresión; GAD-7 ≥ 10 → ansiedad generalizada (y pánico como diferencial); PTQ nivel ≥ 2 → rumiación y estrés.
 - Redacción propia; del DSM-5-TR y la CIE-11 solo códigos. Tono técnico, claro y en español de Guatemala.
+
+## Lote 2 — Etapa 3: técnicas cognitivas (4 fichas)
+| Nº | Título | Para qué | Base |
+| --- | --- | --- | --- |
+| 3.1 | Registro de pensamientos | Atrapar el pensamiento automático en el momento, medir cuánto lo cree y la emoción (0–100), y escribir una respuesta más equilibrada; ver cuánto cambian | Registro de pensamientos disfuncionales (Beck; J. Beck; Greenberger y Padesky) |
+| 3.2 | Formas de pensar que nos atrapan | Reconocer 8–10 distorsiones con un ejemplo cotidiano y una pregunta para cada una; identificar las propias y practicar con 2–3 pensamientos | Distorsiones cognitivas (Beck; Burns), en lenguaje sencillo |
+| 3.3 | Examinar las pruebas | Tomar UN pensamiento que pesa, listar pruebas a favor y en contra (hechos, no sentimientos), buscar otra explicación y llegar a un pensamiento equilibrado; medir creencia antes y después | Reestructuración cognitiva y preguntas socráticas (Beck; Padesky) |
+| 3.4 | Lo que sí controlo y lo que no | Separar una preocupación en lo que depende de la persona, lo que influye en parte y lo que no; un paso concreto para lo controlable y una forma de soltar lo demás | Solución de problemas e intolerancia a la incertidumbre (D'Zurilla y Nezu; Dugas y Robichaud); aceptación (Hayes) |
+
+Reglas del lote (iguales al lote 1): contenido ORIGINAL; de usted; instrucciones guiadas paso a paso («Comencemos recordando un momento…»), con ejemplo en gris en cada campo; escalas 0–10 (el sistema admite máximo 10: para «cuánto lo cree» y la intensidad usar 0–10, no 0–100); tablas con `etiquetaFila` y `filaOpcionalDesde`; cierre común «Qué haremos con esto en la próxima sesión» con `paraLaSesion`; guía del terapeuta completa (base, objetivo, cuándo usarla y cuándo no, presentar 3–5 pasos, errores, revisar). Advertencias: en depresión grave o con riesgo, no usar la reestructuración como sustituto de la evaluación de riesgo; en TOC, no usar «examinar las pruebas» con las obsesiones (puede volverse un ritual de comprobación): preferir 2.3/2.4 y EPR guiada.
+
+Sugerencias por resultados (MCEA): pensamientos automáticos (PAN) en nivel ≥ 2 → 3.1 y 3.3; alguna distorsión marcada con 3 o más (DC) → 3.2. En la ruta, la etapa 3 sigue a la 2. Las fichas clínicas de la biblioteca enlazan sus pasos de etapa 3 con estas fichas (3.4 en ansiedad generalizada, rumiación y adaptación; 3.1–3.3 en depresión, pánico y ansiedad generalizada; en TOC ninguna de 3.1–3.3).

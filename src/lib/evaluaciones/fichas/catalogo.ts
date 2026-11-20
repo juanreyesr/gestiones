@@ -1,6 +1,6 @@
 /**
  * Fichas terapéuticas JJR (TCC): catálogo declarativo y parte PARA EL PACIENTE
- * de cada ficha (lote 1: etapas 1 «Evaluación y formulación» y 2 «Psicoeducación»).
+ * de cada ficha (lotes 1 y 2: etapas 1 «Evaluación y formulación», 2 «Psicoeducación» y 3 «Técnicas cognitivas»).
  * Especificación clínica: docs/instrumentos/Fichas_terapeuticas_JJR_especificacion.md
  *
  * Este archivo lo importa el formulario público (/evaluacion/<token>) y el
@@ -9,7 +9,7 @@
  * Sin imports en tiempo de ejecución.
  */
 
-export const FICHA_IDS = ["1.1", "1.2", "1.3", "1.4", "2.1", "2.2", "2.3", "2.4"] as const;
+export const FICHA_IDS = ["1.1", "1.2", "1.3", "1.4", "2.1", "2.2", "2.3", "2.4", "3.1", "3.2", "3.3", "3.4"] as const;
 export type FichaId = (typeof FICHA_IDS)[number];
 
 export const TIPOS_CAMPO = ["texto", "parrafo", "escala", "lista", "casillas", "tabla"] as const;
@@ -82,7 +82,7 @@ export function rotuloFila(c: CampoTabla, i: number): string {
 
 export type Ficha = {
   id: FichaId;
-  /** Etapa del tratamiento (1 a 5; este lote solo tiene la 1 y la 2). */
+  /** Etapa del tratamiento (1 a 5; por ahora hay fichas de las etapas 1 a 3). */
   etapa: number;
   titulo: string;
   /** Para qué sirve (una línea; se muestra al asignar). */
@@ -875,6 +875,398 @@ export const FICHAS: readonly Ficha[] = [
       titulo: CIERRE_TITULO,
       texto:
         "Revisaremos su lista, veremos cuáles evitaciones pesan más en su vida y, si conviene, planearemos juntos, con calma y sin presión, un primer paso. No intente enfrentar nada por su cuenta antes de la sesión.",
+      campos: [paraLaSesion],
+    },
+  },
+
+  /* ============================ 3.1 ============================ */
+  {
+    id: "3.1",
+    etapa: 3,
+    titulo: "Registro de pensamientos",
+    paraQue: "Atrapar el pensamiento automático en el momento, medir cuánto lo cree y escribir una respuesta más equilibrada.",
+    tiempo: "20 a 30 minutos",
+    explicacion: [
+      "Un pensamiento automático es la frase que nos cruza por la mente, casi sin darnos cuenta, justo antes de sentirnos mal. Llega rápido y suena a verdad, pero muchas veces es solo una primera interpretación de lo que pasó.",
+      "Por ejemplo, usted manda un mensaje por WhatsApp a una amiga y ella no contesta en todo el día. En segundos le cruza: «Seguro se enojó conmigo». Siente un nudo en el estómago y se pasa la tarde repasando qué pudo haber dicho mal. Al día siguiente ella escribe: se le había acabado la batería.",
+      "La pregunta clave para atrapar estos pensamientos es: «¿Qué pasó por mi mente justo antes de sentirme así?». Esta ficha le ayuda a escribirlos, a notar cuánto se los cree y a buscar una forma de ver la situación que sea más equilibrada. No se trata de pensar en positivo ni de callar lo que siente, sino de mirar el momento con más calma.",
+    ],
+    secciones: [
+      {
+        id: "momentos",
+        titulo: "Momentos en que me sentí mal",
+        intro:
+          "Comencemos recordando un momento reciente en que se sintió mal de repente: con miedo, tristeza, enojo o vergüenza. Piense dónde estaba y qué estaba pasando, y vaya anotando paso a paso lo que le pasó por la mente; con una vez basta, y si quiere puede agregar otras.",
+        campos: [
+          {
+            id: "registro",
+            tipo: "tabla",
+            etiqueta: "¿Cómo fue ese momento, paso a paso?",
+            ayuda: "Empiece por el primer momento; los otros son opcionales. Escriba lo que recuerde, sin buscar que quede perfecto.",
+            columnas: [
+              { id: "situacion", titulo: "¿Qué pasó, dónde estaba y con quién?", ayuda: "Cuéntelo en una o dos frases, solo los hechos", ejemplo: "Escribí a mi amiga y no me contestó en todo el día" },
+              { id: "pensamiento", titulo: "¿Qué pasó por su mente justo antes de sentirse así?", ayuda: "Escriba la frase tal como le cruzó", ejemplo: "Seguro se enojó conmigo" },
+              { id: "creia", titulo: "¿Cuánto se lo creyó en ese momento, de 0 a 10?", ayuda: "0 = nada, 10 = totalmente", ejemplo: "8" },
+              { id: "emocion", titulo: "¿Qué sintió y qué tan fuerte fue, de 0 a 10?", ayuda: "Miedo, tristeza, enojo, vergüenza…", ejemplo: "Preocupación, 7" },
+              { id: "equilibrada", titulo: "¿Qué otra forma, más equilibrada, hay de ver lo que pasó?", ayuda: "Lo que le diría a una persona querida que lo viviera", ejemplo: "Puede estar ocupada o sin batería. Otras veces tardó y no era por mí" },
+              { id: "ahora", titulo: "Al pensarlo así, ¿cómo se siente ahora, de 0 a 10?", ayuda: "0 = nada de malestar, 10 = muchísimo", ejemplo: "4" },
+            ],
+            filas: 3,
+            maxFilas: 3,
+            etiquetaFila: "momento",
+            filaOpcionalDesde: 1,
+          },
+        ],
+      },
+      {
+        id: "mirando",
+        titulo: "Mirando lo que escribí",
+        intro:
+          "Ahora mire juntos los momentos que escribió y observe si algo cambió entre lo que sentía al principio y lo que siente al final. Solo se trata de notar, no de convencerse de nada.",
+        campos: [
+          {
+            id: "cambio",
+            tipo: "parrafo",
+            etiqueta: "Al comparar cómo se sentía antes y después, ¿qué notó?",
+            ayuda: "Si el malestar no bajó, también sirve anotarlo.",
+            ejemplo: "Bajó un poco, de 7 a 4. Me ayudó acordarme de que ya había pasado antes.",
+          },
+          {
+            id: "se_repite",
+            tipo: "parrafo",
+            etiqueta: "¿Qué pensamientos se le repiten de un momento a otro?",
+            ejemplo: "Casi siempre pienso que los demás se enojan conmigo.",
+          },
+          {
+            id: "costo",
+            tipo: "escala",
+            etiqueta: "¿Qué tan difícil le resultó encontrar otra forma de ver lo que pasó?",
+            extremos: ["0 = nada difícil", "10 = muy difícil"],
+          },
+        ],
+      },
+    ],
+    cierre: {
+      titulo: CIERRE_TITULO,
+      texto:
+        "Revisaremos juntos sus registros, miraremos qué pensamientos se repiten y cómo cambió lo que sentía. Si alguna respuesta equilibrada no le sonó convincente, es normal: la afinaremos en la sesión.",
+      campos: [paraLaSesion],
+    },
+  },
+
+  /* ============================ 3.2 ============================ */
+  {
+    id: "3.2",
+    etapa: 3,
+    titulo: "Formas de pensar que nos atrapan",
+    paraQue: "Reconocer las formas de pensar que más se repiten en usted y practicar con 2 o 3 pensamientos.",
+    tiempo: "25 a 35 minutos",
+    explicacion: [
+      "Cuando estamos mal, la mente suele caer en ciertos «atajos» que hacen que las cosas se vean peores de lo que son. A todas las personas nos pasa; no significa que algo ande mal con usted. Reconocer el atajo ayuda a no tragarse el pensamiento completo.",
+      "Estas son diez formas comunes, con un ejemplo y una pregunta que ayuda. Todo o nada: «Si no salió perfecto, fue un fracaso» (¿hay un punto medio?). Adivinar el futuro: «Seguro me va a ir mal en la entrevista» (¿cómo sé que va a pasar?). Leer la mente: «Se rio porque piensa que soy tonto» (¿qué sé de verdad de lo que pensó?). Ponerse etiquetas: «Soy un inútil» (¿qué hice en concreto?).",
+      "Los «debería»: «Debería poder con todo sin cansarme» (¿quién dijo que es una regla?). Filtro negativo: fijarse solo en lo malo del día (¿qué más pasó?). Exagerar o catastrofizar: «Si llego tarde, me corren» (¿qué es lo más probable?). Tomarlo personal: «Ese mal gesto fue por mí» (¿habrá otra razón?). Razonar con la emoción: «Siento miedo, entonces hay peligro» (¿qué dicen los hechos?). Descalificar lo positivo: «Me felicitaron, pero fue por pura cortesía» (¿qué pasaría si fuera cierto?).",
+      "En esta ficha va a reconocer las que usted usa más y a practicar con dos o tres pensamientos suyos. No hace falta que le acierte al nombre exacto: es una guía para pensar distinto, no un examen.",
+    ],
+    secciones: [
+      {
+        id: "mias",
+        titulo: "Las formas de pensar que reconozco",
+        intro:
+          "Comencemos revisando la lista de formas de pensar que acaba de leer. Piense en las últimas semanas y marque las que le suenan familiares, sin juzgarse; casi todas las personas se reconocen en varias.",
+        campos: [
+          {
+            id: "distorsiones",
+            tipo: "casillas",
+            etiqueta: "¿Cuáles de estas formas de pensar reconoce en usted?",
+            ayuda: "Marque las que reconozca en usted. La pregunta que ayuda con cada una está en la explicación de arriba.",
+            opciones: [
+              "Todo o nada",
+              "Adivinar el futuro",
+              "Leer la mente",
+              "Ponerse etiquetas",
+              "Los «debería»",
+              "Filtro negativo",
+              "Exagerar o catastrofizar",
+              "Tomarlo personal",
+              "Razonar con la emoción",
+              "Descalificar lo positivo",
+            ],
+            conOtra: true,
+          },
+          {
+            id: "la_mas_comun",
+            tipo: "parrafo",
+            etiqueta: "De las que marcó, ¿cuál le pasa más seguido y cómo suena en su cabeza?",
+            ejemplo: "Adivinar el futuro: antes de cada reunión pienso «seguro voy a quedar mal».",
+          },
+        ],
+      },
+      {
+        id: "practica",
+        titulo: "Practico con mis pensamientos",
+        intro:
+          "Ahora elija dos o tres pensamientos que le hayan pesado esta semana y pruebe a mirarlos con las preguntas de la lista. Es solo un ensayo: no tiene que creer la otra forma de verlo, basta con imaginarla.",
+        campos: [
+          {
+            id: "practica",
+            tipo: "tabla",
+            etiqueta: "¿Qué forma de pensar hay detrás de cada pensamiento y cómo se podría ver de otra manera?",
+            ayuda: "Escriba primero el pensamiento que más le pesó; los otros son opcionales.",
+            columnas: [
+              { id: "pensamiento", titulo: "¿Cuál es el pensamiento que le pesó?", ayuda: "Tal como se lo dijo a sí mismo", ejemplo: "Seguro me van a regañar por ese error" },
+              { id: "forma", titulo: "¿Qué forma de pensar cree que es?", ayuda: "Puede ser más de una", ejemplo: "Adivinar el futuro y exagerar" },
+              { id: "pregunta", titulo: "¿Qué pregunta de la lista le ayuda con este pensamiento?", ejemplo: "¿Qué es lo más probable que pase?" },
+              { id: "otra", titulo: "¿Qué otra forma de verlo se le ocurre?", ejemplo: "Fue un error pequeño. Lo más probable es que me lo corrijan y ya" },
+            ],
+            filas: 3,
+            maxFilas: 3,
+            etiquetaFila: "pensamiento",
+            filaOpcionalDesde: 1,
+          },
+          {
+            id: "convence",
+            tipo: "escala",
+            etiqueta: "De la otra forma de verlo que escribió, ¿cuánto le convence?",
+            extremos: ["0 = nada", "10 = totalmente"],
+          },
+        ],
+      },
+    ],
+    cierre: {
+      titulo: CIERRE_TITULO,
+      texto:
+        "Veremos juntos cuáles formas de pensar le pasan más y practicaremos con sus propios ejemplos. No tiene que dejar de pensar así de un día para otro: primero se trata de reconocerlas.",
+      campos: [paraLaSesion],
+    },
+  },
+
+  /* ============================ 3.3 ============================ */
+  {
+    id: "3.3",
+    etapa: 3,
+    titulo: "Examinar las pruebas",
+    paraQue: "Tomar un pensamiento que pesa, mirar las pruebas a favor y en contra y llegar a una idea más equilibrada.",
+    tiempo: "25 a 35 minutos",
+    explicacion: [
+      "Cuando un pensamiento nos pesa mucho, solemos tratarlo como un hecho. Esta ficha propone otra cosa: tratarlo como una idea que se puede revisar, igual que un juez que escucha a las dos partes antes de decidir.",
+      "Por ejemplo, alguien piensa: «Mi jefe está molesto conmigo». A favor: hoy no me saludó. En contra: ayer me felicitó por el informe y hoy llegó con prisa a una reunión. Al ponerlo así, la idea ya no se ve tan segura.",
+      "Fíjese que las pruebas son hechos, cosas que se pueden ver, oír o comprobar, y no sentimientos. «Me siento un fracaso» no es una prueba; «reprobé un examen» sí lo es. Trabaje con un solo pensamiento a la vez, el que hoy más le pesa. No es necesario que el resultado sea positivo: busque lo más justo y lo más cercano a la realidad.",
+    ],
+    secciones: [
+      {
+        id: "pensamiento",
+        titulo: "El pensamiento que me pesa",
+        intro:
+          "Comencemos eligiendo un solo pensamiento que le haya pesado últimamente. Escríbalo tal como le suena por dentro y ponga un número a cuánto se lo cree, para poder ver después si cambió.",
+        campos: [
+          {
+            id: "pensamiento",
+            tipo: "texto",
+            etiqueta: "¿Cuál es el pensamiento que más le pesa hoy?",
+            ayuda: "Una sola frase, tal como le cruza por la mente.",
+            ejemplo: "Mi jefe está molesto conmigo",
+          },
+          {
+            id: "situacion",
+            tipo: "texto",
+            etiqueta: "¿En qué situación apareció?",
+            ejemplo: "Hoy en la oficina, cuando pasó sin saludarme",
+          },
+          {
+            id: "cree_antes",
+            tipo: "escala",
+            etiqueta: "Antes de examinarlo, ¿cuánto se cree este pensamiento?",
+            extremos: ["0 = nada", "10 = totalmente"],
+          },
+        ],
+      },
+      {
+        id: "pruebas",
+        titulo: "Lo que dicen los hechos",
+        intro:
+          "Ahora piense como un juez que escucha a las dos partes. Escriba solo hechos, lo que se pudo ver, oír o comprobar, primero lo que apoya el pensamiento y luego lo que no lo apoya.",
+        campos: [
+          {
+            id: "a_favor",
+            tipo: "lista",
+            etiqueta: "¿Qué hechos apoyan este pensamiento?",
+            ayuda: "Escriba uno por renglón. Recuerde: hechos, no sentimientos.",
+            minFilas: 1,
+            maxFilas: 6,
+            ejemplo: "Hoy no me saludó; la semana pasada me corrigió un trabajo",
+          },
+          {
+            id: "en_contra",
+            tipo: "lista",
+            etiqueta: "¿Qué hechos no apoyan este pensamiento, o lo contradicen?",
+            ayuda:
+              "Si no se le ocurre nada, pruebe con estas preguntas: ¿qué le diría a un amigo que pensara esto?, ¿hubo alguna vez en que no fue así?, ¿qué sabía yo en realidad, y qué estaba suponiendo?",
+            minFilas: 1,
+            maxFilas: 6,
+            ejemplo: "Ayer me felicitó por el informe; hoy llegó con prisa a una reunión",
+          },
+          {
+            id: "otra_explicacion",
+            tipo: "parrafo",
+            etiqueta: "¿Hay otra explicación posible de lo que pasó?",
+            ayuda: "Escriba una o dos explicaciones distintas, aunque no le parezcan las más probables.",
+            ejemplo: "Iba apurado por la reunión y no me vio.",
+          },
+          {
+            id: "peor_mejor",
+            tipo: "parrafo",
+            etiqueta: "¿Cuál sería lo peor, lo mejor y lo más probable que podría pasar?",
+            ayuda: "Escriba las tres cosas, una tras otra.",
+            ejemplo: "Lo peor: que sí esté molesto. Lo mejor: que no tenga nada que ver conmigo. Lo más probable: que esté estresado por su trabajo.",
+          },
+        ],
+      },
+      {
+        id: "equilibrado",
+        titulo: "Una forma más equilibrada de verlo",
+        intro:
+          "Para terminar, junte todo lo que escribió y busque una frase que tome en cuenta tanto lo que apoya como lo que contradice el pensamiento. Luego vuelva a medir cuánto le cree y cómo se siente.",
+        campos: [
+          {
+            id: "equilibrado",
+            tipo: "parrafo",
+            etiqueta: "Tomando en cuenta todo lo anterior, ¿qué pensamiento más equilibrado podría escribir?",
+            ayuda: "Que sea una frase que usted pueda creer, no una frase bonita.",
+            ejemplo: "Puede que mi jefe esté apurado o estresado. Si sigo preocupado, puedo preguntarle con calma cómo va mi trabajo.",
+          },
+          {
+            id: "cree_ahora",
+            tipo: "escala",
+            etiqueta: "Ahora, ¿cuánto se cree el pensamiento original?",
+            extremos: ["0 = nada", "10 = totalmente"],
+          },
+          {
+            id: "emocion_ahora",
+            tipo: "texto",
+            etiqueta: "¿Qué emoción siente ahora y qué tan fuerte es, de 0 a 10?",
+            ejemplo: "Un poco de preocupación, 3",
+          },
+        ],
+      },
+    ],
+    cierre: {
+      titulo: CIERRE_TITULO,
+      texto:
+        "Revisaremos sus pruebas, veremos si hay hechos que faltó mirar y afinaremos la frase equilibrada. Si el pensamiento no cambió mucho, no significa que haya hecho algo mal: lo trabajaremos con calma.",
+      campos: [paraLaSesion],
+    },
+  },
+
+  /* ============================ 3.4 ============================ */
+  {
+    id: "3.4",
+    etapa: 3,
+    titulo: "Lo que sí controlo y lo que no",
+    paraQue: "Separar una preocupación en lo que depende de usted, lo que influye en parte y lo que no, y dar un paso concreto.",
+    tiempo: "20 a 30 minutos",
+    explicacion: [
+      "Cuando algo nos preocupa, es común que todo se mezcle: lo que podemos hacer, lo que solo podemos influir y lo que simplemente no depende de nosotros. Al quedar todo junto, la mente da vueltas y el cuerpo se agota sin llegar a ninguna parte.",
+      "Por ejemplo, una persona espera el resultado de unos exámenes médicos. Lo que depende de ella: ir a la cita, hacer las preguntas que tenga y cuidarse mientras tanto. Lo que influye en parte: descansar y comer bien, que ayudan a sentirse mejor pero no cambian el resultado. Lo que no depende de ella: lo que digan los exámenes.",
+      "Separar así la preocupación permite poner la energía en lo que sí se puede mover y, para lo demás, aprender a soltar poco a poco. Soltar no es rendirse ni dejar de importarle: es aceptar que hay cosas que no se pueden controlar por más que uno les dé vueltas.",
+    ],
+    secciones: [
+      {
+        id: "preocupacion",
+        titulo: "Lo que me preocupa",
+        intro:
+          "Comencemos eligiendo una preocupación que hoy le ronda la cabeza. Escríbala con sus palabras, y después piense qué parte de ella es suya, qué parte influye en parte y qué parte no depende de usted.",
+        campos: [
+          {
+            id: "preocupacion",
+            tipo: "parrafo",
+            etiqueta: "¿Qué es lo que más le preocupa hoy?",
+            ayuda: "Puede ser un problema concreto o un «y si…» sobre el futuro.",
+            ejemplo: "Que me despidan en la próxima reducción de personal.",
+          },
+          {
+            id: "tanto",
+            tipo: "escala",
+            etiqueta: "¿Cuánto le pesa esta preocupación hoy?",
+            extremos: ["0 = nada", "10 = muchísimo"],
+          },
+        ],
+      },
+      {
+        id: "control",
+        titulo: "Lo que depende de mí y lo que no",
+        intro:
+          "Ahora separe la preocupación en tres partes. Piense con calma qué puede hacer usted, en qué solo puede influir y qué escapa a su control; con una o dos cosas en cada parte basta.",
+        campos: [
+          {
+            id: "depende",
+            tipo: "lista",
+            etiqueta: "¿Qué depende de usted?",
+            ayuda: "Lo que puede decidir o hacer usted mismo, aunque sea poco. Una cosa por renglón.",
+            minFilas: 1,
+            maxFilas: 6,
+            ejemplo: "Entregar bien mi trabajo; actualizar mi hoja de vida",
+          },
+          {
+            id: "influyo",
+            tipo: "lista",
+            etiqueta: "¿Qué puede influir en parte, sin controlarlo del todo?",
+            ayuda: "Aquello donde su esfuerzo ayuda, pero la decisión final es de otros.",
+            minFilas: 1,
+            maxFilas: 6,
+            ejemplo: "Llevarme bien con mi jefe; pedir opinión sobre mi desempeño",
+          },
+          {
+            id: "no_depende",
+            tipo: "lista",
+            etiqueta: "¿Qué no depende de usted en absoluto?",
+            ayuda: "Lo que, por más que lo piense, no puede cambiar hoy.",
+            minFilas: 1,
+            maxFilas: 6,
+            ejemplo: "Lo que decida la empresa; la situación económica del país",
+          },
+        ],
+      },
+      {
+        id: "paso",
+        titulo: "Mi paso y mi forma de soltar",
+        intro:
+          "Para terminar, elija un paso pequeño y concreto sobre lo que sí depende de usted, y piense cómo va a soltar lo demás cuando la preocupación vuelva. No tiene que resolver todo esta semana; basta con un paso.",
+        campos: [
+          {
+            id: "paso",
+            tipo: "texto",
+            etiqueta: "¿Qué paso concreto dará esta semana sobre lo que sí depende de usted?",
+            ayuda: "Algo pequeño que pueda hacer de verdad, no un deseo general.",
+            ejemplo: "Actualizar mi hoja de vida",
+          },
+          {
+            id: "cuando",
+            tipo: "texto",
+            etiqueta: "¿Cuándo y dónde lo hará?",
+            ayuda: "Un día y una hora aproximada.",
+            ejemplo: "El jueves a las 7 de la noche, en la sala",
+          },
+          {
+            id: "soltar",
+            tipo: "casillas",
+            etiqueta: "¿Cómo podría soltar lo que no controla, cuando la preocupación vuelva?",
+            ayuda: "Marque las que le parezcan posibles; no tiene que usar todas.",
+            opciones: [
+              "Posponerla a un «tiempo de preocupación» (un rato fijo del día para pensar en ella)",
+              "Volver la atención a lo que estoy haciendo en este momento",
+              "Hablarlo con alguien de confianza",
+              "Hacer unas respiraciones lentas",
+              "Escribirlo y cerrar la libreta",
+            ],
+            conOtra: true,
+          },
+        ],
+      },
+    ],
+    cierre: {
+      titulo: CIERRE_TITULO,
+      texto:
+        "Revisaremos qué puso en cada parte, veremos cómo le fue con el paso de la semana y ajustaremos la forma de soltar lo que no depende de usted. Si no logró dar el paso, lo conversamos sin reproches.",
       campos: [paraLaSesion],
     },
   },

@@ -90,7 +90,7 @@ export const BIBLIOTECA_PSICOPATOLOGIA: Biblioteca = {
           etapa: 3,
           texto:
             "Distinguir preocupaciones con problema que se puede resolver de las hipotéticas (qué pasaría si). Trabajar la intolerancia a la incertidumbre y la creencia de que preocuparse protege (Dugas y Robichaud). Probar con experimentos las predicciones catastróficas.",
-          fichas: [],
+          fichas: ["3.3", "3.4"],
         },
         {
           etapa: 4,
@@ -196,7 +196,7 @@ export const BIBLIOTECA_PSICOPATOLOGIA: Biblioteca = {
           etapa: 3,
           texto:
             "Reevaluar la interpretación catastrófica de las sensaciones («me da un infarto») con evidencia y con experimentos conductuales. Contrastar lo que ocurre con lo que se predecía.",
-          fichas: [],
+          fichas: ["3.1", "3.3"],
         },
         {
           etapa: 4,
@@ -307,7 +307,7 @@ export const BIBLIOTECA_PSICOPATOLOGIA: Biblioteca = {
           etapa: 3,
           texto:
             "Identificar y poner a prueba los pensamientos negativos automáticos sobre sí mismo, el mundo y el futuro (Beck). Revisar la rumiación y trabajar creencias de inutilidad con evidencia y alternativas.",
-          fichas: [],
+          fichas: ["3.1", "3.2", "3.3"],
         },
         {
           etapa: 4,
@@ -417,7 +417,7 @@ export const BIBLIOTECA_PSICOPATOLOGIA: Biblioteca = {
           etapa: 3,
           texto:
             "Revisar los pensamientos que intensifican el malestar («no voy a poder», «todo está perdido») y reformularlos con evidencia. Distinguir lo controlable de lo que no lo es.",
-          fichas: [],
+          fichas: ["3.4"],
         },
         {
           etapa: 4,
@@ -640,7 +640,7 @@ export const BIBLIOTECA_PSICOPATOLOGIA: Biblioteca = {
           etapa: 3,
           texto:
             "Cuestionar las creencias sobre la utilidad del pensamiento repetitivo (Wells, metacognición) y la rumiación abstracta del «por qué». Practicar el paso a pensamiento concreto y específico (Watkins).",
-          fichas: [],
+          fichas: ["3.4"],
         },
         {
           etapa: 4,
