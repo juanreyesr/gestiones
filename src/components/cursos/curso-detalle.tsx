@@ -1,6 +1,6 @@
 "use client";
 
-import { CalendarDays, ChevronLeft, ClipboardCheck, ClipboardList, Eye, FileText, MessageCircle, QrCode, UserCog, Users } from "lucide-react";
+import { BookOpen, CalendarDays, ChevronLeft, ClipboardCheck, ClipboardList, Eye, FileText, MessageCircle, QrCode, UserCog, Users } from "lucide-react";
 import type React from "react";
 import { useCallback, useEffect, useState } from "react";
 import { fetchCalificacionesDeCurso } from "@/lib/cursos/actividades";
@@ -12,6 +12,7 @@ import type { CursoImpartidoRow, SemanaRow, UniversidadRow } from "@/lib/cursos/
 import { ESTADO_CURSO_LABELS } from "@/lib/cursos/types";
 import { BandejaEntregasModal } from "./bandeja-entregas-modal";
 import { CompartirAsignacionModal } from "./compartir-asignacion-modal";
+import { CursoBibliotecasTab } from "./curso-bibliotecas-tab";
 import { CursoEstudiantesTab } from "./curso-estudiantes-tab";
 import { CursoPlanificacionTab } from "./curso-planificacion-tab";
 import { CursoReporteTab } from "./curso-reporte-tab";
@@ -19,7 +20,7 @@ import { CursoSemanasTab } from "./curso-semanas-tab";
 import { PreguntasPerfilModal } from "./preguntas-perfil-modal";
 import { BTN_GHOST, Chip } from "./ui";
 
-type CursoTab = "semanas" | "estudiantes" | "planificacion" | "reporte";
+type CursoTab = "semanas" | "estudiantes" | "planificacion" | "bibliotecas" | "reporte";
 
 const ESTADO_CHIP: Record<string, string> = {
   activo: "border-emerald-300/40 bg-emerald-300/15 text-emerald-200",
@@ -201,6 +202,7 @@ export function CursoDetalle({
       {tab === "semanas" ? <CursoSemanasTab cursoId={curso.id} onOpenSemana={onOpenSemana} /> : null}
       {tab === "estudiantes" ? <CursoEstudiantesTab carneModo={curso.carne_modo} cursoId={curso.id} cursoNombre={curso.nombre} /> : null}
       {tab === "planificacion" ? <CursoPlanificacionTab cursoId={curso.id} /> : null}
+      {tab === "bibliotecas" ? <CursoBibliotecasTab cursoId={curso.id} /> : null}
       {tab === "reporte" ? <CursoReporteTab curso={curso} universidad={universidad} /> : null}
 
       {bandejaAbierta ? (
@@ -236,6 +238,7 @@ function CursoTabs({ onChange, value }: { onChange: (value: CursoTab) => void; v
     { value: "semanas", label: "Semanas", icon: CalendarDays },
     { value: "estudiantes", label: "Estudiantes", icon: Users },
     { value: "planificacion", label: "Planificación", icon: FileText },
+    { value: "bibliotecas", label: "Bibliotecas", icon: BookOpen },
     { value: "reporte", label: "Reporte", icon: ClipboardList },
   ];
 

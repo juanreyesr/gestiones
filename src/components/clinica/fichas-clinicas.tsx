@@ -3,7 +3,7 @@
 import { BookOpen, ChevronLeft, ChevronRight, PenLine, Send, X } from "lucide-react";
 import { useState } from "react";
 import { FichaClinicaVista } from "@/components/bibliotecas/ficha-clinica-vista";
-import { BIBLIOTECAS, fichaClinicaPorId } from "@/lib/bibliotecas";
+import { BIBLIOTECAS, fichaClinicaPorId, type VistaFicha } from "@/lib/bibliotecas";
 import { ModalPortal } from "../modal-portal";
 import { EVENTO_ACCION_FICHA, type AccionFicha } from "./seccion-plegable";
 import { BTN_GHOST } from "./ui";
@@ -15,7 +15,18 @@ const pedir = (detalle: AccionFicha) => window.dispatchEvent(new CustomEvent(EVE
  * biblioteca; las fichas terapéuticas del plan se llenan o envían desde aquí (las ejecuta
  * «Intervención guiada», que está en el mismo expediente).
  */
-export function FichaClinicaModal({ fichaId, onCerrar, conAcciones = true }: { fichaId: string; onCerrar: () => void; conAcciones?: boolean }) {
+export function FichaClinicaModal({
+  fichaId,
+  onCerrar,
+  conAcciones = true,
+  vista = "terapeuta",
+}: {
+  fichaId: string;
+  onCerrar: () => void;
+  conAcciones?: boolean;
+  /** «estudiante»: como la verá el Aula (para la vista previa del docente). */
+  vista?: VistaFicha;
+}) {
   const [id, setId] = useState(fichaId);
   const actual = fichaClinicaPorId(id) ?? fichaClinicaPorId(fichaId);
   if (!actual) return null;
@@ -86,7 +97,7 @@ export function FichaClinicaModal({ fichaId, onCerrar, conAcciones = true }: { f
                 : undefined
             }
             ficha={ficha}
-            vista="terapeuta"
+            vista={vista}
           />
         </div>
       </div>

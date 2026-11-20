@@ -4,6 +4,8 @@ import fs from "node:fs";
 import { BIBLIOTECAS, FICHA_DE_DX_EAPI, fichaClinicaPorId, fichasDeEapi, fichasDeMcea } from "../src/lib/bibliotecas/index.ts";
 import { FICHA_IDS } from "../src/lib/evaluaciones/fichas/catalogo.ts";
 import { calificarEapi } from "../src/lib/evaluaciones/eapi/calificacion.ts";
+import { fichaClinicaHtml } from "../src/lib/bibliotecas/html.ts";
+import { traducir } from "../src/lib/estudiante/i18n.ts";
 
 let ok = 0;
 const caso = (n, fn) => { fn(); ok++; console.log(`✔ ${n}`); };
@@ -85,6 +87,56 @@ caso("Integración en el panel: informes EAPI y MCEA, e «Intervención guiada»
   assert.match(ig, /addEventListener\(EVENTO_ACCION_FICHA/);
   assert.match(ig, /if \(modo !== "completo"\) return;/);
   assert.match(ig, /<BotonBibliotecaClinica \/>/);
+});
+
+caso("PR 2 · Migración 067: tabla con RLS del propietario y RPC que valida inscripción activa", () => {
+  const sql = leer("../supabase/migrations/067_gestionesjj_curso_bibliotecas.sql");
+  assert.match(sql, /enable row level security/);
+  for (const op of ["select", "insert", "delete"]) assert.match(sql, new RegExp(`for ${op} to authenticated (using|with check) \\(public\\.gestionesjj_is_owner\\(\\)\\)`), op);
+  assert.match(sql, /references public\.gestionesjj_cursos_impartidos\(id\) on delete cascade/);
+  assert.match(sql, /biblioteca_id ~ '\^\[a-z0-9-\]\{1,60\}\$'/);
+  for (const cond of ["c.acceso_estudiantes = true", "ce.estado = 'activo'", "e.auth_user_id = auth.uid()", "e.activo"]) assert.ok(sql.includes(cond), cond);
+  assert.match(sql, /security definer\s+set search_path = ''/);
+  assert.match(sql, /revoke all on function public\.gestionesjj_estudiante_bibliotecas_curso\(uuid\) from anon/);
+  assert.ok(leer("../supabase/pendientes.sql").includes("067_gestionesjj_curso_bibliotecas.sql"));
+  assert.match(leer("../supabase/PENDIENTES.md"), /067_gestionesjj_curso_bibliotecas\.sql/);
+});
+
+caso("PR 2 · PDF: el estudiante recibe caso y clave, nunca «Cómo lo detecta el sistema»; el terapeuta al revés", () => {
+  const { ficha, biblioteca } = fichaClinicaPorId("ansiedad-generalizada");
+  const est = fichaClinicaHtml(ficha, biblioteca, "estudiante");
+  const ter = fichaClinicaHtml(ficha, biblioteca, "terapeuta");
+  assert.doesNotMatch(est, /Cómo lo detecta el sistema/);
+  assert.ok(!est.includes(ficha.deteccion[0].replace(/[&<>"']/g, "")) || !ficha.deteccion[0].length);
+  assert.match(est, /Caso para analizar/);
+  assert.match(est, /Clave para recordar/);
+  assert.match(ter, /Cómo lo detecta el sistema/);
+  assert.doesNotMatch(ter, /Caso para analizar/);
+  // Escapa el HTML.
+  const raro = { ...ficha, nombre: "<script>x</script>" };
+  assert.doesNotMatch(fichaClinicaHtml(raro, biblioteca, "estudiante"), /<script>x/);
+});
+
+caso("PR 2 · Aula: el estudiante solo ve las bibliotecas de su curso (RPC) y en vista de estudiante", () => {
+  const cli = leer("../src/lib/estudiante/estudiante-client.ts");
+  assert.match(cli, /rpc\("gestionesjj_estudiante_bibliotecas_curso", \{ p_curso_id: cursoId \}\)/);
+  assert.match(cli, /if \(error\) return \[\];/, "sin la migración: lista vacía, el Aula sigue igual");
+  const comp = leer("../src/components/estudiante/biblioteca-curso.tsx");
+  assert.match(comp, /<FichaClinicaVista ficha=\{ficha\} tema="claro" vista="estudiante" \/>/);
+  assert.match(comp, /fichaClinicaHtml\(ficha, biblioteca, "estudiante"\)/);
+  assert.doesNotMatch(comp, /vista="terapeuta"|"terapeuta"/);
+  assert.match(leer("../src/components/estudiante/curso-estudiante-detalle.tsx"), /<BibliotecaCurso cursoId=\{curso\.cursoId\} \/>/);
+  // Docente: pestaña «Bibliotecas» y vista previa como estudiante.
+  assert.match(leer("../src/components/cursos/curso-detalle.tsx"), /tab === "bibliotecas" \? <CursoBibliotecasTab cursoId=\{curso\.id\} \/>/);
+  assert.match(leer("../src/components/cursos/curso-bibliotecas-tab.tsx"), /vista="estudiante"/);
+});
+
+caso("PR 2 · Textos de la interfaz del Aula en español, inglés y portugués", () => {
+  for (const clave of ["biblioteca_titulo", "biblioteca_intro", "biblioteca_fichas", "biblioteca_descargar", "biblioteca_generando", "biblioteca_cerrar", "biblioteca_error_pdf"]) {
+    const textos = ["es", "en", "pt"].map((i) => traducir(i, clave));
+    for (const t of textos) assert.ok(t && t !== clave, `${clave}: falta traducción`);
+  }
+  assert.equal(traducir("en", "biblioteca_titulo"), "Library");
 });
 
 console.log(`\n${ok} pruebas correctas.`);

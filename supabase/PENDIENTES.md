@@ -10,7 +10,9 @@ así que las migraciones se acumulan aquí y se aplican **juntas desde la comput
   computadora y aprobar cada ventana de Supabase.
 
 ## Pendientes
-Ninguna por ahora.
+| Migración | Qué hace | Sin aplicarla |
+| --- | --- | --- |
+| `067_gestionesjj_curso_bibliotecas.sql` | Tabla `gestionesjj_curso_bibliotecas` (biblioteca activa por curso, solo el propietario la edita) y RPC `gestionesjj_estudiante_bibliotecas_curso` (el estudiante ve solo las de sus cursos activos). | La pestaña «Bibliotecas» del curso avisa que falta la migración y no deja activarlas; el Aula sigue igual que hoy (sin bibliotecas). La biblioteca clínica del panel funciona igual. |
 
 ## Aplicadas
 | Migración | Fecha | Verificación |
