@@ -14,7 +14,7 @@ const ETAPAS: Record<number, string> = {
 
 export type TemaFichaClinica = "panel" | "claro";
 
-const CLASES: Record<TemaFichaClinica, { titulo: string; texto: string; suave: string; rotulo: string; caja: string; alerta: string; ficha: string }> = {
+export const CLASES: Record<TemaFichaClinica, { titulo: string; texto: string; suave: string; rotulo: string; caja: string; alerta: string; ficha: string }> = {
   panel: {
     titulo: "text-white",
     texto: "text-slate-200",
@@ -35,9 +35,9 @@ const CLASES: Record<TemaFichaClinica, { titulo: string; texto: string; suave: s
   },
 };
 
-type Clases = (typeof CLASES)[TemaFichaClinica];
+export type Clases = (typeof CLASES)[TemaFichaClinica];
 
-function Seccion({ t, titulo, children }: { t: Clases; titulo: string; children: React.ReactNode }) {
+export function Seccion({ t, titulo, children }: { t: Clases; titulo: string; children: React.ReactNode }) {
   return (
     <section className="grid gap-1.5">
       <h4 className={`text-[11px] font-semibold uppercase tracking-wide ${t.rotulo}`}>{titulo}</h4>
@@ -46,7 +46,7 @@ function Seccion({ t, titulo, children }: { t: Clases; titulo: string; children:
   );
 }
 
-function Lista({ t, items }: { t: Clases; items: string[] }) {
+export function Lista({ t, items }: { t: Clases; items: string[] }) {
   return (
     <ul className={`grid list-disc gap-1 pl-5 text-sm leading-6 ${t.texto}`}>
       {items.map((x, i) => (

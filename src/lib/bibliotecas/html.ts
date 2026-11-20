@@ -3,7 +3,7 @@
  * Respeta la vista: el estudiante no recibe «Cómo lo detecta el sistema»; el terapeuta no recibe el caso.
  */
 import { fichaPorId } from "../evaluaciones/fichas/catalogo";
-import type { Biblioteca, FichaClinica, VistaFicha } from "./tipos";
+import type { Biblioteca, FichaBiblioteca, FichaClinica, FichaTecnica, VistaFicha } from "./tipos";
 
 const esc = (s: unknown) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!);
 
@@ -60,3 +60,42 @@ ${final}
 <p class="pie">Material de referencia de redacción propia. Los códigos son del DSM-5-TR y la CIE-11; los criterios completos deben consultarse en los manuales oficiales y el diagnóstico requiere entrevista clínica.</p>
 </body></html>`;
 }
+
+/** Ficha de técnica (biblioteca de psicoterapia) como documento HTML A4. */
+export function fichaTecnicaHtml(ficha: FichaTecnica, biblioteca: Biblioteca, vista: VistaFicha): string {
+  const fichas = ficha.fichas
+    .map((id) => fichaPorId(id))
+    .filter((f): f is NonNullable<typeof f> => Boolean(f))
+    .map((f) => `<li>Ficha ${esc(f.id)} · ${esc(f.titulo)}</li>`)
+    .join("");
+  const dialogo = ficha.dialogo
+    .map((l) => {
+      const m = /^(Terapeuta|Paciente):\s*(.*)$/.exec(l);
+      return m ? `<p><b>${esc(m[1])}:</b> ${esc(m[2])}</p>` : `<p>${esc(l)}</p>`;
+    })
+    .join("");
+  const estudiante =
+    vista === "estudiante"
+      ? `<h2>Caso para practicar</h2><p class="caso">${esc(ficha.caso)}</p><h2>Preguntas para practicar</h2>${lista(ficha.preguntas)}<h2>Clave para recordar</h2><p><b>${esc(ficha.clave)}</b></p>`
+      : "";
+  return `<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${esc(ficha.nombre)}</title><style>${ESTILOS}</style></head><body>
+<p class="muted">Biblioteca ${esc(biblioteca.titulo)} · M. A. Juan J. Reyes</p>
+<h1>${esc(ficha.nombre)}</h1>
+<p class="muted">${esc(ficha.modelo)}</p>
+<p>${esc(ficha.enPocasPalabras)}</p>
+<h2>Cuándo usarla</h2>${lista(ficha.indicaciones)}
+<h2>Precauciones</h2><div class="alerta">${lista(ficha.precauciones)}</div>
+<h2>Cómo aplicarla, paso a paso</h2><ol>${ficha.pasos.map((x) => `<li>${esc(x)}</li>`).join("")}</ol>
+<h2>Ejemplo de diálogo</h2><div class="dif">${dialogo}</div>
+<h2>Errores frecuentes</h2>${lista(ficha.errores)}
+<h2>Evidencia</h2><p>${esc(ficha.evidencia)}</p>
+${fichas ? `<h2>Fichas terapéuticas para trabajarla</h2><ul>${fichas}</ul>` : ""}
+${estudiante}
+<h2>Referencias</h2><ul class="muted">${ficha.referencias.map((r) => `<li>${esc(r)}</li>`).join("")}</ul>
+<p class="pie">Material de referencia de redacción propia, para la formación y la práctica clínica supervisada.</p>
+</body></html>`;
+}
+
+/** Cualquier ficha de una biblioteca como HTML (elige el formato según el tipo de biblioteca). */
+export const fichaBibliotecaHtml = (ficha: FichaBiblioteca, biblioteca: Biblioteca, vista: VistaFicha) =>
+  biblioteca.tipo === "tecnicas" ? fichaTecnicaHtml(ficha as FichaTecnica, biblioteca, vista) : fichaClinicaHtml(ficha as FichaClinica, biblioteca, vista);

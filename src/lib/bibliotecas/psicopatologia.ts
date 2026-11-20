@@ -3,10 +3,11 @@
  * Redacción propia. Del DSM-5-TR y la CIE-11 solo se citan códigos; los umbrales se resumen con palabras propias.
  * Base: terapia cognitivo-conductual (TCC) con respaldo empírico.
  */
-import type { Biblioteca } from "./tipos";
+import type { BibliotecaClinica } from "./tipos";
 
-export const BIBLIOTECA_PSICOPATOLOGIA: Biblioteca = {
+export const BIBLIOTECA_PSICOPATOLOGIA: BibliotecaClinica = {
   id: "psicopatologia",
+  tipo: "clinica",
   titulo: "Psicopatología",
   descripcion:
     "Doce fichas clínicas de referencia sobre ansiedad generalizada, pánico, ansiedad social, fobia específica, depresión mayor y persistente, adaptación, obsesiones y compulsiones, estrés postraumático, duelo prolongado, insomnio, y procesos de rumiación y estrés. Cada una resume cómo se presenta el cuadro, con qué no confundirlo y cómo abordarlo con terapia cognitivo-conductual.",

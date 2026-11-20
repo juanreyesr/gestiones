@@ -2,10 +2,10 @@
 
 import { BookOpen, Download, X } from "lucide-react";
 import { useEffect, useState } from "react";
-import { FichaClinicaVista } from "@/components/bibliotecas/ficha-clinica-vista";
+import { FichaBibliotecaVista, subtituloFicha } from "@/components/bibliotecas/ficha-biblioteca-vista";
 import { ModalPortal } from "@/components/modal-portal";
-import { bibliotecaPorId, fichaClinicaPorId } from "@/lib/bibliotecas";
-import { fichaClinicaHtml } from "@/lib/bibliotecas/html";
+import { bibliotecaPorId, fichaBibliotecaPorId } from "@/lib/bibliotecas";
+import { fichaBibliotecaHtml } from "@/lib/bibliotecas/html";
 import { fetchMisBibliotecas } from "@/lib/estudiante/estudiante-client";
 import { descargarPdfDeHtml, nombrePdf } from "@/lib/pdf-desde-html";
 import { useIdioma } from "./idioma-context";
@@ -15,14 +15,14 @@ function FichaEstudianteModal({ fichaId, onCerrar }: { fichaId: string; onCerrar
   const { t } = useIdioma();
   const [generando, setGenerando] = useState(false);
   const [error, setError] = useState("");
-  const encontrada = fichaClinicaPorId(fichaId);
+  const encontrada = fichaBibliotecaPorId(fichaId);
   if (!encontrada) return null;
   const { ficha, biblioteca } = encontrada;
   const descargar = async () => {
     setGenerando(true);
     setError("");
     try {
-      await descargarPdfDeHtml(fichaClinicaHtml(ficha, biblioteca, "estudiante"), nombrePdf(`${biblioteca.titulo} ${ficha.nombre}`));
+      await descargarPdfDeHtml(fichaBibliotecaHtml(ficha, biblioteca, "estudiante"), nombrePdf(`${biblioteca.titulo} ${ficha.nombre}`));
     } catch {
       setError(t("biblioteca_error_pdf"));
     } finally {
@@ -60,7 +60,7 @@ function FichaEstudianteModal({ fichaId, onCerrar }: { fichaId: string; onCerrar
             </div>
           </div>
           {error ? <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">{error}</p> : null}
-          <FichaClinicaVista ficha={ficha} tema="claro" vista="estudiante" />
+          <FichaBibliotecaVista biblioteca={biblioteca} ficha={ficha} tema="claro" vista="estudiante" />
         </div>
       </div>
     </ModalPortal>
@@ -114,9 +114,7 @@ export function BibliotecaCurso({ cursoId }: { cursoId: string }) {
                 type="button"
               >
                 <span className="block text-sm font-semibold text-slate-900">{f.nombre}</span>
-                <span className="block text-xs text-slate-500">
-                  DSM-5-TR {f.codigos.dsm} · CIE-11 {f.codigos.cie}
-                </span>
+                <span className="block text-xs text-slate-500">{subtituloFicha(b, f)}</span>
               </button>
             ))}
           </div>

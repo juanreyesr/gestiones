@@ -5,17 +5,28 @@
 import type { DxId } from "../evaluaciones/eapi/calificacion";
 import type { Puntaje } from "../evaluaciones/mcea/motor";
 import { BIBLIOTECA_PSICOPATOLOGIA } from "./psicopatologia";
-import type { Biblioteca, FichaClinica } from "./tipos";
+import { BIBLIOTECA_PSICOTERAPIA_ADULTO } from "./psicoterapia-adulto";
+import type { Biblioteca, BibliotecaClinica, FichaBiblioteca, FichaClinica } from "./tipos";
 
-export type { Biblioteca, FichaClinica, PasoPlan, VistaFicha } from "./tipos";
+export type { Biblioteca, BibliotecaClinica, BibliotecaTecnicas, FichaBiblioteca, FichaClinica, FichaTecnica, PasoPlan, VistaFicha } from "./tipos";
 
-export const BIBLIOTECAS: Biblioteca[] = [BIBLIOTECA_PSICOPATOLOGIA];
+export const BIBLIOTECAS: Biblioteca[] = [BIBLIOTECA_PSICOPATOLOGIA, BIBLIOTECA_PSICOTERAPIA_ADULTO];
 
 export const bibliotecaPorId = (id: string) => BIBLIOTECAS.find((b) => b.id === id) ?? null;
 
-/** Ficha por id (en cualquier biblioteca), con la biblioteca a la que pertenece. */
-export function fichaClinicaPorId(id: string): { ficha: FichaClinica; biblioteca: Biblioteca } | null {
+/** Ficha por id en cualquier biblioteca (clínica o de técnicas), con su biblioteca. */
+export function fichaBibliotecaPorId(id: string): { ficha: FichaBiblioteca; biblioteca: Biblioteca } | null {
   for (const biblioteca of BIBLIOTECAS) {
+    const ficha = (biblioteca.fichas as FichaBiblioteca[]).find((f) => f.id === id);
+    if (ficha) return { ficha, biblioteca };
+  }
+  return null;
+}
+
+/** Ficha clínica (de trastorno) por id, con su biblioteca. */
+export function fichaClinicaPorId(id: string): { ficha: FichaClinica; biblioteca: BibliotecaClinica } | null {
+  for (const biblioteca of BIBLIOTECAS) {
+    if (biblioteca.tipo !== "clinica") continue;
     const ficha = biblioteca.fichas.find((f) => f.id === id);
     if (ficha) return { ficha, biblioteca };
   }
