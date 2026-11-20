@@ -100,3 +100,11 @@ Contexto verificado en el código: la hoja de datos generales (`/datos/<token>`)
 - La hoja de datos generales pregunta (opcional) «¿Qué te gustaría trabajar en la consulta?» (tuteo, como el resto de la hoja; en plural si es menor). «¿Desde cuándo?» se queda solo en la ficha 1.1. Se guarda en `motivo_paciente` (migración 066, RPC pública que se llama antes de cerrar el enlace).
 - Punto de partida de la 1.1 (base y prellenado de «Llenarla yo»): hoja de datos → motivo de consulta del expediente → última cita.
 - Cita inicial: si el paciente aún no tiene sesiones, «Intervención guiada» muestra arriba «Cita inicial · sugerida: Ficha 1.1» con «Llenarla en la sesión» y «Enviar al paciente»; en la primera sesión (sin sesión anterior) aparece la misma tarjeta dentro de la sesión.
+
+## Bibliotecas JJR — fichas clínicas de referencia (decisión del autor, opción D)
+Una sola fuente con dos vistas. Tipos en `src/lib/bibliotecas/tipos.ts`.
+- **Biblioteca «Psicopatología»** (lote 1, 6 fichas): ansiedad generalizada, trastorno de pánico, episodio depresivo mayor, trastorno de adaptación, trastorno obsesivo-compulsivo, y rumiación y estrés (procesos transdiagnósticos).
+- **Panel (PR 1)**: junto a las hipótesis del EAPI y del MCEA, «Fichas clínicas relacionadas»; la ficha se abre en una ventana con su plan TCC y, por cada ficha terapéutica sugerida, «Llenarla yo» y «Enviar al paciente» (los ejecuta «Intervención guiada»). Vista terapeuta: todo menos el caso y la clave; incluye «Cómo lo detecta el sistema». Los pacientes nunca las ven.
+- **Aula (PR 2)**: bibliotecas activables por curso (migración: tabla curso–biblioteca con RLS para que el estudiante lea solo las de sus cursos); pestaña «Biblioteca» con la vista estudiante (sin «Cómo lo detecta el sistema»; con caso y clave) y PDF.
+- Mapeo de hipótesis → ficha: EAPI `tag`/`tag_sub` → ansiedad generalizada; `panic` → pánico; `stress` → adaptación; `dep` → depresión; `rnt` → rumiación y estrés; `ocd`/`ocd_sub` → TOC. MCEA: PHQ-9 ≥ 10 → depresión; GAD-7 ≥ 10 → ansiedad generalizada (y pánico como diferencial); PTQ nivel ≥ 2 → rumiación y estrés.
+- Redacción propia; del DSM-5-TR y la CIE-11 solo códigos. Tono técnico, claro y en español de Guatemala.

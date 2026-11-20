@@ -21,6 +21,7 @@
     "test:datos-pendientes": "node --experimental-strip-types --no-warnings --import ./scripts/ts-resolver.mjs scripts/probar-datos-pendientes.mjs",
     "test:mcea": "node --experimental-strip-types --no-warnings --import ./scripts/ts-resolver.mjs scripts/probar-mcea.mjs",
     "test:fichas": "node --experimental-strip-types --no-warnings --import ./scripts/ts-resolver.mjs scripts/probar-fichas.mjs",
+    "test:bibliotecas": "node --experimental-strip-types --no-warnings --import ./scripts/ts-resolver.mjs scripts/probar-bibliotecas.mjs",
     "test:seguimientos": "node --experimental-strip-types --no-warnings --import ./scripts/ts-resolver.mjs scripts/probar-seguimientos.mjs"
   },
   "dependencies": {

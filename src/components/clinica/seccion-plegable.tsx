@@ -16,6 +16,9 @@ export const EVENTO_ABRIR_RESPUESTA = "gjj-abrir-respuesta";
 /** Algo de evaluaciones cambió (respuestas recargadas, alarma atendida…). */
 export const EVENTO_EVALUACIONES_CAMBIO = "gjj-evaluaciones-cambio";
 const EVENTO_TODAS = "gjj-expediente-todas";
+/** Pide a «Intervención guiada» llenar o enviar una ficha terapéutica (detail: { ficha, accion }). */
+export const EVENTO_ACCION_FICHA = "gjj-accion-ficha";
+export type AccionFicha = { ficha: string; accion: "llenar" | "enviar" };
 const clave = (id: string) => `gjj-expediente-seccion-${id}`;
 
 /** Abre una sección y la lleva a la vista. */
