@@ -10,9 +10,7 @@ así que las migraciones se acumulan aquí y se aplican **juntas desde la comput
   computadora y aprobar cada ventana de Supabase.
 
 ## Pendientes
-| Migración | Qué hace | Sin aplicarla |
-| --- | --- | --- |
-| `067_gestionesjj_curso_bibliotecas.sql` | Tabla `gestionesjj_curso_bibliotecas` (biblioteca activa por curso, solo el propietario la edita) y RPC `gestionesjj_estudiante_bibliotecas_curso` (el estudiante ve solo las de sus cursos activos). | La pestaña «Bibliotecas» del curso avisa que falta la migración y no deja activarlas; el Aula sigue igual que hoy (sin bibliotecas). La biblioteca clínica del panel funciona igual. |
+Ninguna por ahora.
 
 ## Aplicadas
 | Migración | Fecha | Verificación |
@@ -21,3 +19,4 @@ así que las migraciones se acumulan aquí y se aplican **juntas desde la comput
 | `064_gestionesjj_paciente_documentos.sql` | 2026-11-07 | Bucket privado (20 MB, 9 tipos permitidos) con 4 políticas de Storage; tabla con 14 columnas, RLS activo con 4 políticas y sin acceso anónimo. |
 | `065_gestionesjj_informes_avance.sql` | 2026-11-10 | Tabla con 8 columnas, RLS activo con 4 políticas y sin acceso anónimo; RPC pública por token responde «invalido» con un token inexistente (aviso del asesor por SECURITY DEFINER con `anon`: intencional, igual que `gestionesjj_public_informe_get`). |
 | `066_gestionesjj_motivo_paciente.sql` | 2026-11-20 | Aplicada por el propietario en el SQL Editor. Verificada por la API pública: la RPC `gestionesjj_public_datos_motivo` responde «invalido» con un token inexistente (ejecutable por `anon`); la columna `motivo_paciente` existe (consultarla como `anon` da «permiso denegado», mientras que una columna inexistente da «does not exist»). |
+| `067_gestionesjj_curso_bibliotecas.sql` | 2026-11-20 | Tabla con 4 columnas, RLS activo con 3 políticas del propietario (select, insert, delete), clave primaria (curso, biblioteca), FK a cursos con borrado en cascada y CHECK del id; RPC `gestionesjj_estudiante_bibliotecas_curso` SECURITY DEFINER con `search_path` vacío, ejecutable por `authenticated` y no por `anon`. |
