@@ -10,9 +10,7 @@ así que las migraciones se acumulan aquí y se aplican **juntas desde la comput
   computadora y aprobar cada ventana de Supabase.
 
 ## Pendientes
-| Migración | Qué hace | Sin aplicarla |
-| --- | --- | --- |
-| `066_gestionesjj_motivo_paciente.sql` | Columna `motivo_paciente` y RPC pública `gestionesjj_public_datos_motivo` para la pregunta «¿Qué le gustaría trabajar?» de la hoja de datos generales. | La hoja de datos se guarda igual; la respuesta a esa pregunta no se guarda (aviso en el registro del servidor) y la ficha 1.1 usa el motivo del expediente o de la cita. |
+Ninguna por ahora.
 
 ## Aplicadas
 | Migración | Fecha | Verificación |
@@ -20,3 +18,4 @@ así que las migraciones se acumulan aquí y se aplican **juntas desde la comput
 | `063_gestionesjj_evaluacion_seguimientos.sql` | 2026-11-06 | Tabla con 18 columnas, RLS activo con 4 políticas, tarea pg_cron «7 * * * *» activa y secreto del cron presente. |
 | `064_gestionesjj_paciente_documentos.sql` | 2026-11-07 | Bucket privado (20 MB, 9 tipos permitidos) con 4 políticas de Storage; tabla con 14 columnas, RLS activo con 4 políticas y sin acceso anónimo. |
 | `065_gestionesjj_informes_avance.sql` | 2026-11-10 | Tabla con 8 columnas, RLS activo con 4 políticas y sin acceso anónimo; RPC pública por token responde «invalido» con un token inexistente (aviso del asesor por SECURITY DEFINER con `anon`: intencional, igual que `gestionesjj_public_informe_get`). |
+| `066_gestionesjj_motivo_paciente.sql` | 2026-11-20 | Aplicada por el propietario en el SQL Editor. Verificada por la API pública: la RPC `gestionesjj_public_datos_motivo` responde «invalido» con un token inexistente (ejecutable por `anon`); la columna `motivo_paciente` existe (consultarla como `anon` da «permiso denegado», mientras que una columna inexistente da «does not exist»). |
