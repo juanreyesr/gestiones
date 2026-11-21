@@ -1,6 +1,6 @@
 "use client";
 
-import { CalendarDays, Check, ChevronRight, CircleDollarSign, Clock, Inbox, Users, X } from "lucide-react";
+import { CalendarDays, Check, ChevronRight, CircleDollarSign, Clock, Inbox, NotebookPen, Users, X } from "lucide-react";
 import type React from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
@@ -260,20 +260,43 @@ export function ClinicaDashboard({
               ? "Una cita pasada sigue sin cerrar"
               : `${sinCerrar.length} citas pasadas siguen sin cerrar`}
           </div>
-          <p className="text-xs text-slate-300">Indica qué pasó para llevar bien tu agenda y tus cobros.</p>
+          <p className="text-xs text-slate-300">
+            Toca una cita para ver su detalle, o «Registrar sesión» para escribir sus notas (al guardarla queda como
+            atendida). Si solo indicas qué pasó, la cita sigue disponible en el expediente del paciente.
+          </p>
           <ul className="grid gap-2">
             {sinCerrar.map((cita) => (
               <li
                 key={cita.id}
                 className="flex flex-wrap items-center justify-between gap-2 border border-white/10 bg-black/20 p-2.5"
               >
-                <span className="min-w-0 text-sm text-slate-200">
-                  <span className="font-semibold text-white">
-                    {cita.pacienteNombre ?? cita.contactoNombre ?? "Sin nombre"}
-                  </span>{" "}
-                  · {formatoFechaHora(cita.inicio)}
-                </span>
+                <button
+                  className="group flex min-w-0 items-center gap-1 text-left text-sm text-slate-200"
+                  data-testid="cita-sin-cerrar"
+                  onClick={() => setDetalle(cita)}
+                  title="Ver la cita"
+                  type="button"
+                >
+                  <span>
+                    <span className="font-semibold text-white group-hover:text-emerald-200">
+                      {cita.pacienteNombre ?? cita.contactoNombre ?? "Sin nombre"}
+                    </span>{" "}
+                    · {formatoFechaHora(cita.inicio)}
+                  </span>
+                  <ChevronRight className="h-4 w-4 shrink-0 text-emerald-300" />
+                </button>
                 <span className="flex flex-wrap gap-1.5">
+                  {cita.pacienteId ? (
+                    <button
+                      className="flex items-center gap-1 border border-emerald-300/50 bg-emerald-300/10 px-2.5 py-1 text-xs font-semibold text-emerald-200 transition hover:bg-emerald-300/20"
+                      onClick={() => onOpenPaciente(cita.pacienteId as string, cita.id)}
+                      title="Abrir el expediente y registrar (o continuar) la sesión de esta cita"
+                      type="button"
+                    >
+                      <NotebookPen className="h-3.5 w-3.5" />
+                      Registrar sesión
+                    </button>
+                  ) : null}
                   <button
                     className="border border-sky-300/50 bg-sky-300/10 px-2.5 py-1 text-xs font-semibold text-sky-200 transition hover:bg-sky-300/20"
                     onClick={() => void cerrarCita(cita, "completada")}
