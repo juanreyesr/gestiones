@@ -21,7 +21,9 @@ export type TipoNotificacion =
   | "respaldo_mensual"
   | "datos_completados"
   | "datos_pendientes"
-  | "cas_preinscripciones";
+  | "cas_preinscripciones"
+  | "tests_ventas"
+  | "tests_alertas";
 
 export const NOTIFICACIONES: { id: TipoNotificacion; etiqueta: string; porDefecto: boolean }[] = [
   { id: "citas_solicitudes", etiqueta: "Solicitudes de cita (Clínica)", porDefecto: true },
@@ -63,6 +65,8 @@ export const NOTIFICACIONES: { id: TipoNotificacion; etiqueta: string; porDefect
     porDefecto: true,
   },
   { id: "cas_preinscripciones", etiqueta: "CAS UPANA: nueva preinscripción de un estudiante desde el formulario público", porDefecto: true },
+  { id: "tests_ventas", etiqueta: "Tests en línea: venta de un test o reevaluación (PayPal o tarjeta)", porDefecto: true },
+  { id: "tests_alertas", etiqueta: "Tests en línea: alerta si alguien marca la pregunta de seguridad (riesgo)", porDefecto: true },
   { id: "resumen_diario", etiqueta: "Resumen diario (7:00 a. m.)", porDefecto: true },
   { id: "respaldo_mensual", etiqueta: "Recordatorio para descargar el respaldo de datos (día 1 de cada mes, 7:00 a. m.)", porDefecto: true },
 ];

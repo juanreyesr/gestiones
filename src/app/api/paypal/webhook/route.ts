@@ -3,6 +3,7 @@ import { avisoDeEvento, verificarWebhook } from "@/lib/server/paypal";
 import { aplicarPagoPayPal } from "@/lib/server/pagos-citas";
 import { getSupabaseAdmin } from "@/lib/server/supabase-admin";
 import { avisarPago } from "@/lib/server/telegram-avisos";
+import { confirmarPago, marcarReembolso, PREFIJO_CUSTOM_ID } from "@/lib/server/tests/compras";
 import { confirmarPagoPorWhatsApp } from "@/lib/server/whatsapp-pagos";
 
 export const runtime = "nodejs";
@@ -29,9 +30,28 @@ export async function POST(request: Request) {
   }
 
   after(async () => {
+    const admin = getSupabaseAdmin();
+    // Pagos de la plataforma de tests (/tests): se confirman ahí y nunca se aplican a una cita.
+    const recurso = evento.resource ?? {};
+    const customId = typeof recurso.custom_id === "string" ? recurso.custom_id : "";
+    if (evento.event_type === "PAYMENT.CAPTURE.COMPLETED" && customId.startsWith(PREFIJO_CUSTOM_ID)) {
+      const monto = recurso.amount as { value?: string; currency_code?: string } | undefined;
+      const valor = monto?.value ? Number(monto.value) : NaN;
+      if (admin) {
+        await confirmarPago(admin, customId.slice(PREFIJO_CUSTOM_ID.length), {
+          captureId: typeof recurso.id === "string" ? recurso.id : null,
+          valor: Number.isFinite(valor) ? valor : null,
+          moneda: monto?.currency_code ?? null,
+        }).catch(() => null);
+      }
+      return;
+    }
     const aviso = await avisoDeEvento(evento, token);
     if (!aviso) return;
-    const admin = getSupabaseAdmin();
+    if (aviso.tipo === "reembolsado" && admin && aviso.capturaOriginalId) {
+      const deTests = await marcarReembolso(admin, aviso.capturaOriginalId).catch(() => false);
+      if (deTests) return;
+    }
     const resultado = admin ? await aplicarPagoPayPal(admin, aviso).catch(() => null) : null;
     const whatsapp =
       admin && resultado?.aplicado

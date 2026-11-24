@@ -1,7 +1,7 @@
 "use client";
 
 import { CheckCircle2, CloudOff, RefreshCw, Send } from "lucide-react";
-import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from "react";
 
 /**
  * Molde común de los formularios de evaluación por enlace (/evaluacion/<token>):
@@ -20,6 +20,13 @@ export type Trato = "usted" | "tu";
 
 const ESPERA_GUARDADO_MS = 1200;
 
+/**
+ * Dónde guardan y envían los formularios. Por defecto, el enlace de evaluación del paciente
+ * (/api/evaluacion/<token>); la plataforma de tests (/tests) usa /api/tests/aplicacion/<id>
+ * y pasa a la pantalla de resultados al terminar.
+ */
+export const ApiFormularioContext = createContext<{ base: string; alEnviar?: () => void }>({ base: "/api/evaluacion" });
+
 export function useFormularioEvaluacion<B>({
   borrador,
   prefijoId = "ea",
@@ -31,6 +38,8 @@ export function useFormularioEvaluacion<B>({
   prefijoId?: string;
   token: string;
 }) {
+  const api = useContext(ApiFormularioContext);
+  const url = `${api.base}/${token}`;
   const [fase, setFase] = useState<Fase>("llenando");
   const [guardado, setGuardado] = useState<EstadoGuardado>("sin-cambios");
   const [faltan, setFaltan] = useState<Set<string>>(new Set());
@@ -43,7 +52,7 @@ export function useFormularioEvaluacion<B>({
     async (datos: B, v: number) => {
       setGuardado("guardando");
       try {
-        const res = await fetch(`/api/evaluacion/${token}`, {
+        const res = await fetch(url, {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(datos),
@@ -58,7 +67,7 @@ export function useFormularioEvaluacion<B>({
         if (v === version.current) setGuardado("sin-conexion");
       }
     },
-    [token]
+    [url]
   );
 
   // Guardado automático: solo si algo cambió respecto de lo último guardado
@@ -120,7 +129,7 @@ export function useFormularioEvaluacion<B>({
     setFase("enviando");
     let ok = false;
     try {
-      const res = await fetch(`/api/evaluacion/${token}`, {
+      const res = await fetch(url, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(respuesta),
@@ -134,6 +143,7 @@ export function useFormularioEvaluacion<B>({
       if (res.ok && data.estado === "guardado") {
         ok = true;
         setFase("enviado");
+        api.alEnviar?.();
       } else if (res.ok && (data.estado === "completa" || data.estado === "cerrada")) setFase("cerrado");
       else setFase("fallo-envio");
     } catch {

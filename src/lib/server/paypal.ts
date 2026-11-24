@@ -45,11 +45,11 @@ export function isPayPalWebhookConfigured() {
   return Boolean(process.env.PAYPAL_CLIENT_ID && process.env.PAYPAL_CLIENT_SECRET && process.env.PAYPAL_WEBHOOK_ID);
 }
 
-function apiBase() {
+export function apiBase() {
   return process.env.PAYPAL_ENV === "sandbox" ? "https://api-m.sandbox.paypal.com" : "https://api-m.paypal.com";
 }
 
-async function tokenAcceso(): Promise<string | null> {
+export async function tokenAcceso(): Promise<string | null> {
   const credenciales = Buffer.from(`${process.env.PAYPAL_CLIENT_ID}:${process.env.PAYPAL_CLIENT_SECRET}`).toString("base64");
   const res = await fetch(`${apiBase()}/v1/oauth2/token`, {
     method: "POST",
