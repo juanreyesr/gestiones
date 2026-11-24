@@ -10,9 +10,7 @@ así que las migraciones se acumulan aquí y se aplican **juntas desde la comput
   computadora y aprobar cada ventana de Supabase.
 
 ## Pendientes
-| Migración | Qué hace | Si falta |
-| --- | --- | --- |
-| `073_gestionesjj_cas_campus.sql` | Columna `campus` en los aspirantes del CAS UPANA y RPC de preinscripción con el campus (obligatorio en el formulario público). | El formulario sigue funcionando: el campus elegido se guarda al inicio de «Disponibilidad» como «Campus: …»; en `/admin` el campus se ve vacío y no se puede editar. |
+Ninguna por ahora.
 
 ## Aplicadas
 | Migración | Fecha | Verificación |
@@ -27,3 +25,5 @@ así que las migraciones se acumulan aquí y se aplican **juntas desde la comput
 | `071_gestionesjj_metas.sql` | 2026-11-24 | Aplicada por Claude con aprobación del propietario. `gestionesjj_metas` (12 columnas) y `gestionesjj_meta_avances` (9 columnas), ambas con RLS activo y 4 políticas del propietario; `anon` sin lectura ni inserción; índice único (meta, sesión); el asesor de seguridad no reporta avisos sobre ellas. |
 | `070_gestionesjj_cas_formulario_abierto.sql` | 2026-11-24 | Aplicada por Claude con aprobación del propietario. `gestionesjj_cas_config` con RLS activo y 3 políticas del propietario, 1 fila (formulario abierto); `anon` no lee la tabla; la RPC `gestionesjj_public_cas_formulario_estado` es ejecutable por `anon` y responde abierto; la RPC de preinscripción incluye la respuesta «cerrado». |
 | `072_tests_plataforma.sql` | 2026-11-24 | Aplicada por Claude con aprobación del propietario. `tests_usuarios`, `tests_compras` y `tests_aplicaciones` con RLS activo y solo una política de lectura del propietario cada una; `anon` sin acceso; `authenticated` sin insertar y sin ver `password_hash`. No modifica tablas ni políticas de otros proyectos. |
+| `070_gestionesjj_cas_formulario_abierto.sql` | 2026-11-24 | Aplicada por el propietario. Verificada: tabla `gestionesjj_cas_config` con la fila de configuración (formulario abierto). |
+| `073_gestionesjj_cas_campus.sql` | 2026-11-24 | Aplicada por Claude con aprobación del propietario (junto con el borrado del registro de prueba «ZZ-PRUEBA-CAMPUS»). Columna `campus` creada; solo queda la RPC con `p_campus` (9 parámetros), ejecutable por `anon`, que responde «invalido» sin campus; 0 aspirantes, formulario abierto. |
