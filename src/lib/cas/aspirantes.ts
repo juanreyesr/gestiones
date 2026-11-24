@@ -19,6 +19,18 @@ export const PRACTICAS = [
   { id: "profesional_quinto", nombre: "Práctica profesional", detalle: "Quinto año · Psicología clínica", corto: "Profesional · 5.º" },
 ] as const;
 
+/** Campus principales de UPANA para la práctica; «Otro» se escribe a mano. */
+export const CAMPUS = ["Campus Chimaltenango", "Campus Central", "Campus Naranjo"] as const;
+
+export const MIGRACION_CAMPUS_PENDIENTE =
+  "Falta aplicar la migración 073 (ver supabase/PENDIENTES.md): se guardó todo menos el campus.";
+
+/** Clave de filtro: uno de los tres campus principales, «otro» o «sin» (sin dato). */
+export function claveCampus(campus: string | null): string {
+  if (!campus) return "sin";
+  return (CAMPUS as readonly string[]).includes(campus) ? campus : "otro";
+}
+
 export type PracticaId = (typeof PRACTICAS)[number]["id"];
 
 export const ESTADOS = [
@@ -45,6 +57,8 @@ export type Aspirante = {
   /** «formulario» si llegó por /cas/registro; «admin» si se registró a mano. */
   origen: "admin" | "formulario";
   disponibilidad: string | null;
+  /** Uno de CAMPUS o el texto escrito en «Otro». */
+  campus: string | null;
   consentimiento_at: string | null;
   created_at: string;
   updated_at: string;
@@ -52,7 +66,7 @@ export type Aspirante = {
 
 export type AspiranteInput = Pick<
   Aspirante,
-  "nombre_completo" | "carne" | "practica" | "telefono" | "correo_institucional" | "correo_personal" | "estado" | "notas" | "disponibilidad"
+  "nombre_completo" | "carne" | "practica" | "telefono" | "correo_institucional" | "correo_personal" | "estado" | "notas" | "disponibilidad" | "campus"
 >;
 
 export const practicaDe = (id: string) => PRACTICAS.find((p) => p.id === id) ?? PRACTICAS[0];
@@ -80,12 +94,23 @@ export async function fetchAspirantes() {
 
 export async function guardarAspirante(id: string | null, payload: AspiranteInput) {
   const supabase = getSupabaseClient();
-  if (!supabase) return { error: SIN_SUPABASE };
+  if (!supabase) return { error: SIN_SUPABASE, aviso: null as string | null };
 
-  const { error } = id
-    ? await supabase.from(TABLA).update(payload).eq("id", id)
-    : await supabase.from(TABLA).insert(payload);
-  return { error: error ? mensajeError(error) : null };
+  const escribir = (datos: Partial<AspiranteInput>) =>
+    id ? supabase.from(TABLA).update(datos).eq("id", id) : supabase.from(TABLA).insert(datos);
+
+  const { error } = await escribir(payload);
+  // Sin la migración 073 la columna campus no existe: se guarda lo demás y se avisa.
+  if (error && /campus/i.test(error.message) && (error.code === "PGRST204" || /column/i.test(error.message))) {
+    const { campus: _sinCampus, ...resto } = payload;
+    void _sinCampus;
+    const reintento = await escribir(resto);
+    return {
+      error: reintento.error ? mensajeError(reintento.error) : null,
+      aviso: reintento.error ? null : MIGRACION_CAMPUS_PENDIENTE,
+    };
+  }
+  return { error: error ? mensajeError(error) : null, aviso: null as string | null };
 }
 
 export async function borrarAspirante(id: string) {
@@ -113,6 +138,7 @@ export function normalizarAspirante(entrada: AspiranteInput): AspiranteInput {
     estado: entrada.estado,
     notas: (entrada.notas ?? "").trim() || null,
     disponibilidad: (entrada.disponibilidad ?? "").trim() || null,
+    campus: texto(entrada.campus),
   };
 }
 
@@ -147,6 +173,7 @@ export async function exportarAspirantesExcel(filas: Aspirante[]) {
     { header: "Nombre completo", key: "nombre", width: 36 },
     { header: "ID (carné)", key: "carne", width: 14 },
     { header: "Práctica", key: "practica", width: 34 },
+    { header: "Campus", key: "campus", width: 22 },
     { header: "Teléfono", key: "telefono", width: 14 },
     { header: "Correo institucional", key: "ci", width: 32 },
     { header: "Correo personal", key: "cp", width: 30 },
@@ -164,6 +191,7 @@ export async function exportarAspirantesExcel(filas: Aspirante[]) {
       nombre: a.nombre_completo,
       carne: a.carne,
       practica: `${p.nombre} (${p.detalle})`,
+      campus: a.campus ?? "",
       telefono: a.telefono ?? "",
       ci: a.correo_institucional ?? "",
       cp: a.correo_personal ?? "",
@@ -180,7 +208,7 @@ export async function exportarAspirantesExcel(filas: Aspirante[]) {
   encabezado.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF00247B" } };
   encabezado.alignment = { vertical: "middle" };
   hoja.views = [{ state: "frozen", ySplit: 1 }];
-  hoja.autoFilter = { from: "A1", to: "L1" };
+  hoja.autoFilter = { from: "A1", to: "M1" };
 
   const buffer = await libro.xlsx.writeBuffer();
   const blob = new Blob([buffer as BlobPart], {

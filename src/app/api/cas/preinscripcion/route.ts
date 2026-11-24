@@ -46,9 +46,21 @@ export async function POST(request: Request) {
     p_correo_personal: texto(cuerpo.correoPersonal, 220),
     p_disponibilidad: texto(cuerpo.disponibilidad, 1000),
     p_consentimiento: cuerpo.consentimiento === true,
+    p_campus: texto(cuerpo.campus, 80).replace(/\s+/g, " ").trim(),
   };
+  if (!datos.p_campus) return NextResponse.json({ estado: "invalido" }, { status: 400 });
 
-  const { data, error } = await supabase.rpc("gestionesjj_public_cas_preinscripcion", datos);
+  let { data, error } = await supabase.rpc("gestionesjj_public_cas_preinscripcion", datos);
+  // Sin la migración 073 la RPC aún no recibe el campus: se envía con la firma
+  // anterior y el campus queda al inicio de la disponibilidad, para no perderlo.
+  if (error && (error.code === "PGRST202" || /could not find the function/i.test(error.message))) {
+    const { p_campus, ...anterior } = datos;
+    const disponibilidad = [`Campus: ${p_campus}`, anterior.p_disponibilidad.trim()].filter(Boolean).join("\n");
+    ({ data, error } = await supabase.rpc("gestionesjj_public_cas_preinscripcion", {
+      ...anterior,
+      p_disponibilidad: disponibilidad.slice(0, 1000),
+    }));
+  }
   if (error) {
     console.error("[cas/preinscripcion] rpc", { ip: getClientIp(request), mensaje: error.message });
     return NextResponse.json({ estado: "error" }, { status: 500 });
@@ -65,6 +77,7 @@ export async function POST(request: Request) {
           "🎓 <b>CAS UPANA: nueva preinscripción</b>",
           `${esc(datos.p_nombre.trim())} · ID ${esc(datos.p_carne.trim().toUpperCase())}`,
           practica ? `${esc(practica.nombre)} (${esc(practica.detalle)})` : "",
+          `🏫 ${esc(datos.p_campus)}`,
           `📞 ${esc(datos.p_telefono.trim())}`,
         ]
           .filter(Boolean)

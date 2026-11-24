@@ -31,6 +31,8 @@ import {
   type PracticaId,
   RUTA_PREINSCRIPCION,
   borrarAspirante,
+  CAMPUS,
+  claveCampus,
   type ConfigCas,
   fetchConfigCas,
   guardarConfigCas,
@@ -70,6 +72,7 @@ const VACIO: AspiranteInput = {
   estado: "aspirante",
   notas: "",
   disponibilidad: "",
+  campus: "",
 };
 
 type FiltroPractica = "todas" | PracticaId;
@@ -85,6 +88,7 @@ export function CasView() {
   const [busqueda, setBusqueda] = useState("");
   const [filtroPractica, setFiltroPractica] = useState<FiltroPractica>("todas");
   const [filtroEstado, setFiltroEstado] = useState<"todos" | EstadoId>("todos");
+  const [filtroCampus, setFiltroCampus] = useState("todos"); // «todos», uno de CAMPUS, «otro» o «sin»
   const [editando, setEditando] = useState<{ id: string | null; datos: AspiranteInput } | null>(null);
   const [porBorrar, setPorBorrar] = useState<Aspirante | null>(null);
   const [borrando, setBorrando] = useState(false);
@@ -116,12 +120,20 @@ export function CasView() {
     return aspirantes.filter((a) => {
       if (filtroPractica !== "todas" && a.practica !== filtroPractica) return false;
       if (filtroEstado !== "todos" && a.estado !== filtroEstado) return false;
+      if (filtroCampus !== "todos" && claveCampus(a.campus) !== filtroCampus) return false;
       if (!q) return true;
       return plano(
-        [a.nombre_completo, a.carne, a.telefono, a.correo_institucional, a.correo_personal].filter(Boolean).join(" "),
+        [a.nombre_completo, a.carne, a.campus, a.telefono, a.correo_institucional, a.correo_personal].filter(Boolean).join(" "),
       ).includes(q);
     });
-  }, [aspirantes, busqueda, filtroPractica, filtroEstado]);
+  }, [aspirantes, busqueda, filtroPractica, filtroEstado, filtroCampus]);
+
+  // Cuántos aspirantes hay por campus, para mostrarlo en el filtro.
+  const porCampus = useMemo(() => {
+    const cuenta: Record<string, number> = {};
+    for (const a of aspirantes) cuenta[claveCampus(a.campus)] = (cuenta[claveCampus(a.campus)] ?? 0) + 1;
+    return cuenta;
+  }, [aspirantes]);
 
   const conteo = useMemo(
     () => ({
@@ -253,6 +265,21 @@ export function CasView() {
                 </option>
               ))}
             </select>
+            <select
+              aria-label="Filtrar por campus"
+              className={`${CAMPO_BASE} w-full sm:w-auto`}
+              onChange={(e) => setFiltroCampus(e.target.value)}
+              value={filtroCampus}
+            >
+              <option value="todos">Todos los campus</option>
+              {CAMPUS.map((c) => (
+                <option key={c} value={c}>
+                  {c} ({porCampus[c] ?? 0})
+                </option>
+              ))}
+              <option value="otro">Otros campus ({porCampus.otro ?? 0})</option>
+              {porCampus.sin ? <option value="sin">Sin campus ({porCampus.sin})</option> : null}
+            </select>
             <button
               className={`${BTN_AZUL} w-full sm:w-auto`}
               disabled={faltaTabla}
@@ -355,7 +382,7 @@ export function CasView() {
                         ) : null}
                       </td>
                       <td className="px-4 py-3">
-                        <EtiquetaPractica practica={a.practica} />
+                        <EtiquetaPractica campus={a.campus} practica={a.practica} />
                       </td>
                       <td className="px-4 py-3">
                         <Contacto aspirante={a} />
@@ -390,7 +417,7 @@ export function CasView() {
                     <EtiquetaEstado estado={a.estado} />
                   </div>
                   <div className="mt-2">
-                    <EtiquetaPractica practica={a.practica} />
+                    <EtiquetaPractica campus={a.campus} practica={a.practica} />
                   </div>
                   {a.disponibilidad ? <p className="mt-2 text-xs text-slate-500">🕒 {a.disponibilidad}</p> : null}
                   <div className="mt-3">
@@ -476,6 +503,7 @@ const aInput = (a: Aspirante): AspiranteInput => ({
   estado: a.estado,
   notas: a.notas ?? "",
   disponibilidad: a.disponibilidad ?? "",
+  campus: a.campus ?? "",
 });
 
 function Indicador({
@@ -507,12 +535,17 @@ function Indicador({
   );
 }
 
-function EtiquetaPractica({ practica }: { practica: PracticaId }) {
+function EtiquetaPractica({ campus, practica }: { campus: string | null; practica: PracticaId }) {
   const p = practicaDe(practica);
   return (
     <div>
       <p className="text-sm font-medium text-slate-800">{p.nombre}</p>
       <p className="text-xs text-slate-500">{p.detalle}</p>
+      {campus ? (
+        <p className="mt-1 inline-flex rounded bg-[#00247B]/8 px-1.5 py-px text-[11px] font-semibold text-[#00247B]">
+          🏫 {campus}
+        </p>
+      ) : null}
     </div>
   );
 }
@@ -770,13 +803,13 @@ function FormularioAspirante({
       return;
     }
     setGuardando(true);
-    const { error: e } = await guardarAspirante(id, limpio);
+    const { error: e, aviso } = await guardarAspirante(id, limpio);
     setGuardando(false);
     if (e) {
       setError(e);
       return;
     }
-    onGuardado(id ? "Cambios guardados." : `${limpio.nombre_completo} quedó registrado.`);
+    onGuardado(aviso ?? (id ? "Cambios guardados." : `${limpio.nombre_completo} quedó registrado.`));
   };
 
   // Aviso suave (no bloquea): el dominio institucional aún no está confirmado.
@@ -902,6 +935,7 @@ function FormularioAspirante({
                 ))}
               </select>
             </Campo>
+            <CampoCampus onChange={(valor) => poner("campus", valor)} valor={datos.campus ?? ""} />
             <Campo etiqueta="Disponibilidad tentativa">
               <textarea
                 className={`${CAMPO} min-h-16`}
@@ -944,5 +978,47 @@ function Campo({ children, etiqueta }: { children: React.ReactNode; etiqueta: st
       <span className="text-xs font-bold uppercase tracking-wide text-slate-500">{etiqueta}</span>
       {children}
     </label>
+  );
+}
+
+/** Lista con los tres campus principales y «Otro», que abre un campo para escribirlo. */
+function CampoCampus({ onChange, valor }: { onChange: (valor: string) => void; valor: string }) {
+  const esPrincipal = (CAMPUS as readonly string[]).includes(valor);
+  const [otro, setOtro] = useState(valor !== "" && !esPrincipal);
+  const seleccion = otro ? "otro" : valor;
+
+  return (
+    <Campo etiqueta="Campus">
+      <select
+        className={CAMPO}
+        onChange={(e) => {
+          if (e.target.value === "otro") {
+            setOtro(true);
+            onChange("");
+          } else {
+            setOtro(false);
+            onChange(e.target.value);
+          }
+        }}
+        value={seleccion}
+      >
+        <option value="">Sin dato</option>
+        {CAMPUS.map((c) => (
+          <option key={c} value={c}>
+            {c}
+          </option>
+        ))}
+        <option value="otro">Otro (escribirlo)</option>
+      </select>
+      {otro ? (
+        <input
+          className={CAMPO}
+          maxLength={80}
+          onChange={(e) => onChange(e.target.value)}
+          placeholder="Nombre del campus o sede"
+          value={valor}
+        />
+      ) : null}
+    </Campo>
   );
 }
