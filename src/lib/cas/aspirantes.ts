@@ -8,8 +8,11 @@ import { getSupabaseClient } from "@/lib/supabase";
 
 const TABLA = "gestionesjj_cas_aspirantes";
 const SIN_SUPABASE = "Faltan las variables de Supabase.";
+/** Ruta pública del formulario de preinscripción. */
+export const RUTA_PREINSCRIPCION = "/cas/registro";
+
 export const MIGRACION_PENDIENTE =
-  "La tabla del CAS aún no existe: falta aplicar la migración 068 (ver supabase/PENDIENTES.md). Los datos no se pueden guardar hasta entonces.";
+  "La tabla del CAS aún no existe: falta aplicar las migraciones 068 y 069 (ver supabase/PENDIENTES.md). Los datos no se pueden guardar hasta entonces.";
 
 export const PRACTICAS = [
   { id: "consejeria_cuarto", nombre: "Práctica en consejería", detalle: "Cuarto año · Consejería familiar", corto: "Consejería · 4.º" },
@@ -39,13 +42,17 @@ export type Aspirante = {
   correo_personal: string | null;
   estado: EstadoId;
   notas: string | null;
+  /** «formulario» si llegó por /cas/registro; «admin» si se registró a mano. */
+  origen: "admin" | "formulario";
+  disponibilidad: string | null;
+  consentimiento_at: string | null;
   created_at: string;
   updated_at: string;
 };
 
 export type AspiranteInput = Pick<
   Aspirante,
-  "nombre_completo" | "carne" | "practica" | "telefono" | "correo_institucional" | "correo_personal" | "estado" | "notas"
+  "nombre_completo" | "carne" | "practica" | "telefono" | "correo_institucional" | "correo_personal" | "estado" | "notas" | "disponibilidad"
 >;
 
 export const practicaDe = (id: string) => PRACTICAS.find((p) => p.id === id) ?? PRACTICAS[0];
@@ -105,6 +112,7 @@ export function normalizarAspirante(entrada: AspiranteInput): AspiranteInput {
     correo_personal: correo(entrada.correo_personal),
     estado: entrada.estado,
     notas: (entrada.notas ?? "").trim() || null,
+    disponibilidad: (entrada.disponibilidad ?? "").trim() || null,
   };
 }
 
@@ -143,7 +151,9 @@ export async function exportarAspirantesExcel(filas: Aspirante[]) {
     { header: "Correo institucional", key: "ci", width: 32 },
     { header: "Correo personal", key: "cp", width: 30 },
     { header: "Estado", key: "estado", width: 14 },
+    { header: "Disponibilidad", key: "disp", width: 40 },
     { header: "Notas", key: "notas", width: 40 },
+    { header: "Origen", key: "origen", width: 12 },
     { header: "Registrado", key: "fecha", width: 12 },
   ];
 
@@ -158,7 +168,9 @@ export async function exportarAspirantesExcel(filas: Aspirante[]) {
       ci: a.correo_institucional ?? "",
       cp: a.correo_personal ?? "",
       estado: estadoDe(a.estado).nombre,
+      disp: a.disponibilidad ?? "",
       notas: a.notas ?? "",
+      origen: a.origen === "formulario" ? "Formulario" : "Manual",
       fecha: a.created_at.slice(0, 10),
     });
   });
@@ -168,7 +180,7 @@ export async function exportarAspirantesExcel(filas: Aspirante[]) {
   encabezado.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF00247B" } };
   encabezado.alignment = { vertical: "middle" };
   hoja.views = [{ state: "frozen", ySplit: 1 }];
-  hoja.autoFilter = { from: "A1", to: "J1" };
+  hoja.autoFilter = { from: "A1", to: "L1" };
 
   const buffer = await libro.xlsx.writeBuffer();
   const blob = new Blob([buffer as BlobPart], {

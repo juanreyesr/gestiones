@@ -10,9 +10,7 @@ así que las migraciones se acumulan aquí y se aplican **juntas desde la comput
   computadora y aprobar cada ventana de Supabase.
 
 ## Pendientes
-| Migración | Qué hace | Si falta |
-| --- | --- | --- |
-| `068_gestionesjj_cas_aspirantes.sql` | Tabla de estudiantes aspirantes del CAS UPANA (nombre, ID/carné único, práctica 4.º o 5.º, teléfono, correos, estado y notas), RLS solo del propietario. | El área «CAS UPANA» muestra el aviso de migración pendiente y no deja registrar. |
+Ninguna por ahora.
 
 ## Aplicadas
 | Migración | Fecha | Verificación |
@@ -22,3 +20,5 @@ así que las migraciones se acumulan aquí y se aplican **juntas desde la comput
 | `065_gestionesjj_informes_avance.sql` | 2026-11-10 | Tabla con 8 columnas, RLS activo con 4 políticas y sin acceso anónimo; RPC pública por token responde «invalido» con un token inexistente (aviso del asesor por SECURITY DEFINER con `anon`: intencional, igual que `gestionesjj_public_informe_get`). |
 | `066_gestionesjj_motivo_paciente.sql` | 2026-11-20 | Aplicada por el propietario en el SQL Editor. Verificada por la API pública: la RPC `gestionesjj_public_datos_motivo` responde «invalido» con un token inexistente (ejecutable por `anon`); la columna `motivo_paciente` existe (consultarla como `anon` da «permiso denegado», mientras que una columna inexistente da «does not exist»). |
 | `067_gestionesjj_curso_bibliotecas.sql` | 2026-11-20 | Tabla con 4 columnas, RLS activo con 3 políticas del propietario (select, insert, delete), clave primaria (curso, biblioteca), FK a cursos con borrado en cascada y CHECK del id; RPC `gestionesjj_estudiante_bibliotecas_curso` SECURITY DEFINER con `search_path` vacío, ejecutable por `authenticated` y no por `anon`. |
+| `068_gestionesjj_cas_aspirantes.sql` | 2026-11-24 | Aplicada por Claude con aprobación del propietario. Tabla con 12 columnas (15 tras la 069), RLS activo con 4 políticas del propietario, índice único del carné; `anon` no puede leer ni insertar. |
+| `069_gestionesjj_cas_preinscripcion.sql` | 2026-11-24 | Aplicada por Claude con aprobación del propietario. RPC `gestionesjj_public_cas_preinscripcion` ejecutable por `anon`: responde «invalido» sin consentimiento o sin práctica, «duplicado» con un carné repetido y «ok» al insertar (prueba de punta a punta con 2 registros de prueba, borrados después). |
