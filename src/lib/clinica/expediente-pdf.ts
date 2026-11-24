@@ -1,4 +1,5 @@
 import { agruparCambios, cambiosRecientes, fraseCambio, motivos, respuestaTexto } from "@/lib/evaluaciones/evolucion-explicada";
+import type { MetaRow } from "./metas";
 import type { EvaluacionRespuestaRow, InformeRow } from "@/lib/evaluaciones/evaluaciones";
 import { evolucionDelPaciente } from "@/lib/evaluaciones/evolucion-paciente";
 import { perfilesJjr } from "@/lib/evaluaciones/jjr/evolucion";
@@ -19,6 +20,8 @@ export type ExtraExpediente = {
   informes: Record<string, InformeRow>;
   /** Documentos del expediente (se listan; los archivos van aparte). */
   documentos?: DocumentoRow[];
+  /** Metas terapéuticas con su avance de 0 a 10 (migración 071). */
+  metas?: MetaRow[];
 };
 
 /** jsPDF con fuentes estándar solo muestra Latin-1: se reemplazan los símbolos comunes y se quitan los demás. */
@@ -407,6 +410,57 @@ export async function exportarExpedientePdf(paciente: PacienteRow, sesiones: Ses
       y += 6;
       heading("Motivo y metas (ficha 1.1)");
       for (const linea of lineasComparativa(motivo11, fechaLegible)) paragraph(linea);
+    }
+
+    // Metas terapéuticas: estado, indicador y evolución de 0 a 10.
+    const metas = extra.metas ?? [];
+    if (metas.length) {
+      y += 6;
+      heading(`Seguimiento de metas (${metas.length})`);
+      const ESTADO = { activa: "Activa", lograda: "Lograda", pausada: "Pausada", descartada: "Descartada" } as const;
+      for (const m of metas) {
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(10);
+        doc.setTextColor(...INK);
+        const titulo = doc.splitTextToSize(textoPdf(`${m.meta} [${ESTADO[m.estado]}]`), contentWidth) as string[];
+        ensure(titulo.length * 13 + 4);
+        doc.text(titulo, MARGIN, y);
+        y += titulo.length * 13;
+        field("Cómo se mide", m.indicador);
+        field("Plazo", m.plazo);
+        const av = m.avances;
+        if (!av.length) {
+          paragraph("Sin registros de avance.");
+          y += 4;
+          continue;
+        }
+        field("Avance (0 a 10)", av.map((a) => `${a.puntuacion} (${formatoFechaCorta(`${a.fecha}T12:00:00`)})`).join(", "));
+        // Gráfica de línea: eje de 0 a 10, un punto por registro.
+        const gw = 220;
+        const gh = 54;
+        ensure(gh + 12);
+        const gx = MARGIN + 130;
+        const top = y;
+        doc.setDrawColor(220, 226, 232);
+        doc.setLineWidth(0.5);
+        for (const v of [0, 5, 10]) {
+          const ly = top + gh - (v / 10) * gh;
+          doc.line(gx, ly, gx + gw, ly);
+          doc.setFont("helvetica", "normal");
+          doc.setFontSize(7);
+          doc.setTextColor(...MUTED);
+          doc.text(String(v), gx - 10, ly + 2);
+        }
+        const px = (i: number) => (av.length === 1 ? gx + gw / 2 : gx + (i * gw) / (av.length - 1));
+        const py = (v: number) => top + gh - (v / 10) * gh;
+        doc.setDrawColor(...ACCENT);
+        doc.setFillColor(...ACCENT);
+        doc.setLineWidth(1.5);
+        for (let i = 1; i < av.length; i++) doc.line(px(i - 1), py(av[i - 1].puntuacion), px(i), py(av[i].puntuacion));
+        for (let i = 0; i < av.length; i++) doc.circle(px(i), py(av[i].puntuacion), 2, "F");
+        doc.setLineWidth(0.5);
+        y = top + gh + 22;
+      }
     }
 
     // Documentos: lista (los archivos se conservan en el expediente digital).

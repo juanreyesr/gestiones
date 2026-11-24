@@ -74,7 +74,7 @@ ${catalogoParaPrompt()}
 Reglas:
 - Escribe en español de Guatemala, profesional y conciso. No emitas diagnósticos; puedes hablar de hipótesis o áreas a explorar.
 - Usa únicamente datos del expediente. No inventes resultados, metas ni acuerdos.
-- Metas: concretas, observables y con indicador medible. Si hay metas de la ficha 1.1, respétalas y mejóralas; si no hay, propónlas a partir del motivo de consulta (estado «nueva»). Juzga «en_curso», «lograda» o «estancada» solo con evidencia de las sesiones o evaluaciones.
+- Metas: concretas, observables y con indicador medible. Si hay «metasSeguimiento» (metas ya guardadas con su avance de 0 a 10), parte de ellas: no las dupliques, usa su redacción y juzga su estado con la tendencia de las puntuaciones (sube = «en_curso», 9–10 sostenido = «lograda», sin cambio o baja en 3 o más registros = «estancada»). Si no hay, usa las de la ficha 1.1 y, si tampoco hay, propónlas a partir del motivo de consulta (estado «nueva»). Juzga los estados solo con evidencia.
 - Recursos: elige del catálogo lo más útil para la etapa actual. No recomiendes fichas ya respondidas ni enlaces que ya están abiertos, salvo como reevaluación justificada. Si no hay evaluación de base (EAPI o MCEA) o la última tiene más de 4 semanas, considera aplicarla («reevaluacion»). Respeta la edad mínima y quién responde cada instrumento. Si no hay ficha 1.1, prioriza la 1.1.
 - Tareas de la semana: pequeñas, específicas (qué, cuándo, cuántas veces) y ligadas a una meta; incluye cómo registrar el avance (p. ej. puntuar de 0 a 10).
 - Mensaje al paciente: de tú, cálido, sin tecnicismos ni resultados de pruebas, máximo 900 caracteres. Estructura: 1) en qué estamos trabajando (las metas en palabras sencillas), 2) qué hacer esta semana (lista con «•»), 3) cómo anotar su avance, 4) que puede escribir si algo se complica. Sin saludo inicial ni nombre (se agregan aparte). Si hay señales de riesgo, no las menciones en el mensaje: van en «alertas».
@@ -101,7 +101,8 @@ export async function POST(request: Request) {
     texto(contexto.paciente.motivoPaciente, 10) ||
     (contexto.sesiones?.length ?? 0) > 0 ||
     (contexto.evaluaciones?.length ?? 0) > 0 ||
-    (contexto.metasFicha?.length ?? 0) > 0;
+    (contexto.metasFicha?.length ?? 0) > 0 ||
+    (contexto.metasSeguimiento?.length ?? 0) > 0;
   if (!tieneBase) {
     return NextResponse.json(
       { error: "Aún no hay datos para un plan: registra el motivo de consulta, una sesión o una evaluación." },

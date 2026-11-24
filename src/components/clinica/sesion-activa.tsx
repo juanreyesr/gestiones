@@ -12,6 +12,7 @@ import {
 import { formatoFechaLarga, formatoHora } from "@/lib/clinica/slots";
 import { ConfirmDialog } from "../confirm-dialog";
 import { CierreForm, type CierreValues } from "./cierre-form";
+import { AvanceMetasSesion } from "./metas-paciente";
 import { IntervencionGuiada } from "./intervencion-guiada";
 import { CitasSinPagarAviso, TarifaEditor } from "./pagos";
 import { BTN_PRIMARY, SectionCard } from "./ui";
@@ -375,6 +376,7 @@ export function SesionActiva({
               </p>
             ) : null}
           </SectionCard>
+          <AvanceMetasSesion pacienteId={paciente.id} sesionId={sesion.id} />
         </aside>
       </div>
 

@@ -9,6 +9,7 @@ import { estadosFichas } from "@/lib/evaluaciones/fichas/intervencion";
 import { resumenRespuesta } from "@/lib/evaluaciones/resumen-respuesta";
 import { getAccessToken } from "./ai-client";
 import type { ContextoPlan, PlanIA } from "./plan-ia-catalogo";
+import type { MetaRow } from "./metas";
 import type { CompromisoRow, PacienteRow, SesionRow } from "./types";
 
 export * from "./plan-ia-catalogo";
@@ -27,7 +28,7 @@ function edadDe(fechaNacimiento: string | null) {
 }
 
 /** Metas de la ficha 1.1 más reciente (tabla meta / avance / plazo). */
-function metasDeFicha(respuestas: EvaluacionRespuestaRow[]) {
+export function metasDeFicha(respuestas: EvaluacionRespuestaRow[]) {
   const r = respuestas
     .filter((x) => x.instrumento === "ficha" && (x.datos as { ficha?: unknown } | null)?.ficha === "1.1")
     .sort((a, b) => (b.fecha ?? b.createdAt).localeCompare(a.fecha ?? a.createdAt))[0];
@@ -47,6 +48,7 @@ export function contextoPlan(input: {
   compromisos: CompromisoRow[];
   respuestas: EvaluacionRespuestaRow[];
   evaluaciones: EvaluacionRow[];
+  metas?: MetaRow[];
   enfoque: string;
 }): ContextoPlan {
   const { paciente: p, sesiones, compromisos, respuestas, evaluaciones } = input;
@@ -106,6 +108,13 @@ export function contextoPlan(input: {
       antecedentesPsicologicos: corta(p.antecedentesPsicologicos, 800),
     },
     metasFicha: metasDeFicha(respuestas),
+    metasSeguimiento: (input.metas ?? []).slice(0, 10).map((m) => ({
+      meta: m.meta,
+      indicador: m.indicador,
+      plazo: m.plazo,
+      estado: m.estado,
+      avances: m.avances.slice(-8).map((a) => ({ fecha: a.fecha, puntuacion: a.puntuacion, nota: a.nota ? a.nota.slice(0, 200) : null })),
+    })),
     sesiones: finalizadas.slice(0, 6).map((s) => ({
       fecha: s.iniciadaAt.slice(0, 10),
       tema: corta(s.tema, 200),
