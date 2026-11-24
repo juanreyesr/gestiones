@@ -10,9 +10,7 @@ así que las migraciones se acumulan aquí y se aplican **juntas desde la comput
   computadora y aprobar cada ventana de Supabase.
 
 ## Pendientes
-| Migración | Qué hace | Si falta |
-| --- | --- | --- |
-| `070_gestionesjj_cas_formulario_abierto.sql` | Interruptor del CAS UPANA para abrir o cerrar el formulario público `/cas/registro` (tabla `gestionesjj_cas_config` de una fila, RPC pública del estado y la RPC de preinscripción responde «cerrado»). | El formulario sigue siempre abierto y el interruptor de `/admin` avisa que falta la migración. |
+Ninguna por ahora.
 
 ## Aplicadas
 | Migración | Fecha | Verificación |
@@ -25,3 +23,4 @@ así que las migraciones se acumulan aquí y se aplican **juntas desde la comput
 | `068_gestionesjj_cas_aspirantes.sql` | 2026-11-24 | Aplicada por Claude con aprobación del propietario. Tabla con 12 columnas (15 tras la 069), RLS activo con 4 políticas del propietario, índice único del carné; `anon` no puede leer ni insertar. |
 | `069_gestionesjj_cas_preinscripcion.sql` | 2026-11-24 | Aplicada por Claude con aprobación del propietario. RPC `gestionesjj_public_cas_preinscripcion` ejecutable por `anon`: responde «invalido» sin consentimiento o sin práctica, «duplicado» con un carné repetido y «ok» al insertar (prueba de punta a punta con 2 registros de prueba, borrados después). |
 | `071_gestionesjj_metas.sql` | 2026-11-24 | Aplicada por Claude con aprobación del propietario. `gestionesjj_metas` (12 columnas) y `gestionesjj_meta_avances` (9 columnas), ambas con RLS activo y 4 políticas del propietario; `anon` sin lectura ni inserción; índice único (meta, sesión); el asesor de seguridad no reporta avisos sobre ellas. |
+| `070_gestionesjj_cas_formulario_abierto.sql` | 2026-11-24 | Aplicada por Claude con aprobación del propietario. `gestionesjj_cas_config` con RLS activo y 3 políticas del propietario, 1 fila (formulario abierto); `anon` no lee la tabla; la RPC `gestionesjj_public_cas_formulario_estado` es ejecutable por `anon` y responde abierto; la RPC de preinscripción incluye la respuesta «cerrado». |

@@ -11,7 +11,7 @@ import type { CompromisoRow, PacienteRow, SesionRow } from "@/lib/clinica/types"
 import { fetchEvaluacionesDePaciente } from "@/lib/evaluaciones/evaluaciones";
 import { ETAPAS_FICHAS } from "@/lib/evaluaciones/fichas/catalogo";
 import { IconoWhatsApp } from "./boton-whatsapp-paciente";
-import { useMetas } from "./metas-paciente";
+import { useMetas } from "./use-metas";
 import { abrirSeccion, EVENTO_ACCION_FICHA, type AccionFicha } from "./seccion-plegable";
 import { BTN_ACCENT, BTN_GHOST, SectionCard } from "./ui";
 

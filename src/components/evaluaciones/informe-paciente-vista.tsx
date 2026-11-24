@@ -1,5 +1,5 @@
-import { ArrowDownRight, ArrowRight, ArrowUpRight, LifeBuoy, TrendingUp } from "lucide-react";
-import type { GraficaPaciente, InformePaciente, TonoResultado } from "@/lib/evaluaciones/informe-paciente";
+import { ArrowDownRight, ArrowRight, ArrowUpRight, LifeBuoy, Target, TrendingUp } from "lucide-react";
+import type { GraficaPaciente, InformePaciente, MetasInformePaciente, TonoResultado } from "@/lib/evaluaciones/informe-paciente";
 
 const COLOR: Record<TonoResultado, string> = {
   bien: "border-emerald-200 bg-emerald-50 text-emerald-800",
@@ -41,6 +41,8 @@ export function InformePacienteVista({ informe }: { informe: InformePaciente }) 
       ) : null}
 
       {informe.grafica ? <GraficaBarras grafica={informe.grafica} /> : null}
+
+      {informe.metas ? <MetasVista metas={informe.metas} /> : null}
 
       {informe.evolucion ? (
         <section className="grid gap-3 rounded-xl border border-indigo-200 bg-indigo-50/60 p-4" data-testid="evolucion-paciente">
@@ -208,5 +210,86 @@ function TextoResultado({ texto }: { texto: string }) {
         );
       })}
     </div>
+  );
+}
+
+const ESTADO_META = {
+  activa: { texto: "En proceso", clase: "border-sky-200 bg-sky-50 text-sky-800" },
+  lograda: { texto: "¡Lograda!", clase: "border-emerald-200 bg-emerald-50 text-emerald-800" },
+  pausada: { texto: "En pausa", clase: "border-slate-200 bg-slate-50 text-slate-600" },
+} as const;
+
+const fechaCorta = (iso: string) => {
+  const [a, m, d] = iso.split("-").map(Number);
+  return new Date(a, m - 1, d).toLocaleDateString("es-GT", { day: "numeric", month: "short" });
+};
+
+/** Línea de avance de 0 a 10 (una marca por registro). */
+function LineaAvance({ puntos }: { puntos: { fecha: string; valor: number }[] }) {
+  const ancho = 300;
+  const alto = 70;
+  const pad = 8;
+  const x = (i: number) => (puntos.length === 1 ? ancho / 2 : pad + (i * (ancho - 2 * pad)) / (puntos.length - 1));
+  const y = (v: number) => alto - pad - (v / 10) * (alto - 2 * pad);
+  return (
+    <svg
+      aria-label={`Su avance: ${puntos.map((p) => `${p.valor} de 10 el ${fechaCorta(p.fecha)}`).join(", ")}`}
+      className="h-auto w-full max-w-sm"
+      role="img"
+      viewBox={`0 0 ${ancho} ${alto}`}
+    >
+      {[0, 5, 10].map((v) => (
+        <g key={v}>
+          <line stroke="#e2e8f0" x1={pad + 14} x2={ancho - pad} y1={y(v)} y2={y(v)} />
+          <text fill="#94a3b8" fontSize="9" x={0} y={y(v) + 3}>
+            {v}
+          </text>
+        </g>
+      ))}
+      <path
+        d={puntos.map((p, i) => `${i ? "L" : "M"}${x(i).toFixed(1)},${y(p.valor).toFixed(1)}`).join(" ")}
+        fill="none"
+        stroke="#0d9488"
+        strokeWidth={2.5}
+      />
+      {puntos.map((p, i) => (
+        <circle cx={x(i)} cy={y(p.valor)} fill="#0d9488" key={i} r={3.5} />
+      ))}
+    </svg>
+  );
+}
+
+function MetasVista({ metas }: { metas: MetasInformePaciente }) {
+  return (
+    <section className="grid gap-3 rounded-xl border border-teal-200 bg-teal-50/60 p-4" data-testid="metas-paciente">
+      <h2 className="flex items-center gap-2 text-lg font-semibold text-teal-950">
+        <Target className="h-5 w-5" />
+        {metas.titulo}
+      </h2>
+      {metas.intro ? <p className="text-sm leading-6 text-slate-700">{metas.intro}</p> : null}
+      <div className="grid gap-2">
+        {metas.items.map((m, i) => (
+          <div className="grid gap-2 rounded-lg border border-slate-200 bg-white p-3" key={i}>
+            <div className="flex flex-wrap items-start justify-between gap-2">
+              <h3 className="text-sm font-semibold text-slate-900">{m.meta}</h3>
+              <span className={`whitespace-nowrap rounded-full border px-2.5 py-0.5 text-xs font-bold ${ESTADO_META[m.estado].clase}`}>
+                {ESTADO_META[m.estado].texto}
+                {m.puntos.length ? ` · ${m.puntos[m.puntos.length - 1].valor} de 10` : ""}
+              </span>
+            </div>
+            {m.indicador ? <p className="text-xs text-slate-500">Cómo lo notamos: {m.indicador}</p> : null}
+            {m.puntos.length > 1 ? (
+              <div className="grid gap-0.5">
+                <LineaAvance puntos={m.puntos} />
+                <p className="text-[11px] text-slate-400">
+                  Del {fechaCorta(m.puntos[0].fecha)} al {fechaCorta(m.puntos[m.puntos.length - 1].fecha)}
+                </p>
+              </div>
+            ) : null}
+            <p className="text-sm leading-6 text-slate-700">{m.frase}</p>
+          </div>
+        ))}
+      </div>
+    </section>
   );
 }

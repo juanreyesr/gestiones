@@ -44,6 +44,20 @@ export type GraficaPaciente = {
   barras: { etiqueta: string; valor: number | null; texto: string; destacada?: boolean }[];
 };
 
+/** Avance de las metas terapéuticas (0 a 10 por fecha), en lenguaje sencillo. */
+export type MetasInformePaciente = {
+  titulo: string;
+  intro: string;
+  items: {
+    meta: string;
+    indicador: string;
+    estado: "activa" | "lograda" | "pausada";
+    /** De la más antigua a la más reciente. */
+    puntos: { fecha: string; valor: number }[];
+    frase: string;
+  }[];
+};
+
 export type InformePaciente = {
   v: 1;
   titulo: string;
@@ -62,6 +76,8 @@ export type InformePaciente = {
   grafica?: GraficaPaciente;
   /** Comparación con evaluaciones anteriores (si el psicólogo la incluye). */
   evolucion?: EvolucionPaciente;
+  /** Avance de sus metas terapéuticas (informe de avance). */
+  metas?: MetasInformePaciente;
   resultados: ResultadoPaciente[];
   notas: string;
   ayuda: string[] | null;
@@ -98,6 +114,7 @@ export function leerInformePaciente(valor: unknown): InformePaciente | null {
     vigenteHasta: typeof o.vigenteHasta === "string" && /^\d{4}-\d{2}-\d{2}$/.test(o.vigenteHasta) ? o.vigenteHasta : undefined,
     grafica: leerGrafica(o.grafica),
     evolucion: leerEvolucion(o.evolucion),
+    metas: leerMetas(o.metas),
     resultados: (o.resultados as unknown[])
       .filter((r): r is Record<string, unknown> => !!r && typeof r === "object")
       .slice(0, 30)
@@ -113,6 +130,31 @@ export function leerInformePaciente(valor: unknown): InformePaciente | null {
     ayuda: Array.isArray(o.ayuda) ? (o.ayuda as unknown[]).map((l) => s(l, 300)).filter(Boolean).slice(0, 8) : null,
     aviso: s(o.aviso, 1000),
   };
+}
+
+function leerMetas(valor: unknown): MetasInformePaciente | undefined {
+  if (!valor || typeof valor !== "object") return undefined;
+  const o = valor as Record<string, unknown>;
+  const s = (v: unknown, max: number) => (typeof v === "string" ? v.slice(0, max) : "");
+  if (!Array.isArray(o.items)) return undefined;
+  const estados = ["activa", "lograda", "pausada"] as const;
+  const items = (o.items as unknown[])
+    .filter((x): x is Record<string, unknown> => !!x && typeof x === "object")
+    .slice(0, 10)
+    .map((x) => ({
+      meta: s(x.meta, 300),
+      indicador: s(x.indicador, 300),
+      estado: estados.includes(x.estado as (typeof estados)[number]) ? (x.estado as (typeof estados)[number]) : "activa",
+      puntos: (Array.isArray(x.puntos) ? (x.puntos as unknown[]) : [])
+        .filter((p): p is Record<string, unknown> => !!p && typeof p === "object")
+        .slice(-20)
+        .map((p) => ({ fecha: s(p.fecha, 10), valor: typeof p.valor === "number" && Number.isFinite(p.valor) ? Math.min(10, Math.max(0, Math.round(p.valor))) : 0 }))
+        .filter((p) => /^\d{4}-\d{2}-\d{2}$/.test(p.fecha)),
+      frase: s(x.frase, 600),
+    }))
+    .filter((x) => x.meta);
+  if (!items.length) return undefined;
+  return { titulo: s(o.titulo, 200), intro: s(o.intro, 1000), items };
 }
 
 function leerGrafica(valor: unknown): GraficaPaciente | undefined {

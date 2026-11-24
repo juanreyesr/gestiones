@@ -1,15 +1,13 @@
 "use client";
 
-import { ArrowDownRight, ArrowRight, ArrowUpRight, Download, History, Pencil, Plus, Target, Trash2, X } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
+import { ArrowDownRight, ArrowRight, ArrowUpRight, Download, FileHeart, History, Pencil, Plus, Target, Trash2, X } from "lucide-react";
+import { useState } from "react";
 import {
   actualizarMeta,
   avisarCambioMetas,
   crearMeta,
-  EVENTO_METAS_CAMBIO,
   eliminarAvance,
   eliminarMeta,
-  fetchMetas,
   META_ESTADOS,
   registrarAvance,
   tendencia,
@@ -19,37 +17,13 @@ import {
 import { metasDeFicha } from "@/lib/clinica/plan-ia";
 import { formatoFechaCorta } from "@/lib/clinica/slots";
 import { fetchEvaluacionesDePaciente } from "@/lib/evaluaciones/evaluaciones";
+import type { PacienteRow } from "@/lib/clinica/types";
+import { cambiosRecientes, type CambioArea } from "@/lib/evaluaciones/evolucion-explicada";
+import { InformeAvance } from "./informe-avance";
 import { BTN_ACCENT, BTN_GHOST, SectionCard } from "./ui";
+import { useMetas } from "./use-metas";
 
-/* ------------------------------- datos -------------------------------- */
-
-export function useMetas(pacienteId: string) {
-  const [metas, setMetas] = useState<MetaRow[]>([]);
-  const [cargando, setCargando] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [faltaMigracion, setFaltaMigracion] = useState(false);
-
-  const cargar = useCallback(async () => {
-    const r = await fetchMetas(pacienteId);
-    setMetas(r.data);
-    setError(r.error);
-    setFaltaMigracion(r.faltaMigracion);
-    setCargando(false);
-  }, [pacienteId]);
-
-  useEffect(() => {
-    // Carga inicial y al cambiar las metas desde otro panel (plan con IA, sesión).
-    const t = setTimeout(() => void cargar(), 0);
-    const alCambiar = () => void cargar();
-    window.addEventListener(EVENTO_METAS_CAMBIO, alCambiar);
-    return () => {
-      clearTimeout(t);
-      window.removeEventListener(EVENTO_METAS_CAMBIO, alCambiar);
-    };
-  }, [cargar]);
-
-  return { metas, cargando, error, faltaMigracion, recargar: cargar };
-}
+export { useMetas };
 
 /* ------------------------------ gráfica ------------------------------- */
 
@@ -300,8 +274,11 @@ function MetaTarjeta({ meta, pacienteId, onError }: { meta: MetaRow; pacienteId:
 /* ----------------------------- expediente ----------------------------- */
 
 /** «Metas terapéuticas»: metas con indicador, plazo, estado y evolución de 0 a 10. */
-export function MetasPaciente({ pacienteId }: { pacienteId: string }) {
+export function MetasPaciente({ paciente }: { paciente: PacienteRow }) {
+  const pacienteId = paciente.id;
   const { metas, cargando, error, faltaMigracion } = useMetas(pacienteId);
+  // Informe de avance para el paciente (el mismo que el de «Evolución»): se arma al abrirlo.
+  const [informe, setInforme] = useState<{ cambios: CambioArea[] } | null>(null);
   const [nueva, setNueva] = useState<{ meta: string; indicador: string; plazo: string } | null>(null);
   const [mensaje, setMensaje] = useState("");
   const [trabajando, setTrabajando] = useState(false);
@@ -342,6 +319,15 @@ export function MetasPaciente({ pacienteId }: { pacienteId: string }) {
     setTrabajando(false);
     setMensaje(nuevas.length ? `${nuevas.length} meta${nuevas.length === 1 ? "" : "s"} importada${nuevas.length === 1 ? "" : "s"} de la ficha 1.1.` : "No hay metas nuevas en la ficha 1.1 (o el paciente aún no la responde).");
     if (nuevas.length) avisarCambioMetas();
+  };
+
+  const alternarInforme = async () => {
+    if (informe) return setInforme(null);
+    setTrabajando(true);
+    const { respuestas, error: errEval } = await fetchEvaluacionesDePaciente(pacienteId);
+    setTrabajando(false);
+    if (errEval) return setMensaje(`No se pudieron leer las evaluaciones: ${errEval}`);
+    setInforme({ cambios: cambiosRecientes(respuestas) });
   };
 
   return (
@@ -400,8 +386,14 @@ export function MetasPaciente({ pacienteId }: { pacienteId: string }) {
               <button className={BTN_GHOST} disabled={trabajando} onClick={() => void importarFicha()} type="button">
                 <Download className="h-4 w-4" /> Importar de la ficha 1.1
               </button>
+              {metas.some((m) => m.estado !== "descartada") ? (
+                <button className={BTN_GHOST} disabled={trabajando} onClick={() => void alternarInforme()} type="button">
+                  <FileHeart className="h-4 w-4" /> {informe ? "Ocultar informe para el paciente" : "Enviar avance al paciente"}
+                </button>
+              ) : null}
             </div>
           )}
+          {informe ? <InformeAvance cambios={informe.cambios} paciente={paciente} /> : null}
         </div>
       )}
     </SectionCard>
