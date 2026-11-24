@@ -52,7 +52,7 @@ Sin estas variables todo funciona igual; cada cita ofrece un enlace manual "Aña
 
 ### Resumenes con IA (opcional)
 
-Define `ANTHROPIC_API_KEY` (y opcionalmente `ANTHROPIC_MODEL`) en Vercel. Sin la clave, el cierre de sesion se llena manualmente con el mismo formulario.
+Define `ANTHROPIC_API_KEY` (y opcionalmente `ANTHROPIC_MODEL`) en Vercel. Sin la clave, el cierre de sesion se llena manualmente con el mismo formulario. Cada llamada deja una línea `[ia]` en los registros de Vercel (modo, modelo, duración, tokens y, si falla, la causa: clave, saldo, modelo o límite), sin notas ni datos del paciente.
 
 ## Telegram (avisos y control desde el chat)
 
