@@ -20,7 +20,8 @@ export type TipoNotificacion =
   | "resumen_diario"
   | "respaldo_mensual"
   | "datos_completados"
-  | "datos_pendientes";
+  | "datos_pendientes"
+  | "cas_preinscripciones";
 
 export const NOTIFICACIONES: { id: TipoNotificacion; etiqueta: string; porDefecto: boolean }[] = [
   { id: "citas_solicitudes", etiqueta: "Solicitudes de cita (Clínica)", porDefecto: true },
@@ -61,6 +62,7 @@ export const NOTIFICACIONES: { id: TipoNotificacion; etiqueta: string; porDefect
     etiqueta: "Un día antes de la cita: pacientes sin datos generales ni consentimiento, con mensaje de WhatsApp listo (7:00 a. m.)",
     porDefecto: true,
   },
+  { id: "cas_preinscripciones", etiqueta: "CAS UPANA: nueva preinscripción de un estudiante desde el formulario público", porDefecto: true },
   { id: "resumen_diario", etiqueta: "Resumen diario (7:00 a. m.)", porDefecto: true },
   { id: "respaldo_mensual", etiqueta: "Recordatorio para descargar el respaldo de datos (día 1 de cada mes, 7:00 a. m.)", porDefecto: true },
 ];

@@ -3,12 +3,14 @@
 import {
   Copy,
   Download,
+  Link2,
   GraduationCap,
   Mail,
   MessageCircle,
   Pencil,
   Phone,
   Plus,
+  QrCode,
   Search,
   Trash2,
   UserCheck,
@@ -16,6 +18,7 @@ import {
   X,
 } from "lucide-react";
 import { Roboto } from "next/font/google";
+import QRCode from "qrcode";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { ModalPortal } from "@/components/modal-portal";
@@ -26,6 +29,7 @@ import {
   type EstadoId,
   PRACTICAS,
   type PracticaId,
+  RUTA_PREINSCRIPCION,
   borrarAspirante,
   enlaceWhatsApp,
   estadoDe,
@@ -61,6 +65,7 @@ const VACIO: AspiranteInput = {
   correo_personal: "",
   estado: "aspirante",
   notas: "",
+  disponibilidad: "",
 };
 
 type FiltroPractica = "todas" | PracticaId;
@@ -80,6 +85,7 @@ export function CasView() {
   const [porBorrar, setPorBorrar] = useState<Aspirante | null>(null);
   const [borrando, setBorrando] = useState(false);
   const [aviso, setAviso] = useState("");
+  const [qr, setQr] = useState<{ url: string; imagen: string } | null>(null);
 
   const cargar = useCallback(async () => {
     setCargando(true);
@@ -119,6 +125,7 @@ export function CasView() {
       cuarto: aspirantes.filter((a) => a.practica === "consejeria_cuarto").length,
       quinto: aspirantes.filter((a) => a.practica === "profesional_quinto").length,
       aceptados: aspirantes.filter((a) => a.estado === "aceptado").length,
+      nuevosFormulario: aspirantes.filter((a) => a.origen === "formulario" && a.estado === "aspirante").length,
     }),
     [aspirantes],
   );
@@ -137,6 +144,23 @@ export function CasView() {
     } catch {
       setAviso("El navegador no permitió copiar al portapapeles.");
     }
+  };
+
+  const enlacePublico = () => `${window.location.origin}${RUTA_PREINSCRIPCION}`;
+
+  const copiarEnlace = async () => {
+    try {
+      await navigator.clipboard.writeText(enlacePublico());
+      setAviso("Enlace del formulario copiado: compártelo con los estudiantes.");
+    } catch {
+      setAviso(`Enlace del formulario: ${enlacePublico()}`);
+    }
+  };
+
+  const mostrarQr = async () => {
+    const url = enlacePublico();
+    const imagen = await QRCode.toDataURL(url, { margin: 1, width: 480, color: { dark: AZUL } }).catch(() => "");
+    if (imagen) setQr({ url, imagen });
   };
 
   const confirmarBorrado = async () => {
@@ -177,6 +201,17 @@ export function CasView() {
           <p className="rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">{error}</p>
         ) : error ? (
           <p className="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-800">{error}</p>
+        ) : null}
+
+        {conteo.nuevosFormulario > 0 ? (
+          <button
+            className="rounded-md border border-[#9FD140] bg-[#9FD140]/15 p-3 text-left text-sm text-[#3F6610] transition hover:bg-[#9FD140]/25"
+            onClick={() => setFiltroEstado("aspirante")}
+            type="button"
+          >
+            <strong>{conteo.nuevosFormulario}</strong> preinscripción(es) del formulario público con estado «Aspirante»
+            esperan revisión. Toca para verlas.
+          </button>
         ) : null}
 
         {/* Indicadores */}
@@ -245,6 +280,14 @@ export function CasView() {
               ))}
             </div>
             <div className="flex flex-wrap gap-2">
+              <button className={BTN_BORDE} onClick={() => void copiarEnlace()} title="Copiar el enlace del formulario público" type="button">
+                <Link2 className="h-4 w-4" />
+                Enlace del formulario
+              </button>
+              <button className={BTN_BORDE} onClick={() => void mostrarQr()} title="Código QR del formulario público" type="button">
+                <QrCode className="h-4 w-4" />
+                QR
+              </button>
               <button className={BTN_BORDE} disabled={filtrados.length === 0} onClick={copiarCorreos} type="button">
                 <Copy className="h-4 w-4" />
                 Copiar correos
@@ -295,7 +338,15 @@ export function CasView() {
                     <tr className="align-top transition hover:bg-slate-50" key={a.id}>
                       <td className="px-4 py-3">
                         <p className="font-semibold text-slate-900">{a.nombre_completo}</p>
-                        <p className="text-xs text-slate-500">ID {a.carne}</p>
+                        <p className="text-xs text-slate-500">
+                          ID {a.carne}
+                          {a.origen === "formulario" ? <OrigenFormulario /> : null}
+                        </p>
+                        {a.disponibilidad ? (
+                          <p className="mt-1 max-w-xs text-xs text-slate-500" title="Disponibilidad tentativa">
+                            🕒 {a.disponibilidad}
+                          </p>
+                        ) : null}
                       </td>
                       <td className="px-4 py-3">
                         <EtiquetaPractica practica={a.practica} />
@@ -325,13 +376,17 @@ export function CasView() {
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
                       <p className="font-semibold text-slate-900">{a.nombre_completo}</p>
-                      <p className="text-xs text-slate-500">ID {a.carne}</p>
+                      <p className="text-xs text-slate-500">
+                        ID {a.carne}
+                        {a.origen === "formulario" ? <OrigenFormulario /> : null}
+                      </p>
                     </div>
                     <EtiquetaEstado estado={a.estado} />
                   </div>
                   <div className="mt-2">
                     <EtiquetaPractica practica={a.practica} />
                   </div>
+                  {a.disponibilidad ? <p className="mt-2 text-xs text-slate-500">🕒 {a.disponibilidad}</p> : null}
                   <div className="mt-3">
                     <Contacto aspirante={a} />
                   </div>
@@ -362,6 +417,33 @@ export function CasView() {
         />
       ) : null}
 
+      {qr ? (
+        <ModalPortal>
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 p-4" onClick={() => setQr(null)}>
+            <div
+              className={`${roboto.className} w-full max-w-sm rounded-lg bg-white p-6 text-center text-slate-800 shadow-2xl`}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <h3 className="text-lg font-bold" style={{ color: AZUL }}>
+                Preinscripción CAS UPANA
+              </h3>
+              {/* eslint-disable-next-line @next/next/no-img-element -- QR generado en el navegador */}
+              <img alt="Código QR del formulario de preinscripción" className="mx-auto my-4 w-64" src={qr.imagen} />
+              <p className="break-all text-xs text-slate-500">{qr.url}</p>
+              <div className="mt-4 flex justify-center gap-2">
+                <a className={BTN_AZUL} download="cas-upana-preinscripcion-qr.png" href={qr.imagen}>
+                  <Download className="h-4 w-4" />
+                  Descargar
+                </a>
+                <button className={BTN_BORDE} onClick={() => setQr(null)} type="button">
+                  Cerrar
+                </button>
+              </div>
+            </div>
+          </div>
+        </ModalPortal>
+      ) : null}
+
       <ConfirmDialog
         busy={borrando}
         message={
@@ -387,6 +469,7 @@ const aInput = (a: Aspirante): AspiranteInput => ({
   correo_personal: a.correo_personal ?? "",
   estado: a.estado,
   notas: a.notas ?? "",
+  disponibilidad: a.disponibilidad ?? "",
 });
 
 function Indicador({
@@ -485,6 +568,17 @@ function Contacto({ aspirante: a }: { aspirante: Aspirante }) {
         </a>
       ) : null}
     </div>
+  );
+}
+
+function OrigenFormulario() {
+  return (
+    <span
+      className="ml-2 inline-flex rounded bg-[#9FD140]/25 px-1.5 py-px text-[10px] font-bold uppercase tracking-wide text-[#3F6610]"
+      title="Se preinscribió desde el formulario público"
+    >
+      Formulario
+    </span>
   );
 }
 
@@ -682,12 +776,21 @@ function FormularioAspirante({
                 ))}
               </select>
             </Campo>
+            <Campo etiqueta="Disponibilidad tentativa">
+              <textarea
+                className={`${CAMPO} min-h-16`}
+                maxLength={1000}
+                onChange={(e) => poner("disponibilidad", e.target.value)}
+                placeholder="Días y horarios en que podría asistir"
+                value={datos.disponibilidad ?? ""}
+              />
+            </Campo>
             <Campo etiqueta="Notas">
               <textarea
                 className={`${CAMPO} min-h-20`}
                 maxLength={4000}
                 onChange={(e) => poner("notas", e.target.value)}
-                placeholder="Disponibilidad tentativa, sede, observaciones…"
+                placeholder="Sede, observaciones, acuerdos…"
                 value={datos.notas ?? ""}
               />
             </Campo>
