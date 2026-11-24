@@ -91,7 +91,13 @@ export function TestsAdminView() {
     const filas = [["Nombre", "Correo", "Teléfono", "País", "Edad", "Intereses", "Registrado"]].concat(
       contactos.map((p) => [p.nombre, p.correo, p.telefono ?? "", p.pais ?? "", String(edad(p.fecha_nacimiento)), p.intereses.map(nombreArea).join("; "), p.created_at.slice(0, 10)])
     );
-    const csv = "﻿" + filas.map((f) => f.map((c) => `"${c.replace(/"/g, '""')}"`).join(",")).join("\n");
+    // Los datos los escribe el público: una celda que empiece con = + - @ (o tabulador/retorno) se
+    // abriría como fórmula en Excel u hojas de cálculo; se antepone ' para que quede como texto.
+    const celda = (c: string) => {
+      const seguro = /^[=+\-@\t\r]/.test(c) ? `'${c}` : c;
+      return `"${seguro.replace(/"/g, '""')}"`;
+    };
+    const csv = "﻿" + filas.map((f) => f.map(celda).join(",")).join("\n");
     const url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
     const a = document.createElement("a");
     a.href = url;
