@@ -67,6 +67,8 @@ export type ContextoPlan = {
     antecedentesPsicologicos: string | null;
   };
   metasFicha: { meta: string; avance: string; plazo: string }[];
+  /** Metas guardadas en el expediente con su avance (0 a 10) por fecha. */
+  metasSeguimiento: { meta: string; indicador: string | null; plazo: string | null; estado: string; avances: { fecha: string; puntuacion: number; nota: string | null }[] }[];
   sesiones: { fecha: string; tema: string | null; resumen: string | null; seguimiento: string | null }[];
   compromisos: { pendientes: string[]; cumplidos: number; total: number };
   propuestas: { nombre: string; tipo: string; estado: string }[];

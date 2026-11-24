@@ -31,6 +31,7 @@ import {
   type ConsentimientoRow,
 } from "@/lib/clinica/pacientes";
 import { fetchDocumentos } from "@/lib/clinica/documentos";
+import { fetchMetas } from "@/lib/clinica/metas";
 import { exportarExpedientePdf } from "@/lib/clinica/expediente-pdf";
 import { fetchEvaluacionesDePaciente, fetchInformesDeRespuestas } from "@/lib/evaluaciones/evaluaciones";
 import { fetchSesionEnCurso, fetchSesionesDePaciente, iniciarSesion, vincularCitaASesion } from "@/lib/clinica/sesiones";
@@ -48,6 +49,7 @@ import { PanelEvolucion } from "./panel-evolucion";
 import { BitacoraCitas } from "./bitacora-citas";
 import { PlanTratamiento } from "./plan-tratamiento";
 import { PlanIAPaciente } from "./plan-ia";
+import { MetasPaciente } from "./metas-paciente";
 import { SesionActiva } from "./sesion-activa";
 import { SesionDetalle } from "./sesion-detalle";
 import { SesionEditor } from "./sesion-editor";
@@ -472,7 +474,9 @@ export function PacienteExpediente({
                 const { respuestas } = await fetchEvaluacionesDePaciente(paciente.id);
                 const informes = await fetchInformesDeRespuestas(respuestas.map((r) => r.id));
                 const { data: documentos } = await fetchDocumentos(paciente.id);
-                await exportarExpedientePdf(paciente, sesiones, { consentimientos, respuestas, informes, documentos });
+                // Sin la migración 071 la lista llega vacía y el PDF omite la sección.
+                const { data: metas } = await fetchMetas(paciente.id);
+                await exportarExpedientePdf(paciente, sesiones, { consentimientos, respuestas, informes, documentos, metas });
               } finally {
                 setExportando(false);
               }
@@ -514,6 +518,7 @@ export function PacienteExpediente({
             proximaCita={proximaCita}
             sesiones={sesiones}
           />
+          <MetasPaciente pacienteId={paciente.id} />
           <PlanIAPaciente compromisos={compromisos} onCambio={() => void cargar()} paciente={paciente} sesiones={sesiones} />
           <PlanTratamiento onCambio={() => void cargar()} sesiones={sesiones} />
           <PanelEvolucion paciente={paciente} sesiones={sesiones} />

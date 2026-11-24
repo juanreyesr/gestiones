@@ -1,15 +1,17 @@
 "use client";
 
-import { AlertTriangle, ClipboardCheck, Copy, ListChecks, Send, Sparkles, Target } from "lucide-react";
+import { AlertTriangle, BookmarkPlus, Check, ClipboardCheck, Copy, ListChecks, Send, Sparkles, Target } from "lucide-react";
 import { useState } from "react";
 import { horaGuatemala, saludoPorHora } from "@/lib/control-revision-mensajes";
 import { contextoPlan, esFichaRecurso, generarPlanIA, nombreRecurso, type PlanIA } from "@/lib/clinica/plan-ia";
+import { avisarCambioMetas, crearMeta, fetchMetas } from "@/lib/clinica/metas";
 import { enlaceWhatsApp } from "@/lib/clinica/recordatorio";
 import { agregarTareaASesionReciente } from "@/lib/clinica/sesiones";
 import type { CompromisoRow, PacienteRow, SesionRow } from "@/lib/clinica/types";
 import { fetchEvaluacionesDePaciente } from "@/lib/evaluaciones/evaluaciones";
 import { ETAPAS_FICHAS } from "@/lib/evaluaciones/fichas/catalogo";
 import { IconoWhatsApp } from "./boton-whatsapp-paciente";
+import { useMetas } from "./metas-paciente";
 import { abrirSeccion, EVENTO_ACCION_FICHA, type AccionFicha } from "./seccion-plegable";
 import { BTN_ACCENT, BTN_GHOST, SectionCard } from "./ui";
 
@@ -55,6 +57,8 @@ export function PlanIAPaciente({
   const [tareas, setTareas] = useState<Set<number>>(new Set());
   const [aviso, setAviso] = useState("");
   const [error, setError] = useState("");
+  const { metas: metasGuardadas, faltaMigracion } = useMetas(paciente.id);
+  const yaGuardada = (texto: string) => metasGuardadas.some((m) => m.meta.trim().toLowerCase() === texto.trim().toLowerCase());
 
   const avisar = (t: string) => {
     setAviso(t);
@@ -64,13 +68,18 @@ export function PlanIAPaciente({
   const generar = async () => {
     setCargando(true);
     setError("");
-    const { respuestas, evaluaciones, error: errEval } = await fetchEvaluacionesDePaciente(paciente.id);
+    // Metas guardadas: se piden aquí (no se usa la lista del panel, que podría no haber cargado aún).
+    const [{ respuestas, evaluaciones, error: errEval }, metasActuales] = await Promise.all([fetchEvaluacionesDePaciente(paciente.id), fetchMetas(paciente.id)]);
+    if (metasActuales.error && !metasActuales.faltaMigracion) {
+      setCargando(false);
+      return setError(`No se pudieron leer las metas del paciente (${metasActuales.error}). Intenta de nuevo.`);
+    }
     // Sin evaluaciones completas el plan podría repetir fichas o pasar por alto alertas: mejor reintentar.
     if (errEval) {
       setCargando(false);
       return setError(`No se pudieron leer las evaluaciones del paciente (${errEval}). Intenta de nuevo.`);
     }
-    const contexto = contextoPlan({ paciente, sesiones, compromisos, respuestas, evaluaciones, enfoque });
+    const contexto = contextoPlan({ paciente, sesiones, compromisos, respuestas, evaluaciones, metas: metasActuales.data, enfoque });
     const r = await generarPlanIA(contexto);
     setCargando(false);
     if (r.noConfigurado) return setError("La IA no está configurada (falta ANTHROPIC_API_KEY en Vercel).");
@@ -176,6 +185,26 @@ export function PlanIAPaciente({
                   <p className="text-xs text-slate-400">
                     <span className="text-slate-300">Cómo se mide:</span> {m.indicador} · <span className="text-slate-300">Plazo:</span> {m.plazo}
                   </p>
+                  {faltaMigracion ? null : yaGuardada(m.meta) ? (
+                    <p className="inline-flex items-center gap-1 text-xs text-emerald-300">
+                      <Check className="h-3.5 w-3.5" /> En tus metas terapéuticas
+                    </p>
+                  ) : (
+                    <div>
+                      <button
+                        className="inline-flex items-center gap-1 text-xs font-semibold text-amber-200 hover:text-amber-100"
+                        onClick={async () => {
+                          const { error: err } = await crearMeta(paciente.id, { meta: m.meta, indicador: m.indicador, plazo: m.plazo, origen: "ia", orden: metasGuardadas.length });
+                          if (err) return setError(err);
+                          avisarCambioMetas();
+                          avisar("Meta guardada: puntúa su avance en cada sesión.");
+                        }}
+                        type="button"
+                      >
+                        <BookmarkPlus className="h-3.5 w-3.5" /> Guardar en metas terapéuticas
+                      </button>
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
