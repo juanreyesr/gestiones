@@ -3,7 +3,7 @@
 import { CheckCircle2, Loader2, Lock, ShieldCheck } from "lucide-react";
 import { Roboto } from "next/font/google";
 import { useState } from "react";
-import { PRACTICAS, type PracticaId } from "@/lib/cas/aspirantes";
+import { CAMPUS, PRACTICAS, type PracticaId } from "@/lib/cas/aspirantes";
 
 // Identidad visual de UPANA (www.upana.edu.gt): azul #00247B, verde #9FD140, Roboto.
 const roboto = Roboto({ subsets: ["latin"], weight: ["400", "500", "700"], display: "swap" });
@@ -28,6 +28,8 @@ export function PreinscripcionCas({ abierto, mensajeCerrado }: { abierto: boolea
   const [correoInstitucional, setCorreoInstitucional] = useState("");
   const [correoPersonal, setCorreoPersonal] = useState("");
   const [disponibilidad, setDisponibilidad] = useState("");
+  const [campusOpcion, setCampusOpcion] = useState(""); // uno de CAMPUS u «otro»
+  const [campusOtro, setCampusOtro] = useState("");
   const [consentimiento, setConsentimiento] = useState(false);
   const [sitio, setSitio] = useState(""); // campo trampa para bots
   const [estado, setEstado] = useState<Estado>(abierto ? "editando" : "cerrado");
@@ -36,6 +38,8 @@ export function PreinscripcionCas({ abierto, mensajeCerrado }: { abierto: boolea
   const validar = () => {
     if (nombre.trim().replace(/\s+/g, " ").length < 3) return "Escribe tu nombre completo.";
     if (!carne.trim()) return "Escribe tu ID (carné) de estudiante.";
+    if (!campusOpcion) return "Elige el campus al que perteneces.";
+    if (campusOpcion === "otro" && campusOtro.trim().length < 2) return "Escribe el nombre de tu campus.";
     if (!practica) return "Elige la práctica a la que optas.";
     if (telefono.replace(/\D/g, "").length < 8) return "Escribe un número de teléfono válido (8 dígitos o más).";
     if (!CORREO_RE.test(correoInstitucional.trim())) return "Escribe tu correo institucional.";
@@ -65,6 +69,7 @@ export function PreinscripcionCas({ abierto, mensajeCerrado }: { abierto: boolea
           correoInstitucional,
           correoPersonal,
           disponibilidad,
+          campus: campusOpcion === "otro" ? campusOtro.trim() : campusOpcion,
           consentimiento,
           sitio,
         }),
@@ -183,6 +188,33 @@ export function PreinscripcionCas({ abierto, mensajeCerrado }: { abierto: boolea
                   />
                 </Campo>
               </div>
+              <Campo etiqueta="Campus al que perteneces" requerido>
+                <select
+                  className={CAMPO}
+                  onChange={(e) => setCampusOpcion(e.target.value)}
+                  value={campusOpcion}
+                >
+                  <option disabled value="">
+                    Selecciona tu campus
+                  </option>
+                  {CAMPUS.map((c) => (
+                    <option key={c} value={c}>
+                      {c}
+                    </option>
+                  ))}
+                  <option value="otro">Otro (escribirlo)</option>
+                </select>
+                {campusOpcion === "otro" ? (
+                  <input
+                    autoFocus
+                    className={CAMPO}
+                    maxLength={80}
+                    onChange={(e) => setCampusOtro(e.target.value)}
+                    placeholder="Escribe el nombre de tu campus o sede"
+                    value={campusOtro}
+                  />
+                ) : null}
+              </Campo>
               <Campo etiqueta="Correo electrónico institucional" requerido>
                 <input
                   autoCapitalize="off"

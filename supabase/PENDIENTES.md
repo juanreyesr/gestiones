@@ -10,7 +10,9 @@ así que las migraciones se acumulan aquí y se aplican **juntas desde la comput
   computadora y aprobar cada ventana de Supabase.
 
 ## Pendientes
-Ninguna por ahora.
+| Migración | Qué hace | Si falta |
+| --- | --- | --- |
+| `073_gestionesjj_cas_campus.sql` | Columna `campus` en los aspirantes del CAS UPANA y RPC de preinscripción con el campus (obligatorio en el formulario público). | El formulario sigue funcionando: el campus elegido se guarda al inicio de «Disponibilidad» como «Campus: …»; en `/admin` el campus se ve vacío y no se puede editar. |
 
 ## Aplicadas
 | Migración | Fecha | Verificación |
