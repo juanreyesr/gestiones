@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { PreinscripcionCas } from "@/components/cas/preinscripcion-cas";
+import { estadoFormularioCas } from "@/lib/server/cas-formulario";
 
 export const metadata: Metadata = {
   title: "Preinscripción de práctica · CAS UPANA",
@@ -8,6 +9,10 @@ export const metadata: Metadata = {
   robots: { index: false },
 };
 
-export default function RegistroCasPage() {
-  return <PreinscripcionCas />;
+// Se consulta en cada visita: el interruptor de /admin debe notarse al instante.
+export const dynamic = "force-dynamic";
+
+export default async function RegistroCasPage() {
+  const { abierto, mensaje } = await estadoFormularioCas();
+  return <PreinscripcionCas abierto={abierto} mensajeCerrado={mensaje} />;
 }

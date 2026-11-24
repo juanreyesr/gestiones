@@ -54,7 +54,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ estado: "error" }, { status: 500 });
   }
 
-  const estado = data === "ok" || data === "duplicado" ? data : "invalido";
+  const estado = data === "ok" || data === "duplicado" || data === "cerrado" ? data : "invalido";
   if (estado === "ok") {
     const practica = PRACTICAS.find((p) => p.id === datos.p_practica);
     after(async () => {

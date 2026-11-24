@@ -10,7 +10,9 @@ así que las migraciones se acumulan aquí y se aplican **juntas desde la comput
   computadora y aprobar cada ventana de Supabase.
 
 ## Pendientes
-Ninguna por ahora.
+| Migración | Qué hace | Si falta |
+| --- | --- | --- |
+| `070_gestionesjj_cas_formulario_abierto.sql` | Interruptor del CAS UPANA para abrir o cerrar el formulario público `/cas/registro` (tabla `gestionesjj_cas_config` de una fila, RPC pública del estado y la RPC de preinscripción responde «cerrado»). | El formulario sigue siempre abierto y el interruptor de `/admin` avisa que falta la migración. |
 
 ## Aplicadas
 | Migración | Fecha | Verificación |

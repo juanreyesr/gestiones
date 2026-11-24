@@ -1,6 +1,6 @@
 "use client";
 
-import { CheckCircle2, Loader2, ShieldCheck } from "lucide-react";
+import { CheckCircle2, Loader2, Lock, ShieldCheck } from "lucide-react";
 import { Roboto } from "next/font/google";
 import { useState } from "react";
 import { PRACTICAS, type PracticaId } from "@/lib/cas/aspirantes";
@@ -14,10 +14,13 @@ const CAMPO =
   "w-full rounded-md border border-slate-300 bg-white px-3 py-2.5 text-base text-slate-900 outline-none transition focus:border-[#00247B] focus:ring-2 focus:ring-[#00247B]/15 sm:text-sm";
 const CORREO_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
 
-type Estado = "editando" | "enviando" | "ok" | "duplicado";
+type Estado = "editando" | "enviando" | "ok" | "duplicado" | "cerrado";
+
+const MENSAJE_CERRADO_DEFECTO =
+  "La preinscripción para la práctica en el CAS no está disponible en este momento. Si tienes dudas, comunícate con la coordinación de la práctica.";
 
 /** Formulario público de preinscripción del CAS (/cas/registro). */
-export function PreinscripcionCas() {
+export function PreinscripcionCas({ abierto, mensajeCerrado }: { abierto: boolean; mensajeCerrado: string | null }) {
   const [nombre, setNombre] = useState("");
   const [carne, setCarne] = useState("");
   const [practica, setPractica] = useState<PracticaId | "">("");
@@ -27,7 +30,7 @@ export function PreinscripcionCas() {
   const [disponibilidad, setDisponibilidad] = useState("");
   const [consentimiento, setConsentimiento] = useState(false);
   const [sitio, setSitio] = useState(""); // campo trampa para bots
-  const [estado, setEstado] = useState<Estado>("editando");
+  const [estado, setEstado] = useState<Estado>(abierto ? "editando" : "cerrado");
   const [error, setError] = useState("");
 
   const validar = () => {
@@ -72,7 +75,7 @@ export function PreinscripcionCas() {
         return;
       }
       const { estado: resultado } = (await res.json().catch(() => ({ estado: "error" }))) as { estado: string };
-      if (resultado === "ok" || resultado === "duplicado") {
+      if (resultado === "ok" || resultado === "duplicado" || resultado === "cerrado") {
         setEstado(resultado);
         window.scrollTo({ top: 0, behavior: "smooth" });
         return;
@@ -110,7 +113,17 @@ export function PreinscripcionCas() {
       </header>
 
       <div className="mx-auto max-w-3xl px-4 py-6 sm:px-6 sm:py-10">
-        {estado === "ok" || estado === "duplicado" ? (
+        {estado === "cerrado" ? (
+          <section className="rounded-lg border border-slate-200 bg-white p-6 text-center shadow-sm sm:p-10">
+            <Lock className="mx-auto h-12 w-12" style={{ color: AZUL }} />
+            <h2 className="mt-4 text-2xl font-bold" style={{ color: AZUL }}>
+              Preinscripción cerrada
+            </h2>
+            <p className="mx-auto mt-3 max-w-md whitespace-pre-line text-sm leading-6 text-slate-600">
+              {mensajeCerrado || MENSAJE_CERRADO_DEFECTO}
+            </p>
+          </section>
+        ) : estado === "ok" || estado === "duplicado" ? (
           <section className="rounded-lg border border-slate-200 bg-white p-6 text-center shadow-sm sm:p-10">
             <CheckCircle2 className="mx-auto h-14 w-14" style={{ color: estado === "ok" ? "#5E8F1A" : AZUL }} />
             <h2 className="mt-4 text-2xl font-bold" style={{ color: AZUL }}>

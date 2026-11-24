@@ -31,6 +31,10 @@ import {
   type PracticaId,
   RUTA_PREINSCRIPCION,
   borrarAspirante,
+  type ConfigCas,
+  fetchConfigCas,
+  guardarConfigCas,
+  MIGRACION_INTERRUPTOR_PENDIENTE,
   enlaceWhatsApp,
   estadoDe,
   exportarAspirantesExcel,
@@ -202,6 +206,8 @@ export function CasView() {
         ) : error ? (
           <p className="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-800">{error}</p>
         ) : null}
+
+        <InterruptorFormulario />
 
         {conteo.nuevosFormulario > 0 ? (
           <button
@@ -567,6 +573,126 @@ function Contacto({ aspirante: a }: { aspirante: Aspirante }) {
           {a.correo_personal}
         </a>
       ) : null}
+    </div>
+  );
+}
+
+/**
+ * Abre o cierra el formulario público /cas/registro. Con el formulario cerrado
+ * se puede dejar un mensaje para los estudiantes (fechas, a quién escribir).
+ */
+function InterruptorFormulario() {
+  const [config, setConfig] = useState<ConfigCas | null>(null);
+  const [mensaje, setMensaje] = useState("");
+  const [faltaTabla, setFaltaTabla] = useState(false);
+  const [error, setError] = useState("");
+  const [guardando, setGuardando] = useState(false);
+  const [guardado, setGuardado] = useState("");
+
+  useEffect(() => {
+    let vigente = true;
+    void fetchConfigCas().then((res) => {
+      if (!vigente) return;
+      setConfig(res.data);
+      setMensaje(res.data?.mensaje_cerrado ?? "");
+      setFaltaTabla(res.faltaTabla);
+      setError(res.faltaTabla ? "" : (res.error ?? ""));
+    });
+    return () => {
+      vigente = false;
+    };
+  }, []);
+
+  const guardar = async (nuevo: ConfigCas, texto: string) => {
+    setGuardando(true);
+    setError("");
+    const { error: e } = await guardarConfigCas(nuevo);
+    setGuardando(false);
+    if (e) {
+      setError(e);
+      return false;
+    }
+    setConfig(nuevo);
+    setGuardado(texto);
+    setTimeout(() => setGuardado(""), 3000);
+    return true;
+  };
+
+  const abierto = config?.formulario_abierto ?? true;
+  const mensajeLimpio = mensaje.trim() || null;
+
+  return (
+    <div className="grid gap-3 rounded-lg border border-slate-200 bg-white p-3 sm:p-4">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="min-w-0">
+          <p className="text-sm font-bold" style={{ color: AZUL }}>
+            Formulario público de preinscripción
+          </p>
+          <p className="text-xs text-slate-500">
+            {faltaTabla
+              ? MIGRACION_INTERRUPTOR_PENDIENTE
+              : config === null
+                ? "Consultando…"
+                : abierto
+                  ? "Abierto: los estudiantes pueden preinscribirse."
+                  : "Cerrado: el enlace muestra un aviso y no recibe preinscripciones."}
+          </p>
+        </div>
+        <button
+          aria-checked={abierto}
+          aria-label={abierto ? "Cerrar el formulario" : "Abrir el formulario"}
+          className="inline-flex items-center gap-2 text-sm font-semibold disabled:opacity-50"
+          disabled={faltaTabla || config === null || guardando}
+          onClick={() =>
+            void guardar(
+              { formulario_abierto: !abierto, mensaje_cerrado: mensajeLimpio },
+              abierto ? "Formulario cerrado." : "Formulario abierto.",
+            )
+          }
+          role="switch"
+          type="button"
+        >
+          <span className={abierto ? "text-[#3F6610]" : "text-slate-500"}>{abierto ? "Abierto" : "Cerrado"}</span>
+          <span
+            className="relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition"
+            style={{ backgroundColor: abierto ? VERDE : "#CBD5E1" }}
+          >
+            <span
+              className={`inline-block h-5 w-5 rounded-full bg-white shadow transition ${abierto ? "translate-x-5" : "translate-x-0.5"}`}
+            />
+          </span>
+        </button>
+      </div>
+
+      {!faltaTabla && config && !abierto ? (
+        <div className="grid gap-2">
+          <label className="grid gap-1.5">
+            <span className="text-xs font-bold uppercase tracking-wide text-slate-500">
+              Mensaje para quien abra el enlace (opcional)
+            </span>
+            <textarea
+              className={`${CAMPO} min-h-16`}
+              maxLength={600}
+              onChange={(e) => setMensaje(e.target.value)}
+              placeholder="Ej.: La preinscripción abrirá de nuevo en enero. Dudas: coordinación de práctica."
+              value={mensaje}
+            />
+          </label>
+          <div className="flex justify-end">
+            <button
+              className={BTN_BORDE}
+              disabled={guardando || mensajeLimpio === (config.mensaje_cerrado ?? null)}
+              onClick={() => void guardar({ formulario_abierto: false, mensaje_cerrado: mensajeLimpio }, "Mensaje guardado.")}
+              type="button"
+            >
+              Guardar mensaje
+            </button>
+          </div>
+        </div>
+      ) : null}
+
+      {error ? <p className="text-xs text-red-700">{error}</p> : null}
+      {guardado ? <p className="text-xs font-semibold text-[#5E8F1A]">{guardado}</p> : null}
     </div>
   );
 }

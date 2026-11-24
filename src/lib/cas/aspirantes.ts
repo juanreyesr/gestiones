@@ -193,3 +193,40 @@ export async function exportarAspirantesExcel(filas: Aspirante[]) {
   enlace.click();
   setTimeout(() => URL.revokeObjectURL(url), 10_000);
 }
+
+// ============================================================
+// Interruptor del formulario público (migración 070)
+// ============================================================
+
+export const MIGRACION_INTERRUPTOR_PENDIENTE =
+  "El interruptor necesita la migración 070 (ver supabase/PENDIENTES.md). Mientras tanto, el formulario sigue abierto.";
+
+export type ConfigCas = { formulario_abierto: boolean; mensaje_cerrado: string | null };
+
+export async function fetchConfigCas() {
+  const supabase = getSupabaseClient();
+  if (!supabase) return { data: null as ConfigCas | null, error: SIN_SUPABASE, faltaTabla: false };
+
+  const { data, error } = await supabase
+    .from("gestionesjj_cas_config")
+    .select("formulario_abierto, mensaje_cerrado")
+    .eq("id", true)
+    .maybeSingle();
+  if (error) {
+    const falta = esTablaFaltante(error);
+    return { data: null, error: falta ? MIGRACION_INTERRUPTOR_PENDIENTE : error.message, faltaTabla: falta };
+  }
+  // Sin fila de configuración el formulario se considera abierto.
+  return { data: (data as ConfigCas | null) ?? { formulario_abierto: true, mensaje_cerrado: null }, error: null, faltaTabla: false };
+}
+
+export async function guardarConfigCas(config: ConfigCas) {
+  const supabase = getSupabaseClient();
+  if (!supabase) return { error: SIN_SUPABASE };
+
+  const { error } = await supabase
+    .from("gestionesjj_cas_config")
+    .upsert({ id: true, ...config, updated_at: new Date().toISOString() });
+  if (!error) return { error: null };
+  return { error: esTablaFaltante(error) ? MIGRACION_INTERRUPTOR_PENDIENTE : error.message };
+}
