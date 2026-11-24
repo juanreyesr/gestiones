@@ -11,6 +11,13 @@ alter table public.gestionesjj_cas_aspirantes
 create index if not exists gestionesjj_cas_aspirantes_campus_idx
   on public.gestionesjj_cas_aspirantes (campus);
 
+-- Preinscripciones recibidas antes de esta migración: la API guardó el campus al inicio de la
+-- disponibilidad como «Campus: …». Se pasa a la columna y se quita de la disponibilidad.
+update public.gestionesjj_cas_aspirantes
+set campus = left(btrim(substring(disponibilidad from '^Campus: ([^\n]+)')), 80),
+    disponibilidad = nullif(btrim(regexp_replace(disponibilidad, '^Campus: [^\n]*\n?', '')), '')
+where campus is null and disponibilidad ~ '^Campus: [^\n]+';
+
 drop function if exists public.gestionesjj_public_cas_preinscripcion(text, text, text, text, text, text, text, boolean);
 
 create or replace function public.gestionesjj_public_cas_preinscripcion(
