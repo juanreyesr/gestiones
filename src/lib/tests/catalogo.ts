@@ -45,7 +45,12 @@ export type TestCatalogo = {
   opciones: Record<string, unknown>;
   /** Pide recursos de crisis si marca la pregunta de seguridad. */
   conSeguridad: boolean;
+  /** Créditos de los instrumentos de terceros que incluye (atribución que piden sus licencias). */
+  creditos?: string[];
 };
+
+const CREDITO_PTQ =
+  "Incluye el Perseverative Thinking Questionnaire (PTQ) de Ehring, Zetsche, Weidacker, Wahl, Schönfeld y Ehlers (2011), Journal of Behavior Therapy and Experimental Psychiatry, 42(2), 225-232, publicado con licencia Creative Commons Atribución 3.0 (creativecommons.org/licenses/by/3.0). Traducción y adaptación al español: M. A. Juan José Reyes.";
 
 export const TESTS: readonly TestCatalogo[] = [
   {
@@ -61,6 +66,10 @@ export const TESTS: readonly TestCatalogo[] = [
     recibe: ["Informe sencillo con sus resultados por área", "Qué significa cada resultado y sugerencias prácticas", "Comparación con su aplicación anterior cuando se reevalúe"],
     opciones: {},
     conSeguridad: true,
+    creditos: [
+      "Incluye el Cuestionario de Salud del Paciente (PHQ-9) y la Escala de Ansiedad Generalizada (GAD-7) de Spitzer, Kroenke, Williams y colaboradores, de uso libre.",
+      CREDITO_PTQ,
+    ],
   },
   {
     id: "eapi",
@@ -75,6 +84,9 @@ export const TESTS: readonly TestCatalogo[] = [
     recibe: ["Informe con su nivel en cada área (ansiedad, estrés y ánimo)", "Explicación sencilla de cada resultado", "Comparación con su aplicación anterior cuando se reevalúe"],
     opciones: { modulos: ["gad", "dass"] },
     conSeguridad: true,
+    creditos: [
+      "Incluye la Escala de Ansiedad Generalizada (GAD-7) de Spitzer, Kroenke, Williams y Löwe (2006), de uso libre, y las Escalas de Depresión, Ansiedad y Estrés (DASS-21) de Lovibond y Lovibond (1995), de dominio público.",
+    ],
   },
   {
     id: "temperamentos",

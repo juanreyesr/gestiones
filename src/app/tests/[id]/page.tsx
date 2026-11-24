@@ -51,6 +51,13 @@ export default async function DetalleTest({ params }: { params: Promise<{ id: st
               ))}
             </ul>
           </div>
+          {test.creditos?.length ? (
+            <div className="grid gap-1 border-t border-slate-100 pt-3 text-xs leading-5 text-slate-500">
+              {test.creditos.map((c) => (
+                <p key={c}>{c}</p>
+              ))}
+            </div>
+          ) : null}
           <p className="rounded-xl bg-slate-50 p-3 text-xs leading-5 text-slate-500">
             Antes de comenzar aceptará un breve consentimiento: el test es una autoevaluación general de cómo se encuentra hoy y no constituye un diagnóstico
             clínico.
