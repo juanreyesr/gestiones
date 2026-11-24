@@ -1,6 +1,7 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { NextResponse } from "next/server";
 import { requireOwner } from "@/lib/server/auth";
+import { modeloIA, registrarError, registrarLlamada } from "@/lib/server/ia-log";
 
 export const runtime = "nodejs";
 
@@ -121,7 +122,7 @@ export async function POST(request: Request) {
     .join("\n\n");
 
   const modo = sugerencias ? "sugerencias" : "resumen";
-  const modelo = process.env.ANTHROPIC_MODEL || "claude-sonnet-5-5";
+  const modelo = modeloIA();
   const inicio = Date.now();
 
   try {
@@ -140,11 +141,7 @@ export async function POST(request: Request) {
     });
 
     // Solo metadatos: nunca se registran notas ni datos del paciente.
-    console.info(
-      `[ia] ${modo} ok · modelo=${response.model} · ${Date.now() - inicio} ms · ` +
-        `tokens entrada=${response.usage.input_tokens} salida=${response.usage.output_tokens} · ` +
-        `fin=${response.stop_reason} · valido=${response.parsed_output ? "sí" : "no"}`
-    );
+    registrarLlamada(modo, inicio, response, Boolean(response.parsed_output));
 
     if (sugerencias) {
       if (!response.parsed_output) {
@@ -166,7 +163,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json(parsed);
   } catch (error) {
-    console.error(`[ia] ${modo} error · modelo=${modelo} · ${Date.now() - inicio} ms · ${describirError(error)}`);
+    registrarError(modo, modelo, inicio, error);
     return NextResponse.json(
       { error: sugerencias ? "No se pudieron generar sugerencias con IA." : "No se pudo generar el resumen con IA. Escríbelo manualmente." },
       { status: 502 }
@@ -174,25 +171,3 @@ export async function POST(request: Request) {
   }
 }
 
-/** Describe un error de la API de Anthropic sin incluir datos del paciente. */
-function describirError(error: unknown): string {
-  if (error instanceof Anthropic.APIError) {
-    const causa =
-      error.status === 401
-        ? "clave inválida o revocada"
-        : error.status === 403
-          ? "sin permiso para el modelo"
-          : error.status === 404
-            ? "modelo no encontrado (revisar ANTHROPIC_MODEL)"
-            : error.status === 429
-              ? "límite de uso alcanzado"
-              : error.status === 400 && /credit|balance/i.test(error.message)
-                ? "sin saldo en Billing"
-                : error.status && error.status >= 500
-                  ? "falla temporal de Anthropic"
-                  : "error de la API";
-    return `status=${error.status ?? "?"} · ${causa} · request_id=${error.requestID ?? "?"} · ${error.message.slice(0, 300)}`;
-  }
-  if (error instanceof Error) return `${error.name}: ${error.message.slice(0, 300)}`;
-  return String(error).slice(0, 300);
-}

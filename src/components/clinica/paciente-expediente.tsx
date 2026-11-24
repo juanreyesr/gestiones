@@ -47,6 +47,7 @@ import { DocumentosPaciente } from "./documentos-paciente";
 import { PanelEvolucion } from "./panel-evolucion";
 import { BitacoraCitas } from "./bitacora-citas";
 import { PlanTratamiento } from "./plan-tratamiento";
+import { PlanIAPaciente } from "./plan-ia";
 import { SesionActiva } from "./sesion-activa";
 import { SesionDetalle } from "./sesion-detalle";
 import { SesionEditor } from "./sesion-editor";
@@ -513,6 +514,7 @@ export function PacienteExpediente({
             proximaCita={proximaCita}
             sesiones={sesiones}
           />
+          <PlanIAPaciente compromisos={compromisos} onCambio={() => void cargar()} paciente={paciente} sesiones={sesiones} />
           <PlanTratamiento onCambio={() => void cargar()} sesiones={sesiones} />
           <PanelEvolucion paciente={paciente} sesiones={sesiones} />
           <EvaluacionesPaciente paciente={paciente} />
