@@ -34,6 +34,10 @@ export const TABLAS_RESPALDO: { grupo: string; tablas: string[] }[] = [
     ],
   },
   {
+    grupo: "CAS UPANA",
+    tablas: ["gestionesjj_cas_aspirantes"],
+  },
+  {
     grupo: "Aula virtual y docencia",
     tablas: [
       "gestionesjj_cursos",
