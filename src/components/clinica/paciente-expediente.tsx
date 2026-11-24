@@ -518,7 +518,7 @@ export function PacienteExpediente({
             proximaCita={proximaCita}
             sesiones={sesiones}
           />
-          <MetasPaciente pacienteId={paciente.id} />
+          <MetasPaciente paciente={paciente} />
           <PlanIAPaciente compromisos={compromisos} onCambio={() => void cargar()} paciente={paciente} sesiones={sesiones} />
           <PlanTratamiento onCambio={() => void cargar()} sesiones={sesiones} />
           <PanelEvolucion paciente={paciente} sesiones={sesiones} />

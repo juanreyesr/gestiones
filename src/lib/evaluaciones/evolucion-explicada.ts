@@ -16,7 +16,7 @@ import { MODULOS_EAPI, validarEapi } from "./eapi/codigo";
 import { DASS21, DOCS, GAD7, PTQ } from "./eapi/escalas";
 import type { EvaluacionRespuestaRow } from "./evaluaciones";
 import { CAMBIO_FIABLE, evolucionDelPaciente, type BandaSerie, type SerieEvolucion } from "./evolucion-paciente";
-import type { InformePaciente, OpcionesInforme, ResultadoPaciente } from "./informe-paciente";
+import type { InformePaciente, MetasInformePaciente, OpcionesInforme, ResultadoPaciente } from "./informe-paciente";
 import { MCEA_CRISIS, INS } from "./mcea/contenido";
 import { datosMceaGuardados } from "./mcea/codigo";
 import { A } from "./mcea/motor";
@@ -186,6 +186,7 @@ export const respuestaTexto = (p: Pregunta) => `«${corto(p.texto)}» (${p.antes
 // ============================================================
 
 export const AREAS_INFORME_AVANCE = [
+  { id: "metas", nombre: "El avance de sus metas" },
   { id: "mejoras", nombre: "Lo que mejoró" },
   { id: "empeoran", nombre: "Áreas para prestar especial atención en la próxima sesión" },
   { id: "iguales", nombre: "Lo que se mantiene parecido" },
@@ -193,7 +194,7 @@ export const AREAS_INFORME_AVANCE = [
 
 export function opcionesPorDefectoAvance(cambios: CambioArea[]): OpcionesInforme {
   const hayAumentoClaro = cambios.some((c) => c.tendencia === "empeora" && c.claro);
-  return { incluir: { mejoras: true, empeoran: true, iguales: true }, mostrarPuntuaciones: false, incluirAyuda: hayAumentoClaro };
+  return { incluir: { metas: true, mejoras: true, empeoran: true, iguales: true }, mostrarPuntuaciones: false, incluirAyuda: hayAumentoClaro };
 }
 
 const NIVEL_PACIENTE: Record<NivelSimple, string> = { bajo: "bajo", intermedio: "intermedio", alto: "alto" };
@@ -248,10 +249,29 @@ function tarjeta(c: CambioArea, opciones: OpcionesInforme): ResultadoPaciente {
 export function informeAvancePaciente(
   cambios: CambioArea[],
   opciones: OpcionesInforme,
-  extra: { paciente: string; notas: string; profesional: string }
+  extra: { paciente: string; notas: string; profesional: string; metas?: MetasInformePaciente }
 ): InformePaciente {
   const g = agruparCambios(cambios);
   const incl = (id: string) => opciones.incluir[id] !== false;
+  const metas = incl("metas") ? extra.metas : undefined;
+  // Sin evaluaciones que comparar (solo metas): el informe es del avance de sus metas.
+  if (!cambios.length) {
+    return {
+      v: 1,
+      titulo: "Su avance · Sus metas",
+      paciente: extra.paciente,
+      // Fecha de su última calificación de avance (o hoy, si aún no hay).
+      fechaAplicacion: (metas?.items.flatMap((i) => i.puntos.map((p) => p.fecha)).sort().at(-1)) ?? new Date().toISOString().slice(0, 10),
+      emitido: new Date().toISOString(),
+      profesional: extra.profesional,
+      intro: "Este es un resumen de cómo va avanzando en las metas que nos propusimos juntos.",
+      metas,
+      resultados: [],
+      notas: extra.notas.trim(),
+      ayuda: opciones.incluirAyuda ? [...MCEA_CRISIS] : null,
+      aviso: "Este informe resume su propia calificación de avance en cada meta. No es un diagnóstico: lo importante es la tendencia, y lo conversaremos juntos en sesión.",
+    };
+  }
   const resultados = [...(incl("mejoras") ? g.mejoras : []), ...(incl("empeoran") ? g.empeoran : []), ...(incl("iguales") ? g.iguales : [])].map((c) => tarjeta(c, opciones));
   const ultima = cambios.map((c) => c.ahora.fecha).sort().at(-1) ?? new Date().toISOString().slice(0, 10);
   const resumen =

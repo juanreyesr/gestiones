@@ -4,23 +4,14 @@ import { ArrowDownRight, ArrowUpRight, FileHeart, Minus } from "lucide-react";
 import { useState } from "react";
 import type { PacienteRow } from "@/lib/clinica/types";
 import {
-  fetchInformeAvance,
-  guardarInformeAvance,
-  publicarInformeAvance,
-  retirarInformeAvance,
-} from "@/lib/evaluaciones/evaluaciones";
-import {
   agruparCambios,
-  AREAS_INFORME_AVANCE,
   fraseCambio,
-  informeAvancePaciente,
   motivos,
-  opcionesPorDefectoAvance,
   respuestaTexto,
   type CambioArea,
   type Pregunta,
 } from "@/lib/evaluaciones/evolucion-explicada";
-import { InformePacientePanel, PROFESIONAL_INFORME, type AlmacenInforme } from "./informe-paciente-panel";
+import { InformeAvance } from "./informe-avance";
 import { BTN_GHOST } from "./ui";
 
 function ListaPreguntas({ titulo, preguntas }: { titulo: string; preguntas: Pregunta[] }) {
@@ -87,12 +78,6 @@ export function CambiosRecientes({ cambios, paciente, sesiones }: { cambios: Cam
   const [verInforme, setVerInforme] = useState(false);
   if (!cambios.length) return null;
   const g = agruparCambios(cambios);
-  const almacen: AlmacenInforme = {
-    cargar: () => fetchInformeAvance(paciente.id),
-    guardar: (c) => guardarInformeAvance(paciente.id, c),
-    publicar: (contenido, token) => publicarInformeAvance(paciente.id, contenido, token),
-    retirar: () => retirarInformeAvance(paciente.id),
-  };
   return (
     <div className="grid gap-3" data-testid="cambios-recientes">
       <div className="flex flex-wrap items-center justify-between gap-2">
@@ -129,19 +114,7 @@ export function CambiosRecientes({ cambios, paciente, sesiones }: { cambios: Cam
         medicación o de rutina).
       </p>
 
-      {verInforme ? (
-        <InformePacientePanel
-          almacen={almacen}
-          areas={AREAS_INFORME_AVANCE}
-          construir={(o, notas) => informeAvancePaciente(cambios, o, { paciente: paciente.nombre, notas, profesional: PROFESIONAL_INFORME })}
-          descripcion="Versión simplificada para el paciente: primero lo que mejoró y por qué, luego lo que aumentó y lo que se mantiene. No incluye puntajes (salvo que los actives), preguntas sensibles (ítem 9 del PHQ-9, desesperanza del DASS-21), alertas, hipótesis ni notas privadas."
-          opcionesPorDefecto={opcionesPorDefectoAvance(cambios)}
-          paciente={paciente}
-          placeholderNotas="Por ejemplo: qué ha hecho bien, qué vamos a reforzar y qué veremos en la próxima sesión."
-          respuestaId={`avance-${paciente.id}`}
-          titulo="Informe de avance para el paciente"
-        />
-      ) : null}
+      {verInforme ? <InformeAvance cambios={cambios} paciente={paciente} /> : null}
     </div>
   );
 }
