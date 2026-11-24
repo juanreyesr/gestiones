@@ -60,6 +60,7 @@ export const AREAS = [
   { id: "clinica", nombre: "Clínica", descripcion: "Pacientes, historias clínicas, sesiones, agenda y citas en línea." },
   { id: "coordinacion", nombre: "Coordinación", descripcion: "Evaluación docente, rendimiento académico y mejora continua." },
   { id: "cursos", nombre: "Cursos", descripcion: "Planificación, materiales, avances, tareas y desempeño por curso." },
+  { id: "tests", nombre: "Tests en línea", descripcion: "Plataforma pública de tests psicométricos: personas registradas, ventas, alertas y contactos." },
   { id: "cas", nombre: "CAS UPANA", descripcion: "Centro de Asistencia Social: estudiantes aspirantes a práctica de consejería (4.º) y profesional (5.º)." },
   { id: "caeduc", nombre: "CAEDUC", descripcion: "Procesos, reportes, acompañamiento y acciones institucionales." },
   { id: "recursos", nombre: "Recursos", descripcion: "Encuestas y actividades interactivas en vivo con QR o enlace." },
