@@ -4,7 +4,7 @@ import { AlertTriangle, BookmarkPlus, Check, ClipboardCheck, Copy, ListChecks, S
 import { useState } from "react";
 import { horaGuatemala, saludoPorHora } from "@/lib/control-revision-mensajes";
 import { contextoPlan, esFichaRecurso, generarPlanIA, nombreRecurso, type PlanIA } from "@/lib/clinica/plan-ia";
-import { avisarCambioMetas, crearMeta } from "@/lib/clinica/metas";
+import { avisarCambioMetas, crearMeta, fetchMetas } from "@/lib/clinica/metas";
 import { enlaceWhatsApp } from "@/lib/clinica/recordatorio";
 import { agregarTareaASesionReciente } from "@/lib/clinica/sesiones";
 import type { CompromisoRow, PacienteRow, SesionRow } from "@/lib/clinica/types";
@@ -68,13 +68,18 @@ export function PlanIAPaciente({
   const generar = async () => {
     setCargando(true);
     setError("");
-    const { respuestas, evaluaciones, error: errEval } = await fetchEvaluacionesDePaciente(paciente.id);
+    // Metas guardadas: se piden aquí (no se usa la lista del panel, que podría no haber cargado aún).
+    const [{ respuestas, evaluaciones, error: errEval }, metasActuales] = await Promise.all([fetchEvaluacionesDePaciente(paciente.id), fetchMetas(paciente.id)]);
+    if (metasActuales.error && !metasActuales.faltaMigracion) {
+      setCargando(false);
+      return setError(`No se pudieron leer las metas del paciente (${metasActuales.error}). Intenta de nuevo.`);
+    }
     // Sin evaluaciones completas el plan podría repetir fichas o pasar por alto alertas: mejor reintentar.
     if (errEval) {
       setCargando(false);
       return setError(`No se pudieron leer las evaluaciones del paciente (${errEval}). Intenta de nuevo.`);
     }
-    const contexto = contextoPlan({ paciente, sesiones, compromisos, respuestas, evaluaciones, metas: metasGuardadas, enfoque });
+    const contexto = contextoPlan({ paciente, sesiones, compromisos, respuestas, evaluaciones, metas: metasActuales.data, enfoque });
     const r = await generarPlanIA(contexto);
     setCargando(false);
     if (r.noConfigurado) return setError("La IA no está configurada (falta ANTHROPIC_API_KEY en Vercel).");

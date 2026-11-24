@@ -108,7 +108,8 @@ export function contextoPlan(input: {
       antecedentesPsicologicos: corta(p.antecedentesPsicologicos, 800),
     },
     metasFicha: metasDeFicha(respuestas),
-    metasSeguimiento: (input.metas ?? []).slice(0, 10).map((m) => ({
+    // Primero las activas: el historial de metas cerradas no debe desplazar a las que se trabajan.
+    metasSeguimiento: [...(input.metas ?? []).filter((m) => m.estado === "activa"), ...(input.metas ?? []).filter((m) => m.estado !== "activa")].slice(0, 10).map((m) => ({
       meta: m.meta,
       indicador: m.indicador,
       plazo: m.plazo,
