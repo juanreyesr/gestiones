@@ -53,17 +53,42 @@ export function contextoPlan(input: {
   const finalizadas = sesiones.filter((s) => s.estado === "finalizada");
   const todos = finalizadas.flatMap((s) => s.compromisos);
 
-  // Dos aplicaciones más recientes de cada instrumento (para ver evolución), sin fichas.
-  const porInstrumento = new Map<string, EvaluacionRespuestaRow[]>();
-  for (const r of [...respuestas].sort((a, b) => (b.fecha ?? b.createdAt).localeCompare(a.fecha ?? a.createdAt))) {
+  // Quién respondió, sin nombres: la relación («Mamá») o «respondiente N» (B-Breve admite varios cuidadores).
+  const anonimos = new Map<string, string>();
+  const respondienteDe = (r: EvaluacionRespuestaRow) => {
+    const rel = r.respondienteRelacion?.trim();
+    if (rel) return rel.slice(0, 40);
+    const clave = r.respondienteNombre.trim().toLowerCase();
+    if (!anonimos.has(clave)) anonimos.set(clave, `respondiente ${anonimos.size + 1}`);
+    return anonimos.get(clave)!;
+  };
+  const ordenadas = [...respuestas].sort((a, b) => (b.fecha ?? b.createdAt).localeCompare(a.fecha ?? a.createdAt));
+
+  // Dos aplicaciones más recientes de cada instrumento POR RESPONDIENTE (evolución comparable), sin fichas.
+  const porSerie = new Map<string, EvaluacionRespuestaRow[]>();
+  for (const r of ordenadas) {
     if (r.instrumento === "ficha") continue;
-    const lista = porInstrumento.get(r.instrumento) ?? [];
-    if (lista.length < 2) porInstrumento.set(r.instrumento, [...lista, r]);
+    const clave = `${r.instrumento}|${respondienteDe(r)}`;
+    const lista = porSerie.get(clave) ?? [];
+    if (lista.length < 2) porSerie.set(clave, [...lista, r]);
   }
-  const evals = [...porInstrumento.values()].flat().map((r) => {
+  const evals = [...porSerie.values()].flat().map((r) => {
     const res = resumenRespuesta(r);
-    return { instrumento: `${r.instrumento} (${res.instrumento})`, fecha: (r.fecha ?? r.createdAt).slice(0, 10), puntuaciones: res.puntuaciones.slice(0, 12), alertas: res.alertas.slice(0, 6) };
+    return {
+      instrumento: `${r.instrumento} (${res.instrumento})`,
+      respondiente: respondienteDe(r),
+      fecha: (r.fecha ?? r.createdAt).slice(0, 10),
+      puntuaciones: res.puntuaciones.slice(0, 12),
+      alertas: res.alertas.slice(0, 6),
+    };
   });
+
+  // Señales de riesgo detectadas en el texto libre de las fichas (no se califican, pero no deben perderse).
+  const alertasFichas = ordenadas
+    .filter((r) => r.instrumento === "ficha")
+    .map((r) => ({ ficha: String((r.datos as { ficha?: unknown } | null)?.ficha ?? ""), fecha: (r.fecha ?? r.createdAt).slice(0, 10), alertas: resumenRespuesta(r).alertas.slice(0, 6) }))
+    .filter((x) => x.alertas.length > 0)
+    .slice(0, 10);
 
   const enlaces = evaluaciones
     .filter((e) => e.estado === "abierta")
@@ -97,6 +122,7 @@ export function contextoPlan(input: {
       .slice(0, 20)
       .map((x) => ({ nombre: x.nombre, tipo: x.tipo, estado: x.estado ?? "pendiente" })),
     evaluaciones: evals,
+    alertasFichas,
     fichas: estadosFichas(respuestas, [])
       .filter((e) => e.hecha)
       .map((e) => ({ id: e.ficha, estado: e.etiqueta, fecha: e.fecha })),

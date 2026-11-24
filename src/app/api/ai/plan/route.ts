@@ -78,7 +78,8 @@ Reglas:
 - Recursos: elige del catálogo lo más útil para la etapa actual. No recomiendes fichas ya respondidas ni enlaces que ya están abiertos, salvo como reevaluación justificada. Si no hay evaluación de base (EAPI o MCEA) o la última tiene más de 4 semanas, considera aplicarla («reevaluacion»). Respeta la edad mínima y quién responde cada instrumento. Si no hay ficha 1.1, prioriza la 1.1.
 - Tareas de la semana: pequeñas, específicas (qué, cuándo, cuántas veces) y ligadas a una meta; incluye cómo registrar el avance (p. ej. puntuar de 0 a 10).
 - Mensaje al paciente: de tú, cálido, sin tecnicismos ni resultados de pruebas, máximo 900 caracteres. Estructura: 1) en qué estamos trabajando (las metas en palabras sencillas), 2) qué hacer esta semana (lista con «•»), 3) cómo anotar su avance, 4) que puede escribir si algo se complica. Sin saludo inicial ni nombre (se agregan aparte). Si hay señales de riesgo, no las menciones en el mensaje: van en «alertas».
-- Alertas: si hay ideación suicida, autolesión, riesgo o deterioro fiable en los datos, indícalo primero y con claridad.
+- Evaluaciones: cada registro indica quién respondió; compara la evolución solo dentro del mismo respondiente. Diferencias entre respondientes distintos (p. ej. dos cuidadores) son discrepancias, no cambios en el tiempo.
+- Alertas: si hay ideación suicida, autolesión, riesgo o deterioro fiable en los datos (incluidas las «alertasFichas» del texto libre de las fichas), indícalo primero y con claridad.
 - Es una propuesta para el criterio del psicólogo, que decide qué aplicar.`;
 
 const texto = (v: unknown, max: number) => (typeof v === "string" ? v.slice(0, max) : "");

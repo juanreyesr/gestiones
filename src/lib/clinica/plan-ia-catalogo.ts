@@ -70,7 +70,10 @@ export type ContextoPlan = {
   sesiones: { fecha: string; tema: string | null; resumen: string | null; seguimiento: string | null }[];
   compromisos: { pendientes: string[]; cumplidos: number; total: number };
   propuestas: { nombre: string; tipo: string; estado: string }[];
-  evaluaciones: { instrumento: string; fecha: string; puntuaciones: string[]; alertas: string[] }[];
+  /** Cada serie es de un mismo respondiente (relación o «respondiente N», nunca el nombre). */
+  evaluaciones: { instrumento: string; respondiente: string; fecha: string; puntuaciones: string[]; alertas: string[] }[];
+  /** Posibles señales de riesgo en el texto libre de fichas respondidas. */
+  alertasFichas: { ficha: string; fecha: string; alertas: string[] }[];
   fichas: { id: string; estado: string; fecha: string | null }[];
   enlacesAbiertos: string[];
   enfoque: string;

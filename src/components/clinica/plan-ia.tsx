@@ -64,7 +64,12 @@ export function PlanIAPaciente({
   const generar = async () => {
     setCargando(true);
     setError("");
-    const { respuestas, evaluaciones } = await fetchEvaluacionesDePaciente(paciente.id);
+    const { respuestas, evaluaciones, error: errEval } = await fetchEvaluacionesDePaciente(paciente.id);
+    // Sin evaluaciones completas el plan podría repetir fichas o pasar por alto alertas: mejor reintentar.
+    if (errEval) {
+      setCargando(false);
+      return setError(`No se pudieron leer las evaluaciones del paciente (${errEval}). Intenta de nuevo.`);
+    }
     const contexto = contextoPlan({ paciente, sesiones, compromisos, respuestas, evaluaciones, enfoque });
     const r = await generarPlanIA(contexto);
     setCargando(false);
