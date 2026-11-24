@@ -5,6 +5,7 @@ import {
   BarChart3,
   BookOpenCheck,
   Building2,
+  HandHeart,
   CalendarClock,
   CalendarCheck2,
   CalendarDays,
@@ -82,6 +83,7 @@ import { EmailDraftModal } from "./email-draft-modal";
 import { EncuestasView } from "./encuestas/encuestas-view";
 import { EntrevistaKiosk } from "./entrevista-kiosk";
 import { IglesiaView } from "./iglesia/iglesia-view";
+import { CasView } from "./cas/cas-view";
 import { EditorPagina } from "./sitio/editor-pagina";
 import { PendientesView } from "./pendientes/pendientes-view";
 import { InformeDocenteView } from "./informe-docente-view";
@@ -118,6 +120,7 @@ const areaIcons: Record<AreaId, React.ComponentType<{ className?: string }>> = {
   clinica: HeartPulse,
   coordinacion: GraduationCap,
   cursos: BookOpenCheck,
+  cas: HandHeart,
   caeduc: Building2,
   recursos: Radio,
   pendientes: ListChecks,
@@ -1021,6 +1024,8 @@ export function GestionesApp() {
                     <div className="border border-white/10 bg-slate-950/58 p-4 backdrop-blur-xl sm:p-5">
                       <IglesiaView />
                     </div>
+                  ) : activeArea === "cas" ? (
+                    <CasView />
                   ) : activeArea === "pendientes" ? (
                     <div className="border border-white/10 bg-slate-950/58 p-4 backdrop-blur-xl sm:p-5">
                       <PendientesView />
@@ -1377,6 +1382,7 @@ const areaAcentos: Record<AreaId, { icono: string; borde: string; resplandor: st
   clinica: { icono: "text-rose-200", borde: "border-rose-300/20", resplandor: "bg-rose-300/12" },
   coordinacion: { icono: "text-emerald-200", borde: "border-emerald-300/20", resplandor: "bg-emerald-300/12" },
   cursos: { icono: "text-sky-200", borde: "border-sky-300/20", resplandor: "bg-sky-300/12" },
+  cas: { icono: "text-blue-200", borde: "border-blue-300/20", resplandor: "bg-blue-300/12" },
   caeduc: { icono: "text-amber-200", borde: "border-amber-300/20", resplandor: "bg-amber-300/12" },
   recursos: { icono: "text-cyan-200", borde: "border-cyan-300/20", resplandor: "bg-cyan-300/12" },
   pendientes: { icono: "text-lime-200", borde: "border-lime-300/20", resplandor: "bg-lime-300/12" },

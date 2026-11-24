@@ -10,7 +10,9 @@ así que las migraciones se acumulan aquí y se aplican **juntas desde la comput
   computadora y aprobar cada ventana de Supabase.
 
 ## Pendientes
-Ninguna por ahora.
+| Migración | Qué hace | Si falta |
+| --- | --- | --- |
+| `068_gestionesjj_cas_aspirantes.sql` | Tabla de estudiantes aspirantes del CAS UPANA (nombre, ID/carné único, práctica 4.º o 5.º, teléfono, correos, estado y notas), RLS solo del propietario. | El área «CAS UPANA» muestra el aviso de migración pendiente y no deja registrar. |
 
 ## Aplicadas
 | Migración | Fecha | Verificación |
