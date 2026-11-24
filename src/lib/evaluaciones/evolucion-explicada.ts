@@ -295,6 +295,7 @@ export function informeAvancePaciente(
       : g.empeoran.length
         ? { titulo: "Para prestar especial atención en nuestra próxima sesión", texto: g.empeoran.map((c) => c.area).join(" · ") }
         : undefined,
+    metas,
     resultados,
     notas: extra.notas.trim(),
     ayuda: opciones.incluirAyuda ? [...MCEA_CRISIS] : null,
