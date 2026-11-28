@@ -10,7 +10,9 @@ así que las migraciones se acumulan aquí y se aplican **juntas desde la comput
   computadora y aprobar cada ventana de Supabase.
 
 ## Pendientes
-Ninguna por ahora.
+| Migración | Qué hace | Si falta |
+| --- | --- | --- |
+| `074_gestionesjj_cas_orden_inscripcion.sql` | Número fijo de orden de inscripción para los aspirantes del CAS UPANA (las existentes, numeradas por fecha y hora de registro; las nuevas, con una secuencia). Prioridad al primero que se inscribió. | `/admin` calcula el orden al vuelo con la fecha y hora de registro (mismo resultado, pero el número de alguien puede cambiar si se borra a otro anterior). |
 
 ## Aplicadas
 | Migración | Fecha | Verificación |

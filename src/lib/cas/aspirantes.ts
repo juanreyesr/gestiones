@@ -60,6 +60,12 @@ export type Aspirante = {
   /** Uno de CAMPUS o el texto escrito en «Otro». */
   campus: string | null;
   consentimiento_at: string | null;
+  /**
+   * Orden de inscripción (1 = el primero en inscribirse). Lo asigna la base al
+   * guardar (migración 074) y no se edita. Sin la migración llega undefined y se
+   * calcula con numerarOrden().
+   */
+  orden_inscripcion?: number | null;
   created_at: string;
   updated_at: string;
 };
@@ -163,13 +169,40 @@ export function enlaceWhatsApp(telefono: string | null) {
   return `https://wa.me/${digitos.length === 8 ? `502${digitos}` : digitos}`;
 }
 
-export async function exportarAspirantesExcel(filas: Aspirante[]) {
+/**
+ * Número de orden de inscripción de cada aspirante (id → número). Usa el número
+ * fijo de la base; si aún no existe (migración 074 pendiente), lo calcula por la
+ * fecha y hora de registro, que es el mismo criterio: primero en inscribirse,
+ * número menor.
+ */
+export function numerarOrden(lista: Aspirante[]): Map<string, number> {
+  const porRegistro = [...lista].sort(
+    (a, b) => a.created_at.localeCompare(b.created_at) || a.id.localeCompare(b.id),
+  );
+  const mapa = new Map<string, number>();
+  porRegistro.forEach((a, i) => mapa.set(a.id, a.orden_inscripcion ?? i + 1));
+  return mapa;
+}
+
+/** «28 nov 2026, 7:51 a. m.» en hora de Guatemala. */
+export function fechaHoraInscripcion(iso: string) {
+  return new Intl.DateTimeFormat("es-GT", {
+    timeZone: "America/Guatemala",
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  }).format(new Date(iso));
+}
+
+export async function exportarAspirantesExcel(filas: Aspirante[], orden: Map<string, number>) {
   const ExcelJS = (await import("exceljs")).default;
   const libro = new ExcelJS.Workbook();
   const hoja = libro.addWorksheet("Aspirantes CAS");
 
   hoja.columns = [
-    { header: "No.", key: "n", width: 6 },
+    { header: "Orden de inscripción", key: "n", width: 11 },
     { header: "Nombre completo", key: "nombre", width: 36 },
     { header: "ID (carné)", key: "carne", width: 14 },
     { header: "Práctica", key: "practica", width: 34 },
@@ -181,13 +214,15 @@ export async function exportarAspirantesExcel(filas: Aspirante[]) {
     { header: "Disponibilidad", key: "disp", width: 40 },
     { header: "Notas", key: "notas", width: 40 },
     { header: "Origen", key: "origen", width: 12 },
-    { header: "Registrado", key: "fecha", width: 12 },
+    { header: "Fecha y hora de inscripción", key: "fecha", width: 24 },
   ];
 
-  filas.forEach((a, i) => {
+  // Siempre por orden de inscripción, para ver de un vistazo quién tiene prioridad.
+  const ordenadas = [...filas].sort((a, b) => (orden.get(a.id) ?? 0) - (orden.get(b.id) ?? 0));
+  ordenadas.forEach((a) => {
     const p = practicaDe(a.practica);
     hoja.addRow({
-      n: i + 1,
+      n: orden.get(a.id) ?? "",
       nombre: a.nombre_completo,
       carne: a.carne,
       practica: `${p.nombre} (${p.detalle})`,
@@ -199,7 +234,7 @@ export async function exportarAspirantesExcel(filas: Aspirante[]) {
       disp: a.disponibilidad ?? "",
       notas: a.notas ?? "",
       origen: a.origen === "formulario" ? "Formulario" : "Manual",
-      fecha: a.created_at.slice(0, 10),
+      fecha: fechaHoraInscripcion(a.created_at),
     });
   });
 
