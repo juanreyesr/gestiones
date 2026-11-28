@@ -1,18 +1,10 @@
 "use client";
 
-import { CheckCircle2, Loader2, Lock, ShieldCheck } from "lucide-react";
-import { Roboto } from "next/font/google";
+import { CheckCircle2, Loader2, Lock, PencilLine, ShieldCheck } from "lucide-react";
+import Link from "next/link";
 import { useState } from "react";
 import { CAMPUS, PRACTICAS, type PracticaId } from "@/lib/cas/aspirantes";
-
-// Identidad visual de UPANA (www.upana.edu.gt): azul #00247B, verde #9FD140, Roboto.
-const roboto = Roboto({ subsets: ["latin"], weight: ["400", "500", "700"], display: "swap" });
-
-const AZUL = "#00247B";
-const VERDE = "#9FD140";
-const CAMPO =
-  "w-full rounded-md border border-slate-300 bg-white px-3 py-2.5 text-base text-slate-900 outline-none transition focus:border-[#00247B] focus:ring-2 focus:ring-[#00247B]/15 sm:text-sm";
-const CORREO_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
+import { AZUL, CAMPO, CORREO_RE, Campo, MarcoCas } from "./marco-cas";
 
 type Estado = "editando" | "enviando" | "ok" | "duplicado" | "cerrado";
 
@@ -33,6 +25,7 @@ export function PreinscripcionCas({ abierto, mensajeCerrado }: { abierto: boolea
   const [consentimiento, setConsentimiento] = useState(false);
   const [sitio, setSitio] = useState(""); // campo trampa para bots
   const [estado, setEstado] = useState<Estado>(abierto ? "editando" : "cerrado");
+  const [numero, setNumero] = useState<number | null>(null);
   const [error, setError] = useState("");
 
   const validar = () => {
@@ -79,7 +72,11 @@ export function PreinscripcionCas({ abierto, mensajeCerrado }: { abierto: boolea
         setError("Demasiados intentos seguidos. Espera unos minutos y vuelve a intentarlo.");
         return;
       }
-      const { estado: resultado } = (await res.json().catch(() => ({ estado: "error" }))) as { estado: string };
+      const { estado: resultado, numero: asignado } = (await res.json().catch(() => ({ estado: "error" }))) as {
+        estado: string;
+        numero?: number | null;
+      };
+      setNumero(typeof asignado === "number" ? asignado : null);
       if (resultado === "ok" || resultado === "duplicado" || resultado === "cerrado") {
         setEstado(resultado);
         window.scrollTo({ top: 0, behavior: "smooth" });
@@ -101,23 +98,7 @@ export function PreinscripcionCas({ abierto, mensajeCerrado }: { abierto: boolea
     correoInstitucional.includes("@") && !correoInstitucional.trim().toLowerCase().endsWith("upana.edu.gt");
 
   return (
-    <main className={`${roboto.className} min-h-screen bg-slate-100 text-slate-800`}>
-      <header style={{ backgroundColor: AZUL }}>
-        <div className="mx-auto flex max-w-3xl flex-wrap items-center gap-x-6 gap-y-3 px-4 py-6 sm:px-6">
-          {/* eslint-disable-next-line @next/next/no-img-element -- logo estático en /public */}
-          <img alt="Universidad Panamericana" className="h-12 w-auto sm:h-14" src="/cas/upana-logo-blanco.webp" />
-          <div className="hidden h-12 w-px bg-white/30 sm:block" />
-          <div>
-            <p className="text-[11px] font-bold uppercase tracking-[0.18em]" style={{ color: VERDE }}>
-              Centro de Asistencia Social · CAS
-            </p>
-            <h1 className="text-xl font-bold text-white sm:text-2xl">Preinscripción de práctica</h1>
-          </div>
-        </div>
-        <div className="h-1" style={{ backgroundColor: VERDE }} />
-      </header>
-
-      <div className="mx-auto max-w-3xl px-4 py-6 sm:px-6 sm:py-10">
+    <MarcoCas titulo="Preinscripción de práctica">
         {estado === "cerrado" ? (
           <section className="rounded-lg border border-slate-200 bg-white p-6 text-center shadow-sm sm:p-10">
             <Lock className="mx-auto h-12 w-12" style={{ color: AZUL }} />
@@ -134,20 +115,34 @@ export function PreinscripcionCas({ abierto, mensajeCerrado }: { abierto: boolea
             <h2 className="mt-4 text-2xl font-bold" style={{ color: AZUL }}>
               {estado === "ok" ? "¡Preinscripción recibida!" : "Ya estás preinscrito"}
             </h2>
-            <p className="mx-auto mt-3 max-w-md text-sm leading-6 text-slate-600">
+            {estado === "ok" && numero ? (
+              <div className="mx-auto mt-5 max-w-xs rounded-lg border-2 border-[#00247B]/15 bg-[#00247B]/5 px-4 py-3">
+                <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Tu número de inscripción</p>
+                <p className="text-4xl font-bold" style={{ color: AZUL }}>
+                  #{numero}
+                </p>
+                <p className="mt-1 text-xs leading-5 text-slate-500">
+                  Si dos estudiantes piden el mismo día y horario, tiene prioridad quien se inscribió primero.
+                </p>
+              </div>
+            ) : null}
+            <p className="mx-auto mt-4 max-w-md text-sm leading-6 text-slate-600">
               {estado === "ok"
-                ? "Gracias por tu interés en realizar tu práctica en el CAS. La coordinación te contactará por correo o teléfono cuando se definan los horarios y los siguientes pasos."
-                : "Ya existe una preinscripción con ese ID (carné). Si necesitas corregir algún dato, comunícate con la coordinación de la práctica."}
+                ? "Gracias por tu interés en realizar tu práctica en el CAS del Campus Chimaltenango. La coordinación te contactará por correo o teléfono cuando se definan los horarios y los siguientes pasos."
+                : "Ya existe una preinscripción con ese ID (carné). Si necesitas corregir algún dato, puedes hacerlo tú mismo con tu carné y tu correo institucional."}
             </p>
+            <EnlaceMisDatos />
           </section>
         ) : (
           <form className="grid gap-6" noValidate onSubmit={enviar}>
             <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
               <p className="text-sm leading-6 text-slate-600">
                 El <strong className="text-slate-800">Centro de Asistencia Social (CAS)</strong> de la Universidad
-                Panamericana recibirá a estudiantes de la Escuela de Ciencias Psicológicas para su práctica en
-                consejería familiar (4.º año) y su práctica profesional en psicología clínica (5.º año). Completa
-                este formulario para quedar en la lista de aspirantes; los horarios se comunicarán más adelante.
+                Panamericana, <strong className="text-slate-800">Campus Chimaltenango</strong>, recibirá a estudiantes de
+                la Escuela de Ciencias Psicológicas para su práctica en consejería familiar (4.º año) y su práctica
+                profesional en psicología clínica (5.º año). La práctica se realiza en Chimaltenango; puedes
+                preinscribirte aunque estudies en otro campus. Completa este formulario para quedar en la lista de
+                aspirantes; los horarios se comunicarán más adelante.
               </p>
             </section>
 
@@ -329,24 +324,23 @@ export function PreinscripcionCas({ abierto, mensajeCerrado }: { abierto: boolea
                 {estado === "enviando" ? "Enviando…" : "Enviar preinscripción"}
               </button>
             </div>
+            <div className="text-center">
+              <EnlaceMisDatos texto="¿Ya te preinscribiste? Consulta o corrige tus datos" />
+            </div>
           </form>
         )}
-
-        <footer className="mt-10 text-center text-xs text-slate-400">
-          Universidad Panamericana · Facultad de Humanidades · Escuela de Ciencias Psicológicas
-        </footer>
-      </div>
-    </main>
+    </MarcoCas>
   );
 }
 
-function Campo({ children, etiqueta, requerido }: { children: React.ReactNode; etiqueta: string; requerido?: boolean }) {
+function EnlaceMisDatos({ texto = "Consultar o corregir mis datos" }: { texto?: string }) {
   return (
-    <label className="grid gap-1.5">
-      <span className="text-sm font-semibold text-slate-700">
-        {etiqueta} {requerido ? <span className="text-red-600">*</span> : null}
-      </span>
-      {children}
-    </label>
+    <Link
+      className="mt-4 inline-flex items-center gap-1.5 text-sm font-semibold text-[#00247B] underline-offset-4 hover:underline"
+      href="/cas/mis-datos"
+    >
+      <PencilLine className="h-4 w-4" />
+      {texto}
+    </Link>
   );
 }

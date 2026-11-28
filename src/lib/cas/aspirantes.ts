@@ -66,6 +66,8 @@ export type Aspirante = {
    * calcula con numerarOrden().
    */
   orden_inscripcion?: number | null;
+  /** Última vez que el estudiante corrigió sus datos en /cas/mis-datos (migración 075). */
+  actualizado_por_estudiante_at?: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -182,6 +184,38 @@ export function numerarOrden(lista: Aspirante[]): Map<string, number> {
   const mapa = new Map<string, number>();
   porRegistro.forEach((a, i) => mapa.set(a.id, a.orden_inscripcion ?? i + 1));
   return mapa;
+}
+
+/**
+ * Posibles duplicados: aspirantes que comparten correo (institucional o
+ * personal), teléfono (últimos 8 dígitos) o nombre completo con otro registro.
+ * Detecta, por ejemplo, a quien se inscribió dos veces con el carné mal escrito.
+ * Devuelve id → ids de los otros registros con los que coincide.
+ */
+export function detectarDuplicados(lista: Aspirante[]): Map<string, string[]> {
+  const sinTildes = (t: string) => t.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/\s+/g, " ").trim();
+  const grupos = new Map<string, string[]>();
+  const agregar = (clave: string | null, id: string) => {
+    if (!clave) return;
+    grupos.set(clave, [...(grupos.get(clave) ?? []), id]);
+  };
+  for (const a of lista) {
+    const digitos = (a.telefono ?? "").replace(/\D/g, "");
+    agregar(a.correo_institucional ? `c:${a.correo_institucional.toLowerCase()}` : null, a.id);
+    agregar(a.correo_personal ? `c:${a.correo_personal.toLowerCase()}` : null, a.id);
+    agregar(digitos.length >= 8 ? `t:${digitos.slice(-8)}` : null, a.id);
+    agregar(a.nombre_completo ? `n:${sinTildes(a.nombre_completo)}` : null, a.id);
+  }
+  const resultado = new Map<string, string[]>();
+  for (const ids of grupos.values()) {
+    const unicos = [...new Set(ids)];
+    if (unicos.length < 2) continue;
+    for (const id of unicos) {
+      const otros = new Set([...(resultado.get(id) ?? []), ...unicos.filter((x) => x !== id)]);
+      resultado.set(id, [...otros]);
+    }
+  }
+  return resultado;
 }
 
 /** «28 nov 2026, 7:51 a. m.» en hora de Guatemala. */

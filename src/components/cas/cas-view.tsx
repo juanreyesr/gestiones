@@ -43,6 +43,7 @@ import {
   exportarAspirantesExcel,
   fechaHoraInscripcion,
   numerarOrden,
+  detectarDuplicados,
   fetchAspirantes,
   guardarAspirante,
   normalizarAspirante,
@@ -94,6 +95,7 @@ export function CasView() {
   const [filtroCampus, setFiltroCampus] = useState("todos"); // «todos», uno de CAMPUS, «otro» o «sin»
   // Por defecto, por orden de inscripción: quien se inscribió primero tiene prioridad.
   const [ordenarPor, setOrdenarPor] = useState<"inscripcion" | "recientes" | "nombre">("inscripcion");
+  const [soloDuplicados, setSoloDuplicados] = useState(false);
   const [editando, setEditando] = useState<{ id: string | null; datos: AspiranteInput } | null>(null);
   const [porBorrar, setPorBorrar] = useState<Aspirante | null>(null);
   const [borrando, setBorrando] = useState(false);
@@ -169,6 +171,7 @@ export function CasView() {
 
   // Número de orden de inscripción de cada aspirante (fijo: no depende de los filtros).
   const orden = useMemo(() => numerarOrden(aspirantes), [aspirantes]);
+  const duplicados = useMemo(() => detectarDuplicados(aspirantes), [aspirantes]);
 
   const filtrados = useMemo(() => {
     const q = plano(busqueda.trim());
@@ -176,6 +179,7 @@ export function CasView() {
       if (filtroPractica !== "todas" && a.practica !== filtroPractica) return false;
       if (filtroEstado !== "todos" && a.estado !== filtroEstado) return false;
       if (filtroCampus !== "todos" && claveCampus(a.campus) !== filtroCampus) return false;
+      if (soloDuplicados && !duplicados.has(a.id)) return false;
       if (!q) return true;
       return plano(
         [a.nombre_completo, a.carne, a.campus, a.telefono, a.correo_institucional, a.correo_personal].filter(Boolean).join(" "),
@@ -189,7 +193,7 @@ export function CasView() {
           ? n(b) - n(a)
           : n(a) - n(b),
     );
-  }, [aspirantes, busqueda, filtroPractica, filtroEstado, filtroCampus, orden, ordenarPor]);
+  }, [aspirantes, busqueda, filtroPractica, filtroEstado, filtroCampus, orden, ordenarPor, soloDuplicados, duplicados]);
 
   // Cuántos aspirantes hay por campus, para mostrarlo en el filtro.
   const porCampus = useMemo(() => {
@@ -295,11 +299,46 @@ export function CasView() {
           </button>
         ) : null}
 
+        {duplicados.size > 0 ? (
+          <button
+            className="rounded-md border border-amber-300 bg-amber-50 p-3 text-left text-sm text-amber-900 transition hover:bg-amber-100"
+            onClick={() => setSoloDuplicados((v) => !v)}
+            type="button"
+          >
+            {soloDuplicados ? (
+              <>Mostrando solo los posibles duplicados. Toca para ver a todos.</>
+            ) : (
+              <>
+                <strong>{duplicados.size}</strong> registros comparten correo, teléfono o nombre con otro: pueden ser
+                inscripciones repetidas. Toca para revisarlos.
+              </>
+            )}
+          </button>
+        ) : null}
+
         {/* Indicadores */}
         <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-          <Indicador etiqueta="Aspirantes" icono={Users} valor={conteo.total} />
-          <Indicador etiqueta="Consejería · 4.º año" icono={GraduationCap} valor={conteo.cuarto} />
-          <Indicador etiqueta="Profesional · 5.º año" icono={GraduationCap} valor={conteo.quinto} />
+          <Indicador
+            activo={filtroPractica === "todas"}
+            etiqueta="Aspirantes"
+            icono={Users}
+            onClick={() => setFiltroPractica("todas")}
+            valor={conteo.total}
+          />
+          <Indicador
+            activo={filtroPractica === "consejeria_cuarto"}
+            etiqueta="Consejería · 4.º año"
+            icono={GraduationCap}
+            onClick={() => setFiltroPractica("consejeria_cuarto")}
+            valor={conteo.cuarto}
+          />
+          <Indicador
+            activo={filtroPractica === "profesional_quinto"}
+            etiqueta="Profesional · 5.º año"
+            icono={GraduationCap}
+            onClick={() => setFiltroPractica("profesional_quinto")}
+            valor={conteo.quinto}
+          />
           <Indicador acento etiqueta="Aceptados" icono={UserCheck} valor={conteo.aceptados} />
         </div>
 
@@ -381,7 +420,10 @@ export function CasView() {
                   onClick={() => setFiltroPractica(id)}
                   type="button"
                 >
-                  {texto}
+                  {texto}{" "}
+                  <span className="font-normal text-slate-400">
+                    ({id === "todas" ? conteo.total : id === "consejeria_cuarto" ? conteo.cuarto : conteo.quinto})
+                  </span>
                 </button>
               ))}
             </div>
@@ -467,6 +509,7 @@ export function CasView() {
                         <p className="text-xs text-slate-500">
                           ID {a.carne}
                           {a.origen === "formulario" ? <OrigenFormulario /> : null}
+                          <MarcasRegistro aspirante={a} duplicadoDe={(duplicados.get(a.id) ?? []).map((id) => orden.get(id) ?? 0)} />
                         </p>
                         <p className="text-[11px] text-slate-400" title="Fecha y hora de inscripción (hora de Guatemala)">
                           Inscrito: {fechaHoraInscripcion(a.created_at)}
@@ -514,6 +557,7 @@ export function CasView() {
                       <p className="text-xs text-slate-500">
                         ID {a.carne}
                         {a.origen === "formulario" ? <OrigenFormulario /> : null}
+                          <MarcasRegistro aspirante={a} duplicadoDe={(duplicados.get(a.id) ?? []).map((id) => orden.get(id) ?? 0)} />
                       </p>
                       <p className="text-[11px] text-slate-400">Inscrito: {fechaHoraInscripcion(a.created_at)}</p>
                     </div>
@@ -611,17 +655,29 @@ const aInput = (a: Aspirante): AspiranteInput => ({
 
 function Indicador({
   acento,
+  activo,
   etiqueta,
   icono: Icono,
+  onClick,
   valor,
 }: {
   acento?: boolean;
+  activo?: boolean;
   etiqueta: string;
   icono: React.ComponentType<{ className?: string }>;
+  onClick?: () => void;
   valor: number;
 }) {
+  const Contenedor = onClick ? "button" : "div";
   return (
-    <div className="flex items-center gap-3 rounded-lg border border-slate-200 bg-white p-3 sm:p-4">
+    <Contenedor
+      className={`flex items-center gap-3 rounded-lg border bg-white p-3 text-left transition sm:p-4 ${
+        activo ? "border-[#00247B] ring-2 ring-[#00247B]/15" : "border-slate-200"
+      } ${onClick ? "hover:border-[#00247B]/60" : ""}`}
+      onClick={onClick}
+      title={onClick ? `Filtrar: ${etiqueta}` : undefined}
+      type={onClick ? "button" : undefined}
+    >
       <span
         className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md"
         style={{ backgroundColor: acento ? `${VERDE}33` : `${AZUL}14`, color: acento ? "#4D7A12" : AZUL }}
@@ -634,7 +690,7 @@ function Indicador({
         </p>
         <p className="mt-1 text-xs leading-tight text-slate-500">{etiqueta}</p>
       </div>
-    </div>
+    </Contenedor>
   );
 }
 
@@ -844,6 +900,30 @@ function NumeroOrden({ n }: { n: number | undefined }) {
     >
       #{n}
     </span>
+  );
+}
+
+/** Avisos por registro: posible duplicado y corrección hecha por el estudiante. */
+function MarcasRegistro({ aspirante: a, duplicadoDe }: { aspirante: Aspirante; duplicadoDe: number[] }) {
+  return (
+    <>
+      {duplicadoDe.length > 0 ? (
+        <span
+          className="ml-2 inline-flex rounded bg-amber-100 px-1.5 py-px text-[10px] font-bold uppercase tracking-wide text-amber-800"
+          title="Comparte correo, teléfono o nombre con otro registro"
+        >
+          ¿Duplicado de {duplicadoDe.sort((x, y) => x - y).map((n) => `#${n}`).join(", ")}?
+        </span>
+      ) : null}
+      {a.actualizado_por_estudiante_at ? (
+        <span
+          className="ml-2 inline-flex rounded bg-sky-100 px-1.5 py-px text-[10px] font-bold uppercase tracking-wide text-sky-800"
+          title={`El estudiante corrigió sus datos el ${fechaHoraInscripcion(a.actualizado_por_estudiante_at)}`}
+        >
+          Actualizó sus datos
+        </span>
+      ) : null}
+    </>
   );
 }
 
