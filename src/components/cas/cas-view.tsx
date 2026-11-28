@@ -10,6 +10,7 @@ import {
   Pencil,
   Phone,
   Plus,
+  RefreshCw,
   QrCode,
   Search,
   Trash2,
@@ -19,7 +20,7 @@ import {
 } from "lucide-react";
 import { Roboto } from "next/font/google";
 import QRCode from "qrcode";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { ModalPortal } from "@/components/modal-portal";
 import {
@@ -95,6 +96,12 @@ export function CasView() {
   const [aviso, setAviso] = useState("");
   const [qr, setQr] = useState<{ url: string; imagen: string } | null>(null);
 
+  const [actualizando, setActualizando] = useState(false);
+  const [ultimaActualizacion, setUltimaActualizacion] = useState<Date | null>(null);
+  // Ids que llegaron en la última actualización: se resaltan hasta la siguiente.
+  const [nuevosIds, setNuevosIds] = useState<Set<string>>(new Set());
+  const idsConocidos = useRef<Set<string> | null>(null);
+
   const cargar = useCallback(async () => {
     setCargando(true);
     const res = await fetchAspirantes();
@@ -102,7 +109,48 @@ export function CasView() {
     setError(res.error ?? "");
     setFaltaTabla(res.faltaTabla);
     setCargando(false);
+    idsConocidos.current = new Set(res.data.map((a) => a.id));
+    setUltimaActualizacion(new Date());
   }, []);
+
+  /**
+   * Actualiza la lista sin vaciar la pantalla (no muestra «Cargando…») y avisa
+   * cuántas preinscripciones nuevas llegaron desde la última vez.
+   */
+  const actualizar = useCallback(async (silencioso = false) => {
+    setActualizando(true);
+    const res = await fetchAspirantes();
+    setActualizando(false);
+    if (res.error) {
+      if (!silencioso) setError(res.error);
+      return;
+    }
+    const conocidos = idsConocidos.current ?? new Set<string>();
+    const nuevos = res.data.filter((a) => !conocidos.has(a.id)).map((a) => a.id);
+    idsConocidos.current = new Set(res.data.map((a) => a.id));
+    setAspirantes(res.data);
+    setError("");
+    setFaltaTabla(false);
+    setUltimaActualizacion(new Date());
+    if (nuevos.length > 0) {
+      setNuevosIds(new Set(nuevos));
+      setAviso(
+        nuevos.length === 1 ? "1 preinscripción nueva (resaltada en verde)." : `${nuevos.length} preinscripciones nuevas (resaltadas en verde).`,
+      );
+    } else if (!silencioso) {
+      setNuevosIds(new Set());
+      setAviso("Lista actualizada: no hay preinscripciones nuevas.");
+    }
+  }, []);
+
+  // Al volver a esta pestaña o a la app, se actualiza solo (sin avisos si no hay nada nuevo).
+  useEffect(() => {
+    const alVolver = () => {
+      if (document.visibilityState === "visible" && idsConocidos.current) void actualizar(true);
+    };
+    document.addEventListener("visibilitychange", alVolver);
+    return () => document.removeEventListener("visibilitychange", alVolver);
+  }, [actualizar]);
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- carga inicial del módulo
@@ -281,6 +329,16 @@ export function CasView() {
               {porCampus.sin ? <option value="sin">Sin campus ({porCampus.sin})</option> : null}
             </select>
             <button
+              className={`${BTN_BORDE} w-full sm:w-auto`}
+              disabled={actualizando || cargando}
+              onClick={() => void actualizar()}
+              title="Traer las preinscripciones nuevas sin recargar la página"
+              type="button"
+            >
+              <RefreshCw className={`h-4 w-4 ${actualizando ? "animate-spin" : ""}`} />
+              {actualizando ? "Actualizando…" : "Actualizar"}
+            </button>
+            <button
               className={`${BTN_AZUL} w-full sm:w-auto`}
               disabled={faltaTabla}
               onClick={() => setEditando({ id: null, datos: { ...VACIO } })}
@@ -352,6 +410,9 @@ export function CasView() {
           <>
             <p className="-mb-2 text-xs text-slate-500">
               Mostrando {filtrados.length} de {aspirantes.length}
+              {ultimaActualizacion
+                ? ` · actualizado a las ${ultimaActualizacion.toLocaleTimeString("es-GT", { hour: "numeric", minute: "2-digit" })}`
+                : ""}
             </p>
 
             {/* Escritorio: tabla */}
@@ -368,7 +429,10 @@ export function CasView() {
                 </thead>
                 <tbody className="divide-y divide-slate-100">
                   {filtrados.map((a) => (
-                    <tr className="align-top transition hover:bg-slate-50" key={a.id}>
+                    <tr
+                      className={`align-top transition hover:bg-slate-50 ${nuevosIds.has(a.id) ? "bg-[#9FD140]/15" : ""}`}
+                      key={a.id}
+                    >
                       <td className="px-4 py-3">
                         <p className="font-semibold text-slate-900">{a.nombre_completo}</p>
                         <p className="text-xs text-slate-500">
@@ -405,7 +469,10 @@ export function CasView() {
             {/* Teléfono: tarjetas */}
             <div className="grid gap-3 md:hidden">
               {filtrados.map((a) => (
-                <article className="rounded-lg border border-slate-200 bg-white p-4" key={a.id}>
+                <article
+                  className={`rounded-lg border p-4 ${nuevosIds.has(a.id) ? "border-[#9FD140] bg-[#9FD140]/10" : "border-slate-200 bg-white"}`}
+                  key={a.id}
+                >
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
                       <p className="font-semibold text-slate-900">{a.nombre_completo}</p>
