@@ -50,23 +50,17 @@ export async function POST(request: Request) {
   };
   if (!datos.p_campus) return NextResponse.json({ estado: "invalido" }, { status: 400 });
 
-  let { data, error } = await supabase.rpc("gestionesjj_public_cas_preinscripcion", datos);
-  // Sin la migración 073 la RPC aún no recibe el campus: se envía con la firma
-  // anterior y el campus queda al inicio de la disponibilidad, para no perderlo.
-  if (error && (error.code === "PGRST202" || /could not find the function/i.test(error.message))) {
-    const { p_campus, ...anterior } = datos;
-    const disponibilidad = [`Campus: ${p_campus}`, anterior.p_disponibilidad.trim()].filter(Boolean).join("\n");
-    ({ data, error } = await supabase.rpc("gestionesjj_public_cas_preinscripcion", {
-      ...anterior,
-      p_disponibilidad: disponibilidad.slice(0, 1000),
-    }));
-  }
+  const { data, error } = await supabase.rpc("gestionesjj_public_cas_preinscripcion", datos);
   if (error) {
     console.error("[cas/preinscripcion] rpc", { ip: getClientIp(request), mensaje: error.message });
     return NextResponse.json({ estado: "error" }, { status: 500 });
   }
 
-  const estado = data === "ok" || data === "duplicado" || data === "cerrado" ? data : "invalido";
+  // Con la migración 075 la RPC responde «ok:<número de orden>»; sin ella, «ok».
+  const respuesta = typeof data === "string" ? data : "";
+  const coincide = /^ok(?::(\d+))?$/.exec(respuesta);
+  const numero = coincide?.[1] ? Number(coincide[1]) : null;
+  const estado = coincide ? "ok" : respuesta === "duplicado" || respuesta === "cerrado" ? respuesta : "invalido";
   if (estado === "ok") {
     const practica = PRACTICAS.find((p) => p.id === datos.p_practica);
     after(async () => {
@@ -74,7 +68,7 @@ export async function POST(request: Request) {
       await notificar(
         "cas_preinscripciones",
         [
-          "🎓 <b>CAS UPANA: nueva preinscripción</b>",
+          `🎓 <b>CAS UPANA: nueva preinscripción${numero ? ` #${numero}` : ""}</b>`,
           `${esc(datos.p_nombre.trim())} · ID ${esc(datos.p_carne.trim().toUpperCase())}`,
           practica ? `${esc(practica.nombre)} (${esc(practica.detalle)})` : "",
           `🏫 ${esc(datos.p_campus)}`,
@@ -86,5 +80,5 @@ export async function POST(request: Request) {
       );
     });
   }
-  return NextResponse.json({ estado }, { headers: { "Cache-Control": "no-store" } });
+  return NextResponse.json({ estado, numero }, { headers: { "Cache-Control": "no-store" } });
 }

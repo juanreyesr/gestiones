@@ -3,9 +3,9 @@ import { PreinscripcionCas } from "@/components/cas/preinscripcion-cas";
 import { estadoFormularioCas } from "@/lib/server/cas-formulario";
 
 export const metadata: Metadata = {
-  title: "Preinscripción de práctica · CAS UPANA",
+  title: "Preinscripción de práctica · CAS UPANA Chimaltenango",
   description:
-    "Preinscripción de estudiantes de Universidad Panamericana para la práctica en consejería (4.º año) y la práctica profesional (5.º año) en el Centro de Asistencia Social.",
+    "Preinscripción de estudiantes de Universidad Panamericana para la práctica en consejería (4.º año) y la práctica profesional (5.º año) en el Centro de Asistencia Social del Campus Chimaltenango.",
   robots: { index: false },
 };
 

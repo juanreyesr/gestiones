@@ -10,7 +10,9 @@ así que las migraciones se acumulan aquí y se aplican **juntas desde la comput
   computadora y aprobar cada ventana de Supabase.
 
 ## Pendientes
-Ninguna por ahora.
+| Migración | Qué hace | Si falta |
+| --- | --- | --- |
+| `075_gestionesjj_cas_mis_datos.sql` | CAS UPANA: la preinscripción devuelve el número de orden («ok:17»); RPC públicas para que el estudiante consulte y corrija sus datos con carné + correo institucional; columna `actualizado_por_estudiante_at`. | La preinscripción funciona igual pero sin mostrar el número; `/cas/mis-datos` avisa que la opción aún no está disponible. |
 
 ## Aplicadas
 | Migración | Fecha | Verificación |
