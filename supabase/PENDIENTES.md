@@ -10,9 +10,7 @@ así que las migraciones se acumulan aquí y se aplican **juntas desde la comput
   computadora y aprobar cada ventana de Supabase.
 
 ## Pendientes
-| Migración | Qué hace | Si falta |
-| --- | --- | --- |
-| `075_gestionesjj_cas_mis_datos.sql` | CAS UPANA: la preinscripción devuelve el número de orden («ok:17»); RPC públicas para que el estudiante consulte y corrija sus datos con carné + correo institucional; columna `actualizado_por_estudiante_at`. | La preinscripción funciona igual pero sin mostrar el número; `/cas/mis-datos` avisa que la opción aún no está disponible. |
+Ninguna por ahora.
 
 ## Aplicadas
 | Migración | Fecha | Verificación |
@@ -30,3 +28,4 @@ así que las migraciones se acumulan aquí y se aplican **juntas desde la comput
 | `070_gestionesjj_cas_formulario_abierto.sql` | 2026-11-24 | Aplicada por el propietario. Verificada: tabla `gestionesjj_cas_config` con la fila de configuración (formulario abierto). |
 | `073_gestionesjj_cas_campus.sql` | 2026-11-24 | Aplicada por Claude con aprobación del propietario (junto con el borrado del registro de prueba «ZZ-PRUEBA-CAMPUS»). Columna `campus` creada; solo queda la RPC con `p_campus` (9 parámetros), ejecutable por `anon`, que responde «invalido» sin campus; 0 aspirantes, formulario abierto. |
 | `074_gestionesjj_cas_orden_inscripcion.sql` | 2026-11-28 | Aplicada por Claude con aprobación del propietario. Los 16 aspirantes quedaron numerados 1–16 en el mismo orden que su fecha y hora de registro; la secuencia sigue en 17 y es el valor por defecto; `authenticated` puede usarla y `anon` no. |
+| `075_gestionesjj_cas_mis_datos.sql` | 2026-11-28 | Aplicada por Claude con aprobación del propietario, después de desplegar el código. Columna `actualizado_por_estudiante_at` creada; las RPC de consulta y corrección son ejecutables por `anon` y no devuelven ni cambian nada con un carné o correo que no coinciden («no_encontrado»); la preinscripción sin consentimiento responde «invalido». En producción, `/api/cas/mis-datos` responde «no_encontrado» (antes «no_disponible»). |
