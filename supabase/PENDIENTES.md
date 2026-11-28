@@ -10,9 +10,7 @@ así que las migraciones se acumulan aquí y se aplican **juntas desde la comput
   computadora y aprobar cada ventana de Supabase.
 
 ## Pendientes
-| Migración | Qué hace | Si falta |
-| --- | --- | --- |
-| `074_gestionesjj_cas_orden_inscripcion.sql` | Número fijo de orden de inscripción para los aspirantes del CAS UPANA (las existentes, numeradas por fecha y hora de registro; las nuevas, con una secuencia). Prioridad al primero que se inscribió. | `/admin` calcula el orden al vuelo con la fecha y hora de registro (mismo resultado, pero el número de alguien puede cambiar si se borra a otro anterior). |
+Ninguna por ahora.
 
 ## Aplicadas
 | Migración | Fecha | Verificación |
@@ -29,3 +27,4 @@ así que las migraciones se acumulan aquí y se aplican **juntas desde la comput
 | `072_tests_plataforma.sql` | 2026-11-24 | Aplicada por Claude con aprobación del propietario. `tests_usuarios`, `tests_compras` y `tests_aplicaciones` con RLS activo y solo una política de lectura del propietario cada una; `anon` sin acceso; `authenticated` sin insertar y sin ver `password_hash`. No modifica tablas ni políticas de otros proyectos. |
 | `070_gestionesjj_cas_formulario_abierto.sql` | 2026-11-24 | Aplicada por el propietario. Verificada: tabla `gestionesjj_cas_config` con la fila de configuración (formulario abierto). |
 | `073_gestionesjj_cas_campus.sql` | 2026-11-24 | Aplicada por Claude con aprobación del propietario (junto con el borrado del registro de prueba «ZZ-PRUEBA-CAMPUS»). Columna `campus` creada; solo queda la RPC con `p_campus` (9 parámetros), ejecutable por `anon`, que responde «invalido» sin campus; 0 aspirantes, formulario abierto. |
+| `074_gestionesjj_cas_orden_inscripcion.sql` | 2026-11-28 | Aplicada por Claude con aprobación del propietario. Los 16 aspirantes quedaron numerados 1–16 en el mismo orden que su fecha y hora de registro; la secuencia sigue en 17 y es el valor por defecto; `authenticated` puede usarla y `anon` no. |
