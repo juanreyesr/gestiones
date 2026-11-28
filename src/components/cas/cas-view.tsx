@@ -41,6 +41,8 @@ import {
   enlaceWhatsApp,
   estadoDe,
   exportarAspirantesExcel,
+  fechaHoraInscripcion,
+  numerarOrden,
   fetchAspirantes,
   guardarAspirante,
   normalizarAspirante,
@@ -90,6 +92,8 @@ export function CasView() {
   const [filtroPractica, setFiltroPractica] = useState<FiltroPractica>("todas");
   const [filtroEstado, setFiltroEstado] = useState<"todos" | EstadoId>("todos");
   const [filtroCampus, setFiltroCampus] = useState("todos"); // «todos», uno de CAMPUS, «otro» o «sin»
+  // Por defecto, por orden de inscripción: quien se inscribió primero tiene prioridad.
+  const [ordenarPor, setOrdenarPor] = useState<"inscripcion" | "recientes" | "nombre">("inscripcion");
   const [editando, setEditando] = useState<{ id: string | null; datos: AspiranteInput } | null>(null);
   const [porBorrar, setPorBorrar] = useState<Aspirante | null>(null);
   const [borrando, setBorrando] = useState(false);
@@ -163,9 +167,12 @@ export function CasView() {
     return () => clearTimeout(t);
   }, [aviso]);
 
+  // Número de orden de inscripción de cada aspirante (fijo: no depende de los filtros).
+  const orden = useMemo(() => numerarOrden(aspirantes), [aspirantes]);
+
   const filtrados = useMemo(() => {
     const q = plano(busqueda.trim());
-    return aspirantes.filter((a) => {
+    const lista = aspirantes.filter((a) => {
       if (filtroPractica !== "todas" && a.practica !== filtroPractica) return false;
       if (filtroEstado !== "todos" && a.estado !== filtroEstado) return false;
       if (filtroCampus !== "todos" && claveCampus(a.campus) !== filtroCampus) return false;
@@ -174,7 +181,15 @@ export function CasView() {
         [a.nombre_completo, a.carne, a.campus, a.telefono, a.correo_institucional, a.correo_personal].filter(Boolean).join(" "),
       ).includes(q);
     });
-  }, [aspirantes, busqueda, filtroPractica, filtroEstado, filtroCampus]);
+    const n = (a: Aspirante) => orden.get(a.id) ?? 0;
+    return lista.sort((a, b) =>
+      ordenarPor === "nombre"
+        ? a.nombre_completo.localeCompare(b.nombre_completo, "es")
+        : ordenarPor === "recientes"
+          ? n(b) - n(a)
+          : n(a) - n(b),
+    );
+  }, [aspirantes, busqueda, filtroPractica, filtroEstado, filtroCampus, orden, ordenarPor]);
 
   // Cuántos aspirantes hay por campus, para mostrarlo en el filtro.
   const porCampus = useMemo(() => {
@@ -370,6 +385,17 @@ export function CasView() {
                 </button>
               ))}
             </div>
+            <select
+              aria-label="Ordenar la lista"
+              className={`${CAMPO_BASE} w-full py-1.5 text-xs sm:w-auto`}
+              onChange={(e) => setOrdenarPor(e.target.value as "inscripcion" | "recientes" | "nombre")}
+              title="El orden de inscripción define la prioridad si dos estudiantes piden el mismo día y horario"
+              value={ordenarPor}
+            >
+              <option value="inscripcion">Orden de inscripción (prioridad)</option>
+              <option value="recientes">Más recientes primero</option>
+              <option value="nombre">Nombre (A–Z)</option>
+            </select>
             <div className="flex flex-wrap gap-2">
               <button className={BTN_BORDE} onClick={() => void copiarEnlace()} title="Copiar el enlace del formulario público" type="button">
                 <Link2 className="h-4 w-4" />
@@ -386,7 +412,7 @@ export function CasView() {
               <button
                 className={BTN_BORDE}
                 disabled={filtrados.length === 0}
-                onClick={() => void exportarAspirantesExcel(filtrados)}
+                onClick={() => void exportarAspirantesExcel(filtrados, orden)}
                 type="button"
               >
                 <Download className="h-4 w-4" />
@@ -434,10 +460,16 @@ export function CasView() {
                       key={a.id}
                     >
                       <td className="px-4 py-3">
-                        <p className="font-semibold text-slate-900">{a.nombre_completo}</p>
+                        <p className="font-semibold text-slate-900">
+                          <NumeroOrden n={orden.get(a.id)} />
+                          {a.nombre_completo}
+                        </p>
                         <p className="text-xs text-slate-500">
                           ID {a.carne}
                           {a.origen === "formulario" ? <OrigenFormulario /> : null}
+                        </p>
+                        <p className="text-[11px] text-slate-400" title="Fecha y hora de inscripción (hora de Guatemala)">
+                          Inscrito: {fechaHoraInscripcion(a.created_at)}
                         </p>
                         {a.disponibilidad ? (
                           <p className="mt-1 max-w-xs text-xs text-slate-500" title="Disponibilidad tentativa">
@@ -475,11 +507,15 @@ export function CasView() {
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
-                      <p className="font-semibold text-slate-900">{a.nombre_completo}</p>
+                      <p className="font-semibold text-slate-900">
+                        <NumeroOrden n={orden.get(a.id)} />
+                        {a.nombre_completo}
+                      </p>
                       <p className="text-xs text-slate-500">
                         ID {a.carne}
                         {a.origen === "formulario" ? <OrigenFormulario /> : null}
                       </p>
+                      <p className="text-[11px] text-slate-400">Inscrito: {fechaHoraInscripcion(a.created_at)}</p>
                     </div>
                     <EtiquetaEstado estado={a.estado} />
                   </div>
@@ -794,6 +830,20 @@ function InterruptorFormulario() {
       {error ? <p className="text-xs text-red-700">{error}</p> : null}
       {guardado ? <p className="text-xs font-semibold text-[#5E8F1A]">{guardado}</p> : null}
     </div>
+  );
+}
+
+/** Número de orden de inscripción: el menor tiene prioridad ante un mismo día y horario. */
+function NumeroOrden({ n }: { n: number | undefined }) {
+  if (!n) return null;
+  return (
+    <span
+      className="mr-2 inline-flex min-w-8 items-center justify-center rounded-md px-1.5 py-0.5 align-middle text-xs font-bold text-white"
+      style={{ backgroundColor: AZUL }}
+      title="Orden de inscripción: ante un mismo día y horario, tiene prioridad el número menor"
+    >
+      #{n}
+    </span>
   );
 }
 
